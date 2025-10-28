@@ -1,4 +1,3 @@
-// Optional subtle entrance animation
 document.addEventListener("DOMContentLoaded", () => {
   const loginBox = document.querySelector(".login-box");
   loginBox.style.opacity = 0;
