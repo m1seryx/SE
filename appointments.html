@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Appointments </title>
+  <link rel="stylesheet" href="appointments.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="logo">Welcome back, Admin!</div>
+  </nav>
+
+  <div class="sidebar">
+    <div class="profile">
+     <img src="profile.png" alt="" class="profile-pic">
+      <h3>D’jackman Tailor Deluxe</h3>
+    </div>
+    <a href="admin.html">Dashboard</a>
+    <a href="#" class="active">Appointments</a>
+    <a href="rental.html">Rentals</a>
+    <a href="#">Repairs</a>
+    <a href="#">Orders</a>
+    <a href="#">Inventory</a>
+    <a href="#">Notifications</a>
+  </div>
+
+ 
+  <div class="content">
+    <div class="dashboard-title">
+   <h2>Appointment</h2>
+   <p>Manage customer appointments and scheduling</p>
+   </div>
+
+    <div class="search-container">
+      <input type="text" id="search" placeholder="🔍 Search Appointments">
+      <select id="filter">
+        <option>All</option>
+        <option>Confirmed</option>
+        <option>Declined</option>
+        <option>Completed</option>
+        <option>Cancelled</option>
+      </select>
+    </div>
+
+    <div class="appointments-list">
+      <div class="appointment-card">
+       <img src="profile.png" alt="" class="profile-pic">
+        <div class="appointment-info">
+          <p class="customer">(Customer #1)</p>
+          <h3>Customize</h3>
+          <p>Discussing custom design</p>
+          <p>Date: <strong>09/25/2025</strong></p>
+          <p>Time: <strong>10:00am - 11:00am</strong></p>
+        </div>
+        <div class="buttons">
+          <button class="accept-btn">Accept</button>
+          <button class="decline-btn">Decline</button>
+        </div>
+      </div>
+
+      <div class="appointment-card">
+       <img src="profile.png" alt="" class="profile-pic">
+        <div class="appointment-info">
+          <p class="customer">(Customer #1)</p>
+          <h3>Repair</h3>
+          <p>Discussing repair clothes</p>
+          <p>Date: <strong>09/25/2025</strong></p>
+          <p>Time: <strong>10:00am - 11:00am</strong></p>
+        </div>
+        <div class="buttons">
+          <button class="accept-btn">Accept</button>
+          <button class="decline-btn">Decline</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="declineModal" class="modal">
+    <div class="modal-content">
+      <p>Are you sure you want to decline this appointment?</p>
+      <div class="modal-buttons">
+        <button id="confirmDecline" class="yes">Yes</button>
+        <button id="cancelDecline" class="no">No</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="appointments.js"></script>
+</body>
+</html>

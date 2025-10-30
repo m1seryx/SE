@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rental Management </title>
+  <link rel="stylesheet" href="rental.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="logo">Welcome back, Admin!</div>
+  </nav>
+
+ 
+  <aside class="sidebar">
+    <div class="profile">
+      <img src="profile.png" alt="" class="profile-pic">
+      <h3>D'jackman Tailor Deluxe</h3>
+    </div>
+    <a href="admin.html">Dashboard</a>
+    <a href="appointments.html" >Appointments</a>
+    <a href="#" class="active"  >Rentals</a>
+    <a href="#">Repairs</a>
+    <a href="#">Orders</a>
+    <a href="#">Inventory</a>
+    <a href="#">Notifications</a>
+  </aside>
+
+  
+  <main class="content">
+    <header class="header-row">
+      <div>
+        <h2 class="dashboard-title">Rental Management</h2>
+        <p class="subtitle">Track rental items and manage returns</p>
+      </div>
+      <div class="top-actions">
+        <button id="addProductBtn" class="btn-blue">Add Product <span class="plus">+</span></button>
+      </div>
+    </header>
+
+    
+    <section class="kpi-row">
+      <div class="kpi card-small">
+        <div class="kpi-title">Active Rentals</div>
+        <div class="kpi-value" id="kpi-active">3</div>
+      </div>
+      <div class="kpi card-small">
+        <div class="kpi-title">Due Today</div>
+        <div class="kpi-value" id="kpi-due">1</div>
+      </div>
+      <div class="kpi card-small">
+        <div class="kpi-title">Overdue</div>
+        <div class="kpi-value" id="kpi-overdue">0</div>
+      </div>
+    </section>
+
+    <section class="search-container">
+      <input id="searchInput" placeholder="Search Rentals" />
+      <select id="statusFilter">
+        <option>All Status</option>
+        <option>Active</option>
+        <option>Due today</option>
+        <option>Overdue</option>
+        <option>Returned</option>
+      </select>
+    </section>
+
+    
+    <section class="appointments-list" id="rentalList">
+     
+      <article class="rental-card" data-status="due-today">
+        <div class="left">
+          <img src="profile.png" alt="" class="profile-pic">
+          <div class="rental-info">
+            <p class="customer">(Customer #1)</p>
+            <p class="item-line">Item: <span class="item-name">Black Tuxedo</span></p>
+            <p class="detail-line">Size: <span class="size">XL</span> &nbsp; Price: <span class="price">1,500</span></p>
+            <p class="date-line">Date rented: <span class="rented-date">10-13-2025</span> &nbsp; Due: <span class="due-date">10-20-2025</span></p>
+          </div>
+        </div>
+
+        <div class="right">
+          <div class="actions">
+            <button class="btn-gray edit-btn">Edit</button>
+            <button class="btn-black process-btn">Process return</button>
+          </div>
+          <div class="status-badge badge-red">Due Today</div>
+        </div>
+      </article>
+
+      
+      <article class="rental-card" data-status="returned">
+        <div class="left">
+          <img src="profile.png" alt="" class="profile-pic">
+          <div class="rental-info">
+            <p class="customer">(Customer #2)</p>
+            <p class="item-line">Item: <span class="item-name">Black Tuxedo</span></p>
+            <p class="detail-line">Size: <span class="size">Large</span> &nbsp; Price: <span class="price">1,500</span></p>
+            <p class="date-line">Date rented: <span class="rented-date">10-12-2025</span> &nbsp; Due: <span class="due-date">10-19-2025</span></p>
+          </div>
+        </div>
+
+        <div class="right">
+          <div class="actions">
+            <button class="btn-gray edit-btn">Edit</button>
+            <button class="btn-disabled process-btn" disabled>Returned</button>
+          </div>
+          <div class="status-badge badge-green">Returned</div>
+        </div>
+      </article>
+
+      <!-- Placeholder area for new cards -->
+    </section>
+  </main>
+
+  <!-- EDIT RENTAL MODAL -->
+  <div id="editModal" class="modal">
+    <div class="modal-panel modal-large">
+      <h3>Edit Rental Details</h3>
+      <div class="modal-body two-col">
+        <div class="left-col">
+          <div class="image-placeholder large-img"></div>
+          <p class="muted">Item description: (Fabric type, Size, Condition, Price)</p>
+        </div>
+        <form id="editForm" class="right-col">
+          <!-- Fields have name attributes and placeholders for later PHP -->
+          <label>Name:
+            <input name="name" placeholder="Customer name" />
+          </label>
+          <label>Contact #:
+            <input name="contact" placeholder="09xxxxxxxxx" />
+          </label>
+          <label>Item:
+            <input name="item" placeholder="Black Tuxedo" />
+          </label>
+          <label>Rental date:
+            <input name="rental_date" placeholder="mm-dd-yyyy" />
+          </label>
+          <label>Return date:
+            <input name="return_date" placeholder="mm-dd-yyyy" />
+          </label>
+          <label>Status:
+            <select name="status">
+              <option>Active</option>
+              <option>Due today</option>
+              <option>Overdue</option>
+              <option>Returned</option>
+            </select>
+          </label>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-discard" id="editDiscard">Discard</button>
+            <button type="submit" class="btn-blue">Save changes</button>
+          </div>
+        </form>
+      </div>
+      <button class="close-x" data-close="editModal">&times;</button>
+    </div>
+  </div>
+
+  <!-- PROCESS RETURN MODAL -->
+  <div id="returnModal" class="modal">
+    <div class="modal-panel">
+      <h3>Process Return</h3>
+      <p class="muted">Process the return for this rental item and calculate any fees or refunds.</p>
+
+      <div class="info-card">
+        <div><strong>Name:</strong> <span id="ret-name">(Customer Name)</span></div>
+        <div><strong>Contact #:</strong> <span id="ret-contact">09000000011</span></div>
+        <div><strong>Item Rented:</strong> <span id="ret-item">Black Tuxedo</span></div>
+        <div><strong>Rental Price:</strong> <span id="ret-price">1,500</span></div>
+        <div><strong>Status:</strong> <span id="ret-status">Due today</span></div>
+      </div>
+
+      <form id="returnForm" class="return-form">
+        <label>Return Date:
+          <input name="return_date" placeholder="mm/dd/yy" />
+        </label>
+
+        <label>Item Condition:
+          <select name="condition">
+            <option>Excellent - No issue</option>
+            <option>Good - Normal wear</option>
+            <option>Fair - Minor issue</option>
+            <option>Poor - Significant damage</option>
+          </select>
+        </label>
+
+        <label>Late Return Fee:
+          <input name="late_fee" placeholder="0.00" />
+        </label>
+
+        <label>Damage Fee:
+          <input name="damage_fee" placeholder="0.00" />
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-discard" id="returnDiscard">Discard</button>
+          <button type="submit" class="btn-blue">Save changes</button>
+        </div>
+      </form>
+
+      <button class="close-x" data-close="returnModal">&times;</button>
+    </div>
+  </div>
+
+  <!-- ADD PRODUCT MODAL -->
+  <div id="addModal" class="modal">
+    <div class="modal-panel modal-large">
+      <h3>Add Product</h3>
+      <div class="modal-body two-col">
+        <form id="addForm" class="right-col">
+          <label>Item name:
+            <input name="product_name" placeholder="Item name" />
+          </label>
+          <label>Description:
+            <input name="description" placeholder="Item description" />
+          </label>
+          <label>Size:
+            <input name="size" placeholder="Size (S/M/L/XL)" />
+          </label>
+          <label>Category:
+            <input name="category" placeholder="Category" />
+          </label>
+          <label>Rental price:
+            <input name="rental_price" placeholder="1,500" />
+          </label>
+          <label>Availability status:
+            <select name="availability">
+              <option>Available</option>
+              <option>Not available</option>
+            </select>
+          </label>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-discard" id="addDiscard">Discard</button>
+            <button type="submit" class="btn-blue">Add Product</button>
+          </div>
+        </form>
+
+        <div class="left-col">
+          <div class="image-placeholder large-img"></div>
+          <p class="muted">Upload image preview here (placeholder)</p>
+        </div>
+      </div>
+
+      <button class="close-x" data-close="addModal">&times;</button>
+    </div>
+  </div>
+
+  <script src="rental.js"></script>
+</body>
+</html>
