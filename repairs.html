@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Repairs Management</title>
+  <link rel="stylesheet" href="repairs.css">
+</head>
+<body>
+
+  
+  <nav class="navbar">
+    <div class="logo">Welcome back, Admin!</div>
+  </nav>
+
+
+  <div class="sidebar">
+    <div class="profile">
+      <img src="profile.png" alt="" class="profile-pic">
+      <h3>D’jackman Tailor Deluxe</h3>
+    </div>
+    <a href="admin.html">Dashboard</a>
+    <a href="appointments.html">Appointments</a>
+    <a href="rental.html">Rentals</a>
+    <a href="#" class="active">Repairs</a>
+    <a href="#">Orders</a>
+    <a href="#">Inventory</a>
+    <a href="#">Notifications</a>
+  </div>
+
+  
+  <div class="content">
+    <div class="dashboard-title">
+      <h2>Repairs</h2>
+      <p>Manage customer repair details and progress</p>
+    </div>
+
+   
+    <div class="search-container">
+      <input type="text" id="search" placeholder="🔍 Search Repairs">
+      <select id="filter">
+        <option>All</option>
+        <option>Pending</option>
+        <option>In Progress</option>
+        <option>Completed</option>
+      </select>
+    </div>
+
+
+    <div class="repairs-list">
+      <div class="repair-card">
+        <img src="profile.png" alt="" class="profile-pic">
+        <div class="repair-info">
+          <p class="customer">(Customer #1)</p>
+          <h3>Suit Jacket</h3>
+          <p>Issue: <strong>Broken zipper</strong></p>
+          <p>Status: <span class="status-badge badge-yellow">Pending</span></p>
+          <p>Due: <strong>2025-11-05</strong></p>
+        </div>
+        <div class="buttons">
+          <button class="edit-btn">Edit</button>
+        </div>
+      </div>
+
+      <div class="repair-card">
+        <img src="profile.png" alt="" class="profile-pic">
+        <div class="repair-info">
+          <p class="customer">(Customer #2)</p>
+          <h3>Gown</h3>
+          <p>Issue: <strong>Loose stitches</strong></p>
+          <p>Status: <span class="status-badge badge-blue">In Progress</span></p>
+          <p>Due: <strong>2025-11-08</strong></p>
+        </div>
+        <div class="buttons">
+          <button class="edit-btn">Edit</button>
+        </div>
+      </div>
+
+      <div class="repair-card">
+        <img src="profile.png" alt="" class="profile-pic">
+        <div class="repair-info">
+          <p class="customer">(Customer #3)</p>
+          <h3>Pants</h3>
+          <p>Issue: <strong>Torn hem</strong></p>
+          <p>Status: <span class="status-badge badge-green">Completed</span></p>
+          <p>Due: <strong>2025-10-30</strong></p>
+        </div>
+        <div class="buttons">
+          <button class="edit-btn">Edit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+ 
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Edit Repair Details</h2>
+
+      <label>Customer Name</label>
+      <input type="text" id="editName" placeholder="Enter customer name">
+
+      <label>Item</label>
+      <input type="text" id="editItem" placeholder="Enter item (e.g., suit, dress)">
+
+      <label>Issue</label>
+      <input type="text" id="editIssue" placeholder="Enter issue details">
+
+      <label>Notes</label>
+      <textarea id="editNotes" placeholder="Additional notes..." rows="3"></textarea>
+
+      <label>Status</label>
+      <select id="editStatus">
+        <option>Pending</option>
+        <option>In Progress</option>
+        <option>Completed</option>
+      </select>
+
+      <label>Due Date</label>
+      <input type="date" id="editDate">
+
+      <div class="modal-buttons">
+        <button id="saveChanges">Save Changes</button>
+        <button id="cancelEdit">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="repairs.js"></script>
+</body>
+</html>
