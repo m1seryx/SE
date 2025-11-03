@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Order Management</title>
-  <link rel="stylesheet" href="../Styles/orders.css">
+  <link rel="stylesheet" href="../Styles/orders.css" />
 </head>
 <body>
 
@@ -16,14 +16,14 @@
   <!-- SIDEBAR -->
   <div class="sidebar">
     <div class="profile">
-      <img src="profile.png" alt="logo" class="profile-pic">
+      <img src="profile.png" alt="logo" class="profile-pic" />
       <h3>D’jackman Tailor Deluxe</h3>
     </div>
-    <a href="#">Dashboard</a>
-    <a href="#">Appointments</a>
-    <a href="#">Rental</a>
-    <a href="#">Repair</a>
-    <a href="#" class="active">Orders</a>
+    <a href="../AdminPage/admin.html">Dashboard</a>
+    <a href="../AdminPage/appointments.html">Appointments</a>
+    <a href="../AdminPage/rental.html">Rentals</a>
+    <a href="repairs.html">Repair</a>
+    <a href="" class="active">Orders</a>
     <a href="#">Inventory</a>
     <a href="#">Settings</a>
   </div>
@@ -35,7 +35,7 @@
       <p>Track customer orders and shopping baskets</p>
     </div>
 
-    <!-- Order Filters -->
+    <!-- FILTER BUTTONS -->
     <div class="order-filters">
       <button class="filter-btn active">Pending Orders</button>
       <button class="filter-btn">Ready for Pickup</button>
@@ -84,7 +84,7 @@
       <h2>Resolve Fabric Issue</h2>
 
       <label>Customer Name</label>
-      <input type="text" id="custName" placeholder="Customer #2" readonly>
+      <input type="text" id="custName" placeholder="Customer #2" readonly />
 
       <label>Issue Details</label>
       <textarea id="issueDetails" placeholder="Describe the fabric issue..." rows="3"></textarea>
