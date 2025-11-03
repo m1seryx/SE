@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order Management</title>
+  <link rel="stylesheet" href="../Styles/orders.css" />
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="logo">Welcome back, Admin!</div>
+  </nav>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="profile">
+      <img src="profile.png" alt="logo" class="profile-pic" />
+      <h3>D’jackman Tailor Deluxe</h3>
+    </div>
+    <a href="../AdminPage/admin.html">Dashboard</a>
+    <a href="../AdminPage/appointments.html">Appointments</a>
+    <a href="../AdminPage/rental.html">Rentals</a>
+    <a href="repairs.html">Repair</a>
+    <a href="" class="active">Orders</a>
+    <a href="#">Inventory</a>
+    <a href="#">Settings</a>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="content">
+    <div class="dashboard-title">
+      <h2>Order Management</h2>
+      <p>Track customer orders and shopping baskets</p>
+    </div>
+
+    <!-- FILTER BUTTONS -->
+    <div class="order-filters">
+      <button class="filter-btn active">Pending Orders</button>
+      <button class="filter-btn">Ready for Pickup</button>
+      <button class="filter-btn">Fabric Issue</button>
+    </div>
+
+    <!-- ORDER LIST -->
+    <div class="orders-list">
+
+      <div class="order-card">
+        <div class="order-info">
+          <h3>Customer #1 <span>Order #1341</span></h3>
+          <p>1x Custom Business Suit <em>(Italian Wool)</em></p>
+          <p>Ordered: <strong>08-01-2025</strong></p>
+          <p>Total: ₱740 &nbsp; | &nbsp; Paid: ₱740</p>
+          <p class="desc">Corporate executive style, modern fit</p>
+        </div>
+        <div class="order-actions">
+          <button class="edit-btn">Edit</button>
+          <button class="complete-btn">Mark Completed</button>
+        </div>
+      </div>
+
+      <div class="order-card">
+        <div class="order-info">
+          <h3>Customer #2 <span>Order #1324</span></h3>
+          <p>4x Groomsmen Suits <em>(Charcoal Grey Wool)</em></p>
+          <p>Ordered: <strong>07-29-2025</strong></p>
+          <p>Total: ₱6,540 &nbsp; | &nbsp; Paid: ₱5,000 &nbsp; | &nbsp; Due: ₱1,540</p>
+          <p class="desc">Wedding party suits, matching style</p>
+          <span class="fabric-issue">Fabric Issue</span>
+        </div>
+        <div class="order-actions">
+          <button class="edit-btn">Edit</button>
+          <button class="resolve-btn" id="openModalBtn">Resolve Fabric Issue</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL -->
+  <div id="fabricModal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="closeModal">&times;</span>
+      <h2>Resolve Fabric Issue</h2>
+
+      <label>Customer Name</label>
+      <input type="text" id="custName" placeholder="Customer #2" readonly />
+
+      <label>Issue Details</label>
+      <textarea id="issueDetails" placeholder="Describe the fabric issue..." rows="3"></textarea>
+
+      <label>Resolution</label>
+      <textarea id="resolution" placeholder="Enter the resolution action..." rows="3"></textarea>
+
+      <div class="modal-buttons">
+        <button id="saveChanges">Save</button>
+        <button id="cancelEdit">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="orders.js"></script>
+</body>
+</html>

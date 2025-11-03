@@ -7,22 +7,37 @@ body {
   background-color: #EEEFF8;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+[id] {
+  scroll-margin-top: 100px;
+}
+
+
 
 .navbar {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  background-color: #FFFFFF;
-  padding: 0 20px;
-  height: 70px;
-  font-size: 1.5em;
-  z-index: 1;
-  font-weight: lighter;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-.logo {
-  margin-right: 40px;
-}
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+     
+      padding: 0 20px; 
+      height: 70px; 
+      background-color: #2F2F27;
+      font-size: 1.5em;
+      z-index: 1;
+      font-weight: lighter;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .logo{
+      margin-right: 40px;
+      color: #FFFFFF;
+      font-weight: 1000;
+    }
+    .logo h3{
+      background-color: #FFFFFF;
+    }
 
 
 .sidebar {
@@ -62,7 +77,7 @@ body {
       font-size: 15px;
     }
 
-/* MAIN CONTENT */
+
 .content {
   margin-left: 270px;
   padding: 15px;
@@ -73,7 +88,7 @@ body {
   padding-left: 55px;
 }
 
-/* SEARCH */
+
 .search-container {
   display: flex;
   gap: 10px;
@@ -88,7 +103,7 @@ body {
 }
 .search-container input { flex: 1; }
 
-/* REPAIR LIST */
+
 .repairs-list {
   margin-top: 20px;
   padding: 0 55px;
@@ -130,7 +145,7 @@ body {
 }
 .buttons button:hover { background: #16a085; }
 
-/* MODAL */
+
 .modal {
   display: none;
   position: fixed;

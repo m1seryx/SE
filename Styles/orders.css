@@ -1,0 +1,279 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+
+body {
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+  background: #EEEFF8;
+  color: #333;
+}
+
+/* NAVBAR */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2F2F27;
+  color: #fff;
+  height: 70px;
+  padding: 0 25px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* SIDEBAR */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 270px;
+  background: #fff;
+  box-shadow: 1px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+}
+
+.profile-pic {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.sidebar a {
+  display: block;
+  color: #222;
+  text-decoration: none;
+  padding: 14px 25px;
+  transition: 0.3s;
+  font-weight: 500;
+}
+
+.sidebar a:hover,
+.sidebar a.active {
+  background: #1abc9c;
+  color: #fff;
+  border-left: 5px solid #148f77;
+}
+
+/* CONTENT */
+.content {
+  margin-left: 270px;
+  padding: 30px 50px;
+}
+
+.dashboard-title h2 {
+  margin: 0;
+  font-weight: 600;
+}
+
+.dashboard-title p {
+  margin: 5px 0 25px;
+  color: #777;
+}
+
+/* FILTER BUTTONS */
+.order-filters {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.filter-btn {
+  padding: 10px 25px;
+  border: 2px solid #ccc;
+  background: #fff;
+  border-radius: 20px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.filter-btn.active,
+.filter-btn:hover {
+  background: #1abc9c;
+  color: #fff;
+  border-color: #1abc9c;
+}
+
+/* ORDER CARDS */
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.order-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.order-info h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.order-info h3 span {
+  font-weight: 400;
+  font-size: 0.95rem;
+  color: #666;
+  margin-left: 10px;
+}
+
+.order-info p {
+  margin: 5px 0;
+  color: #444;
+  font-size: 0.95rem;
+}
+
+.order-info .desc {
+  color: #777;
+}
+
+.fabric-issue {
+  background: #e74c3c;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.order-actions button {
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: 0.2s;
+}
+
+.edit-btn { background: #3498db; color: #fff; }
+.complete-btn { background: #27ae60; color: #fff; }
+.resolve-btn { background: #e74c3c; color: #fff; }
+
+.order-actions button:hover {
+  opacity: 0.9;
+}
+
+/* MODAL */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0; 
+  top: 0;
+  width: 100%; 
+  height: 100%;
+  background: rgba(0,0,0,0.4);
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 25px;
+  border-radius: 10px;
+  width: 380px;
+  position: relative;
+  animation: fadeIn 0.3s ease;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  transition: all 0.3s ease;
+}
+
+.modal-content h2 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.modal-content label {
+  font-weight: 500;
+  display: block;
+  margin-top: 10px;
+}
+
+.modal-content input,
+.modal-content textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  box-sizing: border-box;
+}
+
+.modal-buttons {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.modal-buttons button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+#saveChanges { background: #27ae60; color: #fff; }
+#cancelEdit { background: #e74c3c; color: #fff; }
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 220px;
+  }
+
+  .content {
+    margin-left: 220px;
+    padding: 20px;
+  }
+
+  .order-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .order-actions {
+    margin-top: 10px;
+  }
+}
+
+@media (max-width: 500px) {
+  .sidebar {
+    display: none;
+  }
+
+  .content {
+    margin-left: 0;
+    padding: 15px;
+  }
+
+  .navbar {
+    justify-content: center;
+  }
+}

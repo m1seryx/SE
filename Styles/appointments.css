@@ -7,23 +7,36 @@ body {
   background-color: #EEEFF8;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+[id] {
+  scroll-margin-top: 100px;
+}
+
+
 .navbar {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  background-color: #FFFFFF;
-  padding: 0 20px;
-  height: 70px;
-  font-size: 1.5em;
-  z-index: 1;
-  font-weight: lighter;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+     
+      padding: 0 20px; 
+      height: 70px; 
+      background-color: #2F2F27;
+      font-size: 1.5em;
+      z-index: 1;
+      font-weight: lighter;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
 
-.logo {
-  margin-right: 40px;
-}
-
+    .logo{
+      margin-right: 40px;
+      color: #FFFFFF;
+      font-weight: 1000;
+    }
+    .logo h3{
+      background-color: #FFFFFF;
+    }
 
 .sidebar {
   height: 100vh;
