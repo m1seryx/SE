@@ -6,12 +6,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (!modal || !openBtn || !closeBtn || !cancelBtn) return;
 
-  // Open modal
+  
   openBtn.onclick = () => {
     modal.style.display = "flex";
   };
 
-  // Close modal (X or cancel)
   closeBtn.onclick = () => {
     modal.style.display = "none";
   };
@@ -20,7 +19,6 @@ document.addEventListener("DOMContentLoaded", () => {
     modal.style.display = "none";
   };
 
-  // Close when clicking outside modal box
   window.onclick = (e) => {
     if (e.target === modal) modal.style.display = "none";
   };

@@ -1,0 +1,185 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background-color: #eef1f8;
+}
+
+.navbar {
+  background: #2f2f27;
+  color: white;
+  text-align: right;
+  padding: 18px 25px;
+  font-weight: 600;
+}
+
+.sidebar {
+  background: #fff;
+  width: 250px;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  padding-top: 20px;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar .profile {
+  display: flex;
+  align-items: center;
+  margin-left: 15px;
+  margin-bottom: 15px;
+}
+
+.sidebar .profile-pic {
+  width: 50px;
+  height: 50px;
+  margin-right: 10px;
+}
+
+.sidebar a {
+  display: block;
+  color: #333;
+  text-decoration: none;
+  padding: 10px 25px;
+  border-radius: 6px;
+  transition: 0.2s;
+}
+.sidebar a:hover, .sidebar a.active {
+  background: #1abc9c;
+  color: #fff;
+}
+
+.content {
+  margin-left: 270px;
+  padding: 25px;
+}
+
+.stats {
+  display: flex;
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.card {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  width: 150px;
+  text-align: center;
+  font-weight: 600;
+}
+.card.green { border-left: 6px solid #1abc9c; }
+.card.yellow { border-left: 6px solid #f1c40f; }
+.card.red { border-left: 6px solid #e74c3c; }
+
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.controls input, .controls select {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.btn-blue {
+  background: #1f6feb;
+  color: #fff;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.inventory-table th, .inventory-table td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  text-align: center;
+}
+
+.status.in-stock { color: #27ae60; }
+.status.out-stock { color: #e74c3c; }
+
+.modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 10px;
+  padding: 39px;
+  width: 320px;
+}
+.modal-content.small { width: 280px; }
+.modal-content input {
+  width: 100%;
+  margin: 5px 0;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.close {
+  float: right;
+  cursor: pointer;
+  font-size: 22px;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.btn-red {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.add { background: #27ae60; color: #fff; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+.remove { background: #e74c3c; color: #fff; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+
+.current-stock {
+  background: #e8f8f2;
+  color: #2e8b57;
+  text-align: center;
+  padding: 10px;
+  border-radius: 8px;
+  margin: 10px 0;
+}.adjustBtn {
+  background: #1f6feb;
+  color: #fff;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}.deleteBtn {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
