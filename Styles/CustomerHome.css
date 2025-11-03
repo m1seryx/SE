@@ -236,6 +236,7 @@ ul {
     transition: all 0.3s ease;
 }
 
+
 .rental{
     padding: 40px;
     background-color: #F5ECE3;
@@ -403,6 +404,7 @@ ul {
 
 .repair{
     padding: 50px;
+    background-color: #F2EFEC;
 }
 
 .repair-text{
@@ -413,3 +415,64 @@ ul {
     color: rgb(44, 44, 44);
 
 }
+
+
+
+.rent-bg {
+    border: 10px;
+    box-sizing: border-box;
+    padding: 100px;
+    width: 95%;
+    height: 500px;
+    border-radius: 20px;
+    margin-top: 20px;
+    background-clip: padding-box;
+    background: url('../assest/background.jpg') no-repeat center/cover;
+    margin-bottom: 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end; 
+    justify-content: center;
+    position: relative;
+  }
+  
+  .rent{
+    display: flex;
+    justify-content: center;
+    
+  }
+  .rent-overlay {
+    border-radius: 20px;
+    background: #683033;
+    opacity: 30%;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 1px;
+    left: 0;
+    z-index: 1; 
+  }
+  
+  .rent-info {
+    font-size: 30px;
+    text-align: right; 
+    margin-bottom: 55px;
+    position: relative;
+    z-index: 2; 
+  }
+  
+  .rent-welcome {
+    font-size: 60px;
+    color: rgb(255, 255, 255);
+    font-style: italic;
+  }
+  
+  .rent-text {
+    font-size: 30px;
+    color: rgb(255, 255, 255);
+    margin-top: 10px;
+    padding: 20px;
+    z-index: 2; 
+    font-style: italic;
+  
+  }
