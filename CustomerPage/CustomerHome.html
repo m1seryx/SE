@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CustomerHome</title>
     <link rel="stylesheet" href="../Styles/CustomerHome.css">
+    <link rel="stylesheet" href="../Styles/modal.css">
 
    
 </head>
 <body>
     <div class="head">
-    </div>
+    </div>  
 
     <div class="header">
         <div class="logo">
@@ -22,7 +23,7 @@
             <ul>
                 <li><a href="#top" >Home</a></li>
                 <li><a href="#Appointment">Appointment</a></li>
-                <li><a href="#Rental">Rental</a></li>
+                <li><a href="#Rentals">Rental</a></li>
                 <li><a href="#Customize">Customize</a></li>
                 <li><a href="#Repair">Repair</a></li>
                 <li><a href="#About">About</a></li>
@@ -95,7 +96,7 @@
     </div>
 
 
-    <div class="rental" id="Rental">
+    <div class="rental" id="Rentals">
         <h1 class="rent-text">
             Rental Clothes
         </h1>
@@ -106,7 +107,7 @@
                     <img src="../assest/background11.jpg">
                     <h2>Shirt</h2>
                     <h6>P 500</h6>
-                    <button class="rent-book">View Info</button>
+                    <button class="rent-book open-modal-info" >View Info</button>
                 </div>
             </div>
             <div class="rent-card">
@@ -114,7 +115,7 @@
                     <img src="../assest/background11.jpg">
                     <h2>Blazer</h2>
                     <h6>P 500</h6>
-                    <button class="rent-book">View Info</button>
+                    <button class="rent-book open-modal-info">View Info</button>
                 </div>
           </div>
             <div class="rent-card">
@@ -122,11 +123,41 @@
                     <img src="../assest/background11.jpg">
                     <h2>Slacks</h2>
                 <h6>P 500</h6>        
-                <button class="rent-book">View Info</button>
+                <button class="rent-book open-modal-info">View Info</button>
             </div>
             </div>
         </section>
+            <div class="see-more-div">
+            <a href="Rental.html" class="see-more"> See more &rarr;</a>
+            </div>
+          
     </div>
+
+<!-- Modal Structure -->
+<div id="itemModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+
+    <div class="item-container">
+      <div class="item-image">
+        <img src="../assest/suits.png" alt="Men Suit All in Gray">
+      </div>
+
+      <div class="item-details">
+        <h2 class="item-title">Men Suit All in Gray</h2>
+        <p><strong>Size:</strong> Medium</p>
+        <p><strong>Price:</strong> ₱800/day</p>
+        <p><strong>Description:</strong> Fabric type: Wool blend, color: gray, length: regular</p>
+
+        <label for="date">Date</label><br>
+        <input type="date" id="date" class="calendar-input">
+
+        <button class="rent-btn">RENT</button>
+      </div>
+    </div>
+  </div>
+</div>
+    
 
     <div class="custom" id="Customize">
         <div class="custom-info">
@@ -140,7 +171,7 @@
 
         <div class="custom-pic">
             <div class="custom-image">
-                <button class="custom-book">Customize now!</button>
+                <button class="custom-book" onclick="window.location.href='Customize.html'">Customize now!</button>
             </div>
         </div>
     </div>
@@ -157,15 +188,14 @@
                     <b class="rent-welcome">Why Buy<br/>Just Rent the Vibe</b><br/><br/>
                     <p class="rent-text">Rent it. Rock it. Return it.</p>
                 </p>
-        
+             </div>
             </div>
-            </div>
-
-  
     </div>
 
 
-    
+
+
+ <script src="../js/modal.js"></script>
     
 </body>
 </html>
