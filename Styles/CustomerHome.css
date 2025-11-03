@@ -2,6 +2,13 @@
     padding: 0%;
     margin: 0;
     box-sizing: border-box;
+
+}
+html {
+  scroll-behavior: smooth;
+}
+[id] {
+  scroll-margin-top: 100px;
 }
 
 .head {
@@ -50,7 +57,7 @@ ul {
 }
 
 .logoname {
-    font-size: 15px;
+    font-size: 25px;
     margin: 0;
     font-family: "Times New Roman";
 }
@@ -75,9 +82,9 @@ ul {
     background: #683033;
     opacity: 30%;
     width: 100%;
-    height: 85%;
+    height: 100%;
     position: absolute;
-    top: 80px;
+
     left: 0;
     z-index: 1; 
 }

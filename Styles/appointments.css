@@ -7,6 +7,14 @@ body {
   background-color: #EEEFF8;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+[id] {
+  scroll-margin-top: 100px;
+}
+
+
 .navbar {
       display: flex;
       justify-content: flex-end;
