@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customize</title>
+    <link rel="stylesheet" href="../Styles/customize.css">
+
+</head>
+<body>
+
+    <div class="head">
+    </div>
+
+    <div class="header">
+        <div class="logo">
+            <img class="picture" src="../assest/logo.png">
+            <p class="logoname">D’jackman Tailor Deluxe</p>
+        </div>
+
+        <div class="dashboard">
+            <ul>
+                <li><a href="CustomerHome.html" class="active-dash">Home</a></li>
+                <li><a href="Appointment.html">Appointment</a></li>
+                <li><a href="Rental.html">Rental</a></li>
+                <li><a href="Customize.html">Customize</a></li>
+                <li><a href="Repair.html">Repair</a></li>
+                <li><a href="About.php">About</a></li>
+            </ul>
+        </div>
+
+        <div class="notif-profile">
+            <img class="profile" src="../assest/dp.png" alt="profile" onclick="toggleMenu()">
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="custom">
+        <h2>Customize your clothes in your preferred design!</h2>
+    </div>
+
+    <main class="application-container">
+        <form action="#" method="POST" enctype="multipart/form-data">
+            
+            <h2 class="app-info">PERSONAL INFORMATION</h2>
+            
+            <div class="form-group">
+                <label for="group">First Name</label>
+                <input type="text" id="first-name" name="first-name" required>
+            </div>
+            <div class="form-group">
+                <label for="last-name">Last Name</label>
+                <input type="text" id="last-name" name="last-name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="group">Email</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="group">Contact Number</label>
+                <input type="tel" id="contact" name="contact" required>
+            </div>
+
+            <div class="form-group">
+                <label for="group">Address</label>
+                <input type="text" id="address" name="address" required>
+            </div>
+
+            <h2 class="personal-profile">PERSONAL PROFILE</h2>
+            <div class="form-group">
+                <label for="resume">Resume</label>
+                <input type="file" id="resume" name="resume" required>
+            </div>
+
+            <button type="submit" class="submit-btn">Submit Application</button>
+            
+        </form>
+    </main>
+    
+</body>
+</html>
