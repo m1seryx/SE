@@ -62,7 +62,7 @@ body {
       font-size: 15px;
     }
 
-/* MAIN CONTENT */
+
 .content {
   margin-left: 270px;
   padding: 15px;
@@ -73,7 +73,7 @@ body {
   padding-left: 55px;
 }
 
-/* SEARCH */
+
 .search-container {
   display: flex;
   gap: 10px;
@@ -88,7 +88,7 @@ body {
 }
 .search-container input { flex: 1; }
 
-/* REPAIR LIST */
+
 .repairs-list {
   margin-top: 20px;
   padding: 0 55px;
@@ -130,7 +130,7 @@ body {
 }
 .buttons button:hover { background: #16a085; }
 
-/* MODAL */
+
 .modal {
   display: none;
   position: fixed;

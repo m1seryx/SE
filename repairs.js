@@ -1,4 +1,3 @@
-// MODAL CONTROL
 const modal = document.getElementById("editModal");
 const closeBtn = document.querySelector(".close");
 const cancelBtn = document.getElementById("cancelEdit");
@@ -24,7 +23,7 @@ window.addEventListener("click", (e) => {
   }
 });
 
-// SAVE BUTTON (STATIC FOR NOW)
+
 document.getElementById("saveChanges").addEventListener("click", () => {
   alert("Changes saved (placeholder, connect to PHP later).");
   modal.style.display = "none";
