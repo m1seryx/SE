@@ -4,57 +4,61 @@
   box-sizing: border-box;
 }
 
+<<<<<<< HEAD
 .head {
   background-color: rgb(66, 66, 56);
   padding: 10px;
 }
+head {
+    background-color: rgb(66, 66, 56);
+    padding: 10px;
+}
 
 .header {
-  padding: 20px;
-  justify-content: space-between;
-  display: flex;
-  align-items: center; 
+    padding: 20px;
+    justify-content: space-between;
+    display: flex;
+    align-items: center; 
 }
 
 a {
-  text-decoration: none;
-  color: black;
+    text-decoration: none;
+    color: black;
 }
 
 ul {
-  list-style-type: none;
-  display: flex;
-  gap: 45px;
-  font-size: 20px;
-  font-family: "Poppins";
-  font-weight: lighter;
-  margin-right: 50px;
+    list-style-type: none;
+    display: flex;
+    gap: 45px;
+    font-size: 20px;
+    font-family: "Poppins";
+    font-weight: lighter;
+      margin-right: 220px;
 
 }
 
 .logo {
-  display: flex;
-  align-items: center; 
-  gap: 10px;
+    display: flex;
+    align-items: center; 
+    gap: 10px;
 }
 
 .picture {
-  width: 50px;
-  height: 50px;
+    width: 50px;
+    height: 50px;
 }
 
 .profile {
-  width: 50px;
-  height: 50px;
-  cursor: pointer;
+    width: 50px;
+    height: 50px;
+    cursor: pointer;
 }
 
 .logoname {
-  font-size: 15px;
-  margin: 0;
-  font-family: "Times New Roman";
+    font-size: 25px;
+    margin: 0;
+    font-family: "Times New Roman";
 }
-
 .bg {
   border: 10px;
   box-sizing: border-box;

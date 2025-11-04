@@ -16,7 +16,7 @@ body {
       rgba(15, 20, 45, 0.85),
       rgba(2, 2, 8, 0.95)
     ),
-    url("assest/tailorbackground.jpg") no-repeat center center/cover;
+    url("../assest/tailorbackground.jpg") no-repeat center center/cover;
   background-blend-mode: overlay;
   display: flex;
   justify-content: center;
@@ -39,7 +39,7 @@ body {
 }
 
 
-/* 🪞 Signup Box */
+
 .signup-box {
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -70,14 +70,14 @@ body {
   pointer-events: none;
 }
 
-/* 🧵 Logo */
+
 .logo img {
   width: 130px;
   margin-bottom: 8px;
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.5));
 }
 
-/* 💬 Tagline */
+
 .tagline {
   text-align: center;
   font-size: 14px;
@@ -86,7 +86,7 @@ body {
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
-/* 📋 Input Grid */
+
 .row {
   display: flex;
   gap: 15px;
@@ -126,7 +126,7 @@ body {
   box-shadow: 0 0 8px rgba(120, 160, 255, 0.6);
 }
 
-/* ✅ Terms and Checkbox */
+
 .terms {
   font-size: 13px;
   color: #ccc;

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory Management</title>
+  <link rel="stylesheet" href="../Styles/inventory.css" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="logo">Welcome back, Admin!</div>
+  </nav>
+
+  <div class="sidebar">
+    <div class="profile">
+      <img src="../assest/profile.png" alt="" class="profile-pic" />
+      <h3>D’jackman Tailor Deluxe</h3>
+    </div>
+    <a href="admin.html">Home</a>
+    <a href="appointments.html">Appointments</a>
+    <a href="rental.html">Rentals</a>
+    <a href="repairs.html">Repairs</a>
+    <a href="orders.html">Orders</a>
+    <a href="#" class="active">Inventory</a>
+    <a href="#">Notifications</a>
+  </div>
+
+  <div class="content">
+    <h2>Inventory Management</h2>
+    <p>Track materials, supplies, and manage stock levels</p>
+
+    <div class="stats">
+      <div class="card green">Products <span>8</span></div>
+      <div class="card yellow">Low stock <span>1</span></div>
+      <div class="card red">Out of stock <span>2</span></div>
+    </div>
+
+    <div class="controls">
+      <input type="text" placeholder="Search Inventory" id="searchInventory" />
+      <select id="categoryFilter">
+        <option>All Category</option>
+      </select>
+      <button id="openAddModal" class="btn-blue">Add Product +</button>
+    </div>
+
+    <table class="inventory-table">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Category</th>
+          <th>Stock</th>
+          <th>Minimum</th>
+          <th>Price/Unit</th>
+          <th>Availability</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Cotton Fabric - White</td>
+          <td>Fabric</td>
+          <td>50 meters</td>
+          <td>20 meters</td>
+          <td>₱120</td>
+          <td><span class="status in-stock">In-stock</span></td>
+          <td>
+            <button class="adjustBtn">Adjust</button>
+            <button class="deleteBtn">Delete</button>
+          </td>
+        </tr>
+        <tr>
+          <td>Silk Fabric - Black</td>
+          <td>Fabric</td>
+          <td>18 meters</td>
+          <td>20 meters</td>
+          <td>₱165</td>
+          <td><span class="status out-stock">Out of stock</span></td>
+          <td>
+            <button class="adjustBtn">Adjust</button>
+            <button class="deleteBtn">Delete</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  
+  <div id="addProductModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>New Product</h3>
+      <input type="text" placeholder="Enter product name" id="productName" />
+      <input type="text" placeholder="Enter product category" id="productCategory" />
+      <input type="number" placeholder="Enter buying price" id="buyingPrice" />
+      <input type="number" placeholder="Enter product quantity" id="quantity" />
+      <input type="text" placeholder="Enter product unit" id="unit" />
+      <input type="number" placeholder="Enter stock level" id="stock" />
+      <input type="number" placeholder="Enter minimum stock" id="minimum" />
+      <div class="modal-buttons">
+        <button id="discardAdd">Discard</button>
+        <button id="saveAdd" class="btn-blue">Add Product</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <div id="adjustStockModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>Adjust Stock</h3>
+      <div class="current-stock">Current Stock: <strong>50 meters</strong></div>
+      <div class="adjust-btns">
+        <button id="addStockBtn" class="add">Add +</button>
+        <button id="removeStockBtn" class="remove">Remove -</button>
+      </div>
+      <input type="number" placeholder="Enter amount" id="adjustAmount" />
+      <div class="modal-buttons">
+        <button id="discardAdjust">Discard</button>
+        <button id="saveAdjust" class="btn-blue">Save Adjustments</button>
+      </div>
+    </div>
+  </div>
+
+ 
+  <div id="deleteModal" class="modal">
+    <div class="modal-content small">
+      <h3>Delete this Item?</h3>
+      <p>This action cannot be undone. This item will be permanently deleted in the inventory.</p>
+      <div class="modal-buttons">
+        <button id="cancelDelete">Cancel</button>
+        <button id="confirmDelete" class="btn-red">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/inventory.js"></script>
+</body>
+</html>
