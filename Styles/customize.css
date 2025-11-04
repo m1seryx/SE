@@ -5,6 +5,10 @@
 }
 
 .head {
+  background-color: rgb(66, 66, 56);
+  padding: 10px;
+}
+head {
     background-color: rgb(66, 66, 56);
     padding: 10px;
 }
@@ -28,7 +32,7 @@ ul {
     font-size: 20px;
     font-family: "Poppins";
     font-weight: lighter;
-    margin-right: 50px;
+      margin-right: 220px;
 
 }
 
@@ -50,11 +54,10 @@ ul {
 }
 
 .logoname {
-    font-size: 15px;
+    font-size: 25px;
     margin: 0;
     font-family: "Times New Roman";
 }
-
 hr {
     border: 0;
     height: 1px;
