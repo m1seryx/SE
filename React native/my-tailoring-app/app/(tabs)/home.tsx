@@ -1,8 +1,10 @@
 import * as React from "react";
-import { View, StyleSheet, Image, TouchableOpacity, ScrollView } from "react-native";
+import { View, StyleSheet, Image, TouchableOpacity, ScrollView, Dimensions, Platform } from "react-native";
 import { Text } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+
+const { height, width } = Dimensions.get("window");
 
 const services = [
   { id: "s1", label: "Rental", icon: require("../../assets/images/android-icon-foreground.png") },
@@ -10,19 +12,65 @@ const services = [
   { id: "s3", label: "Repair", icon: require("../../assets/images/android-icon-monochrome.png") },
 ];
 
-const rentals = Array.from({ length: 9 }).map((_, i) => ({
-  id: String(i + 1),
-  title: `Men Suit All in Gray`,
-  price: 500,
-  image: require("../../assets/images/tailorbackground.jpg"),
-}));
+// Added more rental items
+const rentals = [
+  {
+    id: "1",
+    title: "Men Suit All in Gray",
+    price: 500,
+    image: require("../../assets/images/tailorbackground.jpg"),
+  },
+  {
+    id: "2",
+    title: "Classic Black Tuxedo",
+    price: 750,
+    image: require("../../assets/images/tailorbackground.jpg"),
+  },
+  {
+    id: "3",
+    title: "Royal Blue Coat Set",
+    price: 650,
+    image: require("../../assets/images/tailorbackground.jpg"),
+  },
+  {
+    id: "4",
+    title: "Elegant Evening Gown",
+    price: 900,
+    image: require("../../assets/images/tailorbackground.jpg"),
+  },
+  {
+    id: "5",
+    title: "Barong Tagalog Premium",
+    price: 400,
+    image: require("../../assets/images/tailorbackground.jpg"),
+  },
+  {
+    id: "6",
+    title: "Formal Black Dress",
+    price: 700,
+    image: require("../../assets/images/tailorbackground.jpg"),
+  },
+  {
+    id: "7",
+    title: "Wedding Suit Beige",
+    price: 850,
+    image: require("../../assets/images/tailorbackground.jpg"),
+  },
+  {
+    id: "8",
+    title: "Traditional Filipiniana",
+    price: 600,
+    image: require("../../assets/images/tailorbackground.jpg"),
+  },
+];
 
 export default function HomeScreen() {
   const router = useRouter();
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 24 }}>
-      {/* Hero banner */}
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+      {/* HERO */}
       <View style={styles.hero}>
         <Image
           source={require("../../assets/images/tailorbackground.jpg")}
@@ -35,7 +83,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Services */}
+      {/* SERVICES */}
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>Jackman's Services</Text>
       </View>
@@ -46,6 +94,8 @@ export default function HomeScreen() {
             style={styles.serviceCard}
             onPress={() => {
               if (s.id === "s1") router.push("../rental");
+              else if (s.id === "s2") router.push("/(tabs)/appointment/CustomizeClothes");
+              else if (s.id === "s3") router.push("/(tabs)/appointment/RepairClothes");
             }}
           >
             <Image source={s.icon} style={{ width: 44, height: 44, borderRadius: 12 }} />
@@ -54,19 +104,20 @@ export default function HomeScreen() {
         ))}
       </View>
 
-      {/* Rentals grid */}
+      {/* RENTALS */}
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>Rental Clothes</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push("../rental")}>
           <Text style={styles.seeAll}>See all →</Text>
         </TouchableOpacity>
       </View>
+
       <View style={styles.grid}>
         {rentals.map((r) => (
           <TouchableOpacity
             key={r.id}
             style={styles.itemCard}
-            onPress={() => router.push({ pathname: "/rental/[id]", params: { id: r.id, title: r.title, price: String(r.price) } })}
+            onPress={() => router.push("../rental")}
           >
             <Image source={r.image} style={styles.itemImage} />
             <View style={{ padding: 8 }}>
@@ -77,18 +128,25 @@ export default function HomeScreen() {
         ))}
       </View>
 
-      {/* Floating bottom nav with icons (Home active) */}
-      <View style={styles.fakeBottomNav}>
+      {/* FIXED BOTTOM NAV */}
+      <View style={styles.bottomNav}>
         <View style={styles.navItemWrapActive}>
-          <Ionicons name="home" size={18} color="#7A5A00" />
+          <Ionicons name="home" size={20} color="#7A5A00" />
         </View>
-        <TouchableOpacity onPress={() => router.push("../rental")}>
-          <View style={styles.navItemWrap}><Ionicons name="receipt-outline" size={18} color="#9CA3AF" /></View>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/appointment/AppointmentScreen")}>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
+          </View>
         </TouchableOpacity>
-        <View style={styles.navItemWrap}><Ionicons name="cart-outline" size={18} color="#9CA3AF" /></View>
-        <View style={styles.navItemWrap}><Ionicons name="person-outline" size={18} color="#9CA3AF" /></View>
+        <View style={styles.navItemWrap} pointerEvents="none">
+          <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
+        </View>
+        <View style={styles.navItemWrap} pointerEvents="none">
+          <Ionicons name="person-outline" size={20} color="#9CA3AF" />
+        </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -99,12 +157,13 @@ const styles = StyleSheet.create({
   },
   hero: {
     margin: 16,
+    marginTop: Platform.OS === "android" ? 16 : 24,
     borderRadius: 16,
     overflow: "hidden",
   },
   heroImage: {
     width: "100%",
-    height: 150,
+    height: height * 0.2,
   },
   heroBadge: {
     position: "absolute",
@@ -181,7 +240,37 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     marginTop: 2,
   },
-  fakeBottomNav: { marginTop: 12, alignSelf: "center", backgroundColor: "#F3F4F6", borderRadius: 24, flexDirection: "row", paddingHorizontal: 16, paddingVertical: 8, shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 6 } },
-  navItemWrap: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", marginHorizontal: 8, backgroundColor: "#E5E7EB" },
-  navItemWrapActive: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", marginHorizontal: 8, backgroundColor: "#FDE68A" },
+  bottomNav: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+    paddingVertical: height * 0.018,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 10,
+  },
+  navItemWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E5E7EB",
+  },
+  navItemWrapActive: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FDE68A",
+  },
 });

@@ -1,8 +1,10 @@
 import React, { useState } from "react";
-import {View,Text,TextInput,TouchableOpacity,ImageBackground,StyleSheet,ActivityIndicator,} from "react-native";
+import {View,Text,TextInput,TouchableOpacity,ImageBackground,StyleSheet,ActivityIndicator,Dimensions,Platform,} from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import {useFonts,Poppins_400Regular,Poppins_500Medium,Poppins_600SemiBold,} from "@expo-google-fonts/poppins";
+
+const { height, width } = Dimensions.get("window");
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -90,8 +92,9 @@ const styles = StyleSheet.create({
   formContainer: {
     backgroundColor: "rgba(255,255,255,0.95)",
     borderRadius: 25,
-    width: "90%",
-    padding: 25,
+    width: width * 0.9,
+    maxWidth: 400,
+    padding: width * 0.06,
     alignItems: "center",
     shadowColor: "#000",
     shadowOpacity: 0.25,
@@ -99,28 +102,28 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   title: {
-    fontSize: 24,
+    fontSize: width * 0.06,
     color: "#333",
-    marginBottom: 25,
+    marginBottom: height * 0.03,
   },
   input: {
     width: "100%",
     backgroundColor: "#fff",
     borderRadius: 30,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 15,
+    paddingHorizontal: width * 0.04,
+    paddingVertical: height * 0.015,
+    fontSize: width * 0.04,
     color: "#333",
     borderWidth: 1,
     borderColor: "#eee",
-    marginBottom: 15,
+    marginBottom: height * 0.018,
   },
   buttonGradient: {
     width: "100%",
     borderRadius: 30,
-    paddingVertical: 14,
+    paddingVertical: height * 0.018,
     alignItems: "center",
-    marginBottom: 15,
+    marginBottom: height * 0.018,
     shadowColor: "#1E3A8A",
     shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 3 },
@@ -128,10 +131,10 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: width * 0.04,
   },
   signupText: {
-    fontSize: 14,
+    fontSize: width * 0.035,
     color: "#555",
   },
   loadingContainer: {

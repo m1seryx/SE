@@ -1,8 +1,10 @@
 import React from "react";
-import {View,Text,ImageBackground,StyleSheet,TouchableOpacity,ActivityIndicator,} from "react-native";
+import {View,Text,ImageBackground,StyleSheet,TouchableOpacity,ActivityIndicator,Dimensions,Platform,} from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import {useFonts,Poppins_300Light,Poppins_400Regular,Poppins_500Medium,Poppins_600SemiBold,} from "@expo-google-fonts/poppins";
+
+const { height, width } = Dimensions.get("window");
 
 export default function LandingScreen() {
   const router = useRouter();
@@ -16,7 +18,7 @@ export default function LandingScreen() {
   });
 
  
-  // Don't block while fonts load; render immediately with system fonts
+  
   return (
     <ImageBackground
       source={require("../../assets/images/tailorbackground.jpg")}
@@ -47,7 +49,7 @@ export default function LandingScreen() {
           onPress={() => router.replace("/login")}
         >
           <Text style={[styles.buttonText, { fontFamily: "Poppins_500Medium" }]}>
-            Get started
+            Get started!
           </Text>
         </TouchableOpacity>
       </LinearGradient>
@@ -64,27 +66,27 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: "flex-end",
-    paddingHorizontal: 20,
-    paddingBottom: 250,
+    paddingHorizontal: width * 0.05,
+    paddingBottom: height * 0.3,
   },
   textContainer: {
-    marginBottom: 170,
+    marginBottom: height * 0.2,
   },
   title: {
-    fontSize: 28,
+    fontSize: width * 0.07,
     color: "#fff",
     marginBottom: 10,
     textAlign: "center",
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: width * 0.04,
     color: "#dcdcdc",
     lineHeight: 24,
     textAlign: "center",
   },
   button: {
     backgroundColor: "#1E3A8A",
-    paddingVertical: 12,
+    paddingVertical: height * 0.015,
     borderRadius: 30,
     alignItems: "center",
     shadowColor: "#000",
@@ -94,7 +96,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: width * 0.045,
   },
   loadingContainer: {
     flex: 1,

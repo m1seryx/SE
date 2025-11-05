@@ -10,7 +10,7 @@ export default function RentalDetail() {
   return (
     <View style={styles.container}>
       {/* Back */}
-      <TouchableOpacity style={styles.backBtn} onPress={() => router.replace('/home')}>
+      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
         <Text style={{ fontSize: 25 }}>←</Text>
       </TouchableOpacity>
 
@@ -44,7 +44,10 @@ export default function RentalDetail() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.rentBtn} onPress={() => alert("Rented!")}> 
+        <TouchableOpacity 
+          style={styles.rentBtn} 
+          onPress={() => router.replace("/(tabs)/appointment/AppointmentScreen")}
+        > 
           <Text style={{ color: "#fff", fontWeight: "800", letterSpacing: 2 }}>RENT</Text>
         </TouchableOpacity>
       </View>
