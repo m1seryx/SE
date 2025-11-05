@@ -152,13 +152,7 @@ hr {
 .card:hover{
   transform: scale(1.03);
 }
-.card-image{
-  height:200px;
-  border-radius: 15px 15px 15px 15px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); 
-  background-size: cover;
 
-}
 .card-image img{
   object-fit: cover;
   border-radius: 15px 15px 15px 15px;
@@ -370,7 +364,7 @@ hr {
   color: #1a1a1a;
   font-weight: 600;
   display: inline-block;
-  min-width: 100px;
+  min-width: 20px;
 }
 
 .item-details label {
@@ -387,9 +381,11 @@ hr {
   border: 2px solid #e0e0e0;
   border-radius: 8px;
   font-size: 14px;
+  margin-top: 5px;
   font-family: inherit;
   transition: all 0.2s ease;
   cursor: pointer;
+ 
 }
 
 .calendar-input:focus {
@@ -423,4 +419,22 @@ hr {
   transform: translateY(-2px);
 }
 
+.icon-div{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.icon-img{
+  width: auto;
+  height: 100px;
+ 
+}
 
+.card-image{
+  height: auto;
+  border-radius: 15px 15px 15px 15px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); 
+  background-size: cover;
+
+}
