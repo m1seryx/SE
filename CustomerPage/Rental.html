@@ -86,7 +86,6 @@
     <div class="rental-clothes">
         <div class="clothes">
             <p class="p">Rental Clothes</p>
-            <button class="see-all">See All</button>
         </div>
 
         <div class="rent-item">    
@@ -150,7 +149,66 @@
             </div>
         </div>
 
+<div id="itemModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+  
+      <div class="item-container">
+        <div class="item-image">
+          <img src="../assest/suits.png" alt="Men Suit All in Gray">
+        </div>
+  
+        <div class="item-details">
+          <h2 class="item-title">Men Suit All in Gray</h2>
+          <p><strong>Size:</strong> Medium</p>
+          <p><strong>Price:</strong> ₱800/day</p>
+          <p><strong>Description:</strong> Fabric type: Wool blend, color: gray, length: regular</p>
+  
+          <label for="date">Date</label><br>
+          <input type="date" id="date" class="calendar-input">
+  
+          <button class="rent-btn">RENT</button>
+        </div>
+      </div>
     </div>
+  </div>  
+
+    </div>
+
+    <script>
+
+const modal = document.getElementById('itemModal');
+const rentCards = document.querySelectorAll('.rent-card');
+const closeBtn = document.querySelector('.close');
+
+rentCards.forEach(card => {
+  card.addEventListener('click', () => {
+    modal.style.display = 'block';
+    
+    const price = card.querySelector('.price').textContent;
+    const name = card.querySelector('.name').textContent;
+    
+    document.querySelector('.item-details .item-title').textContent = name;
+    document.querySelector('.item-details p:nth-child(3) strong').nextSibling.textContent = ' ' + price + '/day';
+  });
+});
+
+closeBtn.addEventListener('click', () => {
+  modal.style.display = 'none';
+});
+
+window.addEventListener('click', (event) => {
+  if (event.target === modal) {
+    modal.style.display = 'none';
+  }
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    modal.style.display = 'none';
+  }
+});
+    </script>
 
 </body>
 </html>
