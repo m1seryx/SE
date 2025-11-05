@@ -8,7 +8,10 @@ buttons.forEach(button => {
   });
 });
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 947502e4b43822bd0ac43013006e951c0af156bd
 closeBtn.addEventListener('click', () => {
   modal.style.display = 'none';
 });
