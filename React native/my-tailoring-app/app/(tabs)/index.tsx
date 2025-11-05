@@ -1,98 +1,107 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React from "react";
+import {View,Text,ImageBackground,StyleSheet,TouchableOpacity,ActivityIndicator,Dimensions,Platform,} from "react-native";
+import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import {useFonts,Poppins_300Light,Poppins_400Regular,Poppins_500Medium,Poppins_600SemiBold,} from "@expo-google-fonts/poppins";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+const { height, width } = Dimensions.get("window");
 
-export default function HomeScreen() {
+export default function LandingScreen() {
+  const router = useRouter();
+
+ 
+  const [fontsLoaded] = useFonts({
+    Poppins_300Light,
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+  });
+
+ 
+  
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ImageBackground
+      source={require("../../assets/images/tailorbackground.jpg")}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <LinearGradient
+        colors={[
+          "rgba(10, 10, 20, 0.85)", 
+          "rgba(5, 8, 20, 0.8)",    
+          "rgba(0, 0, 0, 0.9)",     
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.overlay}
+      >
+        <View style={styles.textContainer}>
+          <Text style={[styles.title, { fontFamily: "Poppins_600SemiBold" }]}>
+            D’jackman Tailor Deluxe
+          </Text>
+          <Text style={[styles.subtitle, { fontFamily: "Poppins_400Regular" }]}>
+            youre Perfect fits awaits.
+          </Text>
+        </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => router.replace("/login")}
+        >
+          <Text style={[styles.buttonText, { fontFamily: "Poppins_500Medium" }]}>
+            Get started!
+          </Text>
+        </TouchableOpacity>
+      </LinearGradient>
+    </ImageBackground>
+    
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  background: {
+    flex: 1,
+    justifyContent: "flex-end",
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    paddingHorizontal: width * 0.05,
+    paddingBottom: height * 0.3,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  textContainer: {
+    marginBottom: height * 0.2,
+  },
+  title: {
+    fontSize: width * 0.07,
+    color: "#fff",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  subtitle: {
+    fontSize: width * 0.04,
+    color: "#dcdcdc",
+    lineHeight: 24,
+    textAlign: "center",
+  },
+  button: {
+    backgroundColor: "#1E3A8A",
+    paddingVertical: height * 0.015,
+    borderRadius: 30,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: width * 0.045,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
