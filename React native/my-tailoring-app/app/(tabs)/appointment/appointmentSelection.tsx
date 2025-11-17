@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   serviceTitle: { fontWeight: "700", color: "#333" },
   serviceDesc: { color: "#777", fontSize: width * 0.03, marginTop: 2 },
 
-  // === BUTTONS ===
+ 
   buttonRow: {
     flexDirection: "row",
     justifyContent: "center",
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   cancelText: { color: "#b94a48", fontWeight: "600" },
   nextText: { color: "#fff", fontWeight: "600" },
 
-  // === BOTTOM NAV ===
+ 
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     position: "absolute",
-    bottom: height * 0,
+    bottom: height * 0.015,
     width: "55%",
     alignSelf: "center",
     shadowColor: "#000",

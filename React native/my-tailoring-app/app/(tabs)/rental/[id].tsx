@@ -9,19 +9,19 @@ export default function RentalDetail() {
 
   return (
     <View style={styles.container}>
-      {/* Back */}
-      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+      
+      <TouchableOpacity style={styles.backBtn} onPress={() => router.replace('/home')}>
         <Text style={{ fontSize: 25 }}>←</Text>
       </TouchableOpacity>
 
-      {/* Image */}
+     
       <Image
         source={require("../../../assets/images/tailorbackground.jpg")}
         style={styles.image}
         resizeMode="cover"
       />
 
-      {/* Curved top card */}
+    
       <View style={styles.sheet}>
         <View style={styles.titlePill}>
           <Text style={{ color: "#fff", fontWeight: "700" }}>{title ?? "Men Suit All in Gray"}</Text>
@@ -44,10 +44,7 @@ export default function RentalDetail() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity 
-          style={styles.rentBtn} 
-          onPress={() => router.replace("/(tabs)/appointment/AppointmentScreen")}
-        > 
+        <TouchableOpacity style={styles.rentBtn} onPress={() => alert("Rented!")}> 
           <Text style={{ color: "#fff", fontWeight: "800", letterSpacing: 2 }}>RENT</Text>
         </TouchableOpacity>
       </View>
