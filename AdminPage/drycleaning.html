@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Appointments </title>
-  <link rel="stylesheet" href="../Styles/AdminRental.css">
+  <link rel="stylesheet" href="../Styles/Admincleaning.css">
 </head>
 <body>
 
@@ -19,9 +19,9 @@
     </div>
     <a href="admin.html">Dashboard</a>
     <a href="appointments.html">Appointments</a>
-    <a href="customization.html">Customization</a>
+    <a href="customization.html" class="active">Customization</a>
     <a href="drycleaning.html">Dry Cleaning</a>
-    <a href="rental.html" class="active">Rentals</a>
+    <a href="rental.html">Rentals</a>
     <a href="AddRent.html">Post Rent</a>
     <a href="repairs.html">Repairs</a>
     <a href="orders.html">Inventory</a>
@@ -33,14 +33,14 @@
    <h2>Rental Management</h2>
    <p>Track rental items and manage returns</p>
       <div class="add-rep">
-        Add+ Rental
+        Add+ Customize
       </div>
    </div>
 
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-header">
-                <span>Active Rentals</span>
+                <span>In Progress</span>
                 <div class="stat-icon" style="background: #e3f2fd; color: #2196f3;">🔄</div>
             </div>
             <div class="stat-number">5</div>
@@ -48,7 +48,7 @@
 
         <div class="stat-card">
             <div class="stat-header">
-                <span>Due Today</span>
+                <span>To Pick up</span>
                 <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
             </div>
             <div class="stat-number">5</div>
@@ -56,7 +56,7 @@
 
       <div class="stat-card">
         <div class="stat-header">
-            <span>Overdue</span>
+            <span>Completed</span>
             <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
         </div>
         <div class="stat-number">5</div>
@@ -64,7 +64,7 @@
 
       <div class="stat-card">
         <div class="stat-header">
-            <span>Returned</span>
+            <span>Overdue</span>
             <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
         </div>
         <div class="stat-number">5</div>
@@ -77,10 +77,10 @@
 
       <select id="filter">
         <option>Status</option>
-        <option>Active</option>
-        <option>Due Today</option>
+        <option>In Progress</option>
+        <option>To Pick up</option>
+        <option>Completed</option>
         <option>Overdue</option>
-        <option>Returned</option>
       </select>
     </div>
   </div>
@@ -92,9 +92,8 @@
                 <tr>
                     <th>Unique No.</th>
                     <th>Name</th>
-                    <th>Rented Item</th>
-                    <th>Category</th>
-                    <th>Rental Duration</th>
+                    <th>Garment</th>
+                    <th>Date Duration</th>
                     <th>Price</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -107,6 +106,6 @@
     </div>
   </div>
 
-  <script src="../js/rental.js"></script>
+  <script src="../js/Admincustomization.js"></script>
 </body>
 </html>

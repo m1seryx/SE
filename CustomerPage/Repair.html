@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repair Request Form</title>
+    <link rel="stylesheet" href="../Styles/repairUser.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <form class="form-card">
+            <div class="form-left">
+                <div class="photo-upload-box">
+                    <i class="fas fa-download upload-icon"></i>
+                    <p>Upload a photo</p>
+                    <input type="file" id="file-upload" accept="image/*" style="display: none;">
+                </div>
+            </div>
+            <div class="form-right">
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" name="name">
+                </div>
+                <div class="form-group">
+                    <label for="contact">Contact number</label>
+                    <input type="text" id="contact" name="contact">
+                </div>
+                <hr class="separator">
+                <div class="form-group">
+                    <label for="item-type">Type of item</label>
+                    <select id="item-type" name="item-type">
+                        <option value="" disabled selected></option>
+                        <option value="electronics">Electronics</option>
+                        <option value="clothing">Clothing</option>
+                        <option value="furniture">Furniture</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="damage-type">Damage type</label>
+                    <select id="damage-type" name="damage-type">
+                        <option value="" disabled selected></option>
+                        <option value="broken">Broken</option>
+                        <option value="scratched">Scratched</option>
+                        <option value="dented">Dented</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="instructions">Repair Instructions</label>
+                    <textarea id="instructions" name="instructions" rows="4" placeholder="describe what you would like to do with this item..."></textarea>
+                </div>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

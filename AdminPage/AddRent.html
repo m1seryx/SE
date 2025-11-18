@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Appointments </title>
+  <link rel="stylesheet" href="../Styles/AddRent.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="logo">Welcome back, Admin!</div>
+  </nav>
+
+  <div class="sidebar">
+    <div class="profile">
+     <img src="../assest/profile.png" alt="" class="profile-pic">
+      <h3>D’jackman Tailor Deluxe</h3>
+    </div>
+    <a href="admin.html">Dashboard</a>
+    <a href="appointments.html">Appointments</a>
+    <a href="customization.html">Customization</a>
+    <a href="drycleaning.html">Dry Cleaning</a>
+    <a href="rental.html">Rentals</a>
+    <a href="AddRent.html" class="active">Post Rent</a>
+    <a href="repairs.html">Repairs</a>
+    <a href="orders.html">Inventory</a>
+  </div>
+
+ 
+  <div class="content">
+    <div class="dashboard-title">
+   <h2>Dry Cleaning Management</h2>
+   <p>Track dry cleaning management</p>
+   <button class="add-rep" onclick="openModal()">Add Post +</button>
+   </div>
+
+    <div class="search-container">
+      <select id="filter">
+        <option>Filter by Status</option>
+        <option>Available</option>
+        <option>Rented</option>
+      </select>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOnOverlay(event)">
+    <div class="modal">
+        <div class="modal-header">
+            <button class="close-btn" onclick="closeModal()">X</button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="image-section">
+                <div class="image-placeholder">
+                    <div class="image-placeholder-text">
+                        <input type="file" placeholder="Add Image">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-group">
+                    <label>Item Name:</label>
+                    <input type="text" placeholder="">
+                </div>
+                
+                <div class="form-group">
+                    <label>Size:</label>
+                    <input type="text" placeholder="">
+                </div>
+                
+                <div class="form-group">
+                    <label>Price:</label>
+                    <input type="text" placeholder="">
+                </div>
+                
+                <hr class="divider">
+                
+                <div class="form-group">
+                    <label>Description</label>
+                </div>
+                
+                <div class="form-group">
+                    <label>Fabric type</label>
+                    <input type="text" placeholder="">
+                </div>
+                
+                <div class="form-group">
+                    <label>Color</label>
+                    <input type="text" placeholder="">
+                </div>
+                
+                <div class="form-group">
+                    <label>Length</label>
+                    <input type="text" placeholder="">
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="rent-btn" onclick="submitForm()">Post</button>
+        </div>
+    </div>
+</div>
+
+
+
+
+<script>
+    function openModal() {
+        document.getElementById('modalOverlay').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').classList.remove('active');
+    }
+
+    function closeModalOnOverlay(event) {
+        if (event.target === document.getElementById('modalOverlay')) {
+            closeModal();
+        }
+    }
+
+    function submitForm() {
+        alert('Form submitted!');
+        closeModal();
+    }
+</script>
+</body>
+</html>
+

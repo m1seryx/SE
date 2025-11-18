@@ -1,0 +1,122 @@
+/* Basic Reset */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #ffffff; /* Light background similar to the image */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    width: 100%;
+    max-width: 800px; /* Adjust as needed */
+    padding: 20px;
+}
+
+.form-card {
+    background-color: white;
+    border: 1px solid #ddd; /* Light border around the whole card */
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    display: flex;
+    padding: 30px;
+}
+
+/* --- Left Section (Photo Upload) --- */
+.form-left {
+    flex: 1;
+    padding-right: 30px;
+}
+
+.photo-upload-box {
+    width: 100%;
+    /* Aspect ratio for the square/near-square look */
+    padding-bottom: 100%; 
+    background-color: #e9eef3; /* Gray background for the upload area */
+    border: 1px solid #c9d3db;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    cursor: pointer;
+}
+
+.photo-upload-box p {
+    color: #4c6b8c;
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+.upload-icon {
+    font-size: 28px;
+    color: #4c6b8c;
+}
+
+/* --- Right Section (Form Fields) --- */
+.form-right {
+    flex: 1.5; /* Slightly wider than the left side */
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.form-group label {
+    flex-basis: 150px; /* Fixed width for labels */
+    font-size: 14px;
+    color: #333;
+    font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group select,
+.form-group textarea {
+    flex-grow: 1;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-group select {
+    appearance: none; /* Remove default select styling */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%23333" viewBox="0 0 16 16"><path d="M7.247 11.14 2.451 5.658C1.885 5.012 2.345 4 3.204 4h9.592c.86 0 1.32 1.012.753 1.658l-4.796 5.482c-.23.264-.61.264-.84 0z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 25px; /* Make room for the arrow */
+    cursor: pointer;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 70px;
+    padding: 10px;
+}
+
+.form-group textarea::placeholder {
+    font-size: 12px;
+    color: #999;
+}
+
+.separator {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 10px 0 20px 150px; /* Aligned below the labels */
+}

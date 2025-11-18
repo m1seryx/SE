@@ -3,127 +3,107 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Repairs Management</title>
+  <title>Appointments </title>
   <link rel="stylesheet" href="../Styles/repairs.css">
 </head>
 <body>
 
-  
   <nav class="navbar">
     <div class="logo">Welcome back, Admin!</div>
   </nav>
 
-
   <div class="sidebar">
     <div class="profile">
-      <img src="../assest/profile.png" alt="" class="profile-pic">
+     <img src="../assest/profile.png" alt="" class="profile-pic">
       <h3>D’jackman Tailor Deluxe</h3>
     </div>
     <a href="admin.html">Dashboard</a>
     <a href="appointments.html">Appointments</a>
+    <a href="customization.html">Customization</a>
+    <a href="drycleaning.html">Dry Cleaning</a>
     <a href="rental.html">Rentals</a>
-    <a href="#" class="active">Repairs</a>
-    <a href="orders.html">Orders</a>
-    <a href="#">Inventory</a>
-    <a href="#">Notifications</a>
-  </div>
-
-  
-  <div class="content">
-    <div class="dashboard-title">
-      <h2>Repairs</h2>
-      <p>Manage customer repair details and progress</p>
-    </div>
-
-   
-    <div class="search-container">
-      <input type="text" id="search" placeholder="🔍 Search Repairs">
-      <select id="filter">
-        <option>All</option>
-        <option>Pending</option>
-        <option>In Progress</option>
-        <option>Completed</option>
-      </select>
-    </div>
-
-
-    <div class="repairs-list">
-      <div class="repair-card">
-        <img src="../assest/profile.png" alt="" class="profile-pic">
-        <div class="repair-info">
-          <p class="customer">(Customer #1)</p>
-          <h3>Suit Jacket</h3>
-          <p>Issue: <strong>Broken zipper</strong></p>
-          <p>Status: <span class="status-badge badge-yellow">Pending</span></p>
-          <p>Due: <strong>2025-11-05</strong></p>
-        </div>
-        <div class="buttons">
-          <button class="edit-btn">Edit</button>
-        </div>
-      </div>
-
-      <div class="repair-card">
-        <img src="../assest/profile.png" alt="" class="profile-pic">
-        <div class="repair-info">
-          <p class="customer">(Customer #2)</p>
-          <h3>Gown</h3>
-          <p>Issue: <strong>Loose stitches</strong></p>
-          <p>Status: <span class="status-badge badge-blue">In Progress</span></p>
-          <p>Due: <strong>2025-11-08</strong></p>
-        </div>
-        <div class="buttons">
-          <button class="edit-btn">Edit</button>
-        </div>
-      </div>
-
-      <div class="repair-card">
-        <img src="../assest/profile.png" alt="" class="profile-pic">
-        <div class="repair-info">
-          <p class="customer">(Customer #3)</p>
-          <h3>Pants</h3>
-          <p>Issue: <strong>Torn hem</strong></p>
-          <p>Status: <span class="status-badge badge-green">Completed</span></p>
-          <p>Due: <strong>2025-10-30</strong></p>
-        </div>
-        <div class="buttons">
-          <button class="edit-btn">Edit</button>
-        </div>
-      </div>
-    </div>
+    <a href="AddRent.html">Post Rent</a>
+    <a href="repairs.html" class="active">Repairs</a>
+    <a href="orders.html">Inventory</a>
   </div>
 
  
-  <div id="editModal" class="modal">
-    <div class="modal-content">
-      <span class="close">&times;</span>
-      <h2>Edit Repair Details</h2>
+  <div class="content">
+    <div class="dashboard-title">
+   <h2>Repair Management</h2>
+   <p>Manage repair services and track progress</p>
+      <div class="add-rep">
+        Add+ Repair
+      </div>
+   </div>
 
-      <label>Customer Name</label>
-      <input type="text" id="editName" placeholder="Enter customer name">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-header">
+                <span>In Progress</span>
+                <div class="stat-icon" style="background: #e3f2fd; color: #2196f3;">🔄</div>
+            </div>
+            <div class="stat-number">5</div>
+        </div>
 
-      <label>Item</label>
-      <input type="text" id="editItem" placeholder="Enter item (e.g., suit, dress)">
+        <div class="stat-card">
+            <div class="stat-header">
+                <span>To Pick up</span>
+                <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
+            </div>
+            <div class="stat-number">5</div>
+        </div>
 
-      <label>Issue</label>
-      <input type="text" id="editIssue" placeholder="Enter issue details">
+        <div class="stat-card">
+          <div class="stat-header">
+              <span>Completed</span>
+              <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
+          </div>
+          <div class="stat-number">5</div>
+      </div>
 
-      <label>Notes</label>
-      <textarea id="editNotes" placeholder="Additional notes..." rows="3"></textarea>
+      <div class="stat-card">
+        <div class="stat-header">
+            <span>Overdue</span>
+            <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
+        </div>
+        <div class="stat-number">5</div>
+    </div>
+    </div>
 
-      <label>Status</label>
-      <select id="editStatus">
-        <option>Pending</option>
+
+    <div class="search-container">
+      <input type="text" placeholder="Search Unique Number" id="searchUniqueNum" />
+
+      <select id="filter">
+        <option>Status</option>
         <option>In Progress</option>
+        <option>To Pick up</option>
+        <option>Overdue</option>
         <option>Completed</option>
       </select>
+    </div>
+  </div>
 
-      <label>Due Date</label>
-      <input type="date" id="editDate">
-
-      <div class="modal-buttons">
-        <button id="saveChanges">Save Changes</button>
-        <button id="cancelEdit">Cancel</button>
-      </div>
+  <div class="container">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Unique No.</th>
+                    <th>Name</th>
+                    <th>Item</th>
+                    <th>Category</th>
+                    <th>Duration</th>
+                    <th>Price</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="content">
+                <!--js-->
+            </tbody>
+        </table>
     </div>
   </div>
 
