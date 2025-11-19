@@ -21,7 +21,7 @@ export default function AppointmentScreen() {
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 120 }} // 👈 ensures scroll content doesn’t overlap nav
+        contentContainerStyle={{ paddingBottom: 120 }} 
         showsVerticalScrollIndicator={false}
       >
         {/* HEADER */}
@@ -82,7 +82,7 @@ export default function AppointmentScreen() {
         </View>
       </ScrollView>
 
-      {/* FIXED BOTTOM NAV */}
+     
       <View style={styles.bottomNav}>
         <TouchableOpacity onPress={() => router.replace("/home")}>
           <View style={styles.navItemWrap}>

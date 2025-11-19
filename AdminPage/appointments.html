@@ -3,10 +3,92 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Appointments </title>
+  <title>Appointments</title>
   <link rel="stylesheet" href="../Styles/appointments.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Modal Styles */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-overlay.active { display: flex; }
+
+    .decline-modal {
+      background: white;
+      width: 90%;
+      max-width: 500px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .decline-header {
+      background: #e74c3c;
+      color: white;
+      padding: 20px;
+      font-size: 20px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .decline-body {
+      padding: 30px;
+    }
+    .decline-body label {
+      display: block;
+      margin-bottom: 12px;
+      font-weight: 600;
+      color: #2d3436;
+    }
+    .decline-body textarea {
+      width: 100%;
+      height: 120px;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 15px;
+      resize: vertical;
+    }
+    .decline-body textarea:focus {
+      outline: none;
+      border-color: #e74c3c;
+      box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+    }
+    .decline-footer {
+      padding: 20px 30px;
+      background: #f8f9fa;
+      text-align: right;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+    .btn-cancel, .btn-confirm {
+      padding: 12px 28px;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    .btn-cancel {
+      background: #ddd;
+      color: #333;
+    }
+    .btn-confirm {
+      background: #e74c3c;
+      color: white;
+    }
+    .btn-confirm:hover { background: #c0392b; }
+    </style>
 </head>
 <body>
+
 
   <nav class="navbar">
     <div class="logo">Welcome back, Admin!</div>
@@ -24,57 +106,54 @@
     <a href="rental.html">Rentals</a>
     <a href="AddRent.html">Post Rent</a>
     <a href="repairs.html">Repairs</a>
-    <a href="orders.html">Inventory</a>
+    <a href="inventory.html">Inventory</a>
   </div>
 
- 
   <div class="content">
     <div class="dashboard-title">
-   <h2>Appointment</h2>
-   <p>Manage customer appointments and scheduling</p>
-   </div>
-
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-header">
-                <span>Pending Requests</span>
-                <div class="stat-icon" style="background: #e3f2fd; color: #2196f3;">🔄</div>
-            </div>
-            <div class="stat-number">5</div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-header">
-                <span>Approved Requests</span>
-                <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
-            </div>
-            <div class="stat-number">5</div>
-        </div>
-
-        <div class="today-card">
-            <div class="today-header">
-                <span class="today-title">Today's Appointment</span>
-                <span>📅</span>
-            </div>
-            <div class="appointment-item">
-                <span>9:00am</span>
-                <span>5</span>
-            </div>
-            <div class="appointment-item">
-                <span>8:00am</span>
-                <span>3</span>
-            </div>
-            <div class="appointment-item">
-                <span>7:00am</span>
-                <span>2</span>
-            </div>
-            <div class="see-more">see more</div>
-        </div>
+      <h2>Appointment</h2>
+      <p>Manage customer appointments and scheduling</p>
     </div>
 
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Pending Requests</span>
+          <div class="stat-icon" style="background: #e3f2fd; color: #2196f3;">🔄</div>
+        </div>
+        <div class="stat-number" id="pendingCount">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Approved Requests</span>
+          <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
+        </div>
+        <div class="stat-number" id="approvedCount">0</div>
+      </div>
+
+      <div class="today-card">
+        <div class="today-header">
+          <span class="today-title">Today's Appointment</span>
+          <span>📅</span>
+        </div>
+        <div class="appointment-item">
+          <span>9:00am</span>
+          <span>5</span>
+        </div>
+        <div class="appointment-item">
+          <span>8:00am</span>
+          <span>3</span>
+        </div>
+        <div class="appointment-item">
+          <span>7:00am</span>
+          <span>2</span>
+        </div>
+      </div>
+    </div>
 
     <div class="search-container">
-      <select id="filter">
+      <select>
         <option>Service Type</option>
         <option>Customization</option>
         <option>Dry Cleaning</option>
@@ -82,7 +161,7 @@
         <option>Repair</option>
       </select>
 
-      <select id="filter">
+      <select>
         <option>Status</option>
         <option>Pending</option>
         <option>Approved</option>
@@ -90,26 +169,141 @@
       </select>
     </div>
   </div>
-
   <div class="container">
     <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Service Type</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="content">
-                <!--js-->
-            </tbody>
-        </table>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Service Type</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="content"></tbody>
+      </table>
     </div>
   </div>
 
-  <script src="../js/appointments.js"></script>
+  <!-- Decline Reason Modal -->
+  <div class="modal-overlay" id="declineModal">
+    <div class="decline-modal">
+      <div class="decline-header">
+        Decline Appointment
+      </div>
+      <div class="decline-body">
+        <label>Reason for declining <span id="declineName"></span>'s appointment:</label>
+        <textarea id="declineReason" placeholder="e.g. Schedule conflict, fully booked, etc."></textarea>
+      </div>
+      <div class="decline-footer">
+        <button class="btn-cancel" onclick="closeDeclineModal()">Cancel</button>
+        <button class="btn-confirm" onclick="confirmDecline()">Decline Appointment</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const mockAppointments = [
+      { id: 1, name: "Maria Santos", serviceType: "Customization", date: "2024-11-20", time: "9:00 AM", status: "Pending" },
+      { id: 2, name: "Juan dela Cruz", serviceType: "Dry Cleaning", date: "2024-11-20", time: "10:30 AM", status: "Approved" },
+      { id: 3, name: "Sofia Reyes", serviceType: "Rental", date: "2024-11-21", time: "2:00 PM", status: "Pending" },
+      { id: 4, name: "Carlos Mendoza", serviceType: "Repair", date: "2024-11-22", time: "11:00 AM", status: "Approved" },
+      { id: 5, name: "Isabella Garcia", serviceType: "Customization", date: "2024-11-23", time: "3:30 PM", status: "Pending" }
+    ];
+
+    let currentDeclineId = null;
+
+    function updateStats() {
+      const pending = mockAppointments.filter(a => a.status === 'Pending').length;
+      const approved = mockAppointments.filter(a => a.status === 'Approved').length;
+      document.getElementById('pendingCount').textContent = pending;
+      document.getElementById('approvedCount').textContent = approved;
+    }
+
+    function populateAppointmentsTable() {
+      const tbody = document.getElementById('content');
+      tbody.innerHTML = '';
+
+      // Only show Pending & Approved (Declined ones disappear)
+      const visible = mockAppointments.filter(a => a.status !== 'Declined');
+
+      if (visible.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:40px; color:#888;">No appointments to display</td></tr>`;
+        updateStats();
+        return;
+      }
+
+      visible.forEach(apt => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${apt.name}</td>
+          <td>${apt.serviceType}</td>
+          <td>${apt.date}</td>
+          <td>${apt.time}</td>
+          <td>
+            <div class="buttons">
+              ${apt.status === 'Pending' ? `
+                <button class="accept-btn" onclick="handleAccept(${apt.id})">Accept</button>
+                <button class="decline-btn" onclick="openDeclineModal(${apt.id}, '${apt.name}')">Decline</button>
+              ` : '<span style="color:#27ae60; font-weight:600;">Approved</span>'}
+            </div>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+      updateStats();
+    }
+
+    function handleAccept(id) {
+      const apt = mockAppointments.find(a => a.id === id);
+      if (apt) {
+        apt.status = 'Approved';
+        alert(`Appointment for ${apt.name} has been APPROVED!`);
+        populateAppointmentsTable();
+      }
+    }
+
+    function openDeclineModal(id, name) {
+      currentDeclineId = id;
+      document.getElementById('declineName').textContent = name;
+      document.getElementById('declineReason').value = '';
+      document.getElementById('declineModal').classList.add('active');
+    }
+
+    function closeDeclineModal() {
+      document.getElementById('declineModal').classList.remove('active');
+      currentDeclineId = null;
+    }
+
+    function confirmDecline() {
+      if (!currentDeclineId) return;
+
+      const reason = document.getElementById('declineReason').value.trim();
+      if (!reason) {
+        alert('Please provide a reason for declining.');
+        return;
+      }
+
+      const apt = mockAppointments.find(a => a.id === currentDeclineId);
+      if (apt) {
+        apt.status = 'Declined';
+        apt.declineReason = reason; // Saved (you can send this to backend later)
+        console.log(`Declined: ${apt.name} - Reason: ${reason}`);
+        alert(`Appointment for ${apt.name} has been declined.`);
+      }
+
+      closeDeclineModal();
+      populateAppointmentsTable();
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('declineModal').addEventListener('click', function(e) {
+      if (e.target === this) closeDeclineModal();
+    });
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', populateAppointmentsTable);
+  </script>
 </body>
 </html>

@@ -230,7 +230,6 @@ html {
 .search-container {
   display: flex;
   gap: 15px;
-  margin-bottom: 30px;
   flex-wrap: wrap;
 }
 
@@ -262,6 +261,7 @@ html {
 .container {
   margin-left: 270px;
   padding: 0 40px 40px;
+
 }
 
 .table-container {
@@ -269,7 +269,7 @@ html {
   border-radius: 16px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
   overflow: hidden;
-  margin-top: -60px;
+  margin-top: -110px;
 }
 
 table {
@@ -489,7 +489,6 @@ tbody td {
 
 /* ============ TRY ============ */
 
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
 .grid-container-admin {
   display: grid;

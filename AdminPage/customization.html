@@ -3,8 +3,199 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Appointments </title>
+  <title>Customization Management</title>
   <link rel="stylesheet" href="../Styles/AdminCustom.css">
+  <style>
+      .status-select {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      min-width: 120px;
+      cursor: pointer;
+    }
+    .status-select.in-progress { background: #e3f2fd; color: #1976d2; }
+    .status-select.to-pickup { background: #fff3e0; color: #f57c00; }
+    .status-select.completed { background: #e8f5e9; color: #388e3c; }
+    .status-select.overdue { background: #ffebee; color: #d32f2f; }
+
+    .action-btn {
+      padding: 6px 12px;
+      margin: 0 4px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .view-btn {
+      background: #2196f3;
+      color: white;
+    }
+
+    /* Modal Overlay */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(5px);
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+/* Modal Content Box */
+.modal-content {
+  background: white;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  animation: slideUp 0.4s ease;
+}
+
+/* Header */
+.modal-header {
+  background: #6A3C3E;
+  color: white;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.4rem;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.close-modal {
+  font-size: 28px;
+  cursor: pointer;
+  font-weight: bold;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.close-modal:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Body */
+.modal-body {
+  padding: 24px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 1rem;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row strong {
+  color: #333;
+  min-width: 140px;
+}
+
+/* Status Badge in Modal */
+.status-badge {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.status-badge.in-progress {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.status-badge.to-pickup {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.status-badge.completed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.overdue {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+/* Footer */
+.modal-footer {
+  padding: 16px 24px;
+  text-align: right;
+  background: #f9f9f9;
+  border-top: 1px solid #eee;
+}
+
+.close-btn {
+  padding: 10px 20px;
+  background: #1a4971;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.3s;
+}
+
+.close-btn:hover {
+  background: #143d59;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .modal-content {
+    margin: 20px;
+    max-width: none;
+  }
+  .detail-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .detail-row strong {
+    min-width: auto;
+  }
+}
+  </style>
 </head>
 <body>
 
@@ -15,7 +206,7 @@
   <div class="sidebar">
     <div class="profile">
      <img src="../assest/profile.png" alt="" class="profile-pic">
-      <h3>D’jackman Tailor Deluxe</h3>
+      <h3>D'jackman Tailor Deluxe</h3>
     </div>
     <a href="admin.html">Dashboard</a>
     <a href="appointments.html">Appointments</a>
@@ -24,50 +215,50 @@
     <a href="rental.html">Rentals</a>
     <a href="AddRent.html">Post Rent</a>
     <a href="repairs.html">Repairs</a>
-    <a href="orders.html">Inventory</a>
+    <a href="inventory.html">Inventory</a>
   </div>
 
  
   <div class="content">
     <div class="dashboard-title">
-   <h2>Dry Cleaning Management</h2>
-   <p>Track dry cleaning management</p>
+      <h2>Customization Management</h2>
+      <p>Track personalized clothes</p>
       <div class="add-rep">
-        Add+ Order
+        Add Customize +
       </div>
-   </div>
+    </div>
 
     <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-header">
-                <span>In Progress</span>
-                <div class="stat-icon" style="background: #e3f2fd; color: #2196f3;">🔄</div>
-            </div>
-            <div class="stat-number">5</div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-header">
-                <span>To Pick up</span>
-                <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
-            </div>
-            <div class="stat-number">5</div>
-        </div>
-
       <div class="stat-card">
         <div class="stat-header">
-            <span>Completed</span>
-            <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
+          <span>In Progress</span>
+          <div class="stat-icon" style="background: #e3f2fd; color: #2196f3;">🔄</div>
         </div>
-        <div class="stat-number">5</div>
+        <div class="stat-number" id="inProgressCount">0</div>
       </div>
 
       <div class="stat-card">
         <div class="stat-header">
-            <span>Overdue</span>
-            <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
+          <span>To Pick up</span>
+          <div class="stat-icon" style="background: #fff3e0; color: #ff9800;">📦</div>
         </div>
-        <div class="stat-number">5</div>
+        <div class="stat-number" id="toPickupCount">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Completed</span>
+          <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
+        </div>
+        <div class="stat-number" id="completedCount">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Overdue</span>
+          <div class="stat-icon" style="background: #ffebee; color: #f44336;">⚠</div>
+        </div>
+        <div class="stat-number" id="overdueCount">0</div>
       </div>
     </div>
 
@@ -75,37 +266,286 @@
     <div class="search-container">
       <input type="text" placeholder="Search Unique Number" id="searchUniqueNum" />
 
-      <select id="filter">
-        <option>Status</option>
-        <option>In Progress</option>
-        <option>To Pick up</option>
-        <option>Completed</option>
-        <option>Overdue</option>
+      <select id="statusFilter">
+        <option value="">All Status</option>
+        <option value="In Progress">In Progress</option>
+        <option value="To Pick up">To Pick up</option>
+        <option value="Completed">Completed</option>
+        <option value="Overdue">Overdue</option>
       </select>
     </div>
   </div>
 
   <div class="container">
     <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Unique No.</th>
-                    <th>Name</th>
-                    <th>Garment</th>
-                    <th>Date Duration</th>
-                    <th>Price</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="content">
-                <!--js-->
-            </tbody>
-        </table>
+      <table>
+        <thead>
+          <tr>
+            <th>Unique No.</th>
+            <th>Name</th>
+            <th>Garment</th>
+            <th>Date</th>
+            <th>Price</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="content">
+          <!--js-->
+        </tbody>
+      </table>
     </div>
   </div>
 
-  <script src="../js/Admincustomization.js"></script>
+  
+<!-- Order Details Modal -->
+<div id="detailModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Order Details</h2>
+      <span class="close-modal">×</span>
+    </div>
+    <div class="modal-body">
+      <div class="detail-row">
+        <strong>Item Photo:</strong>
+        <img id="modalItemImage" src="https://via.placeholder.com/120" alt="Item" class="item-image">
+      </div>
+      <div class="detail-row">
+        <strong>Unique No:</strong>
+        <span id="modalUniqueNo"></span>
+      </div>
+      <div class="detail-row">
+        <strong>Customer Name:</strong>
+        <span id="modalCustomerName"></span>
+      </div>
+      <div class="detail-row">
+        <strong>Garment:</strong>
+        <span id="modalGarment"></span>
+      </div>
+      <div class="detail-row">
+        <strong>Drop-off Date:</strong>
+        <span id="modalDate"></span>
+      </div>
+      <div class="detail-row">
+        <strong>Price:</strong>
+        <span id="modalPrice" style="font-weight: bold; color: #2e7d32;"></span>
+      </div>
+      <div class="detail-row">
+        <strong>Status:</strong>
+        <span id="modalStatus" class="status-badge">In Progress</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="document.getElementById('detailModal').style.display='none'" class="close-btn">
+        Edit
+      </button>
+      <button onclick="document.getElementById('detailModal').style.display='none'" class="close-btn">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+  <script>
+    // Mock dry cleaning orders
+    const mockOrders = [
+      {
+        id: 1,
+        uniqueNo: "C223111",
+        name: "Maria Santos",
+        garment: "Barong",
+        date: "2024-11-20 ",
+        price: 900,
+        status: "In Progress"
+      },
+      {
+        id: 2,
+        uniqueNo: "C244222",
+        name: "Ben Santos",
+        garment: "Wedding Gown",
+        date: "2024-11-18",
+        price: 1800,
+        status: "To Pick up"
+      },
+      {
+        id: 3,
+        uniqueNo: "C244333",
+        name: "Sofia Santos",
+        garment: "Dress",
+        date: "2024-11-15",
+        price: 800,
+        status: "Completed"
+      },
+      {
+        id: 4,
+        uniqueNo: "C244444",
+        name: "Carlos Santos",
+        garment: "Barong",
+        date: "2024-11-10",
+        price: 1200,
+        status: "Overdue"
+      },
+      {
+        id: 5,
+        uniqueNo: "C244555",
+        name: "Mark Santos",
+        garment: "Blazer",
+        date: "2024-11-19",
+        price: 1500,
+        status: "In Progress"
+      }
+    ];
+
+    // Update stats based on current orders
+    function updateStats() {
+      const inProgress = mockOrders.filter(order => order.status === 'In Progress').length;
+      const toPickup = mockOrders.filter(order => order.status === 'To Pick up').length;
+      const completed = mockOrders.filter(order => order.status === 'Completed').length;
+      const overdue = mockOrders.filter(order => order.status === 'Overdue').length;
+      
+      document.getElementById('inProgressCount').textContent = inProgress;
+      document.getElementById('toPickupCount').textContent = toPickup;
+      document.getElementById('completedCount').textContent = completed;
+      document.getElementById('overdueCount').textContent = overdue;
+    }
+
+    // Render table rows
+    function populateOrdersTable(orders = mockOrders) {
+      const tbody = document.getElementById('content');
+      tbody.innerHTML = '';
+
+      if (orders.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:40px;">No orders found</td></tr>`;
+        updateStats();
+        return;
+      }
+
+      orders.forEach(order => {
+        const tr = document.createElement('tr');
+
+        // Status dropdown with color classes
+        const statusOptions = ['In Progress', 'To Pick up', 'Completed', 'Overdue'];
+        let selectHTML = `<select class="status-select ${order.status.toLowerCase().replace(' ', '-')}" 
+                                onchange="updateStatus(${order.id}, this.value)">`;
+        statusOptions.forEach(opt => {
+          const selected = opt === order.status ? 'selected' : '';
+          selectHTML += `<option value="${opt}" ${selected}>${opt}</option>`;
+        });
+        selectHTML += `</select>`;
+
+        tr.innerHTML = `
+          <td><strong>${order.uniqueNo}</strong></td>
+          <td>${order.name}</td>
+          <td>${order.garment}</td>
+          <td>${order.date}</td>
+          <td>₱${order.price.toLocaleString()}</td>
+          <td>${selectHTML}</td>
+          <td>
+            <button class="action-btn view-btn" onclick="viewDetails(${order.id})">View Details</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      updateStats();
+    }
+
+    // Update order status
+    function updateStatus(orderId, newStatus) {
+      const order = mockOrders.find(o => o.id === orderId);
+      if (order) {
+        order.status = newStatus;
+        alert(`Order ${order.uniqueNo} status updated to ${newStatus}!`);
+        populateOrdersTable();
+      }
+    }
+
+  
+function viewDetails(orderId) {
+  const order = mockOrders.find(o => o.id === orderId);
+  if (!order) return;
+
+  // Fill modal content
+  document.getElementById('modalUniqueNo').textContent = order.uniqueNo;
+  document.getElementById('modalCustomerName').textContent = order.name;
+  document.getElementById('modalGarment').textContent = order.garment;
+  document.getElementById('modalDate').textContent = order.date;
+  document.getElementById('modalPrice').textContent = `₱${order.price.toLocaleString()}`;
+  document.getElementById('modalStatus').textContent = order.status;
+
+  // Apply status color to badge
+  const statusBadge = document.getElementById('modalStatus');
+  statusBadge.className = 'status-badge'; // reset
+  statusBadge.classList.add(
+    order.status === 'In Progress' ? 'in-progress' :
+    order.status === 'To Pick up' ? 'to-pickup' :
+    order.status === 'Completed' ? 'completed' :
+    'overdue'
+  );
+
+  // Show modal
+  document.getElementById('detailModal').style.display = 'flex';
+}
+
+// Close modal when clicking X or outside
+document.addEventListener('click', function(e) {
+  const modal = document.getElementById('detailModal');
+  if (e.target === modal || e.target.classList.contains('close-modal')) {
+    modal.style.display = 'none';
+  }
+});
+
+  // Search functionality
+  document.getElementById('searchUniqueNum').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    
+    let filteredOrders = mockOrders;
+    
+    // Apply search filter
+    if (searchTerm) {
+      filteredOrders = filteredOrders.filter(order => 
+        order.uniqueNo.toLowerCase().includes(searchTerm) ||
+        order.name.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    // Apply status filter
+    if (statusFilter) {
+      filteredOrders = filteredOrders.filter(order => order.status === statusFilter);
+    }
+    
+    populateOrdersTable(filteredOrders);
+  });
+
+  // Status filter functionality
+  document.getElementById('statusFilter').addEventListener('change', function(e) {
+    const statusFilter = e.target.value;
+    const searchTerm = document.getElementById('searchUniqueNum').value.toLowerCase();
+    
+    let filteredOrders = mockOrders;
+    
+    // Apply status filter
+    if (statusFilter) {
+      filteredOrders = filteredOrders.filter(order => order.status === statusFilter);
+    }
+    
+    // Apply search filter
+    if (searchTerm) {
+      filteredOrders = filteredOrders.filter(order => 
+        order.uniqueNo.toLowerCase().includes(searchTerm) ||
+        order.name.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    populateOrdersTable(filteredOrders);
+  });
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page loaded, populating table...');
+    populateOrdersTable();
+  });
+</script>
 </body>
 </html>

@@ -3,18 +3,125 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Appointments </title>
+  <title>Rental Management</title>
   <link rel="stylesheet" href="../Styles/AdminRental.css">
+  <style>
+    /* Compact & Beautiful Modal Styles */
+    .modal-overlay {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.65); backdrop-filter: blur(10px);
+      z-index: 1000; justify-content: center; align-items: center; padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+
+    .modal-content {
+      background: white;
+      width: 100%;
+      max-width: 480px;           /* Smaller modal */
+      border-radius: 16px;
+      box-shadow: 0 15px 50px rgba(0,0,0,0.25);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      background: #6A3C3E;
+      color: white;
+      padding: 16px 24px;         /* Reduced padding */
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.4rem;
+    }
+    .modal-header h2 {
+      margin: 0;
+      font-size: 1.4rem;
+      font-weight: 600;
+    }
+    .close-modal {
+      font-size: 28px;
+      cursor: pointer;
+      width: 38px; height: 38px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+    }
+    .close-modal:hover { background: rgba(255,255,255,0.2); }
+
+    .modal-body {
+      padding: 24px 28px;         /* Tighter padding */
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #333;
+      font-size: 0.95rem;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 12px 14px;       /* Slightly smaller inputs */
+      border: 1.5px solid #ddd;
+      border-radius: 10px;
+      font-size: 15px;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: #6A3C3E;
+      box-shadow: 0 0 0 3px rgba(106,60,62,0.12);
+    }
+
+    .modal-footer {
+      padding: 16px 28px;
+      background: #f8f9fa;
+      text-align: right;
+      border-top: 1px solid #eee;
+    }
+    .btn-save {
+      padding: 11px 32px;         /* Smaller button */
+      background: #6A3C3E;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-save:hover { background: #552f30; }
+
+    /* Status Select */
+    .status-select { padding: 8px 14px; border: 1px solid #ccc; border-radius: 8px; font-weight: 600; min-width: 140px; cursor: pointer; }
+    .status-select.active { background: #e3f2fd; color: #1976d2; }
+    .status-select.due-today { background: #fff3e0; color: #f57c00; }
+    .status-select.returned { background: #e8f5e9; color: #388e3c; }
+    .status-select.overdue { background: #ffebee; color: #d32f2f; }
+
+    .action-btn { padding: 8px 16px; background: #2196f3; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+
+    .status-badge { padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; }
+    .status-badge.active { background: #e3f2fd; color: #1976d2; }
+    .status-badge.due-today { background: #fff3e0; color: #f57c00; }
+    .status-badge.returned { background: #e8f5e9; color: #2e7d32; }
+    .status-badge.overdue { background: #ffebee; color: #d32f2f; }
+
+    .detail-row {
+      display: flex; justify-content: space-between; padding: 12px 0;
+      border-bottom: 1px solid #eee; font-size: 1rem;
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row strong { color: #333; min-width: 140px; }
+    .item-image { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; }
+  </style>
 </head>
 <body>
 
-  <nav class="navbar">
-    <div class="logo">Welcome back, Admin!</div>
-  </nav>
+  <nav class="navbar"><div class="logo">Welcome back, Admin!</div></nav>
 
   <div class="sidebar">
     <div class="profile">
-     <img src="../assest/profile.png" alt="" class="profile-pic">
+      <img src="../assest/profile.png" alt="" class="profile-pic">
       <h3>D’jackman Tailor Deluxe</h3>
     </div>
     <a href="admin.html">Dashboard</a>
@@ -24,89 +131,310 @@
     <a href="rental.html" class="active">Rentals</a>
     <a href="AddRent.html">Post Rent</a>
     <a href="repairs.html">Repairs</a>
-    <a href="orders.html">Inventory</a>
+    <a href="inventory.html">Inventory</a>
   </div>
 
- 
   <div class="content">
     <div class="dashboard-title">
-   <h2>Rental Management</h2>
-   <p>Track rental items and manage returns</p>
-      <div class="add-rep">
-        Add+ Rental
-      </div>
-   </div>
-
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-header">
-                <span>Active Rentals</span>
-                <div class="stat-icon" style="background: #e3f2fd; color: #2196f3;">🔄</div>
-            </div>
-            <div class="stat-number">5</div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-header">
-                <span>Due Today</span>
-                <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
-            </div>
-            <div class="stat-number">5</div>
-        </div>
-
-      <div class="stat-card">
-        <div class="stat-header">
-            <span>Overdue</span>
-            <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
-        </div>
-        <div class="stat-number">5</div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-header">
-            <span>Returned</span>
-            <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
-        </div>
-        <div class="stat-number">5</div>
+      <h2>Rental Management</h2>
+      <p>Track rental items and manage returns</p>
+      <div class="add-rep" onclick="openAddModal()" style="display:inline-block;padding:14px 30px;background:#6A3C3E;color:white;border-radius:12px;cursor:pointer;font-weight:600;">
+        Add Rental +
       </div>
     </div>
 
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Active Rentals</span>
+          <div class="stat-icon" style="background: #e3f2fd; color: #2196f3;">🔄</div>
+        </div>
+        <div class="stat-number" id="activeCount">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Due Today</span>
+          <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
+        </div>
+        <div class="stat-number" id="dueTodayCount">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Overdue</span>
+          <div class="stat-icon" style="background: #ffebee; color: #f44336;">⚠</div>
+        </div>
+        <div class="stat-number" id="overdueCount">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Returned</span>
+          <div class="stat-icon" style="background: #fff3e0; color: #ff9800;">📦</div>
+        </div>
+        <div class="stat-number" id="returnedCount">0</div>
+      </div>
+    </div>
 
     <div class="search-container">
-      <input type="text" placeholder="Search Unique Number" id="searchUniqueNum" />
-
+      <input type="text" placeholder="Search by Unique No." id="searchUniqueNum">
       <select id="filter">
-        <option>Status</option>
-        <option>Active</option>
-        <option>Due Today</option>
-        <option>Overdue</option>
-        <option>Returned</option>
+        <option value="">All Status</option>
+        <option value="Active">Active</option>
+        <option value="Due Today">Due Today</option>
+        <option value="Overdue">Overdue</option>
+        <option value="Returned">Returned</option>
       </select>
     </div>
   </div>
 
   <div class="container">
     <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Unique No.</th>
-                    <th>Name</th>
-                    <th>Rented Item</th>
-                    <th>Category</th>
-                    <th>Rental Duration</th>
-                    <th>Price</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="content">
-                <!--js-->
-            </tbody>
-        </table>
+      <table>
+        <thead>
+          <tr>
+            <th>Unique No.</th>
+            <th>Name</th>
+            <th>Rented Item</th>
+            <th>Category</th>
+            <th>Rental Date</th>
+            <th>Price</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="content"></tbody>
+      </table>
     </div>
   </div>
 
-  <script src="../js/rental.js"></script>
+  <!-- ADD RENTAL MODAL -->
+  <div class="modal-overlay" id="addModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add New Rental</h2>
+        <span class="close-modal" onclick="closeAddModal()">x</span>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Customer Name</label>
+          <input type="text" id="newName" placeholder="e.g. Juan Dela Cruz">
+        </div>
+        <div class="form-group">
+          <label>Rented Item</label>
+          <input type="text" id="newItem" placeholder="e.g. Navy Blue Suit">
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="newCategory">
+            <option value="Barong">Barong</option>
+            <option value="Gown">Gown</option>
+            <option value="Suit">Suit</option>
+            <option value="Slacks">Slacks</option>
+            <option value="Others">Others</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Price (₱)</label>
+          <input type="number" id="newPrice" placeholder="e.g. 4500" min="1">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="newStatus">
+            <option value="Active">Active</option>
+            <option value="Due Today">Due Today</option>
+            <option value="Overdue">Overdue</option>
+            <option value="Returned">Returned</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-save" onclick="saveNewRental()">Add Rental</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW DETAILS MODAL -->
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Rental Details</h2>
+        <span class="close-modal">x</span>
+      </div>
+      <div class="modal-body">
+        <div class="detail-row">
+          <strong>Item Photo:</strong>
+          <img id="modalItemImage" src="https://via.placeholder.com/120" alt="Item" class="item-image">
+        </div>
+        <div class="detail-row"><strong>Unique No:</strong> <span id="modalUniqueNo"></span></div>
+        <div class="detail-row"><strong>Customer:</strong> <span id="modalCustomerName"></span></div>
+        <div class="detail-row"><strong>Rented Item:</strong> <span id="modalRentedItem"></span></div>
+        <div class="detail-row"><strong>Category:</strong> <span id="modalCategory"></span></div>
+        <div class="detail-row"><strong>Rental Date:</strong> <span id="modalDate"></span></div>
+        <div class="detail-row"><strong>Price:</strong> <span id="modalPrice" style="color:#2e7d32;font-weight:bold;"></span></div>
+        <div class="detail-row"><strong>Status:</strong> <span id="modalStatus" class="status-badge"></span></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-save" style="background:#666;" onclick="document.getElementById('detailModal').classList.remove('active')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Load from localStorage or use mock data
+    let rentals = JSON.parse(localStorage.getItem('rentalOrders')) || [
+      { id: 1, uniqueNo: "R223111", name: "Maria Santos", rentedItem: "Black Fitted Barong", category: "Barong", date: "2025-04-18", price: 2500, status: "Active" },
+      { id: 2, uniqueNo: "R223112", name: "Ben Santos", rentedItem: "White Barong", category: "Barong", date: "2025-04-19", price: 2200, status: "Due Today" },
+      { id: 3, uniqueNo: "R223113", name: "Marie Jane", rentedItem: "Black Evening Gown", category: "Gown", date: "2025-04-10", price: 5000, status: "Returned" },
+      { id: 4, uniqueNo: "R223114", name: "Jane Santos", rentedItem: "Red Formal Slacks", category: "Slacks", date: "2025-04-12", price: 1800, status: "Overdue" },
+      { id: 5, uniqueNo: "R223115", name: "Mark Santos", rentedItem: "Navy Blue Suit", category: "Suit", date: "2025-04-19", price: 4500, status: "Active" }
+    ];
+
+    function generateUniqueNo() {
+      return 'R' + Date.now().toString().slice(-6);
+    }
+
+    function updateStats() {
+      document.getElementById('activeCount').textContent = rentals.filter(r => r.status === 'Active').length;
+      document.getElementById('dueTodayCount').textContent = rentals.filter(r => r.status === 'Due Today').length;
+      document.getElementById('overdueCount').textContent = rentals.filter(r => r.status === 'Overdue').length;
+      document.getElementById('returnedCount').textContent = rentals.filter(r => r.status === 'Returned').length;
+    }
+
+    function populateTable(filtered = rentals) {
+      const tbody = document.getElementById('content');
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:60px;color:#888;">No rentals found</td></tr>`;
+        updateStats();
+        return;
+      }
+
+      filtered.forEach(rental => {
+        const statusClass = rental.status.toLowerCase().replace(' ', '-');
+        const selectHTML = `
+          <select class="status-select ${statusClass}" onchange="updateStatus(${rental.id}, this.value)">
+            ${['Active','Due Today','Overdue','Returned'].map(s => 
+              `<option value="${s}" ${s===rental.status?'selected':''}>${s}</option>`
+            ).join('')}
+          </select>`;
+
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${rental.uniqueNo}</strong></td>
+            <td>${rental.name}</td>
+            <td>${rental.rentedItem}</td>
+            <td>${rental.category}</td>
+            <td>${rental.date}</td>
+            <td>₱${rental.price.toLocaleString()}</td>
+            <td>${selectHTML}</td>
+            <td><button class="action-btn" onclick="viewDetails(${rental.id})">View</button></td>
+          </tr>
+        `;
+      });
+      updateStats();
+    }
+
+    function updateStatus(id, newStatus) {
+      const rental = rentals.find(r => r.id === id);
+      if (rental) {
+        rental.status = newStatus;
+        localStorage.setItem('rentalOrders', JSON.stringify(rentals));
+        populateTable();
+      }
+    }
+
+    function viewDetails(id) {
+      const rental = rentals.find(r => r.id === id);
+      if (!rental) return;
+
+      document.getElementById('modalUniqueNo').textContent = rental.uniqueNo;
+      document.getElementById('modalCustomerName').textContent = rental.name;
+      document.getElementById('modalRentedItem').textContent = rental.rentedItem;
+      document.getElementById('modalCategory').textContent = rental.category;
+      document.getElementById('modalDate').textContent = rental.date;
+      document.getElementById('modalPrice').textContent = `₱${rental.price.toLocaleString()}`;
+
+      const badge = document.getElementById('modalStatus');
+      badge.textContent = rental.status;
+      badge.className = 'status-badge ' + rental.status.toLowerCase().replace(' ', '-');
+
+      document.getElementById('detailModal').classList.add('active');
+    }
+
+    // Add Rental Functions
+    function openAddModal() {
+      document.getElementById('newName').value = '';
+      document.getElementById('newItem').value = '';
+      document.getElementById('newPrice').value = '';
+      document.getElementById('newCategory').value = 'Barong';
+      document.getElementById('newStatus').value = 'Active';
+      document.getElementById('addModal').classList.add('active');
+    }
+
+    function closeAddModal() {
+      document.getElementById('addModal').classList.remove('active');
+    }
+
+    function saveNewRental() {
+      const name = document.getElementById('newName').value.trim();
+      const item = document.getElementById('newItem').value.trim();
+      const price = parseFloat(document.getElementById('newPrice').value);
+      const category = document.getElementById('newCategory').value;
+      const status = document.getElementById('newStatus').value;
+
+      if (!name || !item || !price || price <= 0) {
+        alert('Please fill all required fields correctly.');
+        return;
+      }
+
+      const newRental = {
+        id: Date.now(),
+        uniqueNo: generateUniqueNo(),
+        name, rentedItem: item, category,
+        date: new Date().toISOString().split('T')[0],
+        price, status
+      };
+
+      rentals.push(newRental);
+      localStorage.setItem('rentalOrders', JSON.stringify(rentals));
+      closeAddModal();
+      populateTable();
+      alert('New rental added successfully!');
+    }
+
+    // Search & Filter
+    function applyFilters() {
+      const search = document.getElementById('searchUniqueNum').value.toLowerCase();
+      const statusFilter = document.getElementById('filter').value;
+
+      let filtered = rentals.filter(r => {
+        const matchesSearch = r.uniqueNo.toLowerCase().includes(search) ||
+                             r.name.toLowerCase().includes(search) ||
+                             r.rentedItem.toLowerCase().includes(search);
+        const matchesStatus = !statusFilter || r.status === statusFilter;
+        return matchesSearch && matchesStatus;
+      });
+
+      populateTable(filtered);
+    }
+
+    document.getElementById('searchUniqueNum').addEventListener('input', applyFilters);
+    document.getElementById('filter').addEventListener('change', applyFilters);
+
+    // Close modals on outside click
+    document.addEventListener('click', e => {
+      if (e.target.classList.contains('modal-overlay') || e.target.classList.contains('close-modal')) {
+        document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+      }
+    });
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      populateTable();
+    });
+  </script>
 </body>
 </html>

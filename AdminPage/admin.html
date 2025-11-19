@@ -16,11 +16,13 @@
       <img src="../assest/profile.png" alt="" class="profile-pic">
       <h3>D’jackman Tailor Deluxe</h3>
     </div>
-    <a href="#">Dashboard</a>
+    <a href="admin.html" class="active">Dashboard</a>
     <a href="appointments.html">Appointments</a>
-    <a href="../AdminPage/rental.html">Rentals</a>
-    <a href="../AdminPage/repairs.html">Repairs</a>
-    <a href="orders.html">Orders</a>
+    <a href="customization.html">Customization</a>
+    <a href="drycleaning.html">Dry Cleaning</a>
+    <a href="rental.html">Rentals</a>
+    <a href="AddRent.html">Post Rent</a>
+    <a href="repairs.html" >Repairs</a>
     <a href="inventory.html">Inventory</a>
   </div>
   
@@ -30,64 +32,78 @@
    <p>Here's what's happening at your tailoring shop today</p>
    </div>
 
-   <div class="dashboard-cards">
+   <div class="stats-grid">
     
-  <div class="card">
+  <div class="stat-card">
     <h3>Today's Appointments</h3>
     <p class="number">12</p>
     <p class="info">+3 from yesterday</p>
   </div>
-  <div class="card">
+  <div class="stat-card">
     <h3>Active Rentals</h3>
     <p class="number">4</p>
     <p class="info">2 due today</p>
   </div>
-  <div class="card">
-    <h3>Pending Orders</h3>
+  <div class="stat-card">
+    <h3 >Pending Orders</h3>
     <p class="number">15</p>
   </div>
-  <div class="card">
+  <div class="stat-card">
     <h3>Repair Jobs</h3>
     <p class="number">16</p>
     <p class="info">11 completed today</p>
   </div>
-  <div class="card">
+  <div class="stat-card">
     <h3>Daily Revenue</h3>
     <p class="number">₱3,456</p>
     <p class="info">+12% from yesterday</p>
   </div>
-  <div class="card">
+  <div class="stat-card">
     <h3>Monthly Growth</h3>
     <p class="number">+23%</p>
     <p class="info">Compared to last month</p>
   </div>
-  <table>
-     <caption>Recent Activity</caption>
-     </div>
-    <thead>
-      <tr>
-
-        <th>Customer</th>
-        <th>Type of service</th>
-        <th>Status</th>
-        <th>Time</th>
-      </tr>
-    </thead>
-    
-    <tbody>
-      <tr>
-        <td class="customer">Customer #1</td>
-        <td>Tuxedo Rental</td>
-        <td>Returned</td>
-        <td>10 minutes ago</td>
-      </tr>
-      <tr>
-        <td class="customer">Customer #2</td>
-        <td>Fitting Appointment</td>
-        <td>Completed</td>
-        <td>30 minutes ago</td>
-      </tr>
-    </tbody>
-  </table>
 </div>
+
+  <div class="recent-activity">
+    <table>
+      <caption>Recent Activity</caption>
+      <thead>
+        <tr>
+          <th>Customer</th>
+          <th>Type of Service</th>
+          <th>Status</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="customer">Maria Santos</td>
+          <td>Tuxedo Rental</td>
+          <td><span class="status returned">Returned</span></td>
+          <td>10 minutes ago</td>
+        </tr>
+        <tr>
+          <td class="customer">John Reyes</td>
+          <td>Fitting Appointment</td>
+          <td><span class="status completed">Completed</span></td>
+          <td>30 minutes ago</td>
+        </tr>
+        <tr>
+          <td class="customer">Sofia Lim</td>
+          <td>Barong Customization</td>
+          <td><span class="status in-progress">In Progress</span></td>
+          <td>1 hour ago</td>
+        </tr>
+        <tr>
+          <td class="customer">Carlos Tan</td>
+          <td>Dry Cleaning</td>
+          <td><span class="status pickup">To Pick up</span></td>
+          <td>2 hours ago</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
+
+  </div>
+</body>

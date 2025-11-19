@@ -3,18 +3,102 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Appointments </title>
+  <title>Repair Management</title>
   <link rel="stylesheet" href="../Styles/repairs.css">
+  <style>
+    /* Clean & Compact Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.65); backdrop-filter: blur(10px);
+      z-index: 1000; justify-content: center; align-items: center; padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+
+    .modal-content {
+      background: white;
+      width: 100%;
+      max-width: 500px;           /* Smaller & elegant */
+      border-radius: 16px;
+      box-shadow: 0 15px 50px rgba(0,0,0,0.25);
+      overflow: hidden;
+    }
+    .modal-header {
+      background: #711a1a;
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h2 { margin: 0; font-size: 1.4rem; font-weight: 600; }
+    .close-modal {
+      font-size: 28px; cursor: pointer;
+      width: 38px; height: 38px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+    }
+    .close-modal:hover { background: rgba(255,255,255,0.2); }
+
+    .modal-body { padding: 28px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label {
+      display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 0.95rem;
+    }
+    .form-group input, .form-group select {
+      width: 100%; padding: 12px 14px; border: 1.5px solid #ddd;
+      border-radius: 10px; font-size: 15px;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none; border-color: #1a4971; box-shadow: 0 0 0 3px rgba(26,73,113,0.15);
+    }
+
+    .modal-footer {
+      padding: 16px 28px; background: #f8f9fa; text-align: right; border-top: 1px solid #eee;
+    }
+    .btn-save {
+      padding: 11px 32px; background: #1a4971; color: white; border: none;
+      border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    .btn-save:hover { background: #143d59; }
+
+    /* Status Styles */
+    .status-select { padding: 7px 12px; border: 1px solid #ccc; border-radius: 8px; font-weight: 600; min-width: 130px; cursor: pointer; }
+    .status-select.in-progress { background: #e3f2fd; color: #1976d2; }
+    .status-select.to-pickup { background: #fff3e0; color: #f57c00; }
+    .status-select.completed { background: #e8f5e9; color: #388e3c; }
+    .status-select.overdue { background: #ffebee; color: #d32f2f; }
+
+    .action-btn {
+      padding: 7px 14px; background: #1a4971; color: white;
+      border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;
+    }
+    .action-btn:hover { background: #143d59; }
+
+    .status-badge {
+      padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 0.9rem;
+    }
+    .status-badge.in-progress { background: #e3f2fd; color: #1976d2; }
+    .status-badge.to-pickup { background: #fff3e0; color: #f57c00; }
+    .status-badge.completed { background: #e8f5e9; color: #2e7d32; }
+    .status-badge.overdue { background: #ffebee; color: #d32f2f; }
+
+    .detail-row {
+      display: flex; justify-content: space-between; padding: 10px 0;
+      border-bottom: 1px solid #eee; font-size: 0.95rem;
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row strong { min-width: 140px; color: #333; }
+    .item-image { width: 110px; height: 110px; object-fit: cover; border-radius: 8px; border: 2px solid #ddd; }
+  </style>
 </head>
 <body>
 
-  <nav class="navbar">
-    <div class="logo">Welcome back, Admin!</div>
-  </nav>
+  <nav class="navbar"><div class="logo">Welcome back, Admin!</div></nav>
 
   <div class="sidebar">
     <div class="profile">
-     <img src="../assest/profile.png" alt="" class="profile-pic">
+      <img src="../assest/profile.png" alt="" class="profile-pic">
       <h3>D’jackman Tailor Deluxe</h3>
     </div>
     <a href="admin.html">Dashboard</a>
@@ -24,89 +108,302 @@
     <a href="rental.html">Rentals</a>
     <a href="AddRent.html">Post Rent</a>
     <a href="repairs.html" class="active">Repairs</a>
-    <a href="orders.html">Inventory</a>
+    <a href="inventory.html">Inventory</a>
   </div>
 
- 
   <div class="content">
     <div class="dashboard-title">
-   <h2>Repair Management</h2>
-   <p>Manage repair services and track progress</p>
-      <div class="add-rep">
-        Add+ Repair
+      <h2>Repair Management</h2>
+      <p>Manage repair services and track progress</p>
+      <div class="add-rep" onclick="openAddModal()" style="display:inline-block;padding:15x 30px;background:#832828;color:white;border-radius:12px;cursor:pointer;font-weight:600;">
+        Add Repair +
       </div>
-   </div>
+    </div>
 
     <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-header">
-                <span>In Progress</span>
-                <div class="stat-icon" style="background: #e3f2fd; color: #2196f3;">🔄</div>
-            </div>
-            <div class="stat-number">5</div>
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>In Progress</span>
+          <div class="stat-icon" style="background: #e3f2fd; color: #2196f3;">🔄</div>
         </div>
-
-        <div class="stat-card">
-            <div class="stat-header">
-                <span>To Pick up</span>
-                <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
-            </div>
-            <div class="stat-number">5</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="stat-header">
-              <span>Completed</span>
-              <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
-          </div>
-          <div class="stat-number">5</div>
+        <div class="stat-number" id="inProgressCount">0</div>
       </div>
 
       <div class="stat-card">
         <div class="stat-header">
-            <span>Overdue</span>
-            <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
+          <span>To Pick up</span>
+          <div class="stat-icon" style="background: #fff3e0; color: #ff9800;">📦</div>
         </div>
-        <div class="stat-number">5</div>
-    </div>
-    </div>
+        <div class="stat-number" id="toPickupCount">0</div>
+      </div>
 
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Completed</span>
+          <div class="stat-icon" style="background: #e8f5e9; color: #4caf50;">✓</div>
+        </div>
+        <div class="stat-number" id="completedCount">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span>Overdue</span>
+          <div class="stat-icon" style="background: #ffebee; color: #f44336;">⚠</div>
+        </div>
+        <div class="stat-number" id="overdueCount">0</div>
+      </div>
+    </div>
 
     <div class="search-container">
-      <input type="text" placeholder="Search Unique Number" id="searchUniqueNum" />
-
-      <select id="filter">
-        <option>Status</option>
-        <option>In Progress</option>
-        <option>To Pick up</option>
-        <option>Overdue</option>
-        <option>Completed</option>
+      <input type="text" placeholder="Search Unique No. or Name" id="searchUniqueNum">
+      <select id="statusFilter">
+        <option value="">All Status</option>
+        <option value="In Progress">In Progress</option>
+        <option value="To Pick up">To Pick up</option>
+        <option value="Completed">Completed</option>
+        <option value="Overdue">Overdue</option>
       </select>
     </div>
   </div>
 
   <div class="container">
     <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Unique No.</th>
-                    <th>Name</th>
-                    <th>Item</th>
-                    <th>Category</th>
-                    <th>Duration</th>
-                    <th>Price</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="content">
-                <!--js-->
-            </tbody>
-        </table>
+      <table>
+        <thead>
+          <tr>
+            <th>Unique No.</th>
+            <th>Name</th>
+            <th>Item</th>
+            <th>Category</th>
+            <th>Date</th>
+            <th>Price</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="content"></tbody>
+      </table>
     </div>
   </div>
 
-  <script src="../js/repairs.js"></script>
+  <!-- ADD REPAIR MODAL -->
+  <div class="modal-overlay" id="addModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add New Repair</h2>
+        <span class="close-modal" onclick="closeAddModal()">x</span>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><label>Customer Name</label><input type="text" id="newName" placeholder="e.g. Juan Dela Cruz"></div>
+        <div class="form-group"><label>Item</label><input type="text" id="newItem" placeholder="e.g. Torn Barong"></div>
+        <div class="form-group"><label>Category</label>
+          <select id="newCategory">
+            <option value="Shirt">Shirt</option>
+            <option value="Pants">Pants</option>
+            <option value="Dress">Dress</option>
+            <option value="Jacket">Jacket</option>
+            <option value="Blazer">Blazer</option>
+            <option value="Others">Others</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Repair Cost (₱)</label><input type="number" id="newPrice" placeholder="e.g. 1500" min="1"></div>
+        <div class="form-group"><label>Status</label>
+          <select id="newStatus">
+            <option value="In Progress">In Progress</option>
+            <option value="To Pick up">To Pick up</option>
+            <option value="Completed">Completed</option>
+            <option value="Overdue">Overdue</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-save" onclick="saveNewRepair()">Add Repair</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW DETAILS MODAL -->
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Repair Order Details</h2>
+        <span class="close-modal">x</span>
+      </div>
+      <div class="modal-body">
+        <div class="detail-row">
+          <strong>Item Photo:</strong>
+          <img id="modalItemImage" src="" alt="Item" class="item-image">
+        </div>
+        <div class="detail-row"><strong>Unique No:</strong> <span id="modalUniqueNo"></span></div>
+        <div class="detail-row"><strong>Customer:</strong> <span id="modalCustomerName"></span></div>
+        <div class="detail-row"><strong>Item:</strong> <span id="modalItem"></span></div>
+        <div class="detail-row"><strong>Category:</strong> <span id="modalCategory"></span></div>
+        <div class="detail-row"><strong>Drop-off Date:</strong> <span id="modalDate"></span></div>
+        <div class="detail-row"><strong>Repair Cost:</strong> <span id="modalPrice" style="color:#2e7d32;font-weight:bold;"></span></div>
+        <div class="detail-row"><strong>Status:</strong> <span id="modalStatus" class="status-badge"></span></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-save" style="background:#666;" onclick="document.getElementById('detailModal').classList.remove('active')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Load from localStorage or use mock data (keeps your defaults!)
+    let repairs = JSON.parse(localStorage.getItem('repairOrders')) || [
+      { id: 1, uniqueNo: "RP223111", name: "Maria Santos", item: "Black Formal Shirt", category: "Shirt", date: "2025-04-18", price: 850, status: "In Progress", image: "https://via.placeholder.com/120?text=Shirt+Damage" },
+      { id: 2, uniqueNo: "RP223112", name: "Ben Santos", item: "Blue Jeans", category: "Pants", date: "2025-04-19", price: 1200, status: "To Pick up", image: "https://via.placeholder.com/120?text=Jeans+Tear" },
+      { id: 3, uniqueNo: "RP223113", name: "Sofia Reyes", item: "Red Evening Dress", category: "Dress", date: "2025-04-15", price: 2800, status: "Completed", image: "https://via.placeholder.com/120?text=Dress+Fixed" },
+      { id: 4, uniqueNo: "RP223114", name: "Carlos Lim", item: "Leather Jacket", category: "Jacket", date: "2025-04-10", price: 3500, status: "Overdue", image: "https://via.placeholder.com/120?text=Jacket+Repair" },
+      { id: 5, uniqueNo: "RP223115", name: "Anna Cruz", item: "White Blazer", category: "Blazer", date: "2025-04-19", price: 1800, status: "In Progress", image: "https://via.placeholder.com/120?text=Blazer+Button" }
+    ];
+
+    function generateUniqueNo() {
+      return 'RP' + Date.now().toString().slice(-6);
+    }
+
+    function updateStats() {
+      document.getElementById('inProgressCount').textContent = repairs.filter(r => r.status === 'In Progress').length;
+      document.getElementById('toPickupCount').textContent = repairs.filter(r => r.status === 'To Pick up').length;
+      document.getElementById('completedCount').textContent = repairs.filter(r => r.status === 'Completed').length;
+      document.getElementById('overdueCount').textContent = repairs.filter(r => r.status === 'Overdue').length;
+    }
+
+    function populateTable(filtered = repairs) {
+      const tbody = document.getElementById('content');
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:60px;color:#888;">No repair orders found</td></tr>`;
+        updateStats();
+        return;
+      }
+
+      filtered.forEach(repair => {
+        const statusClass = repair.status.toLowerCase().replace(' ', '-');
+        const selectHTML = `
+          <select class="status-select ${statusClass}" onchange="updateStatus(${repair.id}, this.value)">
+            ${['In Progress','To Pick up','Completed','Overdue'].map(s => 
+              `<option value="${s}" ${s===repair.status?'selected':''}>${s}</option>`
+            ).join('')}
+          </select>`;
+
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${repair.uniqueNo}</strong></td>
+            <td>${repair.name}</td>
+            <td>${repair.item}</td>
+            <td>${repair.category}</td>
+            <td>${repair.date}</td>
+            <td>₱${repair.price.toLocaleString()}</td>
+            <td>${selectHTML}</td>
+            <td><button class="action-btn" onclick="viewDetails(${repair.id})">View</button></td>
+          </tr>
+        `;
+      });
+      updateStats();
+    }
+
+    function updateStatus(id, newStatus) {
+      const repair = repairs.find(r => r.id === id);
+      if (repair) {
+        repair.status = newStatus;
+        localStorage.setItem('repairOrders', JSON.stringify(repairs));
+        populateTable();
+      }
+    }
+
+    function viewDetails(id) {
+      const repair = repairs.find(r => r.id === id);
+      if (!repair) return;
+
+      document.getElementById('modalItemImage').src = repair.image;
+      document.getElementById('modalUniqueNo').textContent = repair.uniqueNo;
+      document.getElementById('modalCustomerName').textContent = repair.name;
+      document.getElementById('modalItem').textContent = repair.item;
+      document.getElementById('modalCategory').textContent = repair.category;
+      document.getElementById('modalDate').textContent = repair.date;
+      document.getElementById('modalPrice').textContent = `₱${repair.price.toLocaleString()}`;
+
+      const badge = document.getElementById('modalStatus');
+      badge.textContent = repair.status;
+      badge.className = 'status-badge ' + repair.status.toLowerCase().replace(' ', '-');
+
+      document.getElementById('detailModal').classList.add('active');
+    }
+
+    // Add Repair Functions
+    function openAddModal() {
+      document.getElementById('newName').value = '';
+      document.getElementById('newItem').value = '';
+      document.getElementById('newPrice').value = '';
+      document.getElementById('newCategory').value = 'Shirt';
+      document.getElementById('newStatus').value = 'In Progress';
+      document.getElementById('addModal').classList.add('active');
+    }
+
+    function closeAddModal() {
+      document.getElementById('addModal').classList.remove('active');
+    }
+
+    function saveNewRepair() {
+      const name = document.getElementById('newName').value.trim();
+      const item = document.getElementById('newItem').value.trim();
+      const price = parseFloat(document.getElementById('newPrice').value);
+      const category = document.getElementById('newCategory').value;
+      const status = document.getElementById('newStatus').value;
+
+      if (!name || !item || !price || price <= 0) {
+        alert('Please fill all fields correctly.');
+        return;
+      }
+
+      const newRepair = {
+        id: Date.now(),
+        uniqueNo: generateUniqueNo(),
+        name,
+        item,
+        category,
+        date: new Date().toISOString().split('T')[0],
+        price,
+        status,
+        image: "https://via.placeholder.com/120?text=New+Repair"
+      };
+
+      repairs.push(newRepair);
+      localStorage.setItem('repairOrders', JSON.stringify(repairs));
+      closeAddModal();
+      populateTable();
+      alert('Repair order added successfully!');
+    }
+
+    // Search & Filter
+    function applyFilters() {
+      const search = document.getElementById('searchUniqueNum').value.toLowerCase();
+      const statusFilter = document.getElementById('statusFilter').value;
+
+      const filtered = repairs.filter(r =>
+        (r.uniqueNo.toLowerCase().includes(search) || r.name.toLowerCase().includes(search) || r.item.toLowerCase().includes(search)) &&
+        (!statusFilter || r.status === statusFilter)
+      );
+
+      populateTable(filtered);
+    }
+
+    document.getElementById('searchUniqueNum').addEventListener('input', applyFilters);
+    document.getElementById('statusFilter').addEventListener('change', applyFilters);
+
+    // Close modals when clicking outside or on X
+    document.addEventListener('click', e => {
+      if (e.target.classList.contains('modal-overlay') || e.target.classList.contains('close-modal')) {
+        document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+      }
+    });
+
+    // Load on start
+    document.addEventListener('DOMContentLoaded', () => {
+      populateTable();
+    });
+  </script>
 </body>
 </html>
