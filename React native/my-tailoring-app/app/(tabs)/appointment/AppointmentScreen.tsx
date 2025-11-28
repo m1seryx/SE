@@ -21,7 +21,7 @@ export default function AppointmentScreen() {
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 120 }} 
+        contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
       >
         {/* HEADER */}
@@ -82,7 +82,6 @@ export default function AppointmentScreen() {
         </View>
       </ScrollView>
 
-     
       <View style={styles.bottomNav}>
         <TouchableOpacity onPress={() => router.replace("/home")}>
           <View style={styles.navItemWrap}>
@@ -98,9 +97,11 @@ export default function AppointmentScreen() {
           <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
         </View>
 
-        <View style={styles.navItemWrap}>
-          <Ionicons name="person-outline" size={20} color="#9CA3AF" />
-        </View>
+        <TouchableOpacity onPress={() => router.push("../UserProfile/profile")}>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="person-outline" size={20} color="#9CA3AF" />
+          </View>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -215,38 +216,39 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  
+  // Fixed bottom nav - now safe outside ScrollView
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    backgroundColor: "#f5f5f5",
-    paddingVertical: height * 0.018,
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#EEE",
     position: "absolute",
     bottom: 0,
-    width: "100%", 
+    left: 0,
+    right: 0,
+    elevation: 10,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 10,
+    shadowOffset: { width: 0, height: -3 },
   },
   navItemWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#F3F4F6",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#E5E7EB",
   },
   navItemWrapActive: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#FDE68A",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FDE68A",
   },
 });

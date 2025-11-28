@@ -1,66 +1,92 @@
 import * as React from "react";
-import { View, StyleSheet, Image, TouchableOpacity, ScrollView, Dimensions, Platform } from "react-native";
+import {
+  View,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
+  Platform,
+  SafeAreaView,
+} from "react-native";
 import { Text } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 const { height, width } = Dimensions.get("window");
 
 const services = [
-  { id: "s1", label: "Rental", icon: require("../../assets/images/android-icon-foreground.png") },
-  { id: "s2", label: "Customize", icon: require("../../assets/images/icon.png") },
-  { id: "s3", label: "Repair", icon: require("../../assets/images/android-icon-monochrome.png") },
+  {
+    id: "s1",
+    label: "Rental",
+    icon: require("../../assets/images/rental.jpg"),
+  },
+  {
+    id: "s2",
+    label: "Customize",
+    icon: require("../../assets/images/customize.jpg"),
+  },
+  {
+    id: "s3",
+    label: "Repair",
+    icon: require("../../assets/images/repair.jpg"),
+  },
+  {
+    id: "s4",
+    label: "Dry Cleaning",
+    icon: require("../../assets/images/dry.jpg"),
+  },
 ];
 
-// Added more rental items
 const rentals = [
   {
     id: "1",
     title: "Men Suit All in Gray",
     price: 500,
-    image: require("../../assets/images/tailorbackground.jpg"),
+    image: require("../../assets/images/graysuit.jpg"),
   },
   {
     id: "2",
     title: "Classic Black Tuxedo",
     price: 750,
-    image: require("../../assets/images/tailorbackground.jpg"),
+    image: require("../../assets/images/blacktuxedo.jpg"),
   },
   {
     id: "3",
     title: "Royal Blue Coat Set",
     price: 650,
-    image: require("../../assets/images/tailorbackground.jpg"),
+    image: require("../../assets/images/royalblue.jpg"),
   },
   {
     id: "4",
     title: "Elegant Evening Gown",
     price: 900,
-    image: require("../../assets/images/tailorbackground.jpg"),
+    image: require("../../assets/images/gown.jpg"),
   },
   {
     id: "5",
     title: "Barong Tagalog Premium",
     price: 400,
-    image: require("../../assets/images/tailorbackground.jpg"),
+    image: require("../../assets/images/barong.jpg"),
   },
   {
     id: "6",
     title: "Formal Black Dress",
     price: 700,
-    image: require("../../assets/images/tailorbackground.jpg"),
+    image: require("../../assets/images/blackdress.jpg"),
   },
   {
     id: "7",
     title: "Wedding Suit Beige",
     price: 850,
-    image: require("../../assets/images/tailorbackground.jpg"),
+    image: require("../../assets/images/beige.jpg"),
   },
   {
     id: "8",
     title: "Traditional Filipiniana",
     price: 600,
-    image: require("../../assets/images/tailorbackground.jpg"),
+    image: require("../../assets/images/filipiniana.jpg"),
   },
 ];
 
@@ -69,83 +95,135 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
-      {/* HERO */}
-      <View style={styles.hero}>
-        <Image
-          source={require("../../assets/images/tailorbackground.jpg")}
-          style={styles.heroImage}
-          resizeMode="cover"
-        />
-        <View style={styles.heroBadge}>
-          <Text style={{ color: "#fff", fontWeight: "600" }}>Welcome to Jackman Tailor Deluxe!</Text>
-          <Text style={{ color: "#f0f0f0", marginTop: 2 }}>Your perfect fit awaits.</Text>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 110 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Welcome + Hero */}
+        <View style={styles.headerSection}>
+          <Image
+            source={require("../../assets/images/logo.png")}
+            style={styles.logo}
+          />
+          <Text style={styles.headerTitle}>Jackman Tailor Deluxe</Text>
+
+          <TouchableOpacity style={styles.profileIcon}>
+            <Ionicons name="notifications-outline" size={25} color="black" />{" "}
+          </TouchableOpacity>
         </View>
-      </View>
 
-      {/* SERVICES */}
-      <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionTitle}>Jackman's Services</Text>
-      </View>
-      <View style={styles.servicesRow}>
-        {services.map((s) => (
-          <TouchableOpacity
-            key={s.id}
-            style={styles.serviceCard}
-            onPress={() => {
-              if (s.id === "s1") router.push("../rental");
-              else if (s.id === "s2") router.push("/(tabs)/appointment/CustomizeClothes");
-              else if (s.id === "s3") router.push("/(tabs)/appointment/RepairClothes");
-            }}
-          >
-            <Image source={s.icon} style={{ width: 44, height: 44, borderRadius: 12 }} />
-            <Text style={styles.serviceText}>{s.label}</Text>
+        <View style={styles.heroContainer}>
+          <Image
+            source={require("../../assets/images/tailorbackground.jpg")}
+            style={styles.heroImage}
+            resizeMode="cover"
+          />
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.7)"]}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroTitle}>Jackman Tailor Deluxe</Text>
+            <Text style={styles.heroSubtitle}>Your perfect fit awaits.</Text>
+          </View>
+        </View>
+
+        {/* Services */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Our Services</Text>
+          <Ionicons name="cut-outline" size={24} color="#991b1b" />
+        </View>
+
+        <View style={styles.servicesGrid}>
+          {services.map((s) => (
+            <TouchableOpacity
+              key={s.id}
+              style={styles.serviceCard}
+              activeOpacity={0.85}
+              onPress={() => {
+                if (s.id === "s1") router.push("/rental");
+                else if (s.id === "s2")
+                  router.push("/(tabs)/appointment/CustomizeClothes");
+                else if (s.id === "s3")
+                  router.push("/(tabs)/appointment/RepairClothes");
+                else if (s.id === "s4")
+                  router.push("/(tabs)/appointment/DryCleaning");
+              }}
+            >
+              <LinearGradient
+                colors={["rgba(153,27,27,0.08)", "rgba(153,27,27,0.04)"]}
+                style={styles.serviceGradient}
+              />
+              <Image
+                source={s.icon}
+                style={styles.serviceImage}
+                resizeMode="cover"
+              />
+              <Text style={styles.serviceLabel}>{s.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Featured Rentals */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Rentals</Text>
+          <TouchableOpacity onPress={() => router.push("/rental")}>
+            <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
-        ))}
-      </View>
+        </View>
 
-      {/* RENTALS */}
-      <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionTitle}>Rental Clothes</Text>
-        <TouchableOpacity onPress={() => router.push("../rental")}>
-          <Text style={styles.seeAll}>See all →</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.rentalGrid}>
+          {rentals.map((r) => (
+            <TouchableOpacity
+              key={r.id}
+              style={styles.rentalCard}
+              activeOpacity={0.9}
+              onPress={() => router.push(`/rental/${r.id}`)}
+            >
+              <Image
+                source={r.image}
+                style={styles.rentalImage}
+                resizeMode="cover"
+              />
+              <LinearGradient
+                colors={["transparent", "rgba(0,0,0,0.6)"]}
+                style={styles.rentalOverlay}
+              />
+              <View style={styles.rentalInfo}>
+                <Text style={styles.rentalTitle} numberOfLines={2}>
+                  {r.title}
+                </Text>
+                <Text style={styles.rentalPrice}>₱{r.price}/day</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
 
-      <View style={styles.grid}>
-        {rentals.map((r) => (
-          <TouchableOpacity
-            key={r.id}
-            style={styles.itemCard}
-            onPress={() => router.push("../rental")}
-          >
-            <Image source={r.image} style={styles.itemImage} />
-            <View style={{ padding: 8 }}>
-              <Text style={styles.itemTitle}>{r.title}</Text>
-              <Text style={styles.itemPrice}>₱ {r.price}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* FIXED BOTTOM NAV */}
+      {/* Bottom Navigation - Untouched */}
       <View style={styles.bottomNav}>
         <View style={styles.navItemWrapActive}>
           <Ionicons name="home" size={20} color="#7A5A00" />
         </View>
-        <TouchableOpacity onPress={() => router.push("/(tabs)/appointment/AppointmentScreen")}>
+
+        <TouchableOpacity
+          onPress={() => router.push("/(tabs)/appointment/AppointmentScreen")}
+        >
           <View style={styles.navItemWrap}>
             <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
-        <View style={styles.navItemWrap} pointerEvents="none">
-          <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
-        </View>
-        <View style={styles.navItemWrap} pointerEvents="none">
-          <Ionicons name="person-outline" size={20} color="#9CA3AF" />
-        </View>
+        <TouchableOpacity disabled>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push("../UserProfile/profile")}>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="person-outline" size={20} color="#9CA3AF" />
+          </View>
+        </TouchableOpacity>
       </View>
-      </ScrollView>
     </View>
   );
 }
@@ -153,124 +231,247 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F7F7F8",
+    backgroundColor: "#fafafa",
   },
-  hero: {
-    margin: 16,
-    marginTop: Platform.OS === "android" ? 16 : 24,
-    borderRadius: 16,
+
+  logo: {
+    width: 50,
+    height: 50,
+    borderRadius: 50,
+  },
+  header: {
+    marginTop: height * 0.05,
+    paddingHorizontal: width * 0.04,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerTitle: {
+    fontWeight: "600",
+    fontSize: width * 0.035,
+    color: "#222",
+    flex: 1,
+    marginLeft: 8,
+  },
+  // Header
+  headerSection: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: height * 0.07,
+    paddingBottom: 8,
+  },
+
+  greetingRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    flex: 1,
+  },
+
+  welcomeText: {
+    fontSize: 18,
+    color: "#64748b",
+    fontWeight: "500",
+  },
+
+  userName: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#1e293b",
+    marginLeft: 6,
+    letterSpacing: -0.5,
+  },
+
+  profileIcon: {
+    padding: 4,
+  },
+
+  // Hero
+  heroContainer: {
+    margin: 20,
+    height: height * 0.26,
+    borderRadius: 28,
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 20,
   },
   heroImage: {
     width: "100%",
-    height: height * 0.2,
+    height: "100%",
   },
   heroBadge: {
     position: "absolute",
-    left: 12,
-    bottom: 12,
-    backgroundColor: "rgba(30,58,138,0.9)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    bottom: 50,
+    left: 20,
+    right: 20,
   },
-  sectionHeaderRow: {
-    marginTop: 8,
-    marginHorizontal: 16,
-    paddingTop: 8,
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#ffffff",
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  heroSubtitle: {
+    fontSize: 16,
+    color: "#e2e8f0",
+    marginTop: 6,
+    fontWeight: "500",
+  },
+
+  // Section Headers
+  sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingHorizontal: 24,
+    marginTop: 32,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#222",
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#1e293b",
   },
   seeAll: {
-    color: "#6B7280",
-  },
-  servicesRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginHorizontal: 16,
-    marginTop: 12,
-  },
-  serviceCard: {
-    width: "32%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-  },
-  serviceText: {
-    marginTop: 6,
-    color: "#374151",
+    fontSize: 15,
+    color: "#991b1b",
     fontWeight: "600",
   },
-  grid: {
+
+  // Services Grid
+  servicesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    marginHorizontal: 16,
-    marginTop: 12,
+    paddingHorizontal: 20,
   },
-  itemCard: {
-    width: "48%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    marginBottom: 12,
+  serviceCard: {
+    width: width * 0.44,
+    height: width * 0.44,
+    backgroundColor: "#ffffff",
+    borderRadius: 24,
+    marginBottom: 16,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: "rgba(153,27,27,0.12)",
+    shadowColor: "#991b1b",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  serviceGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  serviceImage: {
+    width: "100%",
+    height: "100%",
+    opacity: 0.92,
+  },
+  serviceLabel: {
+    position: "absolute",
+    bottom: 16,
+    left: 0,
+    right: 0,
+    textAlign: "center",
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#ffffff",
+    textShadowColor: "rgba(0,0,0,0.7)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+
+  // Rental Grid
+  rentalGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  rentalCard: {
+    width: width * 0.44,
+    height: width * 0.58,
+    backgroundColor: "#ffffff",
+    borderRadius: 24,
+    marginBottom: 20,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#EEE",
+    borderColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 12,
   },
-  itemImage: {
+  rentalImage: {
     width: "100%",
-    height: 110,
+    height: "100%",
   },
-  itemTitle: {
+  rentalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  rentalInfo: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  rentalTitle: {
+    fontSize: 14,
     fontWeight: "700",
-    color: "#1F2937",
+    color: "#ffffff",
+    lineHeight: 18,
   },
-  itemPrice: {
-    color: "#6B7280",
-    marginTop: 2,
+  rentalPrice: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#fbbf24",
+    marginTop: 4,
   },
+
+  // Bottom Nav - UNTOUCHED
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    backgroundColor: "#f5f5f5",
-    paddingVertical: height * 0.018,
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#EEE",
     position: "absolute",
     bottom: 0,
-    width: "100%",
+    left: 0,
+    right: 0,
+    elevation: 10,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 10,
+    shadowOffset: { width: 0, height: -3 },
   },
   navItemWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#F3F4F6",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#E5E7EB",
   },
   navItemWrapActive: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#FDE68A",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FDE68A",
   },
 });

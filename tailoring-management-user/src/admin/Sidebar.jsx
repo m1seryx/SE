@@ -15,7 +15,7 @@ function Sidebar() {
         <NavLink to="/admin" className={({ isActive }) => isActive ? 'active' : ''}>
           Dashboard
         </NavLink>
-        <NavLink to="/Customize" className={({ isActive }) => isActive ? 'active' : ''}>
+        <NavLink to="/customize" className={({ isActive }) => isActive ? 'active' : ''}>
           Customization
         </NavLink>
         <NavLink to="/drycleaning" className={({ isActive }) => isActive ? 'active' : ''}>
@@ -27,10 +27,10 @@ function Sidebar() {
         <NavLink to="/Post" className={({ isActive }) => isActive ? 'active' : ''}>
           Post rent
         </NavLink>
-        <NavLink to="/Repair" className={({ isActive }) => isActive ? 'active' : ''}>
+        <NavLink to="/repair" className={({ isActive }) => isActive ? 'active' : ''}>
           Repair
         </NavLink>
-        <NavLink to="/Inventory" className={({ isActive }) => isActive ? 'active' : ''}>
+        <NavLink to="/inventory" className={({ isActive }) => isActive ? 'active' : ''}>
           Inventory
         </NavLink>
       </nav>

@@ -28,6 +28,11 @@ const CustomerPage = () => {
     navigate("/auth");
   };
 
+  
+  const goToRent = () => {
+    navigate("/Rental");
+  };
+
   return (
     <div>
       {/* Hero Section */}
@@ -37,7 +42,7 @@ const CustomerPage = () => {
         style={{ backgroundImage: `url(${background})` }}
       >
         <div className="info">
-          <span className="welcome">Welcome to Jackman Tailor Deluxe!</span>
+          <span className="welcome">Welcome to Jackman's <br/> Tailor Deluxe!</span>
           <span className="text">Your Perfect Fit Awaits.</span>
         </div>
       </div>
@@ -89,7 +94,7 @@ const CustomerPage = () => {
             <button
               type="button"
               className="see-more"
-              onClick={goToAuth}
+              onClick={goToRent}
             >
               See more →
             </button>

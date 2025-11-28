@@ -1,11 +1,14 @@
+// App.jsx
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import "./App.css";
-import AdminHeader from "./admin/AdminHeader";
-import Sidebar from "./admin/Sidebar";
 import Header from "./components/Header";
 import AuthOverlay from "./components/AuthOverlay";
 import CustomerPage from "./pages/CustomerPage";
+
+
+
+// Admin imports
 import AdminPage from './admin/AdminPage';
 import Rental from './admin/Rental';
 import DryCleaning from './admin/drycleaning';
@@ -16,21 +19,24 @@ import Customize from './admin/Customize';
 
 const App = () => {
   return (
-    <Router>
+    <>
       <Header />
       <Routes>
+        {/* Customer Routes */}
         <Route path="/" element={<CustomerPage />} />
         <Route path="/auth" element={<AuthOverlay />} />
+
         
-        <Route path="/admin/admin" element={<AdminPage />} />
+        {/* Admin Routes */}
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/rental" element={<Rental />} />
         <Route path="/admin/drycleaning" element={<DryCleaning />} />
         <Route path="/admin/repair" element={<Repair />} />
-        <Route path="/admin/Post" element={<Post />} />
+        <Route path="/admin/post" element={<Post />} />
         <Route path="/admin/inventory" element={<Inventory />} />
         <Route path="/admin/customize" element={<Customize />} />
       </Routes>
-    </Router>
+    </>
   );
 };
 
