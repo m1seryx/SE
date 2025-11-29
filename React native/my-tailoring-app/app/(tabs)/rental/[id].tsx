@@ -104,7 +104,10 @@ export default function RentalDetail() {
   return (
     <ScrollView style={styles.container}>
       {/* Back Button */}
-      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+      <TouchableOpacity
+        style={styles.backBtn}
+        onPress={() => router.replace("/home")}
+      >
         <Text style={{ fontSize: 25 }}>←</Text>
       </TouchableOpacity>
 

@@ -2,10 +2,6 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import "./App.css";
-import Header from "./components/Header";
-import AuthOverlay from "./components/AuthOverlay";
-import CustomerPage from "./pages/CustomerPage";
-
 
 
 // Admin imports
@@ -16,25 +12,28 @@ import Repair from './admin/repair';
 import Post from './admin/PostRent';
 import Inventory from './admin/Inventory';
 import Customize from './admin/Customize';
+import Billing from './admin/Billing';
+
 
 const App = () => {
   return (
     <>
-      <Header />
       <Routes>
         {/* Customer Routes */}
-        <Route path="/" element={<CustomerPage />} />
-        <Route path="/auth" element={<AuthOverlay />} />
 
-        
+
+
         {/* Admin Routes */}
+        <Route path="/" element={<AdminPage />} />
         <Route path="/admin" element={<AdminPage />} />
-        <Route path="/admin/rental" element={<Rental />} />
-        <Route path="/admin/drycleaning" element={<DryCleaning />} />
-        <Route path="/admin/repair" element={<Repair />} />
-        <Route path="/admin/post" element={<Post />} />
-        <Route path="/admin/inventory" element={<Inventory />} />
-        <Route path="/admin/customize" element={<Customize />} />
+        <Route path="/rental" element={<Rental />} />
+        <Route path="/drycleaning" element={<DryCleaning />} />
+        <Route path="/repair" element={<Repair />} />
+        <Route path="/post" element={<Post />} />
+        <Route path="/inventory" element={<Inventory />} />
+        <Route path="/customize" element={<Customize />} />
+        <Route path="/Billing" element={<Billing />} />
+
       </Routes>
     </>
   );

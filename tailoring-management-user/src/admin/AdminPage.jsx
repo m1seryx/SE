@@ -67,7 +67,6 @@ function AdminPage() {
       <div className="content">
         <div className="dashboard-title">
           <h2>Dashboard Overview</h2>
-          <p>Here's what's happening at your tailoring shop today</p>
         </div>
 
         <div className="stats-grid">
@@ -83,7 +82,7 @@ function AdminPage() {
         <div className="recent-activity">
           <table>
             <caption>Recent Activity</caption>
-            <thead>
+            <thead className='recent'>
               <tr>
                 <th>Customer</th>
                 <th>Type of Service</th>

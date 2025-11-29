@@ -11,7 +11,6 @@ const DryCleaning = () => {
       uniqueNo: "D223111",
       name: "Juan Dela Cruz",
       garment: "Suit",
-      ClothingBrand: "Channel",
       Quantity: "1 kilo",
       price: 500,
       date: "2024-11-25",
@@ -22,7 +21,6 @@ const DryCleaning = () => {
       uniqueNo: "D223112",
       name: "Ana Garcia",
       garment: "Wedding Dress",
-      ClothingBrand: "Channel",
       Quantity: "1 kilo",
       price: 1200,
       date: "2024-11-26",
@@ -37,7 +35,6 @@ const DryCleaning = () => {
       uniqueNo: "D223113",
       name: "Maria Santos",
       garment: "Barong",
-      ClothingBrand: "Channel",
       Quantity: "1 kilo",
       price: 800,
       date: "2024-11-20",
@@ -49,7 +46,6 @@ const DryCleaning = () => {
       uniqueNo: "D244222",
       name: "Ben Santos",
       garment: "Wedding Gown",
-      ClothingBrand: "Channel",
       Quantity: "1 kilo",
       price: 1500,
       date: "2024-11-18",
@@ -61,7 +57,6 @@ const DryCleaning = () => {
       uniqueNo: "D244333",
       name: "Sofia Santos",
       garment: "Dress",
-      ClothingBrand: "Channel",
       Quantity: "1 kilo",
       price: 600,
       date: "2024-11-15",
@@ -73,7 +68,6 @@ const DryCleaning = () => {
       uniqueNo: "D244444",
       name: "Carlos Santos",
       garment: "Barong",
-      ClothingBrand: "Channel",
       Quantity: "1 kilo",
       price: 750,
       date: "2024-11-10",
@@ -92,7 +86,6 @@ const DryCleaning = () => {
   const [newOrder, setNewOrder] = useState({
     name: '',
     garment: '',
-    ClothingBrand: '',
     Quantity: '',
     price: '',
     status: 'In Progress'
@@ -186,7 +179,7 @@ const DryCleaning = () => {
   const generateUniqueNo = () => 'D' + Date.now().toString().slice(-6);
 
   const handleAddOrder = () => {
-    if (!newOrder.name || !newOrder.garment || !newOrder.ClothingBrand || !newOrder.Quantity || !newOrder.price || parseFloat(newOrder.price) <= 0) {
+    if (!newOrder.name || !newOrder.garment || !newOrder.Quantity || !newOrder.price || parseFloat(newOrder.price) <= 0) {
       alert('Please fill all fields correctly.');
       return;
     }
@@ -196,7 +189,6 @@ const DryCleaning = () => {
       uniqueNo: generateUniqueNo(),
       name: newOrder.name,
       garment: newOrder.garment,
-      ClothingBrand: newOrder.ClothingBrand,
       Quantity: newOrder.Quantity,
       price: parseFloat(newOrder.price),
       date: new Date().toISOString().split('T')[0],
@@ -206,7 +198,7 @@ const DryCleaning = () => {
 
     setAllItems([...allItems, order]);
     setShowAddModal(false);
-    setNewOrder({ name: '', garment: '', ClothingBrand: '', Quantity: '', price: '', status: 'In Progress' });
+    setNewOrder({ name: '', garment: '', Quantity: '', price: '', status: 'In Progress' });
     alert('Order added successfully!');
   };
 
@@ -222,8 +214,10 @@ const DryCleaning = () => {
       <AdminHeader />
       <div className="content">
         <div className="dashboard-title">
-          <h2>Dry Cleaning Management</h2>
-          <p>Track and manage all dry cleaning orders</p>
+          <div>
+            <h2>Dry Cleaning Management</h2>
+            <p>Track and manage all dry cleaning orders</p>
+          </div>
           <button className="add-rep" onClick={() => setShowAddModal(true)}>Add Order +</button>
         </div>
 
@@ -290,7 +284,7 @@ const DryCleaning = () => {
         <div className="search-container">
           <input
             type="text"
-            placeholder="Search by Unique No."
+            placeholder="Search by Unique No. or Name"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -310,7 +304,6 @@ const DryCleaning = () => {
                 <th>Unique No.</th>
                 <th>Name</th>
                 <th>Garment</th>
-                <th>Clothing Brand</th>
                 <th>Quantity</th>
                 <th>Date</th>
                 <th>Status</th>
@@ -320,7 +313,7 @@ const DryCleaning = () => {
             <tbody>
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
                     No items found
                   </td>
                 </tr>
@@ -330,7 +323,6 @@ const DryCleaning = () => {
                     <td><strong>{item.uniqueNo}</strong></td>
                     <td>{item.name}</td>
                     <td>{item.garment}</td>
-                    <td>{item.ClothingBrand}</td>
                     <td>{item.Quantity}</td>
                     <td>{item.date}</td>
                     <td>
@@ -357,19 +349,50 @@ const DryCleaning = () => {
                           <button
                             className="accept-btn"
                             onClick={() => handleAccept(item.id)}
+                            style={{
+                              padding: '10px 10px',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                              fontSize: '10px',
+                              background: '#27AE60',
+                              color: 'white'
+                            }}
                           >
                             Accept
                           </button>
                           <button
                             className="decline-btn"
                             onClick={() => handleDecline(item.id)}
+                            style={{
+                              padding: '10px 10px',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                              fontSize: '10px',
+                              background: '#E74C3C',
+                              color: 'white'
+                            }}
                           >
                             Decline
                           </button>
                           <button
                             className="action-btn"
                             onClick={() => handleViewDetails(item.id)}
+                            style={{
+                              padding: '10px 10px',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                              fontSize: '10px',
+                              background: '#2196f3',
+                              color: 'white'
+                            }}
                           >
+                            
                             View
                           </button>
                         </div>
@@ -417,15 +440,6 @@ const DryCleaning = () => {
                   placeholder="e.g. Wedding Gown"
                   value={newOrder.garment}
                   onChange={(e) => setNewOrder({ ...newOrder, garment: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Clothing Brand</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Channel"
-                  value={newOrder.ClothingBrand}
-                  onChange={(e) => setNewOrder({ ...newOrder, ClothingBrand: e.target.value })}
                 />
               </div>
               <div className="form-group">
@@ -491,10 +505,6 @@ const DryCleaning = () => {
                 <span>{selectedOrder.garment}</span>
               </div>
               <div className="detail-row">
-                <strong>Clothing Brand:</strong> 
-                <span>{selectedOrder.ClothingBrand}</span>
-              </div>
-              <div className="detail-row">
                 <strong>Quantity:</strong> 
                 <span>{selectedOrder.Quantity}</span>
               </div>
@@ -516,7 +526,7 @@ const DryCleaning = () => {
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn-cancel" onClick={() => setShowDetailModal(false)}>Close</button>
+              <button className="close-btn" onClick={() => setShowDetailModal(false)}>Close</button>
             </div>
           </div>
         </div>

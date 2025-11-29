@@ -100,7 +100,6 @@ function Rental() {
       <div className="content">
         <div className="dashboard-title">
           <h2>Rental Management</h2>
-          <p>Track rental items and manage returns</p>
           <button className="add-rep" onClick={() => setShowAddModal(true)}>
             Add Rental +
           </button>

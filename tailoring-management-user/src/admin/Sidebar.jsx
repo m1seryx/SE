@@ -30,6 +30,9 @@ function Sidebar() {
         <NavLink to="/repair" className={({ isActive }) => isActive ? 'active' : ''}>
           Repair
         </NavLink>
+        <NavLink to="/billing" className={({ isActive}) => isActive ? 'active' : ''}>
+          Billing
+        </NavLink>
         <NavLink to="/inventory" className={({ isActive }) => isActive ? 'active' : ''}>
           Inventory
         </NavLink>

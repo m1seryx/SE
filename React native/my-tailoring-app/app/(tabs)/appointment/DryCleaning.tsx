@@ -1,3 +1,4 @@
+// app/(tabs)/appointment/DryCleaning.tsx
 import React, { useState } from "react";
 import {
   View,
@@ -52,7 +53,7 @@ export default function DryCleaningClothes() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={{ paddingBottom: height * 0.12 }}
+        contentContainerStyle={{ paddingBottom: height * 0.18 }}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -61,88 +62,104 @@ export default function DryCleaningClothes() {
             style={styles.logo}
           />
           <Text style={styles.headerTitle}>Jackman Tailor Deluxe</Text>
-          <TouchableOpacity style={styles.profileIcon}>
-            <Ionicons name="person-circle-outline" size={28} color="#000" />
-          </TouchableOpacity>
         </View>
 
-        {/* Card */}
+        {/* Main Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Dry Cleaning Service</Text>
-            <Text style={styles.cardSubtitle}>Fill in your details</Text>
+            <Text style={styles.cardSubtitle}>
+              We'll make it fresh and clean
+            </Text>
           </View>
 
-          {/* Upload Photo */}
+          {/* Image Upload */}
           <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
             {image ? (
               <Image source={{ uri: image }} style={styles.previewImage} />
             ) : (
-              <View style={{ alignItems: "center" }}>
-                <Ionicons name="cloud-upload-outline" size={28} color="#777" />
-                <Text style={{ color: "#777", marginTop: 5 }}>
-                  Upload a photo
+              <View style={styles.uploadContent}>
+                <View style={styles.uploadIconCircle}>
+                  <Ionicons name="camera-outline" size={36} color="#9dc5e3" />
+                </View>
+                <Text style={styles.uploadText}>
+                  Tap to upload photo of garment
+                </Text>
+                <Text style={styles.uploadSubtext}>
+                  Clear image helps us serve you better
                 </Text>
               </View>
             )}
           </TouchableOpacity>
 
-          {/* Type of Garment */}
-          <Text style={styles.label}>Type of Garment</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={selectedItem}
-              onValueChange={(value) => setSelectedItem(value)}
-              style={styles.picker}
-            >
-              <Picker.Item
-                label="Select garment (shirt, pants, suit, dress...)"
-                value=""
-              />
-              {garmentTypes.map((item, index) => (
-                <Picker.Item label={item} value={item} key={index} />
-              ))}
-            </Picker>
+          {/* Form Fields */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Type of Garment</Text>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={selectedItem}
+                onValueChange={(value) => setSelectedItem(value)}
+                style={styles.picker}
+                dropdownIconColor="#9dc5e3"
+              >
+                <Picker.Item
+                  label="Select garment type..."
+                  value=""
+                  color="#999"
+                />
+                {garmentTypes.map((item) => (
+                  <Picker.Item label={item} value={item} key={item} />
+                ))}
+              </Picker>
+            </View>
           </View>
 
-          {/* Clothing Brand */}
-          <Text style={styles.label}>Clothing Brand (Optional)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter brand name (e.g., Nike, Adidas)"
-            value={clothingBrand}
-            onChangeText={setClothingBrand}
-          />
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Clothing Brand (Optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter brand name (e.g., Nike, Adidas)"
+              placeholderTextColor="#94a3b8"
+              value={clothingBrand}
+              onChangeText={setClothingBrand}
+            />
+          </View>
 
-          {/* Quantity */}
-          <Text style={styles.label}>Quantity</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Number of items (e.g., 3)"
-            keyboardType="numeric"
-            value={quantity}
-            onChangeText={setQuantity}
-          />
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Quantity</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Number of items (e.g., 3)"
+              placeholderTextColor="#94a3b8"
+              keyboardType="numeric"
+              value={quantity}
+              onChangeText={setQuantity}
+            />
+          </View>
 
-          {/* Special Instructions */}
-          <Text style={styles.label}>Special Instructions (Optional)</Text>
-          <TextInput
-            placeholder="Any special care instructions..."
-            style={styles.textArea}
-            multiline
-            numberOfLines={4}
-            value={specialInstructions}
-            onChangeText={setSpecialInstructions}
-          />
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Special Instructions (Optional)</Text>
+            <TextInput
+              placeholder="Any special care instructions..."
+              style={styles.textArea}
+              placeholderTextColor="#94a3b8"
+              multiline
+              numberOfLines={5}
+              value={specialInstructions}
+              onChangeText={setSpecialInstructions}
+              textAlignVertical="top"
+            />
+          </View>
 
           {/* Buttons */}
           <View style={styles.buttonRow}>
             <TouchableOpacity
               style={[styles.button, styles.cancelBtn]}
-              onPress={() => router.push("../home")}
+              onPress={() => router.replace("/home")}
             >
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.button, styles.submitBtn]}
               onPress={() => {
@@ -150,11 +167,10 @@ export default function DryCleaningClothes() {
                   alert("Please fill in all required fields");
                   return;
                 }
-                alert("Dry cleaning request submitted!");
-                router.push("../appointment/appointmentSelection");
+                alert("Dry cleaning request submitted successfully!");
               }}
             >
-              <Text style={styles.submitText}>Submit</Text>
+              <Text style={styles.submitText}>Add Service</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -167,15 +183,14 @@ export default function DryCleaningClothes() {
             <Ionicons name="home" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
-
         <View style={styles.navItemWrapActive}>
           <Ionicons name="receipt-outline" size={20} color="#7A5A00" />
         </View>
-
-        <View style={styles.navItemWrap}>
-          <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
-        </View>
-
+        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
+          </View>
+        </TouchableOpacity>
         <TouchableOpacity onPress={() => router.push("../UserProfile/profile")}>
           <View style={styles.navItemWrap}>
             <Ionicons name="person-outline" size={20} color="#9CA3AF" />
@@ -186,128 +201,182 @@ export default function DryCleaningClothes() {
   );
 }
 
+// MATCHING STYLES FROM REPAIR SCREEN
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#fff" },
+  safeArea: { flex: 1, backgroundColor: "#f8fafc" },
   container: { flex: 1 },
+
   header: {
-    marginTop: height * 0.05,
-    paddingHorizontal: width * 0.04,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: width * 0.06,
+    paddingTop: height * 0.07,
+    paddingBottom: height * 0.03,
   },
-  logo: { width: width * 0.08, height: width * 0.08, borderRadius: 50 },
+  logo: {
+    width: width * 0.12,
+    height: width * 0.12,
+    borderRadius: 14,
+  },
   headerTitle: {
-    fontWeight: "600",
-    fontSize: width * 0.035,
-    color: "#222",
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#1e293b",
     flex: 1,
-    marginLeft: 8,
+    marginLeft: 10,
   },
-  profileIcon: { marginLeft: 8 },
 
   card: {
-    backgroundColor: "#fff",
-    width: "85%",
-    alignSelf: "center",
-    marginTop: height * 0.05,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#ddd",
+    marginHorizontal: width * 0.06,
+    marginTop: height * 0.04,
+    marginBottom: height * 0.04,
+    backgroundColor: "#ffffff",
+    borderRadius: 28,
+    padding: 28,
+    paddingTop: 32,
     shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-    paddingBottom: 15,
+    shadowRadius: 25,
+    elevation: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
+
   cardHeader: {
-    backgroundColor: "#cfd8e4",
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
-    paddingVertical: height * 0.02,
     alignItems: "center",
+    paddingBottom: 20,
+    borderBottomWidth: 1.5,
+    borderBottomColor: "#e2e8f0",
+    marginBottom: 32,
   },
   cardTitle: {
-    fontSize: width * 0.04,
-    fontWeight: "700",
-    color: "#2c2c2c",
+    fontSize: width * 0.065,
+    fontWeight: "800",
+    color: "#1e293b",
   },
   cardSubtitle: {
-    color: "#666",
-    fontSize: width * 0.03,
-    marginTop: 4,
+    fontSize: width * 0.04,
+    color: "#64748b",
+    marginTop: 8,
   },
 
   uploadBox: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 12,
-    height: 150,
+    height: 200,
+    borderRadius: 24,
+    borderWidth: 2.5,
+    borderColor: "#cbd5e1",
+    borderStyle: "dashed",
+    backgroundColor: "#f8fafc",
     justifyContent: "center",
     alignItems: "center",
-    margin: 20,
-    backgroundColor: "#f7f7f7",
+    marginBottom: 32,
   },
-  previewImage: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 12,
-    resizeMode: "cover",
+  previewImage: { width: "100%", height: "100%", borderRadius: 22 },
+  uploadContent: { alignItems: "center", paddingHorizontal: 32 },
+  uploadIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#e0f2fe",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  uploadText: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#475569",
+  },
+  uploadSubtext: {
+    fontSize: 13.5,
+    color: "#94a3b8",
+    marginTop: 6,
+    textAlign: "center",
+  },
+
+  fieldContainer: {
+    marginBottom: 28,
   },
 
   label: {
-    fontWeight: "600",
-    marginLeft: 25,
-    color: "#333",
-    fontSize: width * 0.032,
-    marginTop: 8,
-    marginBottom: 3,
+    fontSize: width * 0.042,
+    fontWeight: "700",
+    color: "#1e293b",
+    marginBottom: 10,
+    marginLeft: 4,
   },
-  pickerContainer: {
-    marginHorizontal: 20,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 10,
-    marginBottom: 15,
+
+  pickerWrapper: {
+    borderWidth: 2,
+    borderColor: "#cbd5e1",
+    borderRadius: 18,
+    backgroundColor: "#ffffff",
     overflow: "hidden",
   },
-  picker: { width: "100%", height: 45 },
+  picker: {
+    height: 54,
+    color: "#1e293b",
+  },
 
   input: {
-    marginHorizontal: 20,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 15,
+    borderWidth: 2,
+    borderColor: "#cbd5e1",
+    borderRadius: 18,
+    padding: 18,
+    fontSize: 15.5,
+    backgroundColor: "#ffffff",
+    color: "#1e293b",
   },
 
   textArea: {
-    marginHorizontal: 20,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 10,
-    padding: 10,
-    textAlignVertical: "top",
-    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: "#cbd5e1",
+    borderRadius: 18,
+    padding: 18,
+    fontSize: 15.5,
+    backgroundColor: "#ffffff",
+    minHeight: 130,
+    color: "#1e293b",
   },
 
   buttonRow: {
     flexDirection: "row",
-    justifyContent: "center",
-    gap: 12,
+    justifyContent: "space-between",
+    marginTop: 20,
   },
   button: {
-    width: width * 0.3,
-    borderRadius: 20,
+    flex: 1,
+    height: 58,
+    borderRadius: 18,
+    justifyContent: "center",
     alignItems: "center",
-    paddingVertical: height * 0.012,
+    marginHorizontal: 10,
   },
-  cancelBtn: { backgroundColor: "#f8d7da" },
-  submitBtn: { backgroundColor: "#9dc5e3" },
-  cancelText: { color: "#b94a48", fontWeight: "600" },
-  submitText: { color: "#fff", fontWeight: "600" },
+  cancelBtn: {
+    backgroundColor: "#fee2e2",
+    borderWidth: 2,
+    borderColor: "#fca5a5",
+  },
+  submitBtn: {
+    backgroundColor: "#3b82f6",
+    shadowColor: "#3b82f6",
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+  },
+  cancelText: {
+    color: "#dc2626",
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  submitText: {
+    color: "#ffffff",
+    fontWeight: "700",
+    fontSize: 15,
+  },
 
   bottomNav: {
     flexDirection: "row",

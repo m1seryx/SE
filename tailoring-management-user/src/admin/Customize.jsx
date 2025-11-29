@@ -13,7 +13,15 @@ const Customize = () => {
       garment: "Suit",
       date: "2024-11-25",
       price: 1200,
-      isPending: true
+      isPending: true,
+      measurements: {
+        chest: "",
+        waist: "",
+        hips: "",
+        shoulders: "",
+        sleeves: "",
+        length: ""
+      }
     },
     {
       id: 2,
@@ -22,7 +30,15 @@ const Customize = () => {
       garment: "Wedding Dress",
       date: "2024-11-26",
       price: 2500,
-      isPending: true
+      isPending: true,
+      measurements: {
+        chest: "",
+        waist: "",
+        hips: "",
+        shoulders: "",
+        sleeves: "",
+        length: ""
+      }
     }
   ];
 
@@ -36,7 +52,15 @@ const Customize = () => {
       date: "2024-11-20",
       price: 900,
       status: "In Progress",
-      isPending: false
+      isPending: false,
+      measurements: {
+        chest: "38",
+        waist: "32",
+        hips: "40",
+        shoulders: "16",
+        sleeves: "24",
+        length: "30"
+      }
     },
     {
       id: 4,
@@ -46,7 +70,15 @@ const Customize = () => {
       date: "2024-11-18",
       price: 1800,
       status: "To Pick up",
-      isPending: false
+      isPending: false,
+      measurements: {
+        chest: "36",
+        waist: "28",
+        hips: "38",
+        shoulders: "15",
+        sleeves: "22",
+        length: "58"
+      }
     },
     {
       id: 5,
@@ -56,7 +88,15 @@ const Customize = () => {
       date: "2024-11-15",
       price: 800,
       status: "Completed",
-      isPending: false
+      isPending: false,
+      measurements: {
+        chest: "34",
+        waist: "26",
+        hips: "36",
+        shoulders: "14",
+        sleeves: "20",
+        length: "40"
+      }
     },
     {
       id: 6,
@@ -66,15 +106,26 @@ const Customize = () => {
       date: "2024-11-10",
       price: 1200,
       status: "Overdue",
-      isPending: false
+      isPending: false,
+      measurements: {
+        chest: "40",
+        waist: "34",
+        hips: "42",
+        shoulders: "17",
+        sleeves: "25",
+        length: "32"
+      }
     }
   ];
 
   const [allItems, setAllItems] = useState([...initialAppointments, ...initialOrders]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [viewFilter, setViewFilter] = useState("all"); // 'all', 'pending', 'accepted'
+  const [viewFilter, setViewFilter] = useState("all");
   const [detailModal, setDetailModal] = useState({ open: false, order: null });
+  const [editMode, setEditMode] = useState(false);
+  const [editedOrder, setEditedOrder] = useState(null);
+  const [messageModal, setMessageModal] = useState({ open: false, orderId: null, message: "" });
 
   // Get pending appointments
   const pendingAppointments = allItems.filter(item => item.isPending);
@@ -102,7 +153,6 @@ const Customize = () => {
       items = allItems;
     }
 
-    // Apply search filter
     items = items.filter(item => {
       const matchesSearch = searchTerm === "" || 
         item.uniqueNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -111,7 +161,6 @@ const Customize = () => {
       return matchesSearch;
     });
 
-    // Apply status filter only for accepted orders
     if (statusFilter && !items[0]?.isPending) {
       items = items.filter(item => item.status === statusFilter);
     }
@@ -154,7 +203,52 @@ const Customize = () => {
     const item = allItems.find(o => o.id === id);
     if (item) {
       setDetailModal({ open: true, order: item });
+      setEditedOrder(JSON.parse(JSON.stringify(item))); // Deep copy
+      setEditMode(false);
     }
+  };
+
+  const handleEditToggle = () => {
+    setEditMode(!editMode);
+  };
+
+  const handleMeasurementChange = (field, value) => {
+    setEditedOrder({
+      ...editedOrder,
+      measurements: {
+        ...editedOrder.measurements,
+        [field]: value
+      }
+    });
+  };
+
+  const handleSaveEdit = () => {
+    setAllItems(allItems.map(item => 
+      item.id === editedOrder.id ? editedOrder : item
+    ));
+    setDetailModal({ open: true, order: editedOrder });
+    setEditMode(false);
+    alert("Measurements updated successfully!");
+  };
+
+  const handleCancelEdit = () => {
+    setEditedOrder(JSON.parse(JSON.stringify(detailModal.order)));
+    setEditMode(false);
+  };
+
+  const openMessageModal = (orderId) => {
+    setMessageModal({ open: true, orderId, message: "" });
+  };
+
+  const handleSendMessage = () => {
+    if (messageModal.message.trim() === "") {
+      alert("Please enter a message.");
+      return;
+    }
+    
+    const order = allItems.find(o => o.id === messageModal.orderId);
+    alert(`Message sent to ${order.name}:\n\n"${messageModal.message}"`);
+    setMessageModal({ open: false, orderId: null, message: "" });
   };
 
   const getStatusClass = (status) => {
@@ -282,7 +376,6 @@ const Customize = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
 
-          {/* Only show status filter for accepted orders */}
           {viewFilter !== 'pending' && (
             <select
               value={statusFilter}
@@ -423,21 +516,28 @@ const Customize = () => {
       </div>
 
       {/* Order Details Modal */}
-      {detailModal.open && (
+      {detailModal.open && editedOrder && (
         <div
           className="modal-overlay"
           style={{ display: 'flex' }}
-          onClick={() => setDetailModal({ open: false, order: null })}
+          onClick={() => {
+            setDetailModal({ open: false, order: null });
+            setEditMode(false);
+          }}
         >
           <div
             className="modal-content"
+            style={{ maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
               <h2>{detailModal.order?.isPending ? 'Appointment' : 'Order'} Details</h2>
               <span
                 className="close-modal"
-                onClick={() => setDetailModal({ open: false, order: null })}
+                onClick={() => {
+                  setDetailModal({ open: false, order: null });
+                  setEditMode(false);
+                }}
               >
                 ×
               </span>
@@ -453,41 +553,129 @@ const Customize = () => {
               </div>
               <div className="detail-row">
                 <strong>Unique No:</strong>
-                <span>{detailModal.order?.uniqueNo}</span>
+                <span>{editedOrder.uniqueNo}</span>
               </div>
               <div className="detail-row">
                 <strong>Customer Name:</strong>
-                <span>{detailModal.order?.name}</span>
+                <span>{editedOrder.name}</span>
               </div>
               <div className="detail-row">
                 <strong>Customization Details:</strong>
-                <span>{detailModal.order?.garment}</span>
+                <span>{editedOrder.garment}</span>
               </div>
               <div className="detail-row">
                 <strong>Date:</strong>
-                <span>{detailModal.order?.date}</span>
+                <span>{editedOrder.date}</span>
               </div>
               <div className="detail-row">
                 <strong>Status:</strong>
-                {detailModal.order?.isPending ? (
+                {editedOrder.isPending ? (
                   <span className="status-badge" style={{ background: '#fff3e0', color: '#f57c00' }}>
                     Pending Appointment
                   </span>
                 ) : (
-                  <span className={`status-badge ${getStatusBadgeClass(detailModal.order?.status)}`}>
-                    {detailModal.order?.status}
+                  <span className={`status-badge ${getStatusBadgeClass(editedOrder.status)}`}>
+                    {editedOrder.status}
                   </span>
                 )}
               </div>
+
+              {/* Measurements Section */}
+              {!editedOrder.isPending && (
+                <div style={{ marginTop: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                    <strong style={{ fontSize: '1.1rem' }}>Measurements (inches)</strong>
+                    {!editMode && (
+                      <button
+                        onClick={handleEditToggle}
+                        style={{
+                          padding: '6px 12px',
+                          background: '#6A3C3E',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '0.9rem',
+                          fontWeight: '600'
+                        }}
+                      >
+                        ✏️ Edit
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    {Object.entries(editedOrder.measurements).map(([key, value]) => (
+                      <div key={key} style={{ display: 'flex', flexDirection: 'column' }}>
+                        <label style={{ fontSize: '0.9rem', fontWeight: '600', marginBottom: '5px', textTransform: 'capitalize' }}>
+                          {key}:
+                        </label>
+                        {editMode ? (
+                          <input
+                            type="text"
+                            value={value}
+                            onChange={(e) => handleMeasurementChange(key, e.target.value)}
+                            style={{
+                              padding: '8px',
+                              border: '2px solid #ddd',
+                              borderRadius: '6px',
+                              fontSize: '0.95rem'
+                            }}
+                          />
+                        ) : (
+                          <span style={{ padding: '8px', background: 'white', borderRadius: '6px', fontSize: '0.95rem' }}>
+                            {value || 'N/A'}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {editMode && (
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '15px', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={handleCancelEdit}
+                        style={{
+                          padding: '8px 16px',
+                          background: '#6c757d',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSaveEdit}
+                        style={{
+                          padding: '8px 16px',
+                          background: '#27AE60',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="modal-footer">
-              {detailModal.order?.isPending ? (
+            
+            <div className="modal-footer" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              {editedOrder.isPending ? (
                 <>
                   <button
                     className="btn-save"
                     onClick={() => {
-                      handleAccept(detailModal.order.id);
+                      handleAccept(editedOrder.id);
                       setDetailModal({ open: false, order: null });
+                      setEditMode(false);
                     }}
                   >
                     Accept
@@ -496,22 +684,118 @@ const Customize = () => {
                     className="close-btn"
                     style={{ background: '#E74C3C' }}
                     onClick={() => {
-                      handleDecline(detailModal.order.id);
+                      handleDecline(editedOrder.id);
                       setDetailModal({ open: false, order: null });
+                      setEditMode(false);
                     }}
                   >
                     Decline
                   </button>
                 </>
               ) : (
-                <button
-                  className="close-btn"
-                  onClick={() => setDetailModal({ open: false, order: null })}
-                >
-                  Edit
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      openMessageModal(editedOrder.id);
+                    }}
+                    style={{
+                      padding: '10px 20px',
+                      background: '#2196f3',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: '600'
+                    }}
+                  >
+                    💬 Send Message
+                  </button>
+                  <button
+                    className="close-btn"
+                    onClick={() => {
+                      setDetailModal({ open: false, order: null });
+                      setEditMode(false);
+                    }}
+                  >
+                    Close
+                  </button>
+                </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
 
+      {/* Message Modal */}
+      {messageModal.open && (
+        <div
+          className="modal-overlay"
+          style={{ display: 'flex' }}
+          onClick={() => setMessageModal({ open: false, orderId: null, message: "" })}
+        >
+          <div
+            className="modal-content"
+            style={{ maxWidth: '500px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h2>Send Message to Customer</h2>
+              <span
+                className="close-modal"
+                onClick={() => setMessageModal({ open: false, orderId: null, message: "" })}
+              >
+                ×
+              </span>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: '15px', color: '#666' }}>
+                Notify the customer about material availability or other important information.
+              </p>
+              <textarea
+                value={messageModal.message}
+                onChange={(e) => setMessageModal({ ...messageModal, message: e.target.value })}
+                placeholder="Type your message here... (e.g., 'The fabric you requested is currently unavailable. Would you like to choose an alternative?')"
+                style={{
+                  width: '100%',
+                  minHeight: '150px',
+                  padding: '12px',
+                  border: '2px solid #ddd',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontFamily: 'inherit',
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setMessageModal({ open: false, orderId: null, message: "" })}
+                style={{
+                  padding: '10px 20px',
+                  background: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendMessage}
+                style={{
+                  padding: '10px 20px',
+                  background: '#27AE60',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                📤 Send Message
+              </button>
             </div>
           </div>
         </div>

@@ -149,14 +149,18 @@ const Inventory = () => {
                     <td>₱{order.price.toLocaleString()}</td>
                     <td>
                       <button 
-                        className="viewBtn"
-                        onClick={() => viewOrder(order.id)}
-                      >
-                        View
-                      </button>
-                      <button 
                         className="deleteBtn"
                         onClick={() => confirmDelete(order.id)}
+                        style={{
+                          padding: '10px 10px',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          fontSize: '10px',
+                          background: '#E74C3C',
+                          color: 'white'
+                        }}
                       >
                         Delete
                       </button>

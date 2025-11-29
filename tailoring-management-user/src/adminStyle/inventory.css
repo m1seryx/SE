@@ -236,33 +236,6 @@
 }
 
 /* Buttons */
-.viewBtn, .deleteBtn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.viewBtn {
-  background: #1a4971;
-  color: white;
-}
-
-.viewBtn:hover {
-  background: #15395a;
-}
-
-.deleteBtn {
-  background: #e74c3c;
-  color: white;
-  margin-left: 8px;
-}
-
-.deleteBtn:hover {
-  background: #c0392b;
-}
 
 /* Modals */
 .modal-overlay, .modal {

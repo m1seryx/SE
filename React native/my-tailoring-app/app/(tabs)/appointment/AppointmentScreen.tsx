@@ -93,9 +93,11 @@ export default function AppointmentScreen() {
           <Ionicons name="receipt-outline" size={20} color="#7A5A00" />
         </View>
 
-        <View style={styles.navItemWrap}>
-          <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
-        </View>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
+          </View>
+        </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push("../UserProfile/profile")}>
           <View style={styles.navItemWrap}>

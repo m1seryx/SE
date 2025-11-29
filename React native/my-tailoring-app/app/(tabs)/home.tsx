@@ -213,11 +213,12 @@ export default function HomeScreen() {
             <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
-        <TouchableOpacity disabled>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
           <View style={styles.navItemWrap}>
             <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
+
         <TouchableOpacity onPress={() => router.push("../UserProfile/profile")}>
           <View style={styles.navItemWrap}>
             <Ionicons name="person-outline" size={20} color="#9CA3AF" />
@@ -239,13 +240,7 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 50,
   },
-  header: {
-    marginTop: height * 0.05,
-    paddingHorizontal: width * 0.04,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
+
   headerTitle: {
     fontWeight: "600",
     fontSize: width * 0.035,
@@ -259,8 +254,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: height * 0.07,
-    paddingBottom: 8,
+    paddingTop: Platform.OS === "ios" ? 10 : 20,
+    paddingBottom: 12,
   },
 
   greetingRow: {
