@@ -20,8 +20,10 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
   const [cartItems, setCartItems] = useState([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [appointments, setAppointments] = useState([]);
-  const [appointmentDate, setAppointmentDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const serviceOptions = [
     { type: 'Repair', description: 'Fix and enhance your clothes' },
     { type: 'Customize', description: 'Personalize and customize' },
@@ -75,6 +77,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
           notes: '',
           address: '',
           datetime: '',
+          date: '',
         },
         status: 'pending',
         progress: 0,
@@ -85,7 +88,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
       return [...prev, newItem];
     });
     setServiceModalOpen(false);
-    setAppointmentModalOpen(true);
+    setCartOpen(true);
   };
 
   const updateItemDetails = (id, patch) => {
@@ -100,35 +103,43 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
   const submitAppointment = async () => {
     if (cartItems.length === 0) return;
-    if (!appointmentDate) return;
+    const missingDates = cartItems.some((it) => !it.details.date);
     const missingCustomizeTime = cartItems.some((it) => it.type === 'Customize' && !it.details.time);
-    if (missingCustomizeTime) return;
-    const payload = {
-      services: cartItems.map((it) => ({
-        orderId: it.id,
-        serviceType: it.type,
-        details: { ...it.details, date: appointmentDate },
-      })),
-      customer: { name: userName || user.name, email: user.email },
-      date: appointmentDate,
-    };
+    if (missingDates || missingCustomizeTime) return;
+    const groups = cartItems.reduce((acc, it) => {
+      const d = it.details.date;
+      if (!acc[d]) acc[d] = [];
+      acc[d].push(it);
+      return acc;
+    }, {});
     try {
       setIsSubmitting(true);
-      const res = await fetch(`${API_BASE}/api/appointments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error('Failed to submit');
-      setAppointments((prev) => {
-        const id = 'APT-' + String(prev.length + 1).padStart(4, '0');
-        return [...prev, { id, status: 'pending', services: cartItems }];
-      });
-      setAppointmentModalOpen(false);
+      for (const [date, items] of Object.entries(groups)) {
+        const payload = {
+          services: items.map((it) => ({
+            orderId: it.id,
+            serviceType: it.type,
+            details: { ...it.details },
+          })),
+          customer: { name: userName || user.name, email: user.email },
+          date,
+        };
+        const res = await fetch(`${API_BASE}/api/appointments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error('Failed to submit');
+        setAppointments((prev) => {
+          const id = 'APT-' + String(prev.length + 1).padStart(4, '0');
+          return [...prev, { id, status: 'pending', services: items, date }];
+        });
+      }
       setServiceModalOpen(false);
+      setAppointmentModalOpen(false);
       setNotificationsOpen(true);
+      setCartOpen(false);
       setCartItems([]);
-      setAppointmentDate('');
     } catch {
       setAppointmentModalOpen(false);
     } finally {
@@ -166,6 +177,13 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3a6 6 0 0 1 6 6v4l2 2H4l2-2V9a6 6 0 0 1 6-6z" stroke="#8B4513" strokeWidth="2" fill="none"/><circle cx="12" cy="20" r="2" fill="#8B4513"/></svg>
           {appointments.length > 0 && <span className="notif-badge">{appointments.length}</span>}
         </button>
+        <button className="cart-button" onClick={() => setCartOpen(true)} aria-label="Cart">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 6h15l-2 9H8L6 6z" stroke="#8B4513" strokeWidth="2" fill="none"/><circle cx="9" cy="20" r="2" fill="#8B4513"/><circle cx="17" cy="20" r="2" fill="#8B4513"/></svg>
+          {cartItems.length > 0 && <span className="cart-badge">{cartItems.length}</span>}
+        </button>
+        <button className="profile-trigger" onClick={() => setMenuOpen((v) => !v)} aria-label="Menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="#8B4513" strokeWidth="2"/></svg>
+        </button>
 
         {/* User Profile Section */}
         <div className="user-profile">
@@ -179,6 +197,28 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
           </button>
         </div>
       </header>
+
+      {menuOpen && (
+        <div className="profile-dropdown" onClick={() => setMenuOpen(false)}>
+          <div className="pd-header">
+            <span>Quick Menu</span>
+          </div>
+          <div className="pd-list" onClick={(e) => e.stopPropagation()}>
+            <div className="pd-card">
+              <div className="pd-title">Profile</div>
+              <div className="pd-actions"><button className="btn-secondary" onClick={() => { setProfileOpen(true); setMenuOpen(false); }}>Open</button></div>
+            </div>
+            <div className="pd-card">
+              <div className="pd-title">Notifications</div>
+              <div className="pd-actions"><button className="btn-secondary" onClick={() => { setNotificationsOpen(true); setMenuOpen(false); }}>Open</button></div>
+            </div>
+            <div className="pd-card">
+              <div className="pd-title">Order Tracking</div>
+              <div className="pd-actions"><button className="btn-secondary" onClick={() => { setNotificationsOpen(true); setMenuOpen(false); }}>Open</button></div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hero - Personalized */}
       <section className="hero user-hero" id="top" style={{ backgroundImage: `url(${heroBg})` }}>
@@ -341,7 +381,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
             </div>
             <div className="service-actions">
               <button className="service-cancel" onClick={() => setServiceModalOpen(false)}>Cancel</button>
-              <button className="btn-primary" disabled={cartItems.length===0} onClick={()=>setAppointmentModalOpen(true)}>Review & Submit</button>
+              <button className="btn-primary" disabled={cartItems.length===0} onClick={()=>{ setCartOpen(true); setServiceModalOpen(false); }}>Go to Cart</button>
             </div>
           </div>
         </div>
@@ -350,9 +390,6 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         <div className="modal" onClick={() => setAppointmentModalOpen(false)}>
           <div className="modal-content appointments-modal" onClick={(e) => e.stopPropagation()}>
             <div className="service-title">Review Appointment</div>
-            <div className="appointment-head">
-              <input type="date" value={appointmentDate} onChange={(e)=>setAppointmentDate(e.target.value)} />
-            </div>
             <div className="appointments-list">
               {cartItems.length === 0 && <div className="cart-empty">No services selected</div>}
               {cartItems.map((it) => (
@@ -362,6 +399,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
                     <div className="apt-service-title">{it.type}</div>
                   </div>
                   <div className="cart-form">
+                    <input type="date" value={it.details.date || ''} onChange={(e)=>updateItemDetails(it.id,{date:e.target.value})} />
                     <input value={it.details.brand} onChange={(e)=>updateItemDetails(it.id,{brand:e.target.value})} placeholder="Clothe Brand" />
                     <input value={it.details.size} onChange={(e)=>updateItemDetails(it.id,{size:e.target.value})} placeholder="Size" />
                     <input value={it.details.address} onChange={(e)=>updateItemDetails(it.id,{address:e.target.value})} placeholder="Pickup/Delivery Address" />
@@ -384,7 +422,72 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
             </div>
             <div className="service-actions">
               <button className="service-cancel" onClick={() => setAppointmentModalOpen(false)}>Back</button>
-              <button className="btn-primary" disabled={cartItems.length===0 || !appointmentDate || isSubmitting} onClick={submitAppointment}>{isSubmitting ? 'Submitting...' : 'Submit Appointment'}</button>
+              <button className="btn-primary" disabled={cartItems.length===0 || isSubmitting || cartItems.some(it=>!it.details.date) || cartItems.some(it=>it.type==='Customize' && !it.details.time)} onClick={submitAppointment}>{isSubmitting ? 'Submitting...' : 'Submit Appointment'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cartOpen && (
+        <div className="cart-drawer" onClick={() => setCartOpen(false)}>
+          <div className="cart-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="cart-header">
+              <div className="cart-title">Cart ({cartItems.length})</div>
+              <button className="cart-close" onClick={() => setCartOpen(false)}>×</button>
+            </div>
+            <div className="cart-items">
+              {cartItems.length === 0 && <div className="cart-empty">No services selected</div>}
+              {cartItems.map((it) => (
+                <div key={it.id} className="cart-card">
+                  <div className="cart-card-top">
+                    <div className="order-id">{it.id}</div>
+                    <div className={`status-badge status-${it.status}`}>{it.status}</div>
+                  </div>
+                  <div className="cart-card-body">
+                    <div className="cart-card-info">
+                      <div className="cart-type">{it.type}</div>
+                    </div>
+                    <div className="cart-form">
+                      <input type="date" value={it.details.date || ''} onChange={(e)=>updateItemDetails(it.id,{date:e.target.value})} />
+                      <input value={it.details.brand} onChange={(e)=>updateItemDetails(it.id,{brand:e.target.value})} placeholder="Clothe Brand" />
+                      <input value={it.details.size} onChange={(e)=>updateItemDetails(it.id,{size:e.target.value})} placeholder="Size" />
+                      <input value={it.details.address} onChange={(e)=>updateItemDetails(it.id,{address:e.target.value})} placeholder="Pickup/Delivery Address" />
+                      {it.type === 'Customize' && (
+                        <input type="time" value={it.details.time || ''} onChange={(e)=>updateItemDetails(it.id,{time:e.target.value})} />
+                      )}
+                      <textarea value={it.details.notes} onChange={(e)=>updateItemDetails(it.id,{notes:e.target.value})} placeholder="Notes" />
+                    </div>
+                    <div className="cart-actions">
+                      <button onClick={()=>removeItem(it.id)} className="btn-danger">Remove</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="service-actions" style={{ padding: '14px' }}>
+              <button className="btn-secondary" onClick={()=>setServiceModalOpen(true)}>Add another service</button>
+              <button className="btn-primary" disabled={cartItems.length===0 || isSubmitting || cartItems.some(it=>!it.details.date) || cartItems.some(it=>it.type==='Customize' && !it.details.time)} onClick={()=>{ setAppointmentModalOpen(true); }}>Review & Submit</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {profileOpen && (
+        <div className="modal" onClick={() => setProfileOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="service-title">Profile</div>
+            <div className="appointments-list">
+              <div className="appointment-card">
+                <div className="appointment-top">
+                  <div className="apt-service-title">{userName || user.name}</div>
+                </div>
+                <div className="expand">
+                  <div className="expand-row"><span>Email</span><span>{user.email}</span></div>
+                </div>
+              </div>
+            </div>
+            <div className="service-actions">
+              <button className="service-cancel" onClick={() => setProfileOpen(false)}>Close</button>
             </div>
           </div>
         </div>
