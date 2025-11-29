@@ -1,10 +1,10 @@
 // App.jsx
-import React from "react";
-import { Routes, Route } from "react-router-dom";
+import React, { useState } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
-import Header from "./components/Header";
-import AuthOverlay from "./components/AuthOverlay";
-import CustomerPage from "./pages/CustomerPage";
+import GuestHomePage from "./user/GuestHomePage";
+import UserHomePage from "./user/UserHomePage";
+
 
 
 
@@ -18,17 +18,22 @@ import Inventory from './admin/Inventory';
 import Customize from './admin/Customize';
 
 const App = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
   return (
     <>
-      <Header />
       <Routes>
         {/* Customer Routes */}
-        <Route path="/" element={<CustomerPage />} />
-        <Route path="/auth" element={<AuthOverlay />} />
+        <Route path="/" element={<GuestHomePage setIsLoggedIn={setIsLoggedIn} />} />
+        <Route path="/user/UserHomePage" element={
+          isLoggedIn ? 
+            <UserHomePage setIsLoggedIn={setIsLoggedIn} /> : 
+            <Navigate to="/" replace />
+        } />
 
         
         {/* Admin Routes */}
-        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin/AdminPage" element={<AdminPage />} />
         <Route path="/admin/rental" element={<Rental />} />
         <Route path="/admin/drycleaning" element={<DryCleaning />} />
         <Route path="/admin/repair" element={<Repair />} />
