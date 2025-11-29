@@ -1,102 +1,62 @@
-// UserHomePage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/UserHomePage.css';
 import logo from "../assets/logo.png";
 import dp from "../assets/dp.png";
-import heroBg from "../assets/tailorbackground.jpg";
 import appointmentBg from "../assets/background.jpg";
-import rental1 from "../assets/background11.jpg";
+import heroBg from "../assets/tailorbackground.jpg";
 import suitSample from "../assets/suits.png";
 import customizeBg from "../assets/background.jpg";
-import repairBg from "../assets/background.jpg";
+import repairBg from "../assets/repair.png";
+import brown from "../assets/brown.png";
+import full from "../assets/full.png";
+import tuxedo from "../assets/tuxedo.png";
+import dryCleanBg from "../assets/dryclean.png";
 
 const UserHomePage = ({ userName, setIsLoggedIn }) => {
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  const navigate = useNavigate();
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
-  const [appointmentModalOpen, setAppointmentModalOpen] = useState(false);
-  const [cartItems, setCartItems] = useState([]);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [appointments, setAppointments] = useState([]);
+  const [cartItems, setCartItems] = useState([]);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [appointmentDate, setAppointmentDate] = useState('');
+  const [appointments, setAppointments] = useState(() => {
+    try {
+      const s = typeof window !== 'undefined' && localStorage.getItem('appointments');
+      return s ? JSON.parse(s) : [];
+    } catch {
+      return [];
+    }
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [rentalDate, setRentalDate] = useState('');
-  const [isRented, setIsRented] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (profileDropdownOpen && !event.target.closest('.profile-dropdown')) {
         setProfileDropdownOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [profileDropdownOpen]);
+
   const serviceOptions = [
     { type: 'Repair', description: 'Fix and enhance your clothes' },
     { type: 'Customize', description: 'Personalize and customize' },
     { type: 'Dry Cleaning', description: 'Impeccable clean on your suit' },
   ];
-  const trackingFlows = {
-    Repair: ['Pending', 'In Progress', 'To pick up', 'Completed'],
-    Customize: ['Pending', 'Design', 'Fitting', 'Completed'],
-    'Dry Cleaning': ['Pending', 'Cleaning', 'Ready', 'Completed'],
-    Rental: ['Pending', 'To pick up', 'Active', 'Returned'],
-  };
 
-  // Mock logged-in user (replace with real auth later)
   const user = {
-    name: "Alexander",
-    email: "alex@example.com",
-    avatar: dp
+    name: (typeof window !== 'undefined' && localStorage.getItem('userName')) || userName || 'User',
+    email: (typeof window !== 'undefined' && localStorage.getItem('userEmail')) || '',
+    avatar: dp,
   };
-
-  const rentalItems = [
-    { 
-      name: 'Brown Suit', 
-      price: 'P 800', 
-      img: rental1,
-      description: {
-        size: 'Medium',
-        color: 'Brown',
-        length: 'Regular',
-        material: 'Wool Blend',
-        fit: 'Slim Fit'
-      }
-    },
-    { 
-      name: 'Navy Blazer Set', 
-      price: 'P 1,200', 
-      img: rental1,
-      description: {
-        size: 'Large',
-        color: 'Navy Blue',
-        length: 'Long',
-        material: 'Cotton Blend',
-        fit: 'Regular Fit'
-      }
-    },
-    { 
-      name: 'Black Tuxedo', 
-      price: 'P 1,500', 
-      img: rental1,
-      description: {
-        size: 'Medium',
-        color: 'Black',
-        length: 'Regular',
-        material: 'Premium Wool',
-        fit: 'Classic Fit'
-      }
-    },
-  ];
 
   const openModal = (item) => {
-    console.log('Opening modal for:', item);
     setSelectedItem(item);
     setIsModalOpen(true);
   };
@@ -107,8 +67,9 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
   };
 
   const handleLogout = () => {
-    alert("Logged out successfully!");
-    setIsLoggedIn && setIsLoggedIn(false);
+    if (typeof setIsLoggedIn === 'function') {
+      setIsLoggedIn(false);
+    }
     navigate('/', { replace: true });
   };
 
@@ -118,85 +79,68 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
       const newItem = {
         id,
         type,
-        details: {
-          brand: '',
-          size: '',
-          notes: '',
-          address: '',
-          datetime: '',
-        },
+        details: { brand: '', size: '', notes: '', address: '', datetime: '' },
         status: 'pending',
-        progress: 0,
-        alert: '',
         toPay: true,
         expanded: false,
       };
       return [...prev, newItem];
     });
     setServiceModalOpen(false);
-    setAppointmentModalOpen(true);
+    setCartOpen(true);
   };
 
   const updateItemDetails = (id, patch) => {
     setCartItems((prev) => prev.map((it) => (it.id === id ? { ...it, details: { ...it.details, ...patch } } : it)));
   };
 
-
   const removeItem = (id) => {
     setCartItems((prev) => prev.filter((it) => it.id !== id));
   };
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
   const submitAppointment = async () => {
-    if (cartItems.length === 0) return;
-    if (!appointmentDate) return;
-    const missingCustomizeTime = cartItems.some((it) => it.type === 'Customize' && !it.details.time);
-    if (missingCustomizeTime) return;
+    if (cartItems.length === 0 || !appointmentDate) return;
+    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
     const payload = {
-      services: cartItems.map((it) => ({
-        orderId: it.id,
-        serviceType: it.type,
-        details: { ...it.details, date: appointmentDate },
-      })),
-      customer: { name: userName || user.name, email: user.email },
+      services: cartItems.map((it) => ({ orderId: it.id, serviceType: it.type, details: { ...it.details, date: appointmentDate } })),
+      customer: { name: user.name, email: user.email },
       date: appointmentDate,
     };
     try {
       setIsSubmitting(true);
-      const res = await fetch(`${API_BASE}/api/appointments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(`${API_BASE}/api/appointments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (!res.ok) throw new Error('Failed to submit');
       setAppointments((prev) => {
         const id = 'APT-' + String(prev.length + 1).padStart(4, '0');
-        return [...prev, { id, status: 'pending', services: cartItems }];
+        const next = [...prev, { id, status: 'pending', services: cartItems, date: appointmentDate }];
+        try { localStorage.setItem('appointments', JSON.stringify(next)); } catch (e) { void e }
+        return next;
       });
-      setAppointmentModalOpen(false);
-      setServiceModalOpen(false);
-      setNotificationsOpen(true);
+      setSummaryModalOpen(false);
       setCartItems([]);
       setAppointmentDate('');
     } catch {
-      setAppointmentModalOpen(false);
+      setSummaryModalOpen(false);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleImageUpload = (id, file) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      updateItemDetails(id, { image: reader.result });
-    };
-    reader.readAsDataURL(file);
-  };
+  const rentalItems = [
+    { name: 'Brown Suit', price: 'P 800/day', img: brown },
+    { name: 'Full Suit', price: 'P 800/day', img: full },
+    { name: 'Tuxedo', price: 'P 800/day', img: tuxedo },
+  ];
+
+  const services = [
+    { name: 'Rental', img: heroBg },
+    { name: 'Customize', img: customizeBg },
+    { name: 'Repair', img: repairBg },
+    { name: 'Dry Cleaning', img: dryCleanBg },
+  ];
 
   return (
     <>
-      {/* Header - Now with User Greeting */}
       <header className="header">
         <div className="logo">
           <img src={logo} alt="Logo" className="logo-img" />
@@ -209,78 +153,78 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
           <a href="#Rentals">Rental</a>
           <a href="#Customize">Customize</a>
           <a href="#Repair">Repair</a>
-          <a href="#About">About</a>
+          <a href="#DryCleaning">Dry Cleaning</a>
         </nav>
+        <a href="#About">About</a>
         <button className="notif-button" onClick={() => setNotificationsOpen(true)} aria-label="Notifications">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3a6 6 0 0 1 6 6v4l2 2H4l2-2V9a6 6 0 0 1 6-6z" stroke="#8B4513" strokeWidth="2" fill="none"/><circle cx="12" cy="20" r="2" fill="#8B4513"/></svg>
           {appointments.length > 0 && <span className="notif-badge">{appointments.length}</span>}
         </button>
-
-        {/* User Profile Section */}
-        <div className="user-profile">
-          <div className="user-info">
-            <span className="welcome-text">Welcome back,</span>
-            <span className="user-name">{userName || user.name}</span>
-          </div>
-          <div className="profile-dropdown">
-            <img 
-              src={user.avatar} 
-              alt="User" 
-              className="profile-img clickable" 
-              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-            />
-            {profileDropdownOpen && (
-              <div className="dropdown-menu">
-                <button className="dropdown-item" onClick={() => {
-                  setProfileDropdownOpen(false);
-                  setServiceModalOpen(true);
-                }}>
-                  📅 Book Services
-                </button>
-                <button className="dropdown-item" onClick={() => {
-                  setProfileDropdownOpen(false);
-                  // Navigate to profile page (mock functionality)
-                  alert('My Profile - Feature coming soon!');
-                }}>
-                  👤 My Profile
-                </button>
-                <button className="dropdown-item logout-item" onClick={() => {
-                  setProfileDropdownOpen(false);
-                  handleLogout();
-                }}>
-                  🚪 Logout
-                </button>
-              </div>
-            )}
-          </div>
+        <button className="cart-button" onClick={() => setCartOpen(true)} aria-label="Cart">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 6h14l-2 9H8L6 6z" stroke="#8B4513" strokeWidth="2" fill="none"/><circle cx="9" cy="20" r="2" fill="#8B4513"/><circle cx="17" cy="20" r="2" fill="#8B4513"/></svg>
+          {cartItems.length > 0 && <span className="cart-badge">{cartItems.length}</span>}
+        </button>
+        <div className="user-info">
+          <span className="welcome-text">Welcome back,</span>
+          <span className="user-name">{user.name}</span>
+        </div>
+        <div className="profile-dropdown">
+          <img
+            src={user.avatar}
+            alt="User"
+            className="profile-img clickable"
+            onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+          />
+          {profileDropdownOpen && (
+            <div className="dropdown-menu">
+              <button className="dropdown-item" onClick={() => {
+                setProfileDropdownOpen(false);
+                setServiceModalOpen(true);
+              }}>
+                📅 Book Services
+              </button>
+              <button className="dropdown-item" onClick={() => {
+                setProfileDropdownOpen(false);
+                navigate('/profile');
+              }}>
+                👤 My Profile
+              </button>
+              <button className="dropdown-item logout-item" onClick={() => {
+                setProfileDropdownOpen(false);
+                handleLogout();
+              }}>
+                🚪 Logout
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
-      {/* Hero - Personalized */}
-      <section className="hero user-hero" id="top" style={{ backgroundImage: `url(${heroBg})` }}>
-        <div className="hero-overlay"></div>
-        <div className="hero-content">
-          <h1>Hello, {userName || user.name}!<br />Ready for your next perfect fit?</h1>
-          <p>Your style journey continues here.</p>
-        </div>
-      </section>
-
-      {/* Services */}
+      {/* Hero */}
+            <section className="hero" id="top" style={{ backgroundImage: `url(${heroBg})` }}>
+              <div className="hero-overlay"></div>
+              <div className="hero-content">
+                <h1>Welcome to Jackman <br />Tailor Deluxe!</h1>
+                <p>Your Perfect Fit Awaits.</p>
+              </div>
+            </section>
       <section className="services">
         <h2>Jackman's Services</h2>
         <div className="services-grid">
-          {['Rental', 'Customize', 'Repair', 'Dry Cleaning'].map((service) => (
-            <div key={service} className="service-card">
-              <div className="service-img" style={{ backgroundImage: `url(${heroBg})` }}></div>
+          {services.map(({ name, img }) => (
+            <div key={name} className="service-card">
+              <div
+                className="service-img"
+                style={{ backgroundImage: `url(${img})` }}
+              ></div>
               <div className="service-footer">
-                <h3>{service}</h3>
+                <h3>{name}</h3>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Appointment */}
       <section className="appointment" id="Appointment">
         <h2>Book an Appointment</h2>
         <div className="appointment-content">
@@ -288,16 +232,11 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
           <div className="appointment-overlay">
             <p>Ready for a fitting or consultation?</p>
             <p>We’re excited to serve you again!</p>
-            <button className="btn-book" onClick={() => {
-    console.log('Book Appointment clicked');
-    setServiceModalOpen(true);
-    console.log('serviceModalOpen set to true');
-  }}>Book Appointment</button>
+            <button className="btn-book" onClick={() => setServiceModalOpen(true)}>Book Appointment</button>
           </div>
         </div>
       </section>
 
-      {/* Rental Clothes */}
       <section className="rental" id="Rentals">
         <div className="section-header">
           <h2>Available for Rental</h2>
@@ -309,7 +248,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
               <img src={item.img} alt={item.name} />
               <div className="rental-info">
                 <h3>{item.name}</h3>
-                <p className="price">{item.price}/day</p>
+                <p className="price">{item.price}</p>
                 <button onClick={() => openModal(item)} className="btn-view">View</button>
               </div>
             </div>
@@ -317,22 +256,20 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         </div>
       </section>
 
-      {/* Customization */}
       <section className="customization" id="Customize">
         <div className="custom-text">
           <h2>Bespoke Customization</h2>
           <p>Design your dream suit from scratch</p>
           <p>Premium fabrics • Perfect fit • Your vision</p>
         </div>
-        <div className="custom-image" style={{ backgroundImage: `url(${customizeBg})` }}>
+        <div className="custom-image" style={{ backgroundImage: `url('/src/assets/background11.jpg'), url(${customizeBg})` }}>
           <button className="btn-customize">Start Customizing</button>
         </div>
       </section>
 
-      {/* Repair */}
       <section className="repair" id="Repair">
         <h2>Repair Service</h2>
-        <div className="repair-bg" style={{ backgroundImage: `url(${repairBg})` }}>
+        <div className="repair-bg" style={{ backgroundImage: `url('/src/assets/repair.png'), url(${repairBg})` }}>
           <div className="repair-overlay"></div>
           <div className="repair-content">
             <h3>Bring your garments back to life</h3>
@@ -342,309 +279,147 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         </div>
       </section>
 
-      {/* Rental Modal - Debug Version */}
+      <section className="repair" id="DryCleaning">
+        <h2>Dry Cleaning Service</h2>
+        <div className="repair-bg" style={{ backgroundImage: `url('/src/assets/dryclean.png'), url(${dryCleanBg})` }}>
+          <div className="repair-overlay"></div>
+          <div className="repair-content">
+            <h3>Keep your garments fresh and spotless</h3>
+            <p>Premium care for suits, gowns, and more</p>
+            <button className="btn-book" onClick={() => setServiceModalOpen(true)}>Book Dry Cleaning</button>
+          </div>
+        </div>
+      </section>
+
       {isModalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: '0',
-          left: '0',
-          right: '0',
-          bottom: '0',
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999
-        }} onClick={closeModal}>
-          <div style={{
-            background: 'white',
-            padding: '20px',
-            borderRadius: '12px',
-            maxWidth: '800px',
-            width: '90%',
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }} onClick={(e) => e.stopPropagation()}>
-            <h2>{selectedItem?.name || 'No item selected'}</h2>
-            <p>Price: {selectedItem?.price || 'N/A'}</p>
-            <p>Size: {selectedItem?.description?.size || 'N/A'}</p>
-            <p>Color: {selectedItem?.description?.color || 'N/A'}</p>
-            <p>Length: {selectedItem?.description?.length || 'N/A'}</p>
-            <p>Material: {selectedItem?.description?.material || 'N/A'}</p>
-            <p>Fit: {selectedItem?.description?.fit || 'N/A'}</p>
-            <button onClick={closeModal}>Close</button>
+        <div className="modal" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <span className="close" onClick={closeModal}>×</span>
+            <div className="modal-body">
+              <img src={suitSample} alt="Suit" className="modal-img" />
+              <div className="modal-details">
+                <h2>{selectedItem?.name}</h2>
+                <p><strong>Price:</strong> {selectedItem?.price}</p>
+                <label>Date</label>
+                <input type="date" className="date-input" />
+                <button className="btn-rent" onClick={closeModal}>RENT</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {serviceModalOpen && (
+        <div className="auth-modal-overlay" onClick={() => setServiceModalOpen(false)}>
+          <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="auth-container">
+              <div className="auth-header">
+                <h2>Select Service</h2>
+                <p className="auth-subtitle">Choose the service you want to book</p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {serviceOptions.map((s) => (
+                  <button key={s.type} className="auth-submit" onClick={() => addServiceToCart(s.type)}>{s.type}</button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {notificationsOpen && (
-        <div className="modal" onClick={() => setNotificationsOpen(false)}>
-          <div className="modal-content appointments-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="service-title">Booked Services</div>
-            <div className="appointments-list">
-              {appointments.length === 0 && <div className="cart-empty">No appointments yet</div>}
-              {appointments.map((apt) => (
-                <div key={apt.id} className="appointment-card">
-                  <div className="appointment-top">
-                    <div className="apt-id">{apt.id}</div>
-                    <div className={`status-badge status-${apt.status}`}>{apt.status}</div>
+        <div className="auth-modal-overlay" onClick={() => setNotificationsOpen(false)}>
+          <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="auth-container">
+              <div className="auth-header">
+                <h2>Notifications</h2>
+                <p className="auth-subtitle">Recent appointments and updates</p>
+              </div>
+              <div style={{ padding: '14px', display: 'grid', gap: '10px' }}>
+                {appointments.length === 0 && <div>No notifications</div>}
+                {appointments.map((apt) => (
+                  <div key={apt.id} style={{ border: '1px solid #eee', borderRadius: '10px', padding: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <div style={{ fontWeight: 600 }}>Appointment {apt.id}</div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>{apt.date || '-'}</div>
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#666' }}>{(apt.services||[]).length} services</div>
                   </div>
-                  {apt.date && (
-                    <div className="expand-row"><span>Date</span><span>{apt.date}</span></div>
-                  )}
-                  <div className="appointment-services">
-                    {apt.services.map((it) => {
-                      const flow = trackingFlows[it.type] || trackingFlows.Repair;
-                      const order = ['pending','in_progress','to_receive','delivered'];
-                      const sIndex = order.indexOf(it.status);
-                      const idx = sIndex === -1 ? 0 : (sIndex === 2 ? Math.max(0, flow.length - 2) : (sIndex === 3 ? flow.length - 1 : sIndex));
-                      return (
-                        <div key={it.id} className="apt-service-row">
-                          <div className="apt-service-title">{it.type}</div>
-                          <div className="pd-steps">
-                            {flow.map((step, i) => (
-                              <>
-                                <div key={step} className={`pd-step ${idx>=i?'active':''}`}>{step}</div>
-                                {i < flow.length-1 && <div className="pd-arrow" />}
-                              </>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cartOpen && (
+        <div className="cart-drawer" onClick={() => setCartOpen(false)}>
+          <div className="cart-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="cart-header">
+              <div className="cart-title">Cart ({cartItems.length})</div>
+              <button className="cart-close" onClick={() => setCartOpen(false)}>×</button>
+            </div>
+            <div className="cart-items">
+              {cartItems.length === 0 && <div className="cart-empty">No services selected</div>}
+              {cartItems.map((it) => (
+                <div key={it.id} className="cart-card">
+                  <div className="cart-card-top">
+                    <div className="cart-id">{it.id}</div>
+                    <div className="cart-type">{it.type}</div>
+                  </div>
+                  <div className="cart-card-body">
+                    <div className="cart-form">
+                      <label>Brand</label>
+                      <input type="text" value={it.details.brand} onChange={(e)=>updateItemDetails(it.id,{brand:e.target.value})} />
+                      <label>Size</label>
+                      <input type="text" value={it.details.size} onChange={(e)=>updateItemDetails(it.id,{size:e.target.value})} />
+                      <label>Notes</label>
+                      <textarea rows={3} value={it.details.notes} onChange={(e)=>updateItemDetails(it.id,{notes:e.target.value})} />
+                      <label>Address</label>
+                      <input type="text" value={it.details.address} onChange={(e)=>updateItemDetails(it.id,{address:e.target.value})} />
+                      <label>Preferred date & time</label>
+                      <input type="datetime-local" value={it.details.datetime} onChange={(e)=>updateItemDetails(it.id,{datetime:e.target.value})} />
+                    </div>
+                    <div className="cart-actions">
+                      <button className="btn-danger" onClick={()=>removeItem(it.id)}>Remove</button>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
+            <div className="cart-footer">
+              <button className="btn-primary" disabled={cartItems.length===0} onClick={() => { setCartOpen(false); setSummaryModalOpen(true); }}>Proceed to booking</button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Service Modal - Professional UI */}
-      {serviceModalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: '0',
-          left: '0',
-          right: '0',
-          bottom: '0',
-          background: 'rgba(0,0,0,0.6)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          backdropFilter: 'blur(4px)'
-        }} onClick={() => setServiceModalOpen(false)}>
-          <div style={{
-            background: 'white',
-            padding: '0',
-            borderRadius: '16px',
-            maxWidth: '600px',
-            width: '90%',
-            maxHeight: '90vh',
-            overflow: 'hidden',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-            animation: 'modalSlideIn 0.3s ease-out'
-          }} onClick={(e) => e.stopPropagation()}>
-            
-            {/* Modal Header */}
-            <div style={{
-              background: 'linear-gradient(135deg, #8B4513 0%, #A0522D 100%)',
-              padding: '24px 32px',
-              color: 'white',
-              position: 'relative'
-            }}>
-              <button 
-                onClick={() => setServiceModalOpen(false)}
-                style={{
-                  position: 'absolute',
-                  top: '20px',
-                  right: '20px',
-                  background: 'rgba(255,255,255,0.2)',
-                  border: 'none',
-                  color: 'white',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  cursor: 'pointer',
-                  fontSize: '18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.3s'
-                }}
-                onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.3)'}
-                onMouseOut={(e) => e.target.style.background = 'rgba(255,255,255,0.2)'}
-              >
-                ×
-              </button>
-              <h2 style={{ margin: '0', fontSize: '24px', fontWeight: '600' }}>Book an Appointment</h2>
-              <p style={{ margin: '8px 0 0 0', fontSize: '16px', opacity: 0.9 }}>Select Service Type</p>
-            </div>
-
-            {/* Modal Body */}
-            <div style={{ padding: '32px' }}>
-              <p style={{ 
-                margin: '0 0 24px 0', 
-                fontSize: '16px', 
-                color: '#666',
-                textAlign: 'center'
-              }}>
-                Choose the service you want to book:
-              </p>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {serviceOptions.map((s) => (
-                  <button 
-                    key={s.type} 
-                    style={{
-                      padding: '20px 24px',
-                      border: '2px solid #e5e5e5',
-                      borderRadius: '12px',
-                      background: 'white',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      transition: 'all 0.3s',
-                      position: 'relative',
-                      overflow: 'hidden'
-                    }}
-                    onMouseOver={(e) => {
-                      e.target.style.borderColor = '#8B4513';
-                      e.target.style.transform = 'translateY(-2px)';
-                      e.target.style.boxShadow = '0 8px 24px rgba(139, 69, 19, 0.15)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.target.style.borderColor = '#e5e5e5';
-                      e.target.style.transform = 'translateY(0)';
-                      e.target.style.boxShadow = 'none';
-                    }}
-                    onClick={() => {
-                      console.log('Service selected:', s.type);
-                      setServiceModalOpen(false);
-                      setAppointmentModalOpen(true);
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div style={{
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '12px',
-                        background: 'linear-gradient(135deg, #8B4513 0%, #A0522D 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '20px',
-                        fontWeight: 'bold'
-                      }}>
-                        {s.type.charAt(0)}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ 
-                          fontWeight: '600', 
-                          fontSize: '18px', 
-                          color: '#333',
-                          marginBottom: '4px'
-                        }}>
-                          {s.type} Service
-                        </div>
-                        <div style={{ 
-                          fontSize: '14px', 
-                          color: '#666',
-                          lineHeight: '1.4'
-                        }}>
-                          {s.description}
-                        </div>
-                      </div>
-                      <div style={{
-                        color: '#8B4513',
-                        fontSize: '20px',
-                        transition: 'transform 0.3s'
-                      }}>
-                        →
-                      </div>
-                    </div>
-                  </button>
+      {summaryModalOpen && (
+        <div className="auth-modal-overlay" onClick={() => setSummaryModalOpen(false)}>
+          <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="auth-container">
+              <div className="auth-header">
+                <h2>Finalize Appointment</h2>
+                <p className="auth-subtitle">Select date to schedule your services</p>
+              </div>
+              <div style={{ padding: '16px 18px' }}>
+                {cartItems.map((it) => (
+                  <div key={it.id} style={{ marginBottom: '12px' }}>
+                    <div style={{ fontWeight: 600 }}>{it.type} • {it.id}</div>
+                    <div style={{ fontSize: '13px', color: '#666' }}>Brand: {it.details.brand || '-'}</div>
+                    <div style={{ fontSize: '13px', color: '#666' }}>Size: {it.details.size || '-'}</div>
+                    <div style={{ fontSize: '13px', color: '#666' }}>Address: {it.details.address || '-'}</div>
+                    <div style={{ fontSize: '13px', color: '#666' }}>Preferred: {it.details.datetime || '-'}</div>
+                  </div>
                 ))}
               </div>
-
-              {/* Cancel Button */}
-              <div style={{ marginTop: '32px', textAlign: 'center' }}>
-                <button 
-                  onClick={() => setServiceModalOpen(false)} 
-                  style={{
-                    padding: '12px 32px',
-                    background: 'transparent',
-                    border: '2px solid #ddd',
-                    borderRadius: '25px',
-                    color: '#666',
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s'
-                  }}
-                  onMouseOver={(e) => {
-                    e.target.style.borderColor = '#8B4513';
-                    e.target.style.color = '#8B4513';
-                  }}
-                  onMouseOut={(e) => {
-                    e.target.style.borderColor = '#ddd';
-                    e.target.style.color = '#666';
-                  }}
-                >
-                  Cancel
-                </button>
+              <div style={{ padding: '16px 18px' }}>
+                <input type="date" value={appointmentDate} onChange={(e)=>setAppointmentDate(e.target.value)} style={{ width: '100%', padding: '12px 14px', margin: '12px 0', border: '1px solid #ddd', borderRadius: '10px' }} min={new Date().toISOString().split('T')[0]} />
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                  <button onClick={() => setSummaryModalOpen(false)} className="btn-secondary">Back</button>
+                  <button onClick={submitAppointment} className="btn-primary" disabled={!appointmentDate || isSubmitting}>{isSubmitting ? 'Submitting...' : 'Confirm booking'}</button>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {appointmentModalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: '0',
-          left: '0',
-          right: '0',
-          bottom: '0',
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999
-        }} onClick={() => setAppointmentModalOpen(false)}>
-          <div style={{
-            background: 'white',
-            padding: '20px',
-            borderRadius: '12px',
-            maxWidth: '600px',
-            width: '90%',
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }} onClick={(e) => e.stopPropagation()}>
-            <h2>Book Appointment</h2>
-            <p>Select your preferred date for the appointment</p>
-            <input 
-              type="date" 
-              value={appointmentDate} 
-              onChange={(e)=>setAppointmentDate(e.target.value)}
-              style={{ width: '100%', padding: '8px', margin: '10px 0', border: '1px solid #ccc' }}
-              min={new Date().toISOString().split('T')[0]}
-            />
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}>
-              <button onClick={() => setAppointmentModalOpen(false)} style={{ padding: '8px 16px' }}>Cancel</button>
-              <button 
-                onClick={submitAppointment}
-                disabled={!appointmentDate || isSubmitting}
-                style={{ 
-                  padding: '8px 16px', 
-                  background: appointmentDate && !isSubmitting ? '#007bff' : '#ccc',
-                  color: 'white',
-                  border: 'none',
-                  cursor: appointmentDate && !isSubmitting ? 'pointer' : 'not-allowed'
-                }}
-              >
-                {isSubmitting ? 'Booking...' : 'Book Appointment'}
-              </button>
             </div>
           </div>
         </div>

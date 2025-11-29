@@ -3,26 +3,37 @@ import { useNavigate } from 'react-router-dom';
 import '../styles/Guesthome.css';
 import logo from "../assets/logo.png";
 import dp from "../assets/dp.png";
+import dryCleanBg from "../assets/dryclean.png";
 import heroBg from "../assets/tailorbackground.jpg";
 import appointmentBg from "../assets/background.jpg";
-import rental1 from "../assets/background11.jpg";
 import suitSample from "../assets/suits.png";
 import customizeBg from "../assets/background.jpg";
-import repairBg from "../assets/background.jpg";
+import repairBg from "../assets/repair.png";
+import brown from "../assets/brown.png";
+import full from "../assets/full.png";
+import tuxedo from "../assets/tuxedo.png";
+
 
 const App = ({ setIsLoggedIn }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [serviceModalOpen, setServiceModalOpen] = useState(false);
 
   // New: Auth Modal States
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isLogin, setIsLogin] = useState(true); // true = Login, false = Signup
+  const [isLogin, setIsLogin] = useState(true);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [signupName, setSignupName] = useState('');
+  const [signupEmail, setSignupEmail] = useState('');
+
+  
 
   const rentalItems = [
-    { name: 'Brown Suit', price: 'P 800', img: rental1 },
-    { name: 'Brown Suit', price: 'P 800', img: rental1 },
-    { name: 'Black Suit', price: 'P 800', img: rental1 },
+    { name: 'Brown Suit', price: 'P 800', img: brown },
+    { name: 'Full Suit', price: 'P 800', img: full },
+    { name: 'Tuxedo', price: 'P 800', img: tuxedo },
   ];
+
 
   const openModal = (item) => {
     setSelectedItem(item);
@@ -44,10 +55,26 @@ const App = ({ setIsLoggedIn }) => {
 
   const navigate = useNavigate();
   const handleLogin = () => {
-    setIsLoggedIn && setIsLoggedIn(true);
+    if (typeof setIsLoggedIn === 'function') {
+      setIsLoggedIn(true);
+    }
+    if (!isLogin && signupName) {
+      try { localStorage.setItem('userName', signupName); } catch { void 0 }
+    }
+    const emailVal = isLogin ? loginEmail : signupEmail;
+    if (emailVal) {
+      try { localStorage.setItem('userEmail', emailVal); } catch { void 0 }
+    }
     setIsAuthModalOpen(false);
-    navigate('/user/UserHomePage', { replace: true });
+    navigate('/user-home', { replace: true });
   };
+
+  const services = [
+    { name: 'Rental', img: heroBg },
+    { name: 'Customize', img: customizeBg },
+    { name: 'Repair', img: repairBg },
+    { name: 'Dry Cleaning', img: dryCleanBg },
+  ];
 
   return (
     <>
@@ -63,7 +90,7 @@ const App = ({ setIsLoggedIn }) => {
           <a href="#Rentals">Rental</a>
           <a href="#Customize">Customize</a>
           <a href="#Repair">Repair</a>
-          <a href="#About">About</a>
+          <a href="#DryCleaning">Dry Cleaning</a>
         </nav>
         <div className="profile">
           <img src={dp} alt="Profile" className="profile-img" />
@@ -79,15 +106,17 @@ const App = ({ setIsLoggedIn }) => {
         </div>
       </section>
 
-      {/* Services */}
-      <section className="services">
+       <section className="services">
         <h2>Jackman's Services</h2>
         <div className="services-grid">
-          {['Rental', 'Customize', 'Repair', 'Dry Cleaning'].map((service) => (
-            <div key={service} className="service-card">
-              <div className="service-img" style={{ backgroundImage: `url(${heroBg})` }}></div>
+          {services.map(({ name, img }) => (
+            <div key={name} className="service-card">
+              <div
+                className="service-img"
+                style={{ backgroundImage: `url(${img})` }}
+              ></div>
               <div className="service-footer">
-                <h3>{service}</h3>
+                <h3>{name}</h3>
               </div>
             </div>
           ))}
@@ -102,7 +131,7 @@ const App = ({ setIsLoggedIn }) => {
           <div className="appointment-overlay">
             <p>Ready to experience our services?</p>
             <p>Book your appointment now!</p>
-            <button className="btn-book" onClick={openAuthModal}>Book now</button>
+            <button className="btn-book" onClick={() => setServiceModalOpen(true)}>Book now</button>
           </div>
         </div>
       </section>
@@ -134,7 +163,7 @@ const App = ({ setIsLoggedIn }) => {
           <p>Got a style in mind?</p>
           <p>Personalize it and turn your vision into reality!</p>
         </div>
-        <div className="custom-image" style={{ backgroundImage: `url(${customizeBg})` }}>
+        <div className="custom-image" style={{ backgroundImage: `url('/src/assets/background.jpg'), url(${customizeBg})` }}>
           <button className="btn-customize" onClick={openAuthModal}>Customize now!</button>
         </div>
       </section>
@@ -142,12 +171,25 @@ const App = ({ setIsLoggedIn }) => {
       {/* Repair Section */}
       <section className="repair" id="Repair">
         <h2>Repair Service</h2>
-        <div className="repair-bg" style={{ backgroundImage: `url(${repairBg})` }}>
+        <div className="repair-bg" style={{ backgroundImage: `url('/src/assets/repair.png'), url(${repairBg})` }}>
           <div className="repair-overlay"></div>
           <div className="repair-content">
             <h3>Need reliable repair services?</h3>
             <p>Get in touch with us today!</p>
             <button className="btn-book" onClick={openAuthModal}>Book Now!</button>
+          </div>
+        </div>
+      </section>
+
+      {/* Dry Cleaning Section */}
+      <section className="repair" id="DryCleaning">
+        <h2>Dry Cleaning Service</h2>
+        <div className="repair-bg" style={{ backgroundImage: `url('/src/assets/dryclean.png'), url(${dryCleanBg})` }}>
+          <div className="repair-overlay"></div>
+          <div className="repair-content">
+            <h3>Keep your garments fresh and spotless</h3>
+            <p>Premium care for suits, gowns, and more</p>
+            <button className="btn-book" onClick={openAuthModal}>Book Dry Cleaning</button>
           </div>
         </div>
       </section>
@@ -167,6 +209,24 @@ const App = ({ setIsLoggedIn }) => {
                 <label>Date</label>
                 <input type="date" className="date-input" />
                 <button className="btn-rent" onClick={openAuthModal}>RENT</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {serviceModalOpen && (
+        <div className="auth-modal-overlay" onClick={() => setServiceModalOpen(false)}>
+          <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="auth-container">
+              <div className="auth-header">
+                <h2>Select Service</h2>
+                <p className="auth-subtitle">Choose the service you want to book</p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {services.map((s) => (
+                  <button key={s.name} className="auth-submit" onClick={openAuthModal}>{s.name}</button>
+                ))}
               </div>
             </div>
           </div>
@@ -216,6 +276,8 @@ const App = ({ setIsLoggedIn }) => {
                 placeholder="Full Name"
                 required
                 autoComplete="name"
+                value={signupName}
+                onChange={(e) => setSignupName(e.target.value)}
               />
             </div>
           )}
@@ -226,6 +288,8 @@ const App = ({ setIsLoggedIn }) => {
               placeholder="Email Address"
               required
               autoComplete="email"
+              value={isLogin ? loginEmail : signupEmail}
+              onChange={(e) => (isLogin ? setLoginEmail(e.target.value) : setSignupEmail(e.target.value))}
             />
           </div>
 

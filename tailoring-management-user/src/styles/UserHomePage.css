@@ -58,6 +58,24 @@
   min-height: 80px;
 }
 
+.hero {
+  height: 100vh;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: white;
+  position: relative;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+}
+
 /* Navigation Links - Increased Font Size */
 .nav a {
   margin: 0 20px;
