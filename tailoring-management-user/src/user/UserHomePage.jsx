@@ -13,6 +13,34 @@ import full from "../assets/full.png";
 import tuxedo from "../assets/tuxedo.png";
 import dryCleanBg from "../assets/dryclean.png";
 import { getUser, logoutUser } from '../api/AuthApi';
+import RentalClothes from './components/RentalClothes';
+import Cart from './components/Cart';
+import RepairFormModal from './components/RepairFormModal';
+import DryCleaningFormModal from './components/DryCleaningFormModal';
+
+// Add at the top of your component, before UserHomePage
+const serviceForms = {
+  Repair: [
+    { name: "repairType", label: "Repair Type", type: "text" },
+    { name: "notes", label: "Notes", type: "textarea" },
+    { name: "image", label: "Upload Picture", type: "file" },
+    { name: "datetime", label: "Preferred date & time", type: "datetime-local" },
+  ],
+  Customize: [
+    { name: "fabric", label: "Fabric", type: "text" },
+    { name: "style", label: "Style", type: "text" },
+    { name: "notes", label: "Notes", type: "textarea" },
+    { name: "datetime", label: "Preferred date & time", type: "datetime-local" },
+  ],
+  "Dry Cleaning": [
+    { name: "garmentType", label: "Garment Type", type: "text" },
+    { name: "stainNotes", label: "Stain Notes", type: "textarea" },
+    { name: "datetime", label: "Preferred date & time", type: "datetime-local" },
+  ],
+  Rental: [
+    { name: "pickupDate", label: "Pickup Date", type: "date" },
+  ],
+};
 
 // Add at the top of your component, before UserHomePage
 const serviceForms = {
@@ -40,13 +68,13 @@ const serviceForms = {
 
 const UserHomePage = ({ userName, setIsLoggedIn }) => {
   const navigate = useNavigate();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [cartItems, setCartItems] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [repairFormModalOpen, setRepairFormModalOpen] = useState(false);
+  const [dryCleaningFormModalOpen, setDryCleaningFormModalOpen] = useState(false);
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointments, setAppointments] = useState(() => {
     try {
@@ -81,15 +109,6 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
     avatar: dp,
   };
 
-  const openModal = (item) => {
-    setSelectedItem(item);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedItem(null);
-  };
 
   const handleLogout = () => {
     logoutUser();
@@ -99,7 +118,27 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
     navigate('/', { replace: true });
   };
 
+  const handleCartUpdate = () => {
+    console.log('Cart was updated from repair modal!');
+    // You can add additional logic here like updating cart badge
+  };
+
   const addServiceToCart = (type) => {
+    if (type === 'Repair') {
+      // Open repair form modal
+      setServiceModalOpen(false);
+      setRepairFormModalOpen(true);
+      return;
+    }
+    
+    if (type === 'Dry Cleaning') {
+      // Open dry cleaning form modal
+      setServiceModalOpen(false);
+      setDryCleaningFormModalOpen(true);
+      return;
+    }
+    
+    // Handle other service types with old cart system (for now)
     setCartItems((prev) => {
       const id = 'ORD-' + String(prev.length + 1).padStart(4, '0');
       const newItem = {
@@ -152,12 +191,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
     }
   };
 
-  const rentalItems = [
-    { name: 'Brown Suit', price: 'P 800/day', img: brown },
-    { name: 'Full Suit', price: 'P 800/day', img: full },
-    { name: 'Tuxedo', price: 'P 800/day', img: tuxedo },
-  ];
-
+  
   const services = [
     { name: 'Rental', img: heroBg },
     { name: 'Customize', img: customizeBg },
@@ -252,35 +286,19 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
       </section>
 
       <section className="appointment" id="Appointment">
-        <h2>Book an Appointment</h2>
+        <h2>Book a Service</h2>
         <div className="appointment-content">
           <img src={appointmentBg} alt="Tailor" className="appointment-img" />
           <div className="appointment-overlay">
             <p>Ready for a fitting or consultation?</p>
             <p>We’re excited to serve you again!</p>
-            <button className="btn-book" onClick={() => setServiceModalOpen(true)}>Book Appointment</button>
+            <button className="btn-book" onClick={() => setServiceModalOpen(true)}>Book Service</button>
           </div>
         </div>
       </section>
 
-      <section className="rental" id="Rentals">
-        <div className="section-header">
-          <h2>Available for Rental</h2>
-          <a href="/rental" className="see-more">See All →</a>
-        </div>
-        <div className="rental-grid">
-          {rentalItems.map((item, i) => (
-            <div key={i} className="rental-card">
-              <img src={item.img} alt={item.name} />
-              <div className="rental-info">
-                <h3>{item.name}</h3>
-                <p className="price">{item.price}</p>
-                <button onClick={() => openModal(item)} className="btn-view">View</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Rental Clothes */}
+      <RentalClothes openAuthModal={() => setServiceModalOpen(true)} />
 
       <section className="customization" id="Customize">
         <div className="custom-text">
@@ -317,23 +335,6 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         </div>
       </section>
 
-      {isModalOpen && (
-        <div className="modal" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <span className="close" onClick={closeModal}>×</span>
-            <div className="modal-body">
-              <img src={suitSample} alt="Suit" className="modal-img" />
-              <div className="modal-details">
-                <h2>{selectedItem?.name}</h2>
-                <p><strong>Price:</strong> {selectedItem?.price}</p>
-                <label>Date</label>
-                <input type="date" className="date-input" />
-                <button className="btn-rent" onClick={closeModal}>RENT</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {serviceModalOpen && (
         <div className="auth-modal-overlay" onClick={() => setServiceModalOpen(false)}>
@@ -378,6 +379,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         </div>
       )}
 
+<<<<<<< HEAD
     {cartOpen && (
   <div className="cart-drawer" onClick={() => setCartOpen(false)}>
     <div className="cart-panel" onClick={(e) => e.stopPropagation()}>
@@ -428,16 +430,8 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
               <div className="cart-actions">
                 <button className="btn-danger" onClick={() => removeItem(it.id)}>Remove</button>
               </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="cart-footer">
-        <button className="btn-primary" disabled={cartItems.length === 0} onClick={() => { setCartOpen(false); setSummaryModalOpen(true); }}>Proceed to booking</button>
-      </div>
-    </div>
-  </div>
-)}
+=======
+ 
 
 {summaryModalOpen && (
   <div className="auth-modal-overlay" onClick={() => setSummaryModalOpen(false)}>
@@ -509,6 +503,123 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
                   </div>
                 );
               })}
+>>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: '16px 18px', borderTop: '1px solid #eee' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
+            Select Appointment Date:
+          </label>
+          <input
+            type="date"
+            value={appointmentDate}
+            onChange={(e) => setAppointmentDate(e.target.value)}
+            style={{ 
+              width: '100%', 
+              padding: '12px 14px', 
+              marginBottom: '16px', 
+              border: '1px solid #ddd', 
+              borderRadius: '10px',
+              fontSize: '14px'
+            }}
+            min={new Date().toISOString().split('T')[0]}
+          />
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+            <button onClick={() => setSummaryModalOpen(false)} className="btn-secondary">
+              Back
+            </button>
+            <button 
+              onClick={submitAppointment} 
+              className="btn-primary" 
+              disabled={!appointmentDate || isSubmitting}
+            >
+              {isSubmitting ? 'Submitting...' : 'Confirm Booking'}
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="cart-footer">
+        <button className="btn-primary" disabled={cartItems.length === 0} onClick={() => { setCartOpen(false); setSummaryModalOpen(true); }}>Proceed to booking</button>
+      </div>
+    </div>
+  </div>
+)}
+
+{summaryModalOpen && (
+  <div className="auth-modal-overlay" onClick={() => setSummaryModalOpen(false)}>
+    <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="auth-container">
+        <div className="auth-header">
+          <h2>Finalize Appointment</h2>
+          <p className="auth-subtitle">Review your services</p>
+        </div>
+<<<<<<< HEAD
+        <div style={{ padding: '16px 18px' }}>
+          {cartItems.map((it) => (
+            <div key={it.id} style={{ marginBottom: '12px' }}>
+              <div style={{ fontWeight: 600 }}>{it.type} • {it.id}</div>
+              {serviceForms[it.type]?.map((field) => (
+                <div key={field.name} style={{ fontSize: '13px', color: '#666' }}>
+                  {field.label}: {it.details[field.name] || '-'}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: '16px 18px' }}>
+          <input
+            type="date"
+            value={appointmentDate}
+            onChange={(e) => setAppointmentDate(e.target.value)}
+            style={{ width: '100%', padding: '12px 14px', margin: '12px 0', border: '1px solid #ddd', borderRadius: '10px' }}
+            min={new Date().toISOString().split('T')[0]}
+          />
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
+            <button onClick={() => setSummaryModalOpen(false)} className="btn-secondary">Back</button>
+            <button onClick={submitAppointment} className="btn-primary" disabled={!appointmentDate || isSubmitting}>
+              {isSubmitting ? 'Submitting...' : 'Confirm booking'}
+            </button>
+          </div>
+        </div>
+=======
+>>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
+      </div>
+    </div>
+  </div>
+)}
+
+<<<<<<< HEAD
+
+     {summaryModalOpen && (
+  <div className="auth-modal-overlay" onClick={() => setSummaryModalOpen(false)}>
+    <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="auth-container">
+        <div className="auth-header">
+          <h2>Finalize Appointment</h2>
+          <p className="auth-subtitle">Review your services and select appointment date</p>
+        </div>
+        <div style={{ padding: '16px 18px', maxHeight: '400px', overflowY: 'auto' }}>
+          {cartItems.map((it) => (
+            <div key={it.id} style={{ marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid #eee' }}>
+              <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '8px', color: '#8B4513' }}>
+                {it.type} • {it.id}
+              </div>
+              {serviceForms[it.type]?.map((field) => {
+                const value = it.details[field.name];
+                let displayValue = value || '-';
+                
+                // Special handling for file inputs
+                if (field.type === 'file' && value) {
+                  displayValue = value.name || 'File uploaded';
+                }
+                
+                return (
+                  <div key={field.name} style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>
+                    <strong>{field.label}:</strong> {displayValue}
+                  </div>
+                );
+              })}
             </div>
           ))}
         </div>
@@ -547,6 +658,28 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
     </div>
   </div>
 )}
+=======
+      {/* Cart Component */}
+      <Cart 
+        isOpen={cartOpen} 
+        onClose={() => setCartOpen(false)}
+        onCartUpdate={handleCartUpdate}
+      />
+
+      {/* Repair Form Modal Component */}
+      <RepairFormModal 
+        isOpen={repairFormModalOpen} 
+        onClose={() => setRepairFormModalOpen(false)}
+        onCartUpdate={handleCartUpdate}
+      />
+
+      {/* Dry Cleaning Form Modal Component */}
+      <DryCleaningFormModal 
+        isOpen={dryCleaningFormModalOpen} 
+        onClose={() => setDryCleaningFormModalOpen(false)}
+        onCartUpdate={handleCartUpdate}
+      />
+>>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
     </>
   );
 };

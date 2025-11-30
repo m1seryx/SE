@@ -1,0 +1,293 @@
+const OrderTracking = require('../model/OrderTrackingModel');
+const Order = require('../model/OrderModel');
+
+// Get all order tracking for a user
+exports.getUserOrderTracking = (req, res) => {
+  const userId = req.user.id;
+
+  OrderTracking.getLatestStatusByUserId(userId, (err, results) => {
+    if (err) {
+      console.error('Database error in getUserOrderTracking:', err);
+      return res.status(500).json({
+        success: false,
+        message: "Error fetching order tracking",
+        error: err.message || err
+      });
+    }
+
+    console.log('Raw results from database:', results);
+
+    // Group by order and format the response
+    const orders = {};
+    results.forEach(item => {
+      try {
+        if (!orders[item.order_id]) {
+          orders[item.order_id] = {
+            order_id: item.order_id,
+            order_date: item.order_date,
+            total_price: item.total_price,
+            items: []
+          };
+        }
+
+        const statusInfo = OrderTracking.getStatusInfo(item.status, item.service_type);
+        
+        // Safely parse specific_data
+        let specificData = {};
+        if (item.specific_data) {
+          try {
+            specificData = typeof item.specific_data === 'string' 
+              ? JSON.parse(item.specific_data) 
+              : item.specific_data;
+          } catch (parseErr) {
+            console.warn('Failed to parse specific_data for item:', item.order_item_id, parseErr);
+            specificData = {};
+          }
+        }
+
+        orders[item.order_id].items.push({
+          order_item_id: item.order_item_id,
+          service_type: item.service_type,
+          final_price: item.final_price,
+          specific_data: specificData,
+          status: item.status || 'pending',
+          status_label: statusInfo.label,
+          status_class: statusInfo.class,
+          status_updated_at: item.status_updated_at,
+          next_statuses: OrderTracking.getNextStatuses(item.service_type, item.status || 'pending')
+        });
+      } catch (itemErr) {
+        console.error('Error processing order item:', item, itemErr);
+        // Skip this item but continue processing others
+      }
+    });
+
+    const finalOrders = Object.values(orders);
+    console.log('Final processed orders:', finalOrders);
+
+    res.json({
+      success: true,
+      data: finalOrders
+    });
+  });
+};
+
+// Get tracking history for a specific order item
+exports.getOrderItemTrackingHistory = (req, res) => {
+  const userId = req.user.id;
+  const orderItemId = req.params.id;
+
+  // First verify the order item belongs to the user
+  Order.getOrderItemById(orderItemId, (err, orderItem) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Error fetching order item",
+        error: err
+      });
+    }
+
+    if (!orderItem) {
+      return res.status(404).json({
+        success: false,
+        message: "Order item not found"
+      });
+    }
+
+    // Check if user owns this order item
+    Order.getOrderById(orderItem.order_id, (err, order) => {
+      if (err || !order || order.user_id !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied"
+        });
+      }
+
+      // Get tracking history
+      OrderTracking.getTrackingHistory(orderItemId, (err, history) => {
+        if (err) {
+          return res.status(500).json({
+            success: false,
+            message: "Error fetching tracking history",
+            error: err
+          });
+        }
+
+        const formattedHistory = history.map(item => ({
+          status: item.status,
+          status_info: OrderTracking.getStatusInfo(item.status, orderItem.service_type),
+          notes: item.notes,
+          created_at: item.created_at,
+          updated_by_name: item.updated_by_name || 'System'
+        }));
+
+        res.json({
+          success: true,
+          data: {
+            order_item: orderItem,
+            tracking_history: formattedHistory
+          }
+        });
+      });
+    });
+  });
+};
+
+// Update tracking status (admin only)
+exports.updateTrackingStatus = (req, res) => {
+  const orderItemId = req.params.id;
+  const { status, notes } = req.body;
+  const adminId = req.user.id;
+
+  // Validate status
+  if (!status) {
+    return res.status(400).json({
+      success: false,
+      message: "Status is required"
+    });
+  }
+
+  // Get order item to validate service type
+  Order.getOrderItemById(orderItemId, (err, orderItem) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Error fetching order item",
+        error: err
+      });
+    }
+
+    if (!orderItem) {
+      return res.status(404).json({
+        success: false,
+        message: "Order item not found"
+      });
+    }
+
+    // Get current status to validate transition
+    OrderTracking.getByOrderItemId(orderItemId, (err, currentTracking) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Error fetching current tracking",
+          error: err
+        });
+      }
+
+      const currentStatus = currentTracking.length > 0 ? currentTracking[0].status : 'pending';
+      const nextStatuses = OrderTracking.getNextStatuses(orderItem.service_type, currentStatus);
+
+      // Validate status transition
+      if (!nextStatuses.includes(status) && currentStatus !== status) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status transition. From '${currentStatus}' you can only go to: ${nextStatuses.join(', ')}`
+        });
+      }
+
+      // Update tracking
+      OrderTracking.updateStatus(orderItemId, status, notes || '', adminId, (err, result) => {
+        if (err) {
+          return res.status(500).json({
+            success: false,
+            message: "Error updating tracking status",
+            error: err
+          });
+        }
+
+        res.json({
+          success: true,
+          message: "Tracking status updated successfully",
+          data: {
+            order_item_id: orderItemId,
+            new_status: status,
+            status_info: OrderTracking.getStatusInfo(status, orderItem.service_type)
+          }
+        });
+      });
+    });
+  });
+};
+
+// Initialize tracking for new order items (called when order is created)
+exports.initializeOrderTracking = (orderItems, callback) => {
+  let completed = 0;
+  const total = orderItems.length;
+  const errors = [];
+
+  if (total === 0) {
+    return callback(null, { initialized: 0, errors: [] });
+  }
+
+  orderItems.forEach(item => {
+    OrderTracking.initializeTracking(item.order_item_id, item.service_type, (err) => {
+      completed++;
+      
+      if (err) {
+        errors.push({
+          order_item_id: item.order_item_id,
+          error: err.message
+        });
+      }
+
+      if (completed === total) {
+        callback(null, {
+          initialized: total - errors.length,
+          errors: errors
+        });
+      }
+    });
+  });
+};
+
+// Get available status transitions for an order item
+exports.getStatusTransitions = (req, res) => {
+  const orderItemId = req.params.id;
+
+  Order.getOrderItemById(orderItemId, (err, orderItem) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Error fetching order item",
+        error: err
+      });
+    }
+
+    if (!orderItem) {
+      return res.status(404).json({
+        success: false,
+        message: "Order item not found"
+      });
+    }
+
+    // Get current status
+    OrderTracking.getByOrderItemId(orderItemId, (err, tracking) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Error fetching tracking",
+          error: err
+        });
+      }
+
+      const currentStatus = tracking.length > 0 ? tracking[0].status : 'pending';
+      const nextStatuses = OrderTracking.getNextStatuses(orderItem.service_type, currentStatus);
+
+      const statusOptions = nextStatuses.map(status => ({
+        value: status,
+        label: OrderTracking.getStatusInfo(status, orderItem.service_type).label,
+        class: OrderTracking.getStatusInfo(status, orderItem.service_type).class
+      }));
+
+      res.json({
+        success: true,
+        data: {
+          current_status: currentStatus,
+          current_status_info: OrderTracking.getStatusInfo(currentStatus, orderItem.service_type),
+          next_statuses: statusOptions,
+          service_type: orderItem.service_type
+        }
+      });
+    });
+  });
+};

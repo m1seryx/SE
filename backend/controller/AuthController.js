@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const User = require('../model/UserModel');
+const Admin = require('../model/AdminModel');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 

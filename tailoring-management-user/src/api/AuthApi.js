@@ -8,7 +8,7 @@ export async function registerUser(userData) {
 
     const data = response.data;
 
-    // Save token if available
+  
     if (data.token) {
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);

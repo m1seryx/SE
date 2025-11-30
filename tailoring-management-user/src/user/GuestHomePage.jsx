@@ -13,11 +13,10 @@ import brown from "../assets/brown.png";
 import full from "../assets/full.png";
 import tuxedo from "../assets/tuxedo.png";
 import { loginUser, registerUser } from '../api/AuthApi';
+import RentalClothes from './components/RentalClothes';
 
 
 const App = ({ setIsLoggedIn }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
 
   // New: Auth Modal States
@@ -37,23 +36,9 @@ const App = ({ setIsLoggedIn }) => {
 
   
 
-  const rentalItems = [
-    { name: 'Brown Suit', price: 'P 800', img: brown },
-    { name: 'Full Suit', price: 'P 800', img: full },
-    { name: 'Tuxedo', price: 'P 800', img: tuxedo },
-  ];
+  
 
-
-  const openModal = (item) => {
-    setSelectedItem(item);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedItem(null);
-  };
-
+  
   const openAuthModal = () => {
     setIsAuthModalOpen(true);
   };
@@ -80,7 +65,13 @@ const App = ({ setIsLoggedIn }) => {
             setIsLoggedIn(true);
           }
           setIsAuthModalOpen(false);
-          navigate('/user-home', { replace: true });
+          // Redirect based on role
+          const userRole = localStorage.getItem('role');
+          if (userRole === 'admin') {
+            navigate('/admin', { replace: true });
+          } else {
+            navigate('/user-home', { replace: true });
+          }
         } else {
           setAuthError(result.message || 'Login failed');
         }
@@ -141,6 +132,7 @@ const App = ({ setIsLoggedIn }) => {
           />
           <span className="logo-text">D'jackman Tailor Deluxe</span>
         </div>
+
         <nav className="nav">
           <a href="#top">Home</a>
           <a href="#Appointment">Appointment</a>
@@ -149,6 +141,12 @@ const App = ({ setIsLoggedIn }) => {
           <a href="#Repair">Repair</a>
           <a href="#DryCleaning">Dry Cleaning</a>
         </nav>
+<<<<<<< HEAD
+=======
+          <button className="login-btn" onClick={openAuthModal}>
+          Login
+        </button>
+>>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
         
       </header>
 
@@ -184,35 +182,23 @@ const App = ({ setIsLoggedIn }) => {
         <div className="appointment-content">
           <img src={appointmentBg} alt="Tailor" className="appointment-img" />
           <div className="appointment-overlay">
-            <p>Ready to experience our services?</p>
+            <h3>Ready to experience our services?</h3>
             <p>Book your appointment now!</p>
-            <button className="btn-book" onClick={() => setServiceModalOpen(true)}>Book now</button>
+            <button className="btn-book" onClick={() => setServiceModalOpen(true)}>Book Appointment</button>
           </div>
         </div>
       </section>
 
       {/* Rental Clothes */}
-      <section className="rental" id="Rentals">
-        <div className="section-header">
-          <h2>Rental Clothes</h2>
-          <a href="/rental" className="see-more">See more →</a>
-        </div>
-        <div className="rental-grid">
-          {rentalItems.map((item, i) => (
-            <div key={i} className="rental-card">
-              <img src={item.img} alt={item.name} />
-              <div className="rental-info">
-                <h3>{item.name}</h3>
-                <p className="price">{item.price}</p>
-                <button onClick={() => openModal(item)} className="btn-view">View Info</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <RentalClothes openAuthModal={openAuthModal} />
 
       {/* Customization */}
-      <section className="customization" id="Customize">
+      <section className="customization" 
+          id="Customize" 
+          style={{ 
+            background: "(background: linear-gradient(to bottom, #fffff5 0%, #f0e9e2 100%))" 
+          }}
+        >
         <div className="custom-text">
           <h2>Customization</h2>
           <p>Got a style in mind?</p>
@@ -231,45 +217,31 @@ const App = ({ setIsLoggedIn }) => {
           <div className="repair-content">
             <h3>Need reliable repair services?</h3>
             <p>Get in touch with us today!</p>
-            <button className="btn-book" onClick={openAuthModal}>Book Now!</button>
+            <button className="repair-book" onClick={openAuthModal}>Book Repair!</button>
           </div>
         </div>
       </section>
 
       {/* Dry Cleaning Section */}
-      <section className="repair" id="DryCleaning">
+      <section className="clean" id="DryCleaning">
         <h2>Dry Cleaning Service</h2>
+<<<<<<< HEAD
         <div className="repair-bg" style={{ backgroundImage: `url(${dryCleanBg})` }}>
           <div className="repair-overlay"></div>
           <div className="repair-content">
+=======
+        <div className="clean-bg" style={{ backgroundImage: `url(${dryCleanBg})` }}>
+          <div className="clean-overlay"></div>
+          <div className="clean-content">
+>>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
             <h3>Keep your garments fresh and spotless</h3>
             <p>Premium care for suits, gowns, and more</p>
-            <button className="btn-book" onClick={openAuthModal}>Book Dry Cleaning</button>
+            <button className="clean-book" onClick={openAuthModal}>Book Dry Cleaning</button>
           </div>
         </div>
       </section>
 
-      {/* Rental Item Modal */}
-      {isModalOpen && (
-        <div className="modal" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <span className="close" onClick={closeModal}>×</span>
-            <div className="modal-body">
-              <img src={suitSample} alt="Suit" className="modal-img" />
-              <div className="modal-details">
-                <h2>{selectedItem?.name}</h2>
-                <p><strong>Size:</strong> Medium</p>
-                <p><strong>Price:</strong> ₱800/day</p>
-                <p><strong>Description:</strong> Premium wool blend.</p>
-                <label>Date</label>
-                <input type="date" className="date-input" />
-                <button className="btn-rent" onClick={openAuthModal}>RENT</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
+      
       {serviceModalOpen && (
         <div className="auth-modal-overlay" onClick={() => setServiceModalOpen(false)}>
           <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
