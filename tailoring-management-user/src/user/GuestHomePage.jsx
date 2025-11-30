@@ -131,8 +131,15 @@ const App = ({ setIsLoggedIn }) => {
       {/* Header */}
       <header className="header">
         <div className="logo">
-          <img src={logo} alt="Logo" className="logo-img" />
-          <span className="logo-text">D’jackman Tailor Deluxe</span>
+          <img 
+            src={logo} 
+            alt="Logo - Click to Login" 
+            className="logo-img clickable" 
+            onClick={openAuthModal}
+            style={{ cursor: 'pointer' }}
+            title="Click to Login/Sign Up"
+          />
+          <span className="logo-text">D'jackman Tailor Deluxe</span>
         </div>
         <nav className="nav">
           <a href="#top">Home</a>
@@ -142,9 +149,7 @@ const App = ({ setIsLoggedIn }) => {
           <a href="#Repair">Repair</a>
           <a href="#DryCleaning">Dry Cleaning</a>
         </nav>
-        <div className="profile">
-          <img src={dp} alt="Profile" className="profile-img" />
-        </div>
+        
       </header>
 
       {/* Hero */}
@@ -221,7 +226,7 @@ const App = ({ setIsLoggedIn }) => {
       {/* Repair Section */}
       <section className="repair" id="Repair">
         <h2>Repair Service</h2>
-        <div className="repair-bg" style={{ backgroundImage: `url('/src/assets/repair.png'), url(${repairBg})` }}>
+        <div className="repair-bg" style={{ backgroundImage: `url(${repairBg})` }}>
           <div className="repair-overlay"></div>
           <div className="repair-content">
             <h3>Need reliable repair services?</h3>
@@ -234,7 +239,7 @@ const App = ({ setIsLoggedIn }) => {
       {/* Dry Cleaning Section */}
       <section className="repair" id="DryCleaning">
         <h2>Dry Cleaning Service</h2>
-        <div className="repair-bg" style={{ backgroundImage: `url('/src/assets/dryclean.png'), url(${dryCleanBg})` }}>
+        <div className="repair-bg" style={{ backgroundImage: `url(${dryCleanBg})` }}>
           <div className="repair-overlay"></div>
           <div className="repair-content">
             <h3>Keep your garments fresh and spotless</h3>
