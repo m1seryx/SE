@@ -112,50 +112,84 @@ body {
 
 /* Services */
 .services {
-  padding: 100px 5%;
+  padding: 120px 5% 100px;
   text-align: center;
   background: #fdfaf7;
+  overflow: hidden;
 }
 
 .services h2 {
-  font-size: 2.8rem;
+  font-family: 'Playfair Display', serif;
+  font-size: 3rem;
   color: #8B4513;
-  margin-bottom: 60px;
+  margin-bottom: 70px;
+  position: relative;
 }
 
+.services h2::after {
+  content: '';
+  width: 90px;
+  height: 4px;
+  background: #D4AF37;
+  position: absolute;
+  bottom: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 2px;
+}
+
+/* Smaller, tighter, more elegant grid */
 .services-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 30px;
-  max-width: 1200px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
+  max-width: 800px;
   margin: 0 auto;
+  padding: 0 12px;
 }
 
+/* Compact & Beautiful Card */
 .service-card {
-  border-radius: 15px;
+  border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-  transition: transform 0.4s;
+  box-shadow: 0 10px 30px rgba(139, 69, 19, 0.14);
+  transition: all 0.4s ease;
+  background: white;
+  height: 100px;           /* Smaller height */
+  display: flex;
+  flex-direction: column;
 }
 
 .service-card:hover {
-  transform: translateY(-15px);
+  transform: translateY(-12px);
+  box-shadow: 0 20px 45px rgba(139, 69, 19, 0.22);
 }
 
 .service-img {
-  height: 300px;
+  height: 170px;           /* Smaller image area */
   background-size: cover;
   background-position: center;
+  transition: transform 0.6s ease;
 }
 
+
 .service-footer {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: white;
-  padding: 20px;
+  padding: 16px 12px;
 }
 
 .service-footer h3 {
-  font-size: 1.6rem;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.4rem;      /* Smaller text */
   color: #8B4513;
+  font-weight: 700;
+  margin: 0;
+  text-align: center;
+  letter-spacing: 0.5px;
 }
 
 /* Appointment */
@@ -204,6 +238,18 @@ body {
   margin: 15px 0;
 }
 
+.appointment-overlay h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 3.4rem;
+  color: white;
+  margin: 0;
+  font-weight: 800;
+  text-shadow: 3px 3px 15px rgba(0,0,0,0.7);
+  letter-spacing: 1.5px;
+  line-height: 1.2;
+  margin-bottom: 5px;
+}
+
 .btn-book {
   margin-top: 30px;
   padding: 15px 40px;
@@ -227,7 +273,7 @@ body {
 
 /* Rental */
 .rental {
-  padding: 100px 5%;
+  padding: 100px 5% 120px;
   background: white;
 }
 
@@ -236,189 +282,373 @@ body {
   justify-content: space-between;
   align-items: center;
   max-width: 1200px;
-  margin: 0 auto 50px;
+  margin: 0 auto 60px;
 }
 
 .section-header h2 {
-  font-size: 2.8rem;
+  font-family: 'Playfair Display', serif;
+  font-size: 3rem;
   color: #8B4513;
 }
 
 .see-more {
-  color: #8B4513;
-  text-decoration: none;
+  color: #ffffff;
   font-weight: 600;
+  text-decoration: none;
   font-size: 1.1rem;
+  transition: all 0.3s;
 }
 
+.see-more:hover {
+  letter-spacing: 1.5px;
+  color: #ffffff;
+
+}
+
+/* Smaller, tighter grid */
 .rental-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 30px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 28px;
   max-width: 1200px;
   margin: 0 auto;
+  padding: 0 12px;
 }
 
+/* Compact & Beautiful Card */
 .rental-card {
   background: white;
-  border-radius: 15px;
+  border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-  transition: transform 0.3s;
+  box-shadow: 0 10px 30px rgba(139, 69, 19, 0.12);
+  transition: all 0.4s ease;
+  display: flex;
+  flex-direction: column;
+  height: 430px;           /* Smaller total height */
 }
 
 .rental-card:hover {
-  transform: translateY(-10px);
+  transform: translateY(-12px);
+  box-shadow: 0 20px 45px rgba(139, 69, 19, 0.22);
 }
 
 .rental-card img {
   width: 100%;
-  height: 350px;
+  height: 220px;           /* Smaller image */
   object-fit: cover;
+  transition: transform 0.6s ease;
 }
 
+.rental-card:hover img {
+  transform: scale(1.1);
+}
+
+/* Perfectly centered content */
 .rental-info {
-  padding: 20px;
+  padding: 20px 16px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-grow: 1;
+  gap: 10px;
+  background: white;
 }
 
 .rental-info h3 {
-  font-size: 1.5rem;
-  margin: 10px 0;
+  margin: 0;
+  font-size: 1.35rem;
+  color: #3D2B1F;
+  font-weight: 600;
 }
 
 .price {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
   color: #8B4513;
-  font-weight: bold;
-  font-size: 1.3rem;
 }
 
 .btn-view {
-  margin-top: 15px;
-  padding: 10px 25px;
+  margin-top: 8px;
+  padding: 10px 28px;
   background: transparent;
-  border: 2px solid #8B4513;
+  border: 2.5px solid #8B4513;
   color: #8B4513;
-  border-radius: 30px;
+  border-radius: 50px;
   cursor: pointer;
-  transition: all 0.3s;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.4s ease;
+  min-width: 130px;
 }
 
 .btn-view:hover {
   background: #8B4513;
   color: white;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(139, 69, 19, 0.3);
 }
 
 /* Customization */
 .customization {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  padding: 120px 5%;
-  background: #fdfaf7;
-  gap: 50px;
+  justify-content: center;
+  padding: 160px 5% 180px;
+  gap: 100px;
+  flex-wrap: wrap;
+  overflow: hidden;
 }
 
 .custom-text {
   flex: 1;
-  min-width: 300px;
+  min-width: 320px;
+  max-width: 600px;
+  padding: 20px;
 }
 
 .custom-text h2 {
-  font-size: 3rem;
+  font-family: 'Playfair Display', serif;
+  font-size: 4.2rem;
+  font-weight: 800;
   color: #8B4513;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  line-height: 1.2;
+  letter-spacing: 1px;
 }
 
 .custom-text p {
-  font-size: 1.5rem;
-  color: #666;
-  margin: 15px 0;
+  font-size: 1.65rem;
+  color: #5D4037;
+  margin: 18px 0;
+  font-weight: 400;
+  line-height: 1.7;
+  opacity: 0.95;
 }
 
+/* BIGGER & MORE DRAMATIC IMAGE */
 .custom-image {
-  flex: 1;
-  min-width: 300px;
-  height: 500px;
   background-size: cover;
   background-position: center;
-  border-radius: 20px;
+  border-radius: 32px;
   position: relative;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(139, 69, 19, 0.3);
+  transition: all 0.6s ease;
 }
 
-.btn-customize {
+
+/* Dark elegant overlay */
+.image-overlay {
   position: absolute;
-  bottom: 40px;
+  inset: 0;
+  background: linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.65) 0%,
+    rgba(139, 69, 19, 0.4) 50%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+  z-index: 1;
+}
+
+/* Text + Button inside image */
+.image-content {
+  position: absolute;
+  bottom: 60px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 18px 50px;
+  text-align: center;
+  color: white;
+  z-index: 2;
+  width: 90%;
+  padding: 0 20px;
+}
+
+.image-content h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.8rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  text-shadow: 2px 2px 10px rgba(0,0,0,0.6);
+  letter-spacing: 1.5px;
+}
+
+.image-content p {
+  font-size: 1.4rem;
+  margin-bottom: 32px;
+  opacity: 0.95;
+  font-weight: 300;
+}
+
+/* GORGEOUS BUTTON */
+.btn-customize {
+  padding: 18px 52px;
   background: #8B4513;
   color: white;
   border: none;
-  border-radius: 50px;
-  font-size: 1.3rem;
+  border-radius: 60px;
+  font-size: 1.35rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.4s;
-  z-index: 2;
+  transition: all 0.5s ease;
+  box-shadow: 0 12px 35px rgba(139, 69, 19, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-customize::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.6s;
 }
 
 .btn-customize:hover {
-  background: #a0522d;
-  transform: translateX(-50%) scale(1.1);
+  background: #A0522D;
+  transform: translateY(-6px) scale(1.05);
+  box-shadow: 0 20px 50px rgba(139, 69, 19, 0.6);
 }
 
+.btn-customize:hover::before {
+  left: 100%;
+}
 /* Repair */
 .repair {
-  padding: 120px 5%;
+  padding: 140px 5% 160px;
   text-align: center;
-  background: #f8f4f0;
+  background: linear-gradient(to bottom, #f8f4f0 0%, #f0e9e2 100%);
 }
 
 .repair h2 {
-  font-size: 3rem;
+  font-family: 'Playfair Display', serif;
+  font-size: 3.6rem;
   color: #8B4513;
-  margin-bottom: 50px;
+  margin-bottom: 80px;
+  font-weight: 800;
+  position: relative;
+}
+
+.repair h2::after {
+  content: '';
+  width: 130px;
+  height: 5px;
+  background: linear-gradient(90deg, #D4AF37, #B8860B);
+  position: absolute;
+  bottom: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 3px;
 }
 
 .repair-bg {
   position: relative;
-  height: 500px;
+  height: 500px;                    /* Same height as Dry Cleaning */
+  max-width: 1300px;
+  margin: 0 auto;
+  border-radius: 36px;
+  overflow: hidden;
+  box-shadow: 0 40px 100px rgba(139, 69, 19, 0.22);
   background-size: cover;
   background-position: center;
-  border-radius: 20px;
-  overflow: hidden;
-  max-width: 1100px;
-  margin: 0 auto;
+  transition: transform 0.8s ease;
 }
 
 .repair-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: linear-gradient(
+    135deg,
+    rgba(139, 69, 19, 0.88) 0%,
+    rgba(0, 0, 0, 0.75) 50%,
+    rgba(160, 82, 45, 0.92) 100%
+  );
   z-index: 1;
 }
-
+/* Perfectly centered content */
 .repair-content {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  color: white;
-  width: 80%;
   z-index: 2;
+  color: white;
+  text-align: center;
+  width: 90%;
+  max-width: 800px;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
 }
 
 .repair-content h3 {
-  font-size: 2.5rem;
-  margin-bottom: 20px;
+  font-family: 'Playfair Display', serif;
+  font-size: 3.4rem;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.2;
+  text-shadow: 3px 3px 16px rgba(0,0,0,0.8);
+  letter-spacing: 1.2px;
 }
 
 .repair-content p {
-  font-size: 1.6rem;
-  margin-bottom: 30px;
+  font-size: 1.7rem;
+  opacity: 0.96;
+  font-weight: 400;
+  margin: 0;
+  text-shadow: 1px 1px 8px rgba(0,0,0,0.7);
+  max-width: 700px;
 }
 
+/* IDENTICAL PREMIUM BUTTON (same as .clean-book) */
+.repair-book {
+  padding: 22px 70px;
+  background: white;
+  color: #8B4513;
+  border: none;
+  border-radius: 70px;
+  font-size: 1.6rem;
+  font-weight: 800;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  box-shadow: 0 15px 45px rgba(0,0,0,0.4);
+  transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+  min-width: 300px;
+}
+
+.repair-book::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  transition: left 0.7s;
+}
+
+.repair-book:hover {
+  background: #FFF8F0;
+  color: #6B3A0A;
+  transform: translateY(-10px) scale(1.08);
+  box-shadow: 0 30px 70px rgba(139, 69, 19, 0.6);
+}
+
+.repair-book:hover::before {
+  left: 100%;
+}
 /* Modal */
 .modal {
   position: fixed;
@@ -523,6 +753,7 @@ body {
   z-index: 9999;
   backdrop-filter: blur(12px);
   padding: 20px;
+  overflow-y: auto;
 }
 
 .auth-modal {
@@ -719,4 +950,144 @@ body {
   background: rgba(220, 53, 69, 0.1);
   border-radius: 8px;
   border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.login-btn{
+  width: 100px;
+  font-size: 15px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* dry clean*/
+.clean {
+  padding: 140px 5% 160px;
+  text-align: center;
+  background: linear-gradient(to bottom, #fffff5 0%, #f0e9e2 100%);
+}
+
+.clean h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 3.6rem;
+  color: #8B4513;
+  margin-bottom: 80px;
+  font-weight: 800;
+  position: relative;
+}
+
+.clean h2::after {
+  content: '';
+  width: 130px;
+  height: 5px;
+  background: linear-gradient(90deg, #D4AF37, #B8860B);
+  position: absolute;
+  bottom: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 3px;
+}
+
+.clean-bg {
+  position: relative;
+  height: 500px;
+  max-width: 1200px;
+  margin: 0 auto;
+  border-radius: 36px;
+  overflow: hidden;
+  box-shadow: 0 40px 100px rgba(139, 69, 19, 0.22);
+  background-size: cover;
+  background-position: center;
+}
+
+
+/* Elegant dark overlay with golden-brown tint */
+.clean-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(139, 69, 19, 0.88) 0%,
+    rgba(0, 0, 0, 0.75) 50%,
+    rgba(160, 82, 45, 0.9) 100%
+  );
+  z-index: 1;
+}
+
+/* Perfectly centered content */
+.clean-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  color: white;
+  text-align: center;
+  width: 90%;
+  max-width: 800px;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+}
+
+.clean-content h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 3.4rem;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.2;
+  text-shadow: 3px 3px 16px rgba(0,0,0,0.8);
+  letter-spacing: 1.2px;
+}
+
+.clean-content p {
+  font-size: 1.7rem;
+  opacity: 0.96;
+  font-weight: 400;
+  margin: 0;
+  text-shadow: 1px 1px 8px rgba(0,0,0,0.7);
+  max-width: 700px;
+}
+
+/* PREMIUM GOLDEN BUTTON */
+.clean-book {
+  padding: 22px 70px;
+  background: white;
+  color: #8B4513;
+  border: none;
+  border-radius: 70px;
+  font-size: 1.6rem;
+  font-weight: 800;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  box-shadow: 0 15px 45px rgba(0,0,0,0.4);
+  transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+  min-width: 300px;
+}
+
+.clean-book::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  transition: left 0.7s;
+}
+
+.clean-book:hover {
+  background: #FFF8F0;
+  color: #6B3A0A;
+  transform: translateY(-10px) scale(1.08);
+  box-shadow: 0 30px 70px rgba(139, 69, 19, 0.6);
+}
+
+.clean-book:hover::before {
+  left: 100%;
 }
