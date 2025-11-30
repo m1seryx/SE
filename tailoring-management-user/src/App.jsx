@@ -7,6 +7,7 @@ import "./App.css";
 import GuestHomePage from "./user/GuestHomePage";
 import UserHomePage from "./user/UserHomePage";
 import Profile from "./user/Profile";
+import RentalPage from "./user/RentalPage";
 
 // Admin imports
 import AdminPage from "./admin/AdminPage";
@@ -27,6 +28,7 @@ const App = () => {
         <Route path="/" element={<GuestHomePage />} />
         <Route path="/user-home" element={<UserHomePage />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/rentals" element={<RentalPage />} />
 
         {/* ===== ADMIN ROUTES ===== */}
         <Route path="/admin" element={<AdminPage />} />

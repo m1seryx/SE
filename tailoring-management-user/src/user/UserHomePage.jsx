@@ -13,11 +13,10 @@ import full from "../assets/full.png";
 import tuxedo from "../assets/tuxedo.png";
 import dryCleanBg from "../assets/dryclean.png";
 import { getUser, logoutUser } from '../api/AuthApi';
+import RentalClothes from './components/RentalClothes';
 
 const UserHomePage = ({ userName, setIsLoggedIn }) => {
   const navigate = useNavigate();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [cartItems, setCartItems] = useState([]);
@@ -57,15 +56,6 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
     avatar: dp,
   };
 
-  const openModal = (item) => {
-    setSelectedItem(item);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedItem(null);
-  };
 
   const handleLogout = () => {
     logoutUser();
@@ -128,12 +118,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
     }
   };
 
-  const rentalItems = [
-    { name: 'Brown Suit', price: 'P 800/day', img: brown },
-    { name: 'Full Suit', price: 'P 800/day', img: full },
-    { name: 'Tuxedo', price: 'P 800/day', img: tuxedo },
-  ];
-
+  
   const services = [
     { name: 'Rental', img: heroBg },
     { name: 'Customize', img: customizeBg },
@@ -239,24 +224,8 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         </div>
       </section>
 
-      <section className="rental" id="Rentals">
-        <div className="section-header">
-          <h2>Available for Rental</h2>
-          <a href="/rental" className="see-more">See All →</a>
-        </div>
-        <div className="rental-grid">
-          {rentalItems.map((item, i) => (
-            <div key={i} className="rental-card">
-              <img src={item.img} alt={item.name} />
-              <div className="rental-info">
-                <h3>{item.name}</h3>
-                <p className="price">{item.price}</p>
-                <button onClick={() => openModal(item)} className="btn-view">View</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Rental Clothes */}
+      <RentalClothes openAuthModal={() => setServiceModalOpen(true)} />
 
       <section className="customization" id="Customize">
         <div className="custom-text">
@@ -293,23 +262,6 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         </div>
       </section>
 
-      {isModalOpen && (
-        <div className="modal" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <span className="close" onClick={closeModal}>×</span>
-            <div className="modal-body">
-              <img src={suitSample} alt="Suit" className="modal-img" />
-              <div className="modal-details">
-                <h2>{selectedItem?.name}</h2>
-                <p><strong>Price:</strong> {selectedItem?.price}</p>
-                <label>Date</label>
-                <input type="date" className="date-input" />
-                <button className="btn-rent" onClick={closeModal}>RENT</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {serviceModalOpen && (
         <div className="auth-modal-overlay" onClick={() => setServiceModalOpen(false)}>

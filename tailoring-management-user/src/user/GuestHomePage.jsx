@@ -13,11 +13,10 @@ import brown from "../assets/brown.png";
 import full from "../assets/full.png";
 import tuxedo from "../assets/tuxedo.png";
 import { loginUser, registerUser } from '../api/AuthApi';
+import RentalClothes from './components/RentalClothes';
 
 
 const App = ({ setIsLoggedIn }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
 
   // New: Auth Modal States
@@ -37,23 +36,9 @@ const App = ({ setIsLoggedIn }) => {
 
   
 
-  const rentalItems = [
-    { name: 'Brown Suit', price: 'P 800', img: brown },
-    { name: 'Full Suit', price: 'P 800', img: full },
-    { name: 'Tuxedo', price: 'P 800', img: tuxedo },
-  ];
+  
 
-
-  const openModal = (item) => {
-    setSelectedItem(item);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedItem(null);
-  };
-
+  
   const openAuthModal = () => {
     setIsAuthModalOpen(true);
   };
@@ -80,7 +65,13 @@ const App = ({ setIsLoggedIn }) => {
             setIsLoggedIn(true);
           }
           setIsAuthModalOpen(false);
-          navigate('/user-home', { replace: true });
+          // Redirect based on role
+          const userRole = localStorage.getItem('role');
+          if (userRole === 'admin') {
+            navigate('/admin', { replace: true });
+          } else {
+            navigate('/user-home', { replace: true });
+          }
         } else {
           setAuthError(result.message || 'Login failed');
         }
@@ -187,24 +178,7 @@ const App = ({ setIsLoggedIn }) => {
       </section>
 
       {/* Rental Clothes */}
-      <section className="rental" id="Rentals">
-        <div className="section-header">
-          <h2>Rental Clothes</h2>
-          <a href="/rental" className="see-more">See more →</a>
-        </div>
-        <div className="rental-grid">
-          {rentalItems.map((item, i) => (
-            <div key={i} className="rental-card">
-              <img src={item.img} alt={item.name} />
-              <div className="rental-info">
-                <h3>{item.name}</h3>
-                <p className="price">{item.price}</p>
-                <button onClick={() => openModal(item)} className="btn-view">View Info</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <RentalClothes openAuthModal={openAuthModal} />
 
       {/* Customization */}
       <section className="customization" id="Customize">
@@ -244,27 +218,7 @@ const App = ({ setIsLoggedIn }) => {
         </div>
       </section>
 
-      {/* Rental Item Modal */}
-      {isModalOpen && (
-        <div className="modal" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <span className="close" onClick={closeModal}>×</span>
-            <div className="modal-body">
-              <img src={suitSample} alt="Suit" className="modal-img" />
-              <div className="modal-details">
-                <h2>{selectedItem?.name}</h2>
-                <p><strong>Size:</strong> Medium</p>
-                <p><strong>Price:</strong> ₱800/day</p>
-                <p><strong>Description:</strong> Premium wool blend.</p>
-                <label>Date</label>
-                <input type="date" className="date-input" />
-                <button className="btn-rent" onClick={openAuthModal}>RENT</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
+      
       {serviceModalOpen && (
         <div className="auth-modal-overlay" onClick={() => setServiceModalOpen(false)}>
           <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
