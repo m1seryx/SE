@@ -1,4 +1,4 @@
-// ← SAME IMPORTS AS BEFORE (unchanged)
+// app/(tabs)/appointment/RepairClothes.tsx
 import React, { useState } from "react";
 import {
   View,
@@ -10,11 +10,13 @@ import {
   ScrollView,
   Dimensions,
   SafeAreaView,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
+import { cartStore } from "../../utils/cartStore";
 
 const { width, height } = Dimensions.get("window");
 
@@ -44,6 +46,7 @@ export default function RepairClothes() {
     "Skirt",
     "Blouse",
   ];
+
   const damageOptions = [
     "Tears / Holes",
     "Loose seams / Stitch unraveling",
@@ -55,13 +58,66 @@ export default function RepairClothes() {
     "Fabric thinning",
   ];
 
+  const getPriceForDamage = (damage: string): number => {
+    const prices: { [key: string]: number } = {
+      "Tears / Holes": 250,
+      "Loose seams / Stitch unraveling": 180,
+      "Missing buttons / Fasteners": 100,
+      "Broken zippers": 350,
+      "Fraying edges / Hems": 200,
+      "Snags / Pulls": 150,
+      "Stretching / Misshaping": 300,
+      "Fabric thinning": 400,
+    };
+    return prices[damage] || 300;
+  };
+
+  const handleAddService = () => {
+    if (!selectedItem || !damageType) {
+      Alert.alert("Missing Information", "Please fill in all required fields");
+      return;
+    }
+
+    const price = getPriceForDamage(damageType);
+
+    const cartItem = {
+      id: Date.now().toString(),
+      service: "Repair Service",
+      item: selectedItem,
+      description: `${damageType}${instruction ? ` - ${instruction}` : ""}`,
+      price: price,
+      icon: "construct-outline",
+      garmentType: selectedItem,
+      damageType: damageType,
+      specialInstructions: instruction,
+      image: image || undefined,
+    };
+
+    cartStore.addItem(cartItem);
+
+    Alert.alert("Success!", "Repair service added to cart!", [
+      {
+        text: "View Cart",
+        onPress: () => router.push("/(tabs)/cart/Cart"),
+      },
+      {
+        text: "Add More",
+        onPress: () => {
+          setSelectedItem("");
+          setDamageType("");
+          setInstruction("");
+          setImage(null);
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={{ paddingBottom: height * 0.18 }} // Extra room for nav
+        contentContainerStyle={{ paddingBottom: height * 0.18 }}
       >
-        {/* Header */}
         <View style={styles.header}>
           <Image
             source={require("../../../assets/images/logo.png")}
@@ -70,14 +126,12 @@ export default function RepairClothes() {
           <Text style={styles.headerTitle}>Jackman Tailor Deluxe</Text>
         </View>
 
-        {/* Main Card - Now with generous outer margin */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Repair Request</Text>
-            <Text style={styles.cardSubtitle}>We’ll make it good as new</Text>
+            <Text style={styles.cardSubtitle}>We'll make it good as new</Text>
           </View>
 
-          {/* Image Upload - More spacious */}
           <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
             {image ? (
               <Image source={{ uri: image }} style={styles.previewImage} />
@@ -96,9 +150,8 @@ export default function RepairClothes() {
             )}
           </TouchableOpacity>
 
-          {/* Form Fields - Nice vertical spacing */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Type of Garment</Text>
+            <Text style={styles.label}>Type of Garment *</Text>
             <View style={styles.pickerWrapper}>
               <Picker
                 selectedValue={selectedItem}
@@ -119,7 +172,7 @@ export default function RepairClothes() {
           </View>
 
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Type of Damage</Text>
+            <Text style={styles.label}>Type of Damage *</Text>
             <View style={styles.pickerWrapper}>
               <Picker
                 selectedValue={damageType}
@@ -137,6 +190,11 @@ export default function RepairClothes() {
                 ))}
               </Picker>
             </View>
+            {damageType && (
+              <Text style={styles.priceIndicator}>
+                Estimated price: ₱{getPriceForDamage(damageType)}
+              </Text>
+            )}
           </View>
 
           <View style={styles.fieldContainer}>
@@ -144,6 +202,7 @@ export default function RepairClothes() {
             <TextInput
               placeholder="e.g., Keep original buttons, match thread color, etc."
               style={styles.textArea}
+              placeholderTextColor="#94a3b8"
               multiline
               numberOfLines={5}
               value={instruction}
@@ -152,26 +211,24 @@ export default function RepairClothes() {
             />
           </View>
 
-          {/* Buttons - Extra margin on top */}
           <View style={styles.buttonRow}>
             <TouchableOpacity
               style={[styles.button, styles.cancelBtn]}
-              onPress={() => router.replace("/home")}
+              onPress={() => router.push("./appointmentSelection")}
             >
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.button, styles.submitBtn]}
-              onPress={() => alert("Repair request submitted successfully!")}
+              onPress={handleAddService}
             >
-              <Text style={styles.submitText}>Add Service</Text>
+              <Text style={styles.submitText}>Add to Cart</Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
 
-      {/* Bottom Nav - UNCHANGED */}
       <View style={styles.bottomNav}>
         <TouchableOpacity onPress={() => router.replace("/home")}>
           <View style={styles.navItemWrap}>
@@ -196,11 +253,9 @@ export default function RepairClothes() {
   );
 }
 
-// NEW SPACIOUS & PRETTIER STYLES
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#f8fafc" },
   container: { flex: 1 },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -221,8 +276,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
   },
-  profileIcon: { padding: 6 },
-
   card: {
     marginHorizontal: width * 0.06,
     marginTop: height * 0.04,
@@ -239,7 +292,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e2e8f0",
   },
-
   cardHeader: {
     alignItems: "center",
     paddingBottom: 20,
@@ -257,7 +309,6 @@ const styles = StyleSheet.create({
     color: "#64748b",
     marginTop: 8,
   },
-
   uploadBox: {
     height: 200,
     borderRadius: 24,
@@ -291,12 +342,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
     textAlign: "center",
   },
-
-  // New wrapper for consistent field spacing
   fieldContainer: {
     marginBottom: 28,
   },
-
   label: {
     fontSize: width * 0.042,
     fontWeight: "700",
@@ -304,7 +352,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginLeft: 4,
   },
-
   pickerWrapper: {
     borderWidth: 2,
     borderColor: "#cbd5e1",
@@ -316,7 +363,13 @@ const styles = StyleSheet.create({
     height: 54,
     color: "#1e293b",
   },
-
+  priceIndicator: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#3b82f6",
+    marginLeft: 4,
+  },
   textArea: {
     borderWidth: 2,
     borderColor: "#cbd5e1",
@@ -325,8 +378,8 @@ const styles = StyleSheet.create({
     fontSize: 15.5,
     backgroundColor: "#ffffff",
     minHeight: 130,
+    color: "#1e293b",
   },
-
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -363,8 +416,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 15,
   },
-
-  // Bottom nav - 100% untouched
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",

@@ -130,6 +130,7 @@ export default function RentalLanding() {
 }
 
 const styles = StyleSheet.create({
+  emptyState: { padding: 40, alignItems: "center" },
   container: { flex: 1, backgroundColor: "#F7F7F8" },
   topBar: {
     flexDirection: "row",

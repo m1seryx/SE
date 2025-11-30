@@ -1,5 +1,5 @@
 // app/(tabs)/orders/OrderHistory.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,110 +11,25 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { orderStore, Order } from "../../utils/orderStore";
 
 const { width, height } = Dimensions.get("window");
-
-interface Order {
-  id: string;
-  orderNo: string;
-  service: string;
-  item: string;
-  date: string;
-  status: "In Progress" | "Completed" | "To Pick up" | "Cancelled" | "Pending";
-  price: number;
-  description?: string;
-  estimatedCompletion?: string;
-}
 
 export default function OrderHistoryScreen() {
   const router = useRouter();
   const [selectedFilter, setSelectedFilter] = useState<string>("All");
+  const [orders, setOrders] = useState<Order[]>([]);
 
-  const [orders] = useState<Order[]>([
-    {
-      id: "1",
-      orderNo: "ORD-2024-001",
-      service: "Customization",
-      item: "Barong Tagalog",
-      date: "Nov 25, 2024",
-      status: "In Progress",
-      price: 2500,
-      description: "Custom embroidery and fitting adjustments",
-      estimatedCompletion: "Dec 5, 2024",
-    },
-    {
-      id: "2",
-      orderNo: "ORD-2024-002",
-      service: "Rental",
-      item: "Black Suit",
-      date: "Nov 20, 2024",
-      status: "Completed",
-      price: 800,
-      description: "3-piece black suit rental for event",
-    },
-    {
-      id: "3",
-      orderNo: "ORD-2024-003",
-      service: "Repair",
-      item: "Dress Pants",
-      date: "Nov 18, 2024",
-      status: "To Pick up",
-      price: 350,
-      description: "Hem adjustment and zipper replacement",
-    },
-    {
-      id: "4",
-      orderNo: "ORD-2024-004",
-      service: "Dry Cleaning",
-      item: "Wedding Gown",
-      date: "Nov 15, 2024",
-      status: "Pending",
-      price: 1200,
-      description: "Professional dry cleaning service",
-      estimatedCompletion: "Nov 30, 2024",
-    },
-    {
-      id: "5",
-      orderNo: "ORD-2024-005",
-      service: "Customization",
-      item: "Business Suit",
-      date: "Nov 10, 2024",
-      status: "Completed",
-      price: 3500,
-      description: "Made-to-measure navy blue business suit",
-    },
-    {
-      id: "6",
-      orderNo: "ORD-2024-006",
-      service: "Repair",
-      item: "Jacket",
-      date: "Nov 8, 2024",
-      status: "In Progress",
-      price: 450,
-      description: "Button replacement and sleeve adjustment",
-      estimatedCompletion: "Dec 1, 2024",
-    },
-    {
-      id: "7",
-      orderNo: "ORD-2024-007",
-      service: "Rental",
-      item: "Tuxedo",
-      date: "Nov 5, 2024",
-      status: "Cancelled",
-      price: 1000,
-      description: "Formal tuxedo rental - Cancelled by customer",
-    },
-    {
-      id: "8",
-      orderNo: "ORD-2024-008",
-      service: "Dry Cleaning",
-      item: "Formal Dress",
-      date: "Nov 2, 2024",
-      status: "Completed",
-      price: 600,
-      description: "Delicate fabric dry cleaning",
-    },
-  ]);
+  // Load orders on mount and subscribe to changes
+  useEffect(() => {
+    setOrders(orderStore.getOrders());
+
+    const unsubscribe = orderStore.subscribe(() => {
+      setOrders(orderStore.getOrders());
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const filters = [
     "All",
@@ -329,7 +244,7 @@ export default function OrderHistoryScreen() {
                         ? "shirt-outline"
                         : order.service === "Rental"
                         ? "business-outline"
-                        : order.service === "Repair"
+                        : order.service === "Repair Service"
                         ? "construct-outline"
                         : "water-outline"
                     }
@@ -643,19 +558,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
-  actionButtonPrimary: {
-    backgroundColor: "#94665B",
-    borderColor: "#94665B",
-  },
   actionButtonText: {
     fontSize: 13,
     fontWeight: "600",
     color: "#6B7280",
-  },
-  actionButtonTextPrimary: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#fff",
   },
 
   // Empty State

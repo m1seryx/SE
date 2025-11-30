@@ -106,7 +106,7 @@ export default function RentalDetail() {
       {/* Back Button */}
       <TouchableOpacity
         style={styles.backBtn}
-        onPress={() => router.replace("/home")}
+        onPress={() => router.replace("../index")}
       >
         <Text style={{ fontSize: 25 }}>←</Text>
       </TouchableOpacity>

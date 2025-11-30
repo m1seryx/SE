@@ -1,5 +1,5 @@
-// app/(tabs)/cart/cart.tsx
-import React, { useState } from "react";
+// app/(tabs)/cart/Cart.tsx
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,56 +10,37 @@ import {
   SafeAreaView,
   Modal,
   Platform,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { cartStore, CartItem } from "../../utils/cartStore";
+import { orderStore } from "../../utils/orderStore";
 
 const { width, height } = Dimensions.get("window");
 
-interface CartItem {
-  id: string;
-  service: string;
-  item: string;
-  description: string;
-  price: number;
-  icon: any;
-}
-
 export default function CartScreen() {
   const router = useRouter();
-
-  const [cartItems] = useState<CartItem[]>([
-    {
-      id: "1",
-      service: "Repair Service",
-      item: "Dress Pants",
-      description: "Hem adjustment and zipper replacement",
-      price: 350,
-      icon: "construct-outline",
-    },
-    {
-      id: "2",
-      service: "Customize Service",
-      item: "Barong Tagalog",
-      description: "Custom embroidery and fitting",
-      price: 2500,
-      icon: "shirt-outline",
-    },
-    {
-      id: "3",
-      service: "Dry Cleaning",
-      item: "Black Suit",
-      description: "Professional dry cleaning service",
-      price: 450,
-      icon: "water-outline",
-    },
-  ]);
-
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedItemDetails, setSelectedItemDetails] =
+    useState<CartItem | null>(null);
+
+  // Load cart items on mount and subscribe to changes
+  useEffect(() => {
+    setCartItems(cartStore.getItems());
+
+    const unsubscribe = cartStore.subscribe(() => {
+      setCartItems(cartStore.getItems());
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const toggleItemSelection = (id: string) => {
     setSelectedItems((prev) =>
@@ -96,7 +77,44 @@ export default function CartScreen() {
 
   const confirmBooking = () => {
     setShowConfirmModal(false);
-    alert("Appointment booked successfully!");
+
+    // Get selected cart items
+    const selectedCartItems = cartItems.filter((item) =>
+      selectedItems.includes(item.id)
+    );
+
+    // Create orders from selected items
+    selectedCartItems.forEach((item) => {
+      orderStore.addOrder({
+        service: item.service,
+        item: item.item,
+        description: item.description,
+        price: item.price,
+        status: "Pending",
+        estimatedCompletion: new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000
+        ).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+        garmentType: item.garmentType,
+        damageType: item.damageType,
+        specialInstructions: item.specialInstructions,
+        clothingBrand: item.clothingBrand,
+        quantity: item.quantity,
+        image: item.image,
+        appointmentDate: formatDate(selectedDate),
+      });
+    });
+
+    // Remove selected items from cart
+    selectedItems.forEach((id) => cartStore.removeItem(id));
+    setSelectedItems([]);
+
+    alert(
+      "Appointment booked successfully! Check your order history in profile."
+    );
     router.push("/home");
   };
 
@@ -109,12 +127,21 @@ export default function CartScreen() {
     });
   };
 
+  const showItemDetails = (item: CartItem) => {
+    setSelectedItemDetails(item);
+    setShowDetailsModal(true);
+  };
+
+  const handleRemoveItem = (id: string) => {
+    cartStore.removeItem(id);
+    setSelectedItems((prev) => prev.filter((itemId) => itemId !== id));
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* MAIN SCROLLABLE CONTENT */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 180 }} // ← THIS FIXES EVERYTHING
+        contentContainerStyle={{ paddingBottom: 180 }}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -124,7 +151,7 @@ export default function CartScreen() {
           <Text style={styles.headerTitle}>My Cart</Text>
           <TouchableOpacity onPress={selectAllItems}>
             <Text style={styles.selectAllText}>
-              {selectedItems.length === cartItems.length
+              {selectedItems.length === cartItems.length && cartItems.length > 0
                 ? "Deselect"
                 : "Select All"}
             </Text>
@@ -172,21 +199,41 @@ export default function CartScreen() {
                   </View>
 
                   <View style={styles.iconContainer}>
-                    <Ionicons name={item.icon} size={32} color="#94665B" />
+                    <Ionicons
+                      name={item.icon as any}
+                      size={32}
+                      color="#94665B"
+                    />
                   </View>
 
                   <View style={styles.itemDetails}>
                     <Text style={styles.serviceType}>{item.service}</Text>
                     <Text style={styles.itemName}>{item.item}</Text>
-                    <Text style={styles.itemDescription}>
+                    <Text style={styles.itemDescription} numberOfLines={2}>
                       {item.description}
                     </Text>
+                    <TouchableOpacity
+                      onPress={() => showItemDetails(item)}
+                      style={styles.viewDetailsLink}
+                    >
+                      <Text style={styles.viewDetailsLinkText}>
+                        View Details
+                      </Text>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={14}
+                        color="#94665B"
+                      />
+                    </TouchableOpacity>
                     <Text style={styles.itemPrice}>
                       ₱{item.price.toLocaleString()}
                     </Text>
                   </View>
 
-                  <TouchableOpacity style={styles.removeButton}>
+                  <TouchableOpacity
+                    style={styles.removeButton}
+                    onPress={() => handleRemoveItem(item.id)}
+                  >
                     <Ionicons name="trash-outline" size={24} color="#EF4444" />
                   </TouchableOpacity>
                 </TouchableOpacity>
@@ -257,11 +304,106 @@ export default function CartScreen() {
               </View>
             </View>
 
-            {/* Extra space so nothing gets cut off */}
             <View style={{ height: 100 }} />
           </>
         )}
       </ScrollView>
+
+      {/* Item Details Modal */}
+      <Modal visible={showDetailsModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.detailsModalContent}>
+            <View style={styles.detailsModalHeader}>
+              <Text style={styles.detailsModalTitle}>Service Details</Text>
+              <TouchableOpacity onPress={() => setShowDetailsModal(false)}>
+                <Ionicons name="close" size={28} color="#1F2937" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {selectedItemDetails && (
+                <>
+                  {/* Image if available */}
+                  {selectedItemDetails.image && (
+                    <Image
+                      source={{ uri: selectedItemDetails.image }}
+                      style={styles.detailsImage}
+                    />
+                  )}
+
+                  <View style={styles.detailsSection}>
+                    <Text style={styles.detailsLabel}>Service</Text>
+                    <Text style={styles.detailsValue}>
+                      {selectedItemDetails.service}
+                    </Text>
+                  </View>
+
+                  <View style={styles.detailsSection}>
+                    <Text style={styles.detailsLabel}>Item</Text>
+                    <Text style={styles.detailsValue}>
+                      {selectedItemDetails.item}
+                    </Text>
+                  </View>
+
+                  {selectedItemDetails.garmentType && (
+                    <View style={styles.detailsSection}>
+                      <Text style={styles.detailsLabel}>Garment Type</Text>
+                      <Text style={styles.detailsValue}>
+                        {selectedItemDetails.garmentType}
+                      </Text>
+                    </View>
+                  )}
+
+                  {selectedItemDetails.damageType && (
+                    <View style={styles.detailsSection}>
+                      <Text style={styles.detailsLabel}>Type of Damage</Text>
+                      <Text style={styles.detailsValue}>
+                        {selectedItemDetails.damageType}
+                      </Text>
+                    </View>
+                  )}
+
+                  {selectedItemDetails.quantity && (
+                    <View style={styles.detailsSection}>
+                      <Text style={styles.detailsLabel}>Quantity</Text>
+                      <Text style={styles.detailsValue}>
+                        {selectedItemDetails.quantity}
+                      </Text>
+                    </View>
+                  )}
+
+                  {selectedItemDetails.clothingBrand && (
+                    <View style={styles.detailsSection}>
+                      <Text style={styles.detailsLabel}>Brand</Text>
+                      <Text style={styles.detailsValue}>
+                        {selectedItemDetails.clothingBrand}
+                      </Text>
+                    </View>
+                  )}
+
+                  {selectedItemDetails.specialInstructions && (
+                    <View style={styles.detailsSection}>
+                      <Text style={styles.detailsLabel}>
+                        Special Instructions
+                      </Text>
+                      <Text style={styles.detailsValue}>
+                        {selectedItemDetails.specialInstructions}
+                      </Text>
+                    </View>
+                  )}
+
+                  <View style={styles.detailsSection}>
+                    <Text style={styles.detailsLabel}>Price</Text>
+                    <Text style={styles.detailsPriceValue}>
+                      ₱{selectedItemDetails.price.toLocaleString()}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* FIXED BOTTOM CHECKOUT BAR */}
       {cartItems.length > 0 && (
@@ -272,7 +414,10 @@ export default function CartScreen() {
               {selectedItems.length === 1 ? "item" : "items"} selected
             </Text>
             <Text style={styles.checkoutTotal}>
-              ₱{(getSelectedTotal() + 50).toLocaleString()}
+              ₱
+              {(
+                getSelectedTotal() + (selectedItems.length > 0 ? 50 : 0)
+              ).toLocaleString()}
             </Text>
           </View>
 
@@ -335,9 +480,13 @@ export default function CartScreen() {
           <Ionicons name="home-outline" size={26} color="#9CA3AF" />
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => router.push("/(tabs)/appointment/AppointmentScreen")}
+          onPress={() =>
+            router.push("/(tabs)/appointment/appointmentSelection")
+          }
         >
-          <Ionicons name="receipt-outline" size={26} color="#9CA3AF" />
+          <View style={styles.navItemWrap}>
+            <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
+          </View>
         </TouchableOpacity>
         <TouchableOpacity>
           <Ionicons name="cart" size={26} color="#94665B" />
@@ -354,7 +503,6 @@ export default function CartScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F9FAFB" },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -367,7 +515,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 22, fontWeight: "700", color: "#1F2937" },
   selectAllText: { fontSize: 15, fontWeight: "600", color: "#94665B" },
-
   emptyCart: {
     flex: 1,
     justifyContent: "center",
@@ -387,7 +534,6 @@ const styles = StyleSheet.create({
     borderRadius: 30,
   },
   shopButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-
   cartList: { paddingHorizontal: 20, paddingTop: 10 },
   cartItem: {
     backgroundColor: "#fff",
@@ -405,7 +551,6 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   cartItemSelected: { borderColor: "#94665B", backgroundColor: "#FDF4F0" },
-
   checkboxContainer: { marginRight: 16 },
   checkbox: {
     width: 28,
@@ -417,7 +562,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   checkboxChecked: { backgroundColor: "#94665B", borderColor: "#94665B" },
-
   iconContainer: {
     width: 56,
     height: 56,
@@ -444,12 +588,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6B7280",
     lineHeight: 20,
+    marginBottom: 6,
+  },
+  viewDetailsLink: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
+  viewDetailsLinkText: {
+    fontSize: 13,
+    color: "#94665B",
+    fontWeight: "600",
+    marginRight: 4,
+  },
   itemPrice: { fontSize: 20, fontWeight: "800", color: "#94665B" },
-
   removeButton: { padding: 10 },
-
   dateSection: { marginHorizontal: 20, marginVertical: 24 },
   dateSectionHeader: {
     flexDirection: "row",
@@ -481,7 +634,6 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontWeight: "500",
   },
-
   summarySection: {
     marginHorizontal: 20,
     backgroundColor: "#fff",
@@ -508,7 +660,6 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: "#E5E7EB", marginVertical: 16 },
   totalLabel: { fontSize: 20, fontWeight: "800", color: "#1F2937" },
   totalValue: { fontSize: 26, fontWeight: "800", color: "#94665B" },
-
   checkoutContainer: {
     position: "absolute",
     bottom: 80,
@@ -546,7 +697,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginRight: 10,
   },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
@@ -616,7 +766,54 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalConfirmText: { color: "#fff", fontWeight: "700", fontSize: 17 },
-
+  detailsModalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: height * 0.85,
+    width: "100%",
+    marginTop: "auto",
+  },
+  detailsModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  detailsModalTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  detailsImage: {
+    width: "100%",
+    height: 250,
+    resizeMode: "cover",
+  },
+  detailsSection: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  detailsLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#6B7280",
+    marginBottom: 6,
+  },
+  detailsValue: {
+    fontSize: 17,
+    color: "#1F2937",
+    fontWeight: "500",
+  },
+  detailsPriceValue: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#94665B",
+  },
   bottomNav: {
     position: "absolute",
     bottom: 0,

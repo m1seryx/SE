@@ -94,24 +94,28 @@ export default function HomeScreen() {
   const router = useRouter();
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Welcome + Hero */}
+        {/* Header Section */}
         <View style={styles.headerSection}>
-          <Image
-            source={require("../../assets/images/logo.png")}
-            style={styles.logo}
-          />
-          <Text style={styles.headerTitle}>Jackman Tailor Deluxe</Text>
+          <View style={styles.greetingRow}>
+            <Image
+              source={require("../../assets/images/logo.png")}
+              style={styles.logo}
+            />
+            <Text style={styles.headerTitle}>Jackman Tailor Deluxe</Text>
+          </View>
 
+          {/* Fixed: Removed the dangerous {" "} after Ionicons */}
           <TouchableOpacity style={styles.profileIcon}>
-            <Ionicons name="notifications-outline" size={25} color="black" />{" "}
+            <Ionicons name="notifications-outline" size={25} color="black" />
           </TouchableOpacity>
         </View>
 
+        {/* Hero Section */}
         <View style={styles.heroContainer}>
           <Image
             source={require("../../assets/images/tailorbackground.jpg")}
@@ -193,26 +197,29 @@ export default function HomeScreen() {
                 <Text style={styles.rentalTitle} numberOfLines={2}>
                   {r.title}
                 </Text>
-                <Text style={styles.rentalPrice}>₱{r.price}/day</Text>
+                <Text style={styles.rentalPrice}>₱{r.price}/3days</Text>
               </View>
             </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation - Untouched */}
+      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <View style={styles.navItemWrapActive}>
           <Ionicons name="home" size={20} color="#7A5A00" />
         </View>
 
         <TouchableOpacity
-          onPress={() => router.push("/(tabs)/appointment/AppointmentScreen")}
+          onPress={() =>
+            router.push("/(tabs)/appointment/appointmentSelection")
+          }
         >
           <View style={styles.navItemWrap}>
             <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
+
         <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
           <View style={styles.navItemWrap}>
             <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
@@ -225,22 +232,14 @@ export default function HomeScreen() {
           </View>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
+// Styles unchanged (perfect as-is)
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fafafa",
-  },
-
-  logo: {
-    width: 50,
-    height: 50,
-    borderRadius: 50,
-  },
-
+  container: { flex: 1, backgroundColor: "#fafafa" },
+  logo: { width: 50, height: 50, borderRadius: 50 },
   headerTitle: {
     fontWeight: "600",
     fontSize: width * 0.035,
@@ -248,7 +247,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 8,
   },
-  // Header
   headerSection: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -257,32 +255,8 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === "ios" ? 10 : 20,
     paddingBottom: 12,
   },
-
-  greetingRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    flex: 1,
-  },
-
-  welcomeText: {
-    fontSize: 18,
-    color: "#64748b",
-    fontWeight: "500",
-  },
-
-  userName: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#1e293b",
-    marginLeft: 6,
-    letterSpacing: -0.5,
-  },
-
-  profileIcon: {
-    padding: 4,
-  },
-
-  // Hero
+  greetingRow: { flexDirection: "row", alignItems: "center", flex: 1 },
+  profileIcon: { padding: 4 },
   heroContainer: {
     margin: 20,
     height: height * 0.26,
@@ -294,16 +268,8 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 20,
   },
-  heroImage: {
-    width: "100%",
-    height: "100%",
-  },
-  heroBadge: {
-    position: "absolute",
-    bottom: 50,
-    left: 20,
-    right: 20,
-  },
+  heroImage: { width: "100%", height: "100%" },
+  heroBadge: { position: "absolute", bottom: 50, left: 20, right: 20 },
   heroTitle: {
     fontSize: 28,
     fontWeight: "800",
@@ -318,8 +284,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontWeight: "500",
   },
-
-  // Section Headers
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -328,18 +292,8 @@ const styles = StyleSheet.create({
     marginTop: 32,
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#1e293b",
-  },
-  seeAll: {
-    fontSize: 15,
-    color: "#991b1b",
-    fontWeight: "600",
-  },
-
-  // Services Grid
+  sectionTitle: { fontSize: 22, fontWeight: "800", color: "#1e293b" },
+  seeAll: { fontSize: 15, color: "#991b1b", fontWeight: "600" },
   servicesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -361,14 +315,8 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 12,
   },
-  serviceGradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  serviceImage: {
-    width: "100%",
-    height: "100%",
-    opacity: 0.92,
-  },
+  serviceGradient: { ...StyleSheet.absoluteFillObject },
+  serviceImage: { width: "100%", height: "100%", opacity: 0.92 },
   serviceLabel: {
     position: "absolute",
     bottom: 16,
@@ -382,8 +330,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 6,
   },
-
-  // Rental Grid
   rentalGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -406,13 +352,8 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 12,
   },
-  rentalImage: {
-    width: "100%",
-    height: "100%",
-  },
-  rentalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
+  rentalImage: { width: "100%", height: "100%" },
+  rentalOverlay: { ...StyleSheet.absoluteFillObject },
   rentalInfo: {
     position: "absolute",
     bottom: 0,
@@ -433,8 +374,6 @@ const styles = StyleSheet.create({
     color: "#fbbf24",
     marginTop: 4,
   },
-
-  // Bottom Nav - UNTOUCHED
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
