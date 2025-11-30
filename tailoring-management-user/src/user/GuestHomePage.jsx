@@ -12,6 +12,7 @@ import repairBg from "../assets/repair.png";
 import brown from "../assets/brown.png";
 import full from "../assets/full.png";
 import tuxedo from "../assets/tuxedo.png";
+import { loginUser, registerUser } from '../api/AuthApi';
 
 
 const App = ({ setIsLoggedIn }) => {
@@ -22,9 +23,17 @@ const App = ({ setIsLoggedIn }) => {
   // New: Auth Modal States
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
-  const [loginEmail, setLoginEmail] = useState('');
-  const [signupName, setSignupName] = useState('');
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [signupFirstName, setSignupFirstName] = useState('');
+  const [signupLastName, setSignupLastName] = useState('');
+  const [signupUsername, setSignupUsername] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+  const [signupPhone, setSignupPhone] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   
 
@@ -54,19 +63,60 @@ const App = ({ setIsLoggedIn }) => {
   };
 
   const navigate = useNavigate();
-  const handleLogin = () => {
-    if (typeof setIsLoggedIn === 'function') {
-      setIsLoggedIn(true);
+  const handleLogin = async () => {
+    setAuthError('');
+    setIsLoading(true);
+    
+    try {
+      if (isLogin) {
+        // Handle login - backend expects username and password
+        const result = await loginUser({
+          username: loginUsername,
+          password: loginPassword
+        });
+        
+        if (result.message === 'Login successful' || result.message === 'Admin login successful') {
+          if (typeof setIsLoggedIn === 'function') {
+            setIsLoggedIn(true);
+          }
+          setIsAuthModalOpen(false);
+          navigate('/user-home', { replace: true });
+        } else {
+          setAuthError(result.message || 'Login failed');
+        }
+      } else {
+        // Handle signup - backend expects first_name, last_name, username, email, password, phone_number
+        if (signupPassword !== signupConfirmPassword) {
+          setAuthError('Passwords do not match');
+          setIsLoading(false);
+          return;
+        }
+        
+        const result = await registerUser({
+          first_name: signupFirstName,
+          last_name: signupLastName,
+          username: signupUsername,
+          email: signupEmail,
+          password: signupPassword,
+          phone_number: signupPhone || ''
+        });
+        
+        if (result.success) {
+          // Auto-login after successful registration
+          if (typeof setIsLoggedIn === 'function') {
+            setIsLoggedIn(true);
+          }
+          setIsAuthModalOpen(false);
+          navigate('/user-home', { replace: true });
+        } else {
+          setAuthError(result.message || 'Registration failed');
+        }
+      }
+    } catch (error) {
+      setAuthError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-    if (!isLogin && signupName) {
-      try { localStorage.setItem('userName', signupName); } catch { void 0 }
-    }
-    const emailVal = isLogin ? loginEmail : signupEmail;
-    if (emailVal) {
-      try { localStorage.setItem('userEmail', emailVal); } catch { void 0 }
-    }
-    setIsAuthModalOpen(false);
-    navigate('/user-home', { replace: true });
   };
 
   const services = [
@@ -270,26 +320,48 @@ const App = ({ setIsLoggedIn }) => {
         {/* Form */}
         <form className="auth-form" onSubmit={(e) => e.preventDefault()}>
           {!isLogin && (
-            <div className="input-group">
-              <input
-                type="text"
-                placeholder="Full Name"
-                required
-                autoComplete="name"
-                value={signupName}
-                onChange={(e) => setSignupName(e.target.value)}
-              />
-            </div>
+            <>
+              <div className="input-group">
+                <input
+                  type="text"
+                  placeholder="First Name"
+                  required
+                  autoComplete="given-name"
+                  value={signupFirstName}
+                  onChange={(e) => setSignupFirstName(e.target.value)}
+                />
+              </div>
+              <div className="input-group">
+                <input
+                  type="text"
+                  placeholder="Last Name"
+                  required
+                  autoComplete="family-name"
+                  value={signupLastName}
+                  onChange={(e) => setSignupLastName(e.target.value)}
+                />
+              </div>
+              <div className="input-group">
+                <input
+                  type="text"
+                  placeholder="Username"
+                  required
+                  autoComplete="username"
+                  value={signupUsername}
+                  onChange={(e) => setSignupUsername(e.target.value)}
+                />
+              </div>
+            </>
           )}
 
           <div className="input-group">
             <input
-              type="email"
-              placeholder="Email Address"
+              type={isLogin ? "text" : "email"}
+              placeholder={isLogin ? "Username" : "Email Address"}
               required
-              autoComplete="email"
-              value={isLogin ? loginEmail : signupEmail}
-              onChange={(e) => (isLogin ? setLoginEmail(e.target.value) : setSignupEmail(e.target.value))}
+              autoComplete={isLogin ? "username" : "email"}
+              value={isLogin ? loginUsername : signupEmail}
+              onChange={(e) => (isLogin ? setLoginUsername(e.target.value) : setSignupEmail(e.target.value))}
             />
           </div>
 
@@ -299,18 +371,33 @@ const App = ({ setIsLoggedIn }) => {
               placeholder="Password"
               required
               autoComplete={isLogin ? "current-password" : "new-password"}
+              value={isLogin ? loginPassword : signupPassword}
+              onChange={(e) => isLogin ? setLoginPassword(e.target.value) : setSignupPassword(e.target.value)}
             />
           </div>
 
           {!isLogin && (
-            <div className="input-group">
-              <input
-                type="password"
-                placeholder="Confirm Password"
-                required
-                autoComplete="new-password"
-              />
-            </div>
+            <>
+              <div className="input-group">
+                <input
+                  type="password"
+                  placeholder="Confirm Password"
+                  required
+                  autoComplete="new-password"
+                  value={signupConfirmPassword}
+                  onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                />
+              </div>
+              <div className="input-group">
+                <input
+                  type="tel"
+                  placeholder="Phone Number (Optional)"
+                  autoComplete="tel"
+                  value={signupPhone}
+                  onChange={(e) => setSignupPhone(e.target.value)}
+                />
+              </div>
+            </>
           )}
 
           {/* Remember Me & Forgot Password */}
@@ -324,9 +411,16 @@ const App = ({ setIsLoggedIn }) => {
             </div>
           )}
 
+          {/* Error Message */}
+          {authError && (
+            <div className="auth-error" style={{ color: '#dc3545', fontSize: '14px', marginBottom: '16px', textAlign: 'center' }}>
+              {authError}
+            </div>
+          )}
+
           {/* Submit Button */}
-          <button type="submit" className="auth-submit" onClick={handleLogin}>
-            {isLogin ? 'Login Now' : 'Create Account'}
+          <button type="submit" className="auth-submit" onClick={handleLogin} disabled={isLoading}>
+            {isLoading ? 'Processing...' : (isLogin ? 'Login Now' : 'Create Account')}
           </button>
         </form>
 

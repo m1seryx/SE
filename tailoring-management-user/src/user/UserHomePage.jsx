@@ -12,6 +12,7 @@ import brown from "../assets/brown.png";
 import full from "../assets/full.png";
 import tuxedo from "../assets/tuxedo.png";
 import dryCleanBg from "../assets/dryclean.png";
+import { getUser, logoutUser } from '../api/AuthApi';
 
 const UserHomePage = ({ userName, setIsLoggedIn }) => {
   const navigate = useNavigate();
@@ -50,9 +51,9 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
     { type: 'Dry Cleaning', description: 'Impeccable clean on your suit' },
   ];
 
-  const user = {
-    name: (typeof window !== 'undefined' && localStorage.getItem('userName')) || userName || 'User',
-    email: (typeof window !== 'undefined' && localStorage.getItem('userEmail')) || '',
+  const user = getUser() || {
+    name: userName || 'User',
+    email: '',
     avatar: dp,
   };
 
@@ -67,6 +68,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
   };
 
   const handleLogout = () => {
+    logoutUser();
     if (typeof setIsLoggedIn === 'function') {
       setIsLoggedIn(false);
     }
