@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllRentals, getRentalImageUrl } from '../../api/RentalApi';
+import { addToCart } from '../../api/CartApi';
 import brown from "../../assets/brown.png";
 import full from "../../assets/full.png";
 import tuxedo from "../../assets/tuxedo.png";
@@ -14,6 +15,8 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [totalCost, setTotalCost] = useState(0);
+  const [cartMessage, setCartMessage] = useState('');
+  const [addingToCart, setAddingToCart] = useState(false);
   const navigate = useNavigate();
 
   // Fallback items for when API fails
@@ -100,8 +103,69 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
     setStartDate('');
     setEndDate('');
     setTotalCost(0);
+    setCartMessage('');
     setIsModalOpen(true);
     console.log('isModalOpen set to true');
+  };
+
+  // Handle adding rental to cart
+  const handleAddToCart = async () => {
+    if (!selectedItem || !startDate || !endDate) {
+      setCartMessage('Please select rental dates');
+      return;
+    }
+
+    setAddingToCart(true);
+    setCartMessage('');
+
+    try {
+      const rentalData = {
+        serviceType: 'rental',
+        serviceId: selectedItem.id || selectedItem.item_id,
+        quantity: 1,
+        basePrice: selectedItem.base_rental_fee || selectedItem.base_fee || '0',
+        finalPrice: totalCost.toString(),
+        pricingFactors: {
+          daily_rate: selectedItem.daily_rate || '800',
+          days: Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)),
+          deposit_amount: selectedItem.deposit_amount || '0'
+        },
+        specificData: {
+          item_name: selectedItem.item_name || selectedItem.name || 'Rental Item',
+          brand: selectedItem.brand || 'Unknown',
+          size: selectedItem.size || 'Standard',
+          category: selectedItem.category || 'rental',
+          image_url: getRentalImageUrl(selectedItem.image_url)
+        },
+        rentalDates: {
+          startDate: startDate,
+          endDate: endDate
+        }
+      };
+
+      const result = await addToCart(rentalData);
+      
+      if (result.success) {
+        setCartMessage(`✅ ${selectedItem.item_name || selectedItem.name} added to cart!`);
+        // Close modal after successful addition
+        setTimeout(() => {
+          setIsModalOpen(false);
+          setSelectedItem(null);
+          setStartDate('');
+          setEndDate('');
+          setTotalCost(0);
+        }, 1500);
+      } else {
+        setCartMessage(`❌ Error: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Add to cart error:', error);
+      setCartMessage('❌ Failed to add item to cart');
+    } finally {
+      setAddingToCart(false);
+      // Clear message after 3 seconds
+      setTimeout(() => setCartMessage(''), 3000);
+    }
   };
 
   // Show only 3 items on homepage, all items on rental page
@@ -282,12 +346,19 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                     </div>
                   )}
                   
+                  {/* Cart Message */}
+                  {cartMessage && (
+                    <div className={`cart-message ${cartMessage.includes('✅') ? 'success' : 'error'}`}>
+                      {cartMessage}
+                    </div>
+                  )}
+                  
                   <button 
                     className="btn-rent" 
-                    onClick={openAuthModal}
-                    disabled={!startDate || !endDate || totalCost <= 0}
+                    onClick={handleAddToCart}
+                    disabled={!startDate || !endDate || totalCost <= 0 || addingToCart}
                   >
-                    RENT NOW - ₱{selectedItem.deposit_amount || '0'}
+                    {addingToCart ? 'Adding to Cart...' : `Add to Cart - ₱${selectedItem.deposit_amount || '0'}`}
                   </button>
                 </div>
               </div>

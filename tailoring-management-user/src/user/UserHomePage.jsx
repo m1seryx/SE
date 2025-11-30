@@ -14,6 +14,9 @@ import tuxedo from "../assets/tuxedo.png";
 import dryCleanBg from "../assets/dryclean.png";
 import { getUser, logoutUser } from '../api/AuthApi';
 import RentalClothes from './components/RentalClothes';
+import Cart from './components/Cart';
+import RepairFormModal from './components/RepairFormModal';
+import DryCleaningFormModal from './components/DryCleaningFormModal';
 
 // Add at the top of your component, before UserHomePage
 const serviceForms = {
@@ -46,6 +49,8 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
   const [cartItems, setCartItems] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [repairFormModalOpen, setRepairFormModalOpen] = useState(false);
+  const [dryCleaningFormModalOpen, setDryCleaningFormModalOpen] = useState(false);
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointments, setAppointments] = useState(() => {
     try {
@@ -89,7 +94,27 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
     navigate('/', { replace: true });
   };
 
+  const handleCartUpdate = () => {
+    console.log('Cart was updated from repair modal!');
+    // You can add additional logic here like updating cart badge
+  };
+
   const addServiceToCart = (type) => {
+    if (type === 'Repair') {
+      // Open repair form modal
+      setServiceModalOpen(false);
+      setRepairFormModalOpen(true);
+      return;
+    }
+    
+    if (type === 'Dry Cleaning') {
+      // Open dry cleaning form modal
+      setServiceModalOpen(false);
+      setDryCleaningFormModalOpen(true);
+      return;
+    }
+    
+    // Handle other service types with old cart system (for now)
     setCartItems((prev) => {
       const id = 'ORD-' + String(prev.length + 1).padStart(4, '0');
       const newItem = {
@@ -237,13 +262,13 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
       </section>
 
       <section className="appointment" id="Appointment">
-        <h2>Book an Appointment</h2>
+        <h2>Book a Service</h2>
         <div className="appointment-content">
           <img src={appointmentBg} alt="Tailor" className="appointment-img" />
           <div className="appointment-overlay">
             <p>Ready for a fitting or consultation?</p>
             <p>We’re excited to serve you again!</p>
-            <button className="btn-book" onClick={() => setServiceModalOpen(true)}>Book Appointment</button>
+            <button className="btn-book" onClick={() => setServiceModalOpen(true)}>Book Service</button>
           </div>
         </div>
       </section>
@@ -330,66 +355,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         </div>
       )}
 
-    {cartOpen && (
-  <div className="cart-drawer" onClick={() => setCartOpen(false)}>
-    <div className="cart-panel" onClick={(e) => e.stopPropagation()}>
-      <div className="cart-header">
-        <div className="cart-title">Cart ({cartItems.length})</div>
-        <button className="cart-close" onClick={() => setCartOpen(false)}>×</button>
-      </div>
-      <div className="cart-items">
-        {cartItems.length === 0 && <div className="cart-empty">No services selected</div>}
-        {cartItems.map((it) => (
-          <div key={it.id} className="cart-card">
-            <div className="cart-card-top">
-              <div className="cart-id">{it.id}</div>
-              <div className="cart-type">{it.type}</div>
-            </div>
-            <div className="cart-card-body">
-              <div className="cart-form">
-                {serviceForms[it.type]?.map((field) => (
-                  <div key={field.name} className="form-group">
-                    <label>{field.label}</label>
-                    {field.type === "textarea" ? (
-                      <textarea
-                        rows={3}
-                        value={it.details[field.name] || ""}
-                        onChange={(e) =>
-                          updateItemDetails(it.id, { [field.name]: e.target.value })
-                        }
-                      />
-                    ) : field.type === "file" ? (
-                      <input
-                        type="file"
-                        onChange={(e) =>
-                          updateItemDetails(it.id, { [field.name]: e.target.files[0] })
-                        }
-                      />
-                    ) : (
-                      <input
-                        type={field.type}
-                        value={it.details[field.name] || ""}
-                        onChange={(e) =>
-                          updateItemDetails(it.id, { [field.name]: e.target.value })
-                        }
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-              <div className="cart-actions">
-                <button className="btn-danger" onClick={() => removeItem(it.id)}>Remove</button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="cart-footer">
-        <button className="btn-primary" disabled={cartItems.length === 0} onClick={() => { setCartOpen(false); setSummaryModalOpen(true); }}>Proceed to booking</button>
-      </div>
-    </div>
-  </div>
-)}
+ 
 
 {summaryModalOpen && (
   <div className="auth-modal-overlay" onClick={() => setSummaryModalOpen(false)}>
@@ -499,6 +465,27 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
     </div>
   </div>
 )}
+
+      {/* Cart Component */}
+      <Cart 
+        isOpen={cartOpen} 
+        onClose={() => setCartOpen(false)}
+        onCartUpdate={handleCartUpdate}
+      />
+
+      {/* Repair Form Modal Component */}
+      <RepairFormModal 
+        isOpen={repairFormModalOpen} 
+        onClose={() => setRepairFormModalOpen(false)}
+        onCartUpdate={handleCartUpdate}
+      />
+
+      {/* Dry Cleaning Form Modal Component */}
+      <DryCleaningFormModal 
+        isOpen={dryCleaningFormModalOpen} 
+        onClose={() => setDryCleaningFormModalOpen(false)}
+        onCartUpdate={handleCartUpdate}
+      />
     </>
   );
 };

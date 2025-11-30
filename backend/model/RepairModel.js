@@ -1,0 +1,111 @@
+const db = require('../config/db');
+
+const RepairService = {
+  // Get all repair services
+  getAll: (callback) => {
+    const sql = "SELECT * FROM repair_services ORDER BY service_name";
+    db.query(sql, callback);
+  },
+
+  // Get repair service by ID
+  getById: (serviceId, callback) => {
+    const sql = "SELECT * FROM repair_services WHERE service_id = ?";
+    db.query(sql, [serviceId], callback);
+  },
+
+  // Get repair services by damage level
+  getByDamageLevel: (damageLevel, callback) => {
+    const sql = "SELECT * FROM repair_services WHERE damage_level = ? ORDER BY service_name";
+    db.query(sql, [damageLevel], callback);
+  },
+
+  // Create new repair service
+  create: (serviceData, callback) => {
+    const {
+      service_name,
+      description,
+      base_price,
+      price_adjustment,
+      damage_level,
+      estimated_time,
+      requires_image
+    } = serviceData;
+
+    const sql = `
+      INSERT INTO repair_services 
+      (service_name, description, base_price, price_adjustment, damage_level, estimated_time, requires_image) 
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+    
+    db.query(sql, [
+      service_name,
+      description,
+      base_price,
+      price_adjustment,
+      damage_level || 'minor',
+      estimated_time,
+      requires_image !== undefined ? requires_image : 1
+    ], callback);
+  },
+
+  // Update repair service
+  update: (serviceId, serviceData, callback) => {
+    const {
+      service_name,
+      description,
+      base_price,
+      price_adjustment,
+      damage_level,
+      estimated_time,
+      requires_image
+    } = serviceData;
+
+    const sql = `
+      UPDATE repair_services 
+      SET service_name = ?, description = ?, base_price = ?, price_adjustment = ?, 
+          damage_level = ?, estimated_time = ?, requires_image = ?
+      WHERE service_id = ?
+    `;
+    
+    db.query(sql, [
+      service_name,
+      description,
+      base_price,
+      price_adjustment,
+      damage_level,
+      estimated_time,
+      requires_image,
+      serviceId
+    ], callback);
+  },
+
+  // Delete repair service
+  delete: (serviceId, callback) => {
+    const sql = "DELETE FROM repair_services WHERE service_id = ?";
+    db.query(sql, [serviceId], callback);
+  },
+
+  // Get price estimate based on damage level
+  getPriceEstimate: (damageLevel, callback) => {
+    const sql = `
+      SELECT service_id, service_name, base_price, price_adjustment, damage_level, estimated_time 
+      FROM repair_services 
+      WHERE damage_level = ?
+      ORDER BY base_price ASC
+    `;
+    db.query(sql, [damageLevel], callback);
+  },
+
+  // Search repair services by name
+  search: (searchTerm, callback) => {
+    const sql = `
+      SELECT * FROM repair_services 
+      WHERE service_name LIKE ? OR description LIKE ?
+      ORDER BY service_name
+    `;
+    const searchPattern = `%${searchTerm}%`;
+    db.query(sql, [searchPattern, searchPattern], callback);
+  }
+};
+
+module.exports = RepairService;

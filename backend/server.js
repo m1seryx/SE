@@ -31,10 +31,20 @@ app.use('/uploads', express.static('uploads'));
 const authRoutes = require('./routes/AuthRoutes');
 const rentalRoutes = require('./routes/RentalRoutes');
 const userRoutes = require('./routes/UserRoutes');
+const cartRoutes = require('./routes/CartRoutes');
+const orderRoutes = require('./routes/OrderRoutes');
+const repairRoutes = require('./routes/RepairRoutes');
+const orderTrackingRoutes = require('./routes/OrderTrackingRoutes');
+const dryCleaningRoutes = require('./routes/DryCleaningRoutes');
 
 app.use('/api', authRoutes);
 app.use('/api/rentals', rentalRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/repair', repairRoutes);
+app.use('/api/dry-cleaning', dryCleaningRoutes);
+app.use('/api/tracking', orderTrackingRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5000;
