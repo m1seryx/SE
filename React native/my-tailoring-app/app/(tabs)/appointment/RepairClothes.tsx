@@ -1,4 +1,3 @@
-// app/(tabs)/appointment/RepairClothes.tsx
 import React, { useState } from "react";
 import {
   View,
@@ -11,21 +10,30 @@ import {
   Dimensions,
   SafeAreaView,
   Alert,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { cartStore } from "../../utils/cartStore";
 
 const { width, height } = Dimensions.get("window");
 
 export default function RepairClothes() {
   const router = useRouter();
+
+  // Form States
   const [image, setImage] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState("");
   const [damageType, setDamageType] = useState("");
   const [instruction, setInstruction] = useState("");
+
+  // Date & Time Picker States
+  const [appointmentDate, setAppointmentDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -72,9 +80,37 @@ export default function RepairClothes() {
     return prices[damage] || 300;
   };
 
+  // Date & Time Handlers
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    const currentDate = selectedDate || appointmentDate;
+    setShowDatePicker(Platform.OS === "ios");
+
+    if (currentDate) {
+      setAppointmentDate(currentDate);
+      if (Platform.OS === "android") {
+        setShowDatePicker(false);
+        setShowTimePicker(true); // Open time picker right after
+      }
+    }
+  };
+
+  const onTimeChange = (event: any, selectedTime?: Date) => {
+    setShowTimePicker(Platform.OS === "ios");
+
+    if (selectedTime && appointmentDate) {
+      const updatedDate = new Date(appointmentDate);
+      updatedDate.setHours(selectedTime.getHours());
+      updatedDate.setMinutes(selectedTime.getMinutes());
+      setAppointmentDate(updatedDate);
+    }
+  };
+
   const handleAddService = () => {
-    if (!selectedItem || !damageType) {
-      Alert.alert("Missing Information", "Please fill in all required fields");
+    if (!selectedItem || !damageType || !appointmentDate) {
+      Alert.alert(
+        "Missing Information",
+        "Please select garment, damage type, and appointment date & time"
+      );
       return;
     }
 
@@ -86,11 +122,19 @@ export default function RepairClothes() {
       item: selectedItem,
       description: `${damageType}${instruction ? ` - ${instruction}` : ""}`,
       price: price,
-      icon: "construct-outline",
+      icon: "construct-outline" as const,
       garmentType: selectedItem,
       damageType: damageType,
       specialInstructions: instruction,
       image: image || undefined,
+      appointmentDate: appointmentDate.toLocaleString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }),
     };
 
     cartStore.addItem(cartItem);
@@ -107,6 +151,7 @@ export default function RepairClothes() {
           setDamageType("");
           setInstruction("");
           setImage(null);
+          setAppointmentDate(null);
         },
       },
     ]);
@@ -132,6 +177,7 @@ export default function RepairClothes() {
             <Text style={styles.cardSubtitle}>We'll make it good as new</Text>
           </View>
 
+          {/* Image Upload */}
           <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
             {image ? (
               <Image source={{ uri: image }} style={styles.previewImage} />
@@ -150,6 +196,7 @@ export default function RepairClothes() {
             )}
           </TouchableOpacity>
 
+          {/* Garment Type */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Type of Garment *</Text>
             <View style={styles.pickerWrapper}>
@@ -157,13 +204,8 @@ export default function RepairClothes() {
                 selectedValue={selectedItem}
                 onValueChange={(value) => setSelectedItem(value)}
                 style={styles.picker}
-                dropdownIconColor="#9dc5e3"
               >
-                <Picker.Item
-                  label="Select garment type..."
-                  value=""
-                  color="#999"
-                />
+                <Picker.Item label="Select garment type..." value="" />
                 {itemTypes.map((item) => (
                   <Picker.Item label={item} value={item} key={item} />
                 ))}
@@ -171,6 +213,7 @@ export default function RepairClothes() {
             </View>
           </View>
 
+          {/* Damage Type */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Type of Damage *</Text>
             <View style={styles.pickerWrapper}>
@@ -178,13 +221,8 @@ export default function RepairClothes() {
                 selectedValue={damageType}
                 onValueChange={(value) => setDamageType(value)}
                 style={styles.picker}
-                dropdownIconColor="#9dc5e3"
               >
-                <Picker.Item
-                  label="Describe the damage..."
-                  value=""
-                  color="#999"
-                />
+                <Picker.Item label="Describe the damage..." value="" />
                 {damageOptions.map((damage) => (
                   <Picker.Item label={damage} value={damage} key={damage} />
                 ))}
@@ -197,20 +235,69 @@ export default function RepairClothes() {
             )}
           </View>
 
+          {/* Special Instructions */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Special Instructions (Optional)</Text>
             <TextInput
-              placeholder="e.g., Keep original buttons, match thread color, etc."
+              placeholder="e.g., Keep original buttons, match thread color..."
               style={styles.textArea}
               placeholderTextColor="#94a3b8"
               multiline
-              numberOfLines={5}
               value={instruction}
               onChangeText={setInstruction}
               textAlignVertical="top"
             />
           </View>
 
+          {/* Appointment Date & Time Picker */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>
+              Preferred Appointment Date & Time *
+            </Text>
+            <TouchableOpacity
+              style={styles.dateTimeButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Ionicons name="calendar-outline" size={22} color="#94665B" />
+              <Text style={styles.dateTimeText}>
+                {appointmentDate
+                  ? appointmentDate.toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                    }) +
+                    ", " +
+                    appointmentDate.toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })
+                  : "Tap to select date & time"}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {/* Date Picker */}
+            {showDatePicker && (
+              <DateTimePicker
+                value={appointmentDate || new Date()}
+                mode="date"
+                minimumDate={new Date()}
+                onChange={onDateChange}
+              />
+            )}
+
+            {/* Time Picker (Android only after date) */}
+            {showTimePicker && Platform.OS === "android" && (
+              <DateTimePicker
+                value={appointmentDate || new Date()}
+                mode="time"
+                is24Hour={false}
+                onChange={onTimeChange}
+              />
+            )}
+          </View>
+
+          {/* Buttons */}
           <View style={styles.buttonRow}>
             <TouchableOpacity
               style={[styles.button, styles.cancelBtn]}
@@ -229,6 +316,7 @@ export default function RepairClothes() {
         </View>
       </ScrollView>
 
+      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity onPress={() => router.replace("/home")}>
           <View style={styles.navItemWrap}>
@@ -449,5 +537,22 @@ const styles = StyleSheet.create({
     backgroundColor: "#FDE68A",
     alignItems: "center",
     justifyContent: "center",
+  },
+  dateTimeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: "#cbd5e1",
+    borderRadius: 18,
+    padding: 18,
+  },
+  dateTimeText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: "#1e293b",
+    fontWeight: "500",
   },
 });

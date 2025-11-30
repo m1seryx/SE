@@ -1,4 +1,3 @@
-// app/(tabs)/appointment/appointmentSelection.tsx
 import * as React from "react";
 import {
   View,
@@ -24,21 +23,21 @@ export default function AppointmentSelection() {
       label: "Repair Service",
       desc: "Fix and restore your clothes",
       color: "#EAF3FF",
-      iconName: "cut-outline" as const, // Scissors = sewing/repair
+      iconName: "cut-outline" as const,
     },
     {
       id: "custom",
       label: "Customize Service",
       desc: "Personalize and customize",
       color: "#FFFBE3",
-      iconName: "shirt-outline" as const, // Shirt = customization/tailoring
+      iconName: "shirt-outline" as const,
     },
     {
       id: "drycleaning",
       label: "Dry Cleaning Service",
       desc: "Professional cleaning service",
       color: "#FFE6F0",
-      iconName: "water-outline" as const, // Water = cleaning
+      iconName: "water-outline" as const,
     },
   ];
 

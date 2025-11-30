@@ -1,5 +1,4 @@
-.
-profile-main {
+.profile-main {
   padding: 20px;
 }
 
@@ -47,3 +46,28 @@ profile-main {
 .status-badge.design { background: #fff7d9; border-color: #f3dc92; }
 .status-badge.cleaning { background: #e7f5ff; border-color: #9ed0f3; }
 .status-badge.active { background: #e9ffe9; border-color: #a8e6a8; }
+/* Button wrapper above header */
+.top-btn-wrapper {
+  width: 100%;
+  padding: 100px 20px 5px;
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  border-bottom: 1px solid #eee;
+}
+
+/* Back button style */
+.btn-secondary {
+  background: #4b2e21;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-secondary:hover {
+  background: #6a3d2b;
+}

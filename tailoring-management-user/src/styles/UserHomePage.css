@@ -520,7 +520,18 @@
 .cart-form { display: grid; gap: 8px; margin-top: 10px; }
 .cart-form input, .cart-form textarea { padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
 .cart-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
-.btn-primary { padding: 10px 14px; border-radius: 24px; border: none; background: linear-gradient(90deg,#8B4513,#b86b3c); color: #fff; cursor: pointer; box-shadow: 0 6px 16px rgba(139,69,19,0.25); }
+.btn-primary {
+  padding: 10px 14px;
+  border-radius: 24px;
+  border: none;
+  background: linear-gradient(90deg,#8B4513,#b86b3c);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(139,69,19,0.25);
+  display: block;
+  margin: 0 auto;    /* centers it */
+}
+
 .btn-secondary { padding: 8px 12px; border-radius: 20px; border: 1px solid #8B4513; color: #8B4513; background: transparent; cursor: pointer; }
 .btn-danger { padding: 8px 12px; border-radius: 20px; border: 1px solid #d9534f; color: #d9534f; background: transparent; cursor: pointer; }
 .btn-alert { padding: 8px 12px; border-radius: 20px; border: 1px solid #ff8b3d; color: #ff8b3d; background: transparent; cursor: pointer; }
