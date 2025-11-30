@@ -122,9 +122,17 @@ const App = ({ setIsLoggedIn }) => {
       {/* Header */}
       <header className="header">
         <div className="logo">
-          <img src={logo} alt="Logo" className="logo-img" />
-          <span className="logo-text">D’jackman Tailor Deluxe</span>
+          <img 
+            src={logo} 
+            alt="Logo - Click to Login" 
+            className="logo-img clickable" 
+            onClick={openAuthModal}
+            style={{ cursor: 'pointer' }}
+            title="Click to Login/Sign Up"
+          />
+          <span className="logo-text">D'jackman Tailor Deluxe</span>
         </div>
+
         <nav className="nav">
           <a href="#top">Home</a>
           <a href="#Appointment">Appointment</a>
@@ -133,9 +141,10 @@ const App = ({ setIsLoggedIn }) => {
           <a href="#Repair">Repair</a>
           <a href="#DryCleaning">Dry Cleaning</a>
         </nav>
-        <div className="profile">
-          <img src={dp} alt="Profile" className="profile-img" />
-        </div>
+          <button className="login-btn" onClick={openAuthModal}>
+          Login
+        </button>
+        
       </header>
 
       {/* Hero */}
@@ -170,9 +179,9 @@ const App = ({ setIsLoggedIn }) => {
         <div className="appointment-content">
           <img src={appointmentBg} alt="Tailor" className="appointment-img" />
           <div className="appointment-overlay">
-            <p>Ready to experience our services?</p>
+            <h3>Ready to experience our services?</h3>
             <p>Book your appointment now!</p>
-            <button className="btn-book" onClick={() => setServiceModalOpen(true)}>Book now</button>
+            <button className="btn-book" onClick={() => setServiceModalOpen(true)}>Book Appointment</button>
           </div>
         </div>
       </section>
@@ -181,7 +190,12 @@ const App = ({ setIsLoggedIn }) => {
       <RentalClothes openAuthModal={openAuthModal} />
 
       {/* Customization */}
-      <section className="customization" id="Customize">
+      <section className="customization" 
+          id="Customize" 
+          style={{ 
+            background: "(background: linear-gradient(to bottom, #fffff5 0%, #f0e9e2 100%))" 
+          }}
+        >
         <div className="custom-text">
           <h2>Customization</h2>
           <p>Got a style in mind?</p>
@@ -195,25 +209,25 @@ const App = ({ setIsLoggedIn }) => {
       {/* Repair Section */}
       <section className="repair" id="Repair">
         <h2>Repair Service</h2>
-        <div className="repair-bg" style={{ backgroundImage: `url('/src/assets/repair.png'), url(${repairBg})` }}>
+        <div className="repair-bg" style={{ backgroundImage: `url(${repairBg})` }}>
           <div className="repair-overlay"></div>
           <div className="repair-content">
             <h3>Need reliable repair services?</h3>
             <p>Get in touch with us today!</p>
-            <button className="btn-book" onClick={openAuthModal}>Book Now!</button>
+            <button className="repair-book" onClick={openAuthModal}>Book Repair!</button>
           </div>
         </div>
       </section>
 
       {/* Dry Cleaning Section */}
-      <section className="repair" id="DryCleaning">
+      <section className="clean" id="DryCleaning">
         <h2>Dry Cleaning Service</h2>
-        <div className="repair-bg" style={{ backgroundImage: `url('/src/assets/dryclean.png'), url(${dryCleanBg})` }}>
-          <div className="repair-overlay"></div>
-          <div className="repair-content">
+        <div className="clean-bg" style={{ backgroundImage: `url(${dryCleanBg})` }}>
+          <div className="clean-overlay"></div>
+          <div className="clean-content">
             <h3>Keep your garments fresh and spotless</h3>
             <p>Premium care for suits, gowns, and more</p>
-            <button className="btn-book" onClick={openAuthModal}>Book Dry Cleaning</button>
+            <button className="clean-book" onClick={openAuthModal}>Book Dry Cleaning</button>
           </div>
         </div>
       </section>
