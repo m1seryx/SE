@@ -141,9 +141,12 @@ const App = ({ setIsLoggedIn }) => {
           <a href="#Repair">Repair</a>
           <a href="#DryCleaning">Dry Cleaning</a>
         </nav>
+<<<<<<< HEAD
+=======
           <button className="login-btn" onClick={openAuthModal}>
           Login
         </button>
+>>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
         
       </header>
 
@@ -222,9 +225,15 @@ const App = ({ setIsLoggedIn }) => {
       {/* Dry Cleaning Section */}
       <section className="clean" id="DryCleaning">
         <h2>Dry Cleaning Service</h2>
+<<<<<<< HEAD
+        <div className="repair-bg" style={{ backgroundImage: `url(${dryCleanBg})` }}>
+          <div className="repair-overlay"></div>
+          <div className="repair-content">
+=======
         <div className="clean-bg" style={{ backgroundImage: `url(${dryCleanBg})` }}>
           <div className="clean-overlay"></div>
           <div className="clean-content">
+>>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
             <h3>Keep your garments fresh and spotless</h3>
             <p>Premium care for suits, gowns, and more</p>
             <button className="clean-book" onClick={openAuthModal}>Book Dry Cleaning</button>

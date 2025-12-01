@@ -10,11 +10,13 @@ import {
   ScrollView,
   Dimensions,
   SafeAreaView,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
+import { cartStore } from "../../utils/cartStore";
 
 const { width, height } = Dimensions.get("window");
 
@@ -49,13 +51,85 @@ export default function DryCleaningClothes() {
     "Barong",
   ];
 
+  const getPriceForGarment = (garment: string): number => {
+    const prices: { [key: string]: number } = {
+      Shirt: 150,
+      Pants: 180,
+      Suit: 400,
+      Dress: 350,
+      Jacket: 250,
+      Coat: 300,
+      Skirt: 200,
+      Blouse: 150,
+      "Wedding Gown": 1200,
+      Barong: 250,
+    };
+    return prices[garment] || 200;
+  };
+
+  const handleAddService = () => {
+    if (!selectedItem || !quantity) {
+      Alert.alert("Missing Information", "Please fill in all required fields");
+      return;
+    }
+
+    const qty = parseInt(quantity);
+    if (isNaN(qty) || qty <= 0) {
+      Alert.alert("Invalid Quantity", "Please enter a valid quantity");
+      return;
+    }
+
+    const unitPrice = getPriceForGarment(selectedItem);
+    const totalPrice = unitPrice * qty;
+
+    let description = `${qty} ${selectedItem}(s) - Professional dry cleaning`;
+    if (clothingBrand) {
+      description += ` (${clothingBrand})`;
+    }
+    if (specialInstructions) {
+      description += ` - ${specialInstructions}`;
+    }
+
+    const cartItem = {
+      id: Date.now().toString(),
+      service: "Dry Cleaning",
+      item: selectedItem,
+      description: description,
+      price: totalPrice,
+      icon: "water-outline",
+      quantity: qty,
+      garmentType: selectedItem,
+      clothingBrand: clothingBrand,
+      specialInstructions: specialInstructions,
+      image: image || undefined,
+    };
+
+    cartStore.addItem(cartItem);
+
+    Alert.alert("Success!", "Dry cleaning service added to cart!", [
+      {
+        text: "View Cart",
+        onPress: () => router.push("/(tabs)/cart/Cart"),
+      },
+      {
+        text: "Add More",
+        onPress: () => {
+          setSelectedItem("");
+          setQuantity("");
+          setSpecialInstructions("");
+          setClothingBrand("");
+          setImage(null);
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={{ paddingBottom: height * 0.18 }}
       >
-        {/* Header */}
         <View style={styles.header}>
           <Image
             source={require("../../../assets/images/logo.png")}
@@ -64,7 +138,6 @@ export default function DryCleaningClothes() {
           <Text style={styles.headerTitle}>Jackman Tailor Deluxe</Text>
         </View>
 
-        {/* Main Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Dry Cleaning Service</Text>
@@ -73,7 +146,6 @@ export default function DryCleaningClothes() {
             </Text>
           </View>
 
-          {/* Image Upload */}
           <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
             {image ? (
               <Image source={{ uri: image }} style={styles.previewImage} />
@@ -92,9 +164,8 @@ export default function DryCleaningClothes() {
             )}
           </TouchableOpacity>
 
-          {/* Form Fields */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Type of Garment</Text>
+            <Text style={styles.label}>Type of Garment *</Text>
             <View style={styles.pickerWrapper}>
               <Picker
                 selectedValue={selectedItem}
@@ -112,6 +183,11 @@ export default function DryCleaningClothes() {
                 ))}
               </Picker>
             </View>
+            {selectedItem && (
+              <Text style={styles.priceIndicator}>
+                Price per item: ₱{getPriceForGarment(selectedItem)}
+              </Text>
+            )}
           </View>
 
           <View style={styles.fieldContainer}>
@@ -126,7 +202,7 @@ export default function DryCleaningClothes() {
           </View>
 
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Quantity</Text>
+            <Text style={styles.label}>Quantity *</Text>
             <TextInput
               style={styles.input}
               placeholder="Number of items (e.g., 3)"
@@ -135,6 +211,11 @@ export default function DryCleaningClothes() {
               value={quantity}
               onChangeText={setQuantity}
             />
+            {selectedItem && quantity && parseInt(quantity) > 0 && (
+              <Text style={styles.totalIndicator}>
+                Total: ₱{getPriceForGarment(selectedItem) * parseInt(quantity)}
+              </Text>
+            )}
           </View>
 
           <View style={styles.fieldContainer}>
@@ -151,32 +232,24 @@ export default function DryCleaningClothes() {
             />
           </View>
 
-          {/* Buttons */}
           <View style={styles.buttonRow}>
             <TouchableOpacity
               style={[styles.button, styles.cancelBtn]}
-              onPress={() => router.replace("/home")}
+              onPress={() => router.push("./appointmentSelection")}
             >
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.button, styles.submitBtn]}
-              onPress={() => {
-                if (!selectedItem || !quantity) {
-                  alert("Please fill in all required fields");
-                  return;
-                }
-                alert("Dry cleaning request submitted successfully!");
-              }}
+              onPress={handleAddService}
             >
-              <Text style={styles.submitText}>Add Service</Text>
+              <Text style={styles.submitText}>Add to Cart</Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity onPress={() => router.replace("/home")}>
           <View style={styles.navItemWrap}>
@@ -201,11 +274,9 @@ export default function DryCleaningClothes() {
   );
 }
 
-// MATCHING STYLES FROM REPAIR SCREEN
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#f8fafc" },
   container: { flex: 1 },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -226,7 +297,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
   },
-
   card: {
     marginHorizontal: width * 0.06,
     marginTop: height * 0.04,
@@ -243,7 +313,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e2e8f0",
   },
-
   cardHeader: {
     alignItems: "center",
     paddingBottom: 20,
@@ -261,7 +330,6 @@ const styles = StyleSheet.create({
     color: "#64748b",
     marginTop: 8,
   },
-
   uploadBox: {
     height: 200,
     borderRadius: 24,
@@ -295,11 +363,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
     textAlign: "center",
   },
-
   fieldContainer: {
     marginBottom: 28,
   },
-
   label: {
     fontSize: width * 0.042,
     fontWeight: "700",
@@ -307,7 +373,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginLeft: 4,
   },
-
   pickerWrapper: {
     borderWidth: 2,
     borderColor: "#cbd5e1",
@@ -319,7 +384,6 @@ const styles = StyleSheet.create({
     height: 54,
     color: "#1e293b",
   },
-
   input: {
     borderWidth: 2,
     borderColor: "#cbd5e1",
@@ -329,7 +393,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     color: "#1e293b",
   },
-
+  priceIndicator: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#3b82f6",
+    marginLeft: 4,
+  },
+  totalIndicator: {
+    marginTop: 8,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#10b981",
+    marginLeft: 4,
+  },
   textArea: {
     borderWidth: 2,
     borderColor: "#cbd5e1",
@@ -340,7 +417,6 @@ const styles = StyleSheet.create({
     minHeight: 130,
     color: "#1e293b",
   },
-
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -377,7 +453,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 15,
   },
-
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",

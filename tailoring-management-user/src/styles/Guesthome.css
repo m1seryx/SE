@@ -514,6 +514,10 @@ body {
   font-size: 1.35rem;
   font-weight: 700;
   cursor: pointer;
+<<<<<<< HEAD
+  transition: all 0.4s;
+  z-index: 2;
+=======
   transition: all 0.5s ease;
   box-shadow: 0 12px 35px rgba(139, 69, 19, 0.5);
   text-transform: uppercase;
@@ -530,6 +534,7 @@ body {
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
   transition: left 0.6s;
+>>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
 }
 
 .btn-customize:hover {
@@ -585,12 +590,16 @@ body {
 .repair-overlay {
   position: absolute;
   inset: 0;
+<<<<<<< HEAD
+  background: rgba(0, 0, 0, 0.5);
+=======
   background: linear-gradient(
     135deg,
     rgba(139, 69, 19, 0.88) 0%,
     rgba(0, 0, 0, 0.75) 50%,
     rgba(160, 82, 45, 0.92) 100%
   );
+>>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
   z-index: 1;
 }
 /* Perfectly centered content */
@@ -601,6 +610,10 @@ body {
   transform: translate(-50%, -50%);
   z-index: 2;
   color: white;
+<<<<<<< HEAD
+  width: 80%;
+  z-index: 2;
+=======
   text-align: center;
   width: 90%;
   max-width: 800px;
@@ -610,6 +623,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 28px;
+>>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
 }
 
 .repair-content h3 {
@@ -972,6 +986,8 @@ body {
   background: rgba(220, 53, 69, 0.1);
   border-radius: 8px;
   border: 1px solid rgba(220, 53, 69, 0.3);
+<<<<<<< HEAD
+=======
 }
 
 .login-btn{
@@ -1112,4 +1128,5 @@ body {
 
 .clean-book:hover::before {
   left: 100%;
+>>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
 }

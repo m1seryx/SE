@@ -1,5 +1,5 @@
 // app/(tabs)/UserProfile/profile.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { orderStore, Order } from "../../utils/orderStore";
 
 const { width, height } = Dimensions.get("window");
 
@@ -38,36 +39,18 @@ export default function ProfileScreen() {
 
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editedUser, setEditedUser] = useState<UserData>(user);
+  const [orders, setOrders] = useState<Order[]>([]);
 
-  const [orders] = useState([
-    {
-      id: "1",
-      orderNo: "ORD-2024-001",
-      service: "Customization",
-      item: "Barong Tagalog",
-      date: "Nov 25, 2024",
-      status: "In Progress",
-      price: 2500,
-    },
-    {
-      id: "2",
-      orderNo: "ORD-2024-002",
-      service: "Rental",
-      item: "Black Suit",
-      date: "Nov 20, 2024",
-      status: "Completed",
-      price: 800,
-    },
-    {
-      id: "3",
-      orderNo: "ORD-2024-003",
-      service: "Repair",
-      item: "Dress Pants",
-      date: "Nov 18, 2024",
-      status: "To Pick up",
-      price: 350,
-    },
-  ]);
+  // Load orders on mount and subscribe to changes
+  useEffect(() => {
+    setOrders(orderStore.getOrders());
+
+    const unsubscribe = orderStore.subscribe(() => {
+      setOrders(orderStore.getOrders());
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -79,16 +62,16 @@ export default function ProfileScreen() {
         return "#F59E0B";
       case "Cancelled":
         return "#EF4444";
+      case "Pending":
+        return "#8B5CF6";
       default:
         return "#6B7280";
     }
   };
 
   const openEditModal = () => {
-    console.log("Opening modal...");
     setEditedUser(user);
     setEditModalVisible(true);
-    console.log("Modal visible state:", editModalVisible);
   };
 
   const closeEditModal = () => {
@@ -193,47 +176,57 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {orders.map((order) => (
-            <View key={order.id} style={styles.orderCard}>
-              <View style={styles.orderHeader}>
-                <Text style={styles.orderNo}>{order.orderNo}</Text>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: getStatusColor(order.status) + "20" },
-                  ]}
-                >
-                  <Text
+          {orders.length === 0 ? (
+            <View style={styles.emptyOrders}>
+              <Ionicons name="receipt-outline" size={60} color="#D1D5DB" />
+              <Text style={styles.emptyOrdersText}>No orders yet</Text>
+              <Text style={styles.emptyOrdersSubtext}>
+                Book a service to see your orders here
+              </Text>
+            </View>
+          ) : (
+            orders.slice(0, 3).map((order) => (
+              <View key={order.id} style={styles.orderCard}>
+                <View style={styles.orderHeader}>
+                  <Text style={styles.orderNo}>{order.orderNo}</Text>
+                  <View
                     style={[
-                      styles.statusText,
-                      { color: getStatusColor(order.status) },
+                      styles.statusBadge,
+                      { backgroundColor: getStatusColor(order.status) + "20" },
                     ]}
                   >
-                    {order.status}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.statusText,
+                        { color: getStatusColor(order.status) },
+                      ]}
+                    >
+                      {order.status}
+                    </Text>
+                  </View>
                 </View>
-              </View>
 
-              <View style={styles.orderDetails}>
-                <View style={styles.orderInfo}>
-                  <Text style={styles.orderService}>{order.service}</Text>
-                  <Text style={styles.orderItem}>{order.item}</Text>
-                  <Text style={styles.orderDate}>{order.date}</Text>
+                <View style={styles.orderDetails}>
+                  <View style={styles.orderInfo}>
+                    <Text style={styles.orderService}>{order.service}</Text>
+                    <Text style={styles.orderItem}>{order.item}</Text>
+                    <Text style={styles.orderDate}>{order.date}</Text>
+                  </View>
+                  <View style={styles.orderPriceContainer}>
+                    <Text style={styles.orderPrice}>₱{order.price}</Text>
+                  </View>
                 </View>
-                <View style={styles.orderPriceContainer}>
-                  <Text style={styles.orderPrice}>₱{order.price}</Text>
-                </View>
-              </View>
 
-              <TouchableOpacity
-                style={styles.viewDetailsBtn}
-                onPress={() => router.push(`/orders/${order.id}`)} // THIS LINE FIXED
-              >
-                <Text style={styles.viewDetailsText}>View Details</Text>
-                <Ionicons name="chevron-forward" size={16} color="#94665B" />
-              </TouchableOpacity>
-            </View>
-          ))}
+                <TouchableOpacity
+                  style={styles.viewDetailsBtn}
+                  onPress={() => router.push(`/orders/${order.id}`)}
+                >
+                  <Text style={styles.viewDetailsText}>View Details</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#94665B" />
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
         </View>
 
         {/* Account Actions */}
@@ -252,7 +245,7 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
 
-      {/* Edit Profile Modal - Simplified */}
+      {/* Edit Profile Modal */}
       <Modal
         visible={editModalVisible}
         transparent={true}
@@ -419,7 +412,9 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => router.push("/(tabs)/appointment/AppointmentScreen")}
+          onPress={() =>
+            router.push("/(tabs)/appointment/appointmentSelection")
+          }
         >
           <View style={styles.navItemWrap}>
             <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
@@ -580,6 +575,30 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
 
+  emptyOrders: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 40,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  emptyOrdersText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#6B7280",
+    marginTop: 12,
+  },
+  emptyOrdersSubtext: {
+    fontSize: 14,
+    color: "#9CA3AF",
+    marginTop: 4,
+    textAlign: "center",
+  },
+
   orderCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -678,7 +697,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",

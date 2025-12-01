@@ -1,4 +1,3 @@
-// ← SAME IMPORTS AS BEFORE (unchanged)
 import React, { useState } from "react";
 import {
   View,
@@ -10,20 +9,31 @@ import {
   ScrollView,
   Dimensions,
   SafeAreaView,
+  Alert,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { cartStore } from "../../utils/cartStore";
 
 const { width, height } = Dimensions.get("window");
 
 export default function RepairClothes() {
   const router = useRouter();
+
+  // Form States
   const [image, setImage] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState("");
   const [damageType, setDamageType] = useState("");
   const [instruction, setInstruction] = useState("");
+
+  // Date & Time Picker States
+  const [appointmentDate, setAppointmentDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -44,6 +54,7 @@ export default function RepairClothes() {
     "Skirt",
     "Blouse",
   ];
+
   const damageOptions = [
     "Tears / Holes",
     "Loose seams / Stitch unraveling",
@@ -55,13 +66,103 @@ export default function RepairClothes() {
     "Fabric thinning",
   ];
 
+  const getPriceForDamage = (damage: string): number => {
+    const prices: { [key: string]: number } = {
+      "Tears / Holes": 250,
+      "Loose seams / Stitch unraveling": 180,
+      "Missing buttons / Fasteners": 100,
+      "Broken zippers": 350,
+      "Fraying edges / Hems": 200,
+      "Snags / Pulls": 150,
+      "Stretching / Misshaping": 300,
+      "Fabric thinning": 400,
+    };
+    return prices[damage] || 300;
+  };
+
+  // Date & Time Handlers
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    const currentDate = selectedDate || appointmentDate;
+    setShowDatePicker(Platform.OS === "ios");
+
+    if (currentDate) {
+      setAppointmentDate(currentDate);
+      if (Platform.OS === "android") {
+        setShowDatePicker(false);
+        setShowTimePicker(true); // Open time picker right after
+      }
+    }
+  };
+
+  const onTimeChange = (event: any, selectedTime?: Date) => {
+    setShowTimePicker(Platform.OS === "ios");
+
+    if (selectedTime && appointmentDate) {
+      const updatedDate = new Date(appointmentDate);
+      updatedDate.setHours(selectedTime.getHours());
+      updatedDate.setMinutes(selectedTime.getMinutes());
+      setAppointmentDate(updatedDate);
+    }
+  };
+
+  const handleAddService = () => {
+    if (!selectedItem || !damageType || !appointmentDate) {
+      Alert.alert(
+        "Missing Information",
+        "Please select garment, damage type, and appointment date & time"
+      );
+      return;
+    }
+
+    const price = getPriceForDamage(damageType);
+
+    const cartItem = {
+      id: Date.now().toString(),
+      service: "Repair Service",
+      item: selectedItem,
+      description: `${damageType}${instruction ? ` - ${instruction}` : ""}`,
+      price: price,
+      icon: "construct-outline" as const,
+      garmentType: selectedItem,
+      damageType: damageType,
+      specialInstructions: instruction,
+      image: image || undefined,
+      appointmentDate: appointmentDate.toLocaleString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+    };
+
+    cartStore.addItem(cartItem);
+
+    Alert.alert("Success!", "Repair service added to cart!", [
+      {
+        text: "View Cart",
+        onPress: () => router.push("/(tabs)/cart/Cart"),
+      },
+      {
+        text: "Add More",
+        onPress: () => {
+          setSelectedItem("");
+          setDamageType("");
+          setInstruction("");
+          setImage(null);
+          setAppointmentDate(null);
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={{ paddingBottom: height * 0.18 }} // Extra room for nav
+        contentContainerStyle={{ paddingBottom: height * 0.18 }}
       >
-        {/* Header */}
         <View style={styles.header}>
           <Image
             source={require("../../../assets/images/logo.png")}
@@ -70,14 +171,13 @@ export default function RepairClothes() {
           <Text style={styles.headerTitle}>Jackman Tailor Deluxe</Text>
         </View>
 
-        {/* Main Card - Now with generous outer margin */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Repair Request</Text>
-            <Text style={styles.cardSubtitle}>We’ll make it good as new</Text>
+            <Text style={styles.cardSubtitle}>We'll make it good as new</Text>
           </View>
 
-          {/* Image Upload - More spacious */}
+          {/* Image Upload */}
           <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
             {image ? (
               <Image source={{ uri: image }} style={styles.previewImage} />
@@ -96,21 +196,16 @@ export default function RepairClothes() {
             )}
           </TouchableOpacity>
 
-          {/* Form Fields - Nice vertical spacing */}
+          {/* Garment Type */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Type of Garment</Text>
+            <Text style={styles.label}>Type of Garment *</Text>
             <View style={styles.pickerWrapper}>
               <Picker
                 selectedValue={selectedItem}
                 onValueChange={(value) => setSelectedItem(value)}
                 style={styles.picker}
-                dropdownIconColor="#9dc5e3"
               >
-                <Picker.Item
-                  label="Select garment type..."
-                  value=""
-                  color="#999"
-                />
+                <Picker.Item label="Select garment type..." value="" />
                 {itemTypes.map((item) => (
                   <Picker.Item label={item} value={item} key={item} />
                 ))}
@@ -118,60 +213,110 @@ export default function RepairClothes() {
             </View>
           </View>
 
+          {/* Damage Type */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Type of Damage</Text>
+            <Text style={styles.label}>Type of Damage *</Text>
             <View style={styles.pickerWrapper}>
               <Picker
                 selectedValue={damageType}
                 onValueChange={(value) => setDamageType(value)}
                 style={styles.picker}
-                dropdownIconColor="#9dc5e3"
               >
-                <Picker.Item
-                  label="Describe the damage..."
-                  value=""
-                  color="#999"
-                />
+                <Picker.Item label="Describe the damage..." value="" />
                 {damageOptions.map((damage) => (
                   <Picker.Item label={damage} value={damage} key={damage} />
                 ))}
               </Picker>
             </View>
+            {damageType && (
+              <Text style={styles.priceIndicator}>
+                Estimated price: ₱{getPriceForDamage(damageType)}
+              </Text>
+            )}
           </View>
 
+          {/* Special Instructions */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Special Instructions (Optional)</Text>
             <TextInput
-              placeholder="e.g., Keep original buttons, match thread color, etc."
+              placeholder="e.g., Keep original buttons, match thread color..."
               style={styles.textArea}
+              placeholderTextColor="#94a3b8"
               multiline
-              numberOfLines={5}
               value={instruction}
               onChangeText={setInstruction}
               textAlignVertical="top"
             />
           </View>
 
-          {/* Buttons - Extra margin on top */}
+          {/* Appointment Date & Time Picker */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>
+              Preferred Appointment Date & Time *
+            </Text>
+            <TouchableOpacity
+              style={styles.dateTimeButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Ionicons name="calendar-outline" size={22} color="#94665B" />
+              <Text style={styles.dateTimeText}>
+                {appointmentDate
+                  ? appointmentDate.toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                    }) +
+                    ", " +
+                    appointmentDate.toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })
+                  : "Tap to select date & time"}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {/* Date Picker */}
+            {showDatePicker && (
+              <DateTimePicker
+                value={appointmentDate || new Date()}
+                mode="date"
+                minimumDate={new Date()}
+                onChange={onDateChange}
+              />
+            )}
+
+            {/* Time Picker (Android only after date) */}
+            {showTimePicker && Platform.OS === "android" && (
+              <DateTimePicker
+                value={appointmentDate || new Date()}
+                mode="time"
+                is24Hour={false}
+                onChange={onTimeChange}
+              />
+            )}
+          </View>
+
+          {/* Buttons */}
           <View style={styles.buttonRow}>
             <TouchableOpacity
               style={[styles.button, styles.cancelBtn]}
-              onPress={() => router.replace("/home")}
+              onPress={() => router.push("./appointmentSelection")}
             >
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.button, styles.submitBtn]}
-              onPress={() => alert("Repair request submitted successfully!")}
+              onPress={handleAddService}
             >
-              <Text style={styles.submitText}>Add Service</Text>
+              <Text style={styles.submitText}>Add to Cart</Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
 
-      {/* Bottom Nav - UNCHANGED */}
+      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity onPress={() => router.replace("/home")}>
           <View style={styles.navItemWrap}>
@@ -196,11 +341,9 @@ export default function RepairClothes() {
   );
 }
 
-// NEW SPACIOUS & PRETTIER STYLES
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#f8fafc" },
   container: { flex: 1 },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -221,8 +364,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
   },
-  profileIcon: { padding: 6 },
-
   card: {
     marginHorizontal: width * 0.06,
     marginTop: height * 0.04,
@@ -239,7 +380,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e2e8f0",
   },
-
   cardHeader: {
     alignItems: "center",
     paddingBottom: 20,
@@ -257,7 +397,6 @@ const styles = StyleSheet.create({
     color: "#64748b",
     marginTop: 8,
   },
-
   uploadBox: {
     height: 200,
     borderRadius: 24,
@@ -291,12 +430,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
     textAlign: "center",
   },
-
-  // New wrapper for consistent field spacing
   fieldContainer: {
     marginBottom: 28,
   },
-
   label: {
     fontSize: width * 0.042,
     fontWeight: "700",
@@ -304,7 +440,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginLeft: 4,
   },
-
   pickerWrapper: {
     borderWidth: 2,
     borderColor: "#cbd5e1",
@@ -316,7 +451,13 @@ const styles = StyleSheet.create({
     height: 54,
     color: "#1e293b",
   },
-
+  priceIndicator: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#3b82f6",
+    marginLeft: 4,
+  },
   textArea: {
     borderWidth: 2,
     borderColor: "#cbd5e1",
@@ -325,8 +466,8 @@ const styles = StyleSheet.create({
     fontSize: 15.5,
     backgroundColor: "#ffffff",
     minHeight: 130,
+    color: "#1e293b",
   },
-
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -363,8 +504,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 15,
   },
-
-  // Bottom nav - 100% untouched
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -398,5 +537,22 @@ const styles = StyleSheet.create({
     backgroundColor: "#FDE68A",
     alignItems: "center",
     justifyContent: "center",
+  },
+  dateTimeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: "#cbd5e1",
+    borderRadius: 18,
+    padding: 18,
+  },
+  dateTimeText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: "#1e293b",
+    fontWeight: "500",
   },
 });

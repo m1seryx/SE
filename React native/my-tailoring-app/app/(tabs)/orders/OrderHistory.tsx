@@ -1,120 +1,35 @@
 // app/(tabs)/orders/OrderHistory.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   Dimensions,
   SafeAreaView,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { orderStore, Order } from "../../utils/orderStore";
 
-const { width, height } = Dimensions.get("window");
-
-interface Order {
-  id: string;
-  orderNo: string;
-  service: string;
-  item: string;
-  date: string;
-  status: "In Progress" | "Completed" | "To Pick up" | "Cancelled" | "Pending";
-  price: number;
-  description?: string;
-  estimatedCompletion?: string;
-}
+const { width } = Dimensions.get("window");
 
 export default function OrderHistoryScreen() {
   const router = useRouter();
   const [selectedFilter, setSelectedFilter] = useState<string>("All");
+  const [orders, setOrders] = useState<Order[]>([]);
 
-  const [orders] = useState<Order[]>([
-    {
-      id: "1",
-      orderNo: "ORD-2024-001",
-      service: "Customization",
-      item: "Barong Tagalog",
-      date: "Nov 25, 2024",
-      status: "In Progress",
-      price: 2500,
-      description: "Custom embroidery and fitting adjustments",
-      estimatedCompletion: "Dec 5, 2024",
-    },
-    {
-      id: "2",
-      orderNo: "ORD-2024-002",
-      service: "Rental",
-      item: "Black Suit",
-      date: "Nov 20, 2024",
-      status: "Completed",
-      price: 800,
-      description: "3-piece black suit rental for event",
-    },
-    {
-      id: "3",
-      orderNo: "ORD-2024-003",
-      service: "Repair",
-      item: "Dress Pants",
-      date: "Nov 18, 2024",
-      status: "To Pick up",
-      price: 350,
-      description: "Hem adjustment and zipper replacement",
-    },
-    {
-      id: "4",
-      orderNo: "ORD-2024-004",
-      service: "Dry Cleaning",
-      item: "Wedding Gown",
-      date: "Nov 15, 2024",
-      status: "Pending",
-      price: 1200,
-      description: "Professional dry cleaning service",
-      estimatedCompletion: "Nov 30, 2024",
-    },
-    {
-      id: "5",
-      orderNo: "ORD-2024-005",
-      service: "Customization",
-      item: "Business Suit",
-      date: "Nov 10, 2024",
-      status: "Completed",
-      price: 3500,
-      description: "Made-to-measure navy blue business suit",
-    },
-    {
-      id: "6",
-      orderNo: "ORD-2024-006",
-      service: "Repair",
-      item: "Jacket",
-      date: "Nov 8, 2024",
-      status: "In Progress",
-      price: 450,
-      description: "Button replacement and sleeve adjustment",
-      estimatedCompletion: "Dec 1, 2024",
-    },
-    {
-      id: "7",
-      orderNo: "ORD-2024-007",
-      service: "Rental",
-      item: "Tuxedo",
-      date: "Nov 5, 2024",
-      status: "Cancelled",
-      price: 1000,
-      description: "Formal tuxedo rental - Cancelled by customer",
-    },
-    {
-      id: "8",
-      orderNo: "ORD-2024-008",
-      service: "Dry Cleaning",
-      item: "Formal Dress",
-      date: "Nov 2, 2024",
-      status: "Completed",
-      price: 600,
-      description: "Delicate fabric dry cleaning",
-    },
-  ]);
+  useEffect(() => {
+    setOrders(orderStore.getOrders());
+    const unsubscribe = orderStore.subscribe(() => {
+      setOrders(orderStore.getOrders());
+    });
+    return () => unsubscribe();
+    unsubscribe();
+  }, []);
 
   const filters = [
     "All",
@@ -159,67 +74,134 @@ export default function OrderHistoryScreen() {
     }
   };
 
-  const filteredOrders = orders.filter((order) => {
-    if (selectedFilter === "All") return true;
-    return order.status === selectedFilter;
-  });
+  const filteredOrders = orders.filter((order) =>
+    selectedFilter === "All" ? true : order.status === selectedFilter
+  );
 
-  const getOrderStats = () => {
-    return {
-      total: orders.length,
-      pending: orders.filter((o) => o.status === "Pending").length,
-      inProgress: orders.filter((o) => o.status === "In Progress").length,
-      toPickup: orders.filter((o) => o.status === "To Pick up").length,
-      completed: orders.filter((o) => o.status === "Completed").length,
-    };
+  const stats = {
+    total: orders.length,
+    active: orders.filter(
+      (o) => o.status === "Pending" || o.status === "In Progress"
+    ).length,
+    completed: orders.filter((o) => o.status === "Completed").length,
+    toPickup: orders.filter((o) => o.status === "To Pick up").length,
   };
 
-  const stats = getOrderStats();
+  const renderOrder = ({ item }: { item: Order }) => (
+    <TouchableOpacity
+      style={styles.orderCard}
+      onPress={() => router.push(`/orders/${item.id}`)}
+      activeOpacity={0.8}
+    >
+      <View style={styles.orderHeader}>
+        <View>
+          <Text style={styles.orderNo}>{item.orderNo}</Text>
+          <Text style={styles.orderDate}>{item.date}</Text>
+        </View>
+        <View
+          style={[
+            styles.statusBadge,
+            { backgroundColor: getStatusColor(item.status) + "20" },
+          ]}
+        >
+          <Ionicons
+            name={getStatusIcon(item.status) as any}
+            size={16}
+            color={getStatusColor(item.status)}
+          />
+          <Text
+            style={[styles.statusText, { color: getStatusColor(item.status) }]}
+          >
+            {item.status}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.orderContent}>
+        <View style={styles.serviceIconContainer}>
+          <Ionicons
+            name={
+              item.service === "Customization"
+                ? "shirt-outline"
+                : item.service === "Rental"
+                ? "business-outline"
+                : item.service === "Repair Service"
+                ? "construct-outline"
+                : "water-outline"
+            }
+            size={32}
+            color="#94665B"
+          />
+        </View>
+
+        <View style={styles.orderDetails}>
+          <Text style={styles.orderService}>{item.service}</Text>
+          <Text style={styles.orderItem}>{item.item}</Text>
+          {item.description && (
+            <Text style={styles.orderDescription} numberOfLines={2}>
+              {item.description}
+            </Text>
+          )}
+          {item.estimatedCompletion && item.status !== "Completed" && (
+            <View style={styles.estimated}>
+              <Ionicons name="calendar-outline" size={14} color="#6B7280" />
+              <Text style={styles.estimatedText}>
+                Est: {item.estimatedCompletion}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <Text style={styles.orderPrice}>₱{item.price}</Text>
+      </View>
+
+      <View style={styles.orderActions}>
+        <TouchableOpacity style={styles.actionButton}>
+          <Text style={styles.actionText}>View Details</Text>
+          <Ionicons name="chevron-forward" size={16} color="#94665B" />
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push("../UserProfile/profile")}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={26} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Order History</Text>
+        <Text style={styles.title}>Order History</Text>
         <TouchableOpacity>
-          <Ionicons name="search-outline" size={24} color="#1F2937" />
+          <Ionicons name="search-outline" size={26} color="#1F2937" />
         </TouchableOpacity>
       </View>
 
-      {/* Stats Cards */}
+      {/* Stats Row */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.statsContainer}
-        contentContainerStyle={styles.statsContent}
+        style={styles.statsRow}
       >
         <View style={[styles.statCard, { backgroundColor: "#EEF2FF" }]}>
-          <Ionicons name="document-text" size={24} color="#6366F1" />
-          <Text style={styles.statNumber}>{stats.total}</Text>
-          <Text style={styles.statLabel}>Total Orders</Text>
+          <Ionicons name="document-text" size={28} color="#6366F1" />
+          <Text style={styles.statBig}>{stats.total}</Text>
+          <Text style={styles.statLabel}>Total</Text>
         </View>
-
         <View style={[styles.statCard, { backgroundColor: "#FEF3C7" }]}>
-          <Ionicons name="time" size={24} color="#F59E0B" />
-          <Text style={styles.statNumber}>
-            {stats.pending + stats.inProgress}
-          </Text>
+          <Ionicons name="hourglass-outline" size={28} color="#F59E0B" />
+          <Text style={styles.statBig}>{stats.active}</Text>
           <Text style={styles.statLabel}>Active</Text>
         </View>
-
         <View style={[styles.statCard, { backgroundColor: "#DCFCE7" }]}>
-          <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-          <Text style={styles.statNumber}>{stats.completed}</Text>
-          <Text style={styles.statLabel}>Completed</Text>
+          <Ionicons name="checkmark-circle" size={28} color="#10B981" />
+          <Text style={styles.statBig}>{stats.completed}</Text>
+          <Text style={styles.statLabel}>Done</Text>
         </View>
-
-        <View style={[styles.statCard, { backgroundColor: "#FFE4E6" }]}>
-          <Ionicons name="basket" size={24} color="#F59E0B" />
-          <Text style={styles.statNumber}>{stats.toPickup}</Text>
-          <Text style={styles.statLabel}>To Pick Up</Text>
+        <View style={[styles.statCard, { backgroundColor: "#FCE7E7" }]}>
+          <Ionicons name="basket-outline" size={28} color="#EF4444" />
+          <Text style={styles.statBig}>{stats.toPickup}</Text>
+          <Text style={styles.statLabel}>Pickup</Text>
         </View>
       </ScrollView>
 
@@ -227,166 +209,72 @@ export default function OrderHistoryScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.filterContainer}
-        contentContainerStyle={styles.filterContent}
+        style={styles.filterRow}
       >
-        {filters.map((filter) => (
-          <TouchableOpacity
-            key={filter}
-            style={[
-              styles.filterTab,
-              selectedFilter === filter && styles.filterTabActive,
-            ]}
-            onPress={() => setSelectedFilter(filter)}
-          >
-            <Text
-              style={[
-                styles.filterTabText,
-                selectedFilter === filter && styles.filterTabTextActive,
-              ]}
+        {filters.map((f) => {
+          const count =
+            f === "All"
+              ? orders.length
+              : orders.filter((o) => o.status === f).length;
+          const isActive = selectedFilter === f;
+          return (
+            <TouchableOpacity
+              key={f}
+              style={[styles.filterTab, isActive && styles.activeTab]}
+              onPress={() => setSelectedFilter(f)}
             >
-              {filter}
-            </Text>
-            {filter !== "All" && (
-              <View
-                style={[
-                  styles.filterBadge,
-                  selectedFilter === filter && styles.filterBadgeActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.filterBadgeText,
-                    selectedFilter === filter && styles.filterBadgeTextActive,
-                  ]}
-                >
-                  {orders.filter((o) => o.status === filter).length}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        ))}
+              <Text style={[styles.filterText, isActive && styles.activeText]}>
+                {f}
+              </Text>
+              {count > 0 && (
+                <View style={[styles.badge, isActive && styles.activeBadge]}>
+                  <Text
+                    style={[
+                      styles.badgeText,
+                      isActive && styles.activeBadgeText,
+                    ]}
+                  >
+                    {count}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
-      {/* Orders List */}
-      <ScrollView
-        style={styles.ordersList}
-        contentContainerStyle={{ paddingBottom: height * 0.12 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {filteredOrders.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="document-text-outline" size={80} color="#D1D5DB" />
-            <Text style={styles.emptyStateText}>No orders found</Text>
-            <Text style={styles.emptyStateSubtext}>
+      {/* Orders List - Now FlatList (NO ScrollView!) */}
+      <FlatList
+        data={filteredOrders}
+        keyExtractor={(item) => item.id}
+        renderItem={renderOrder}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Ionicons name="receipt-outline" size={80} color="#D1D5DB" />
+            <Text style={styles.emptyTitle}>No orders yet</Text>
+            <Text style={styles.emptySubtitle}>
               {selectedFilter === "All"
-                ? "You haven't placed any orders yet"
+                ? "Your orders will appear here"
                 : `No ${selectedFilter.toLowerCase()} orders`}
             </Text>
           </View>
-        ) : (
-          filteredOrders.map((order) => (
-            <TouchableOpacity
-              key={order.id}
-              style={styles.orderCard}
-              onPress={() => router.push(`/orders/${order.id}`)}
-              activeOpacity={0.7}
-            >
-              {/* Order Header */}
-              <View style={styles.orderHeader}>
-                <View style={styles.orderHeaderLeft}>
-                  <Text style={styles.orderNo}>{order.orderNo}</Text>
-                  <Text style={styles.orderDate}>{order.date}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: getStatusColor(order.status) + "20" },
-                  ]}
-                >
-                  <Ionicons
-                    name={getStatusIcon(order.status) as any}
-                    size={14}
-                    color={getStatusColor(order.status)}
-                  />
-                  <Text
-                    style={[
-                      styles.statusText,
-                      { color: getStatusColor(order.status) },
-                    ]}
-                  >
-                    {order.status}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Order Content */}
-              <View style={styles.orderContent}>
-                <View style={styles.serviceIconContainer}>
-                  <Ionicons
-                    name={
-                      order.service === "Customization"
-                        ? "shirt-outline"
-                        : order.service === "Rental"
-                        ? "business-outline"
-                        : order.service === "Repair"
-                        ? "construct-outline"
-                        : "water-outline"
-                    }
-                    size={28}
-                    color="#94665B"
-                  />
-                </View>
-
-                <View style={styles.orderDetails}>
-                  <Text style={styles.orderService}>{order.service}</Text>
-                  <Text style={styles.orderItem}>{order.item}</Text>
-                  {order.description && (
-                    <Text style={styles.orderDescription} numberOfLines={2}>
-                      {order.description}
-                    </Text>
-                  )}
-                  {order.estimatedCompletion &&
-                    order.status !== "Completed" && (
-                      <View style={styles.estimatedCompletion}>
-                        <Ionicons
-                          name="calendar-outline"
-                          size={14}
-                          color="#6B7280"
-                        />
-                        <Text style={styles.estimatedText}>
-                          Est: {order.estimatedCompletion}
-                        </Text>
-                      </View>
-                    )}
-                </View>
-
-                <View style={styles.orderPriceContainer}>
-                  <Text style={styles.orderPrice}>₱{order.price}</Text>
-                </View>
-              </View>
-
-              {/* Order Actions */}
-              <View style={styles.orderActions}>
-                <TouchableOpacity style={styles.actionButton}>
-                  <Text style={styles.actionButtonText}>View</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
+        }
+        showsVerticalScrollIndicator={false}
+      />
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity onPress={() => router.push("/home")}>
+        <TouchableOpacity onPress={() => router.replace("/home")}>
           <View style={styles.navItemWrap}>
-            <Ionicons name="home-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="home" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => router.push("/(tabs)/appointment/AppointmentScreen")}
+          onPress={() =>
+            router.push("/(tabs)/appointment/appointmentSelection")
+          }
         >
           <View style={styles.navItemWrap}>
             <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
@@ -399,9 +287,7 @@ export default function OrderHistoryScreen() {
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => router.push("/(tabs)/UserProfile/profile")}
-        >
+        <TouchableOpacity onPress={() => router.push("../UserProfile/profile")}>
           <View style={styles.navItemWrap}>
             <Ionicons name="person-outline" size={20} color="#9CA3AF" />
           </View>
@@ -412,272 +298,156 @@ export default function OrderHistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#F7F7F8",
-  },
-
+  container: { flex: 1, backgroundColor: "#FAFAFA" },
   header: {
-    marginTop: height * 0.02,
-    paddingHorizontal: width * 0.04,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "ios" ? 10 : 30,
+    paddingBottom: 16,
+    backgroundColor: "#fff",
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1F2937",
-  },
+  title: { fontSize: 22, fontWeight: "700", color: "#1F2937" },
 
-  // Stats Cards
-  statsContainer: {
-    marginBottom: 16,
-  },
-  statsContent: {
-    paddingHorizontal: width * 0.04,
-    gap: 12,
-  },
+  statsRow: { paddingLeft: 20, marginVertical: 16 },
   statCard: {
-    width: width * 0.35,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    width: 120,
     height: 100,
+    borderRadius: 20,
+    padding: 16,
+    marginRight: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  statNumber: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#1F2937",
-    marginTop: 8,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginTop: 4,
-    fontWeight: "500",
-  },
+  statBig: { fontSize: 32, fontWeight: "800", marginVertical: 4 },
+  statLabel: { fontSize: 13, color: "#4B5563" },
 
-  // Filter Tabs
-  filterContainer: {
-    marginTop: -250,
-  },
-  filterContent: {
-    paddingHorizontal: width * 0.04,
-    gap: 8,
-  },
+  filterRow: { paddingLeft: 20, marginBottom: 20 },
   filterTab: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 10,
     backgroundColor: "#fff",
-    borderRadius: 20,
+    borderRadius: 30,
+    marginRight: 10,
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    gap: 8,
-    height: 50,
   },
-  filterTabActive: {
-    backgroundColor: "#94665B",
-    borderColor: "#94665B",
-  },
-  filterTabText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#6B7280",
-  },
-  filterTabTextActive: {
-    color: "#fff",
-  },
-  filterBadge: {
+  activeTab: { backgroundColor: "#94665B", borderColor: "#94665B" },
+  filterText: { fontSize: 14, fontWeight: "600", color: "#4B5563" },
+  activeText: { color: "#fff" },
+  badge: {
     backgroundColor: "#F3F4F6",
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    minWidth: 24,
-    alignItems: "center",
+    marginLeft: 8,
   },
-  filterBadgeActive: {
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
-  },
-  filterBadgeText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#1F2937",
-  },
-  filterBadgeTextActive: {
-    color: "#fff",
-  },
+  activeBadge: { backgroundColor: "rgba(255,255,255,0.2)" },
+  badgeText: { fontSize: 12, fontWeight: "700", color: "#1F2937" },
+  activeBadgeText: { color: "#fff" },
 
-  // Orders List
-  ordersList: {
-    flex: 1,
-    paddingHorizontal: width * 0.04,
-  },
-
+  listContent: { paddingHorizontal: 20, paddingBottom: 100 },
   orderCard: {
     backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
     shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
   },
-
   orderHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    marginBottom: 16,
   },
-  orderHeaderLeft: {
-    flex: 1,
-  },
-  orderNo: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 4,
-  },
-  orderDate: {
-    fontSize: 12,
-    color: "#9CA3AF",
-  },
-
+  orderNo: { fontSize: 17, fontWeight: "700", color: "#1F2937" },
+  orderDate: { fontSize: 13, color: "#9CA3AF", marginTop: 4 },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 12,
-    gap: 4,
+    borderRadius: 20,
+    gap: 6,
   },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
+  statusText: { fontSize: 13, fontWeight: "600" },
 
-  orderContent: {
-    flexDirection: "row",
-    marginBottom: 12,
-  },
+  orderContent: { flexDirection: "row", alignItems: "center" },
   serviceIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#F5ECE3",
-    alignItems: "center",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#FDF4F0",
     justifyContent: "center",
-    marginRight: 12,
+    alignItems: "center",
+    marginRight: 16,
   },
-  orderDetails: {
-    flex: 1,
-  },
-  orderService: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#94665B",
-    marginBottom: 4,
-  },
+  orderDetails: { flex: 1 },
+  orderService: { fontSize: 15, fontWeight: "700", color: "#94665B" },
   orderItem: {
     fontSize: 16,
     fontWeight: "600",
     color: "#1F2937",
-    marginBottom: 4,
-  },
-  orderDescription: {
-    fontSize: 12,
-    color: "#6B7280",
-    lineHeight: 16,
-    marginBottom: 6,
-  },
-  estimatedCompletion: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
     marginTop: 4,
   },
-  estimatedText: {
-    fontSize: 12,
+  orderDescription: {
+    fontSize: 13,
     color: "#6B7280",
-    fontWeight: "500",
+    marginTop: 6,
+    lineHeight: 18,
   },
-  orderPriceContainer: {
-    justifyContent: "center",
+  estimated: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    gap: 6,
   },
-  orderPrice: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#94665B",
-  },
+  estimatedText: { fontSize: 13, color: "#6B7280" },
+  orderPrice: { fontSize: 22, fontWeight: "800", color: "#94665B" },
 
   orderActions: {
-    flexDirection: "row",
-    gap: 8,
-    paddingTop: 12,
+    marginTop: 16,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: "#F3F4F6",
   },
   actionButton: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    backgroundColor: "#F9FAFB",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    backgroundColor: "#FDF4F0",
+    paddingVertical: 12,
+    borderRadius: 16,
+    gap: 8,
   },
-  actionButtonPrimary: {
-    backgroundColor: "#94665B",
-    borderColor: "#94665B",
-  },
-  actionButtonText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#6B7280",
-  },
-  actionButtonTextPrimary: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#fff",
-  },
+  actionText: { fontSize: 15, fontWeight: "600", color: "#94665B" },
 
-  // Empty State
-  emptyState: {
+  empty: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: height * 0.15,
+    paddingVertical: 80,
   },
-  emptyStateText: {
+  emptyTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: "#1F2937",
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 20,
   },
-  emptyStateSubtext: {
-    fontSize: 14,
+  emptySubtitle: {
+    fontSize: 15,
     color: "#6B7280",
+    marginTop: 8,
     textAlign: "center",
+    paddingHorizontal: 40,
   },
 
-  // Bottom Navigation
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -701,6 +471,14 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navItemWrapActive: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#FDE68A",
     alignItems: "center",
     justifyContent: "center",
   },

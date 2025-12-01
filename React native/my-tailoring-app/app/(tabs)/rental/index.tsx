@@ -1,29 +1,70 @@
-import * as React from "react";
+// app/(tabs)/rental/index.tsx
+import React from "react";
 import {
   View,
   StyleSheet,
   Image,
   TouchableOpacity,
   ScrollView,
-  Dimensions, // ← Added this!
+  Platform,
+  Dimensions,
 } from "react-native";
 import { Text } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
-const { height } = Dimensions.get("window"); // ← Now defined!
+const { width } = Dimensions.get("window");
 
-const rentals = Array.from({ length: 6 }).map((_, i) => ({
-  id: String(i + 1),
-  title: `Clothes ${i + 1}`,
-  image: require("../../../assets/images/tailorbackground.jpg"),
-}));
-
-const productIcons = [
-  require("../../../assets/images/android-icon-foreground.png"),
-  require("../../../assets/images/icon.png"),
-  require("../../../assets/images/android-icon-monochrome.png"),
-  require("../../../assets/images/favicon.png"),
+const rentals = [
+  {
+    id: "1",
+    title: "Men Suit All in Gray",
+    price: 500,
+    image: require("../../../assets/images/graysuit.jpg"),
+  },
+  {
+    id: "2",
+    title: "Classic Black Tuxedo",
+    price: 750,
+    image: require("../../../assets/images/blacktuxedo.jpg"),
+  },
+  {
+    id: "3",
+    title: "Royal Blue Coat Set",
+    price: 650,
+    image: require("../../../assets/images/royalblue.jpg"),
+  },
+  {
+    id: "4",
+    title: "Elegant Evening Gown",
+    price: 900,
+    image: require("../../../assets/images/gown.jpg"),
+  },
+  {
+    id: "5",
+    title: "Barong Tagalog Premium",
+    price: 400,
+    image: require("../../../assets/images/barong.jpg"),
+  },
+  {
+    id: "6",
+    title: "Formal Black Dress",
+    price: 700,
+    image: require("../../../assets/images/blackdress.jpg"),
+  },
+  {
+    id: "7",
+    title: "Wedding Suit Beige",
+    price: 850,
+    image: require("../../../assets/images/beige.jpg"),
+  },
+  {
+    id: "8",
+    title: "Traditional Filipiniana",
+    price: 600,
+    image: require("../../../assets/images/filipiniana.jpg"),
+  },
 ];
 
 export default function RentalLanding() {
@@ -33,96 +74,89 @@ export default function RentalLanding() {
     <>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={{ paddingBottom: 100 }} // Space for bottom nav
+        contentContainerStyle={{ paddingBottom: 120 }}
       >
-        <View style={styles.topBar}>
-          <Text style={{ fontWeight: "700", color: "#111" }}>
-            Jackman Tailor Deluxe
-          </Text>
-          <TouchableOpacity
-            onPress={() => router.replace("/home")}
-            style={styles.closeBtn}
-          >
-            <Text style={{ fontSize: 16 }}>×</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={28} color="#1F2937" />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>Rent Formal Wear</Text>
+          <View style={{ width: 40 }} />
         </View>
 
+        {/* Hero */}
         <View style={styles.hero}>
           <Image
-            source={require("../../../assets/images/tailorbackground.jpg")}
+            source={require("../../../assets/images/rent.jpg")}
             style={styles.heroImage}
             resizeMode="cover"
           />
-          <View style={styles.heroBadgeRight}>
-            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>
-              Why Buy?
-            </Text>
-            <Text style={{ color: "#fff", marginTop: 2 }}>
-              Just Rent the Vibe.
-            </Text>
-            <Text style={{ color: "#e6e6e6", marginTop: 6, fontSize: 12 }}>
-              Rent it. Rock it. Return it.
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.7)"]}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.heroOverlay}>
+            <Text style={styles.heroTitle}>Why Buy When You Can Rent?</Text>
+            <Text style={styles.heroSubtitle}>
+              Look sharp. Save big. Return easy.
             </Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Products</Text>
-        <View style={styles.productsRow}>
-          {productIcons.map((img, i) => (
-            <View key={i} style={styles.productChip}>
-              <Image source={img} style={styles.productIconImg} />
-              <Text style={styles.productLabel}>
-                {["Slacks", "Shirts", "Suits", "Jackets"][i] || "Item"}
-              </Text>
-            </View>
-          ))}
+        {/* Title */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Available Rentals</Text>
         </View>
 
-        <Text style={styles.sectionTitle}>Rental Clothes</Text>
-        <View style={styles.grid}>
-          {rentals.map((r) => (
+        {/* Rental Grid - EXACT SAME STYLE AS HOME SCREEN */}
+        <View style={styles.rentalGrid}>
+          {rentals.map((item) => (
             <TouchableOpacity
-              key={r.id}
-              style={styles.itemCard}
-              onPress={() =>
-                router.push({
-                  pathname: "/rental/[id]",
-                  params: { id: r.id },
-                })
-              }
+              key={item.id}
+              style={styles.rentalCard}
+              activeOpacity={0.9}
+              onPress={() => router.push(`/rental/${item.id}`)}
             >
-              <Image source={r.image} style={styles.itemImage} />
-              <View style={{ padding: 8, alignItems: "center" }}>
-                <Text style={styles.itemTitle}>{r.title}</Text>
-                <View style={styles.viewBtn}>
-                  <Text style={{ fontSize: 12, color: "#6B7280" }}>View</Text>
-                </View>
+              <Image
+                source={item.image}
+                style={styles.rentalImage}
+                resizeMode="cover"
+              />
+              <LinearGradient
+                colors={["transparent", "rgba(0,0,0,0.6)"]}
+                style={styles.rentalOverlay}
+              />
+              <View style={styles.rentalInfo}>
+                <Text style={styles.rentalTitle} numberOfLines={2}>
+                  {item.title}
+                </Text>
+                <Text style={styles.rentalPrice}>₱{item.price}/day</Text>
               </View>
             </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation - Now outside ScrollView & properly positioned */}
+      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity onPress={() => router.replace("/home")}>
-          <View style={styles.navItemWrap}>
-            <Ionicons name="home" size={24} color="#9CA3AF" />
-          </View>
+          <Ionicons name="home-outline" size={26} color="#9CA3AF" />
         </TouchableOpacity>
-
-        <View style={styles.navItemWrap}>
-          <Ionicons name="receipt-outline" size={24} color="#9CA3AF" />
-        </View>
-
-        <View style={styles.navItemWrap}>
-          <Ionicons name="cart-outline" size={24} color="#9CA3AF" />
-        </View>
-
-        <TouchableOpacity onPress={() => router.push("../UserProfile/profile")}>
-          <View style={styles.navItemWrap}>
-            <Ionicons name="person-outline" size={24} color="#9CA3AF" />
-          </View>
+        <TouchableOpacity
+          onPress={() =>
+            router.push("/(tabs)/appointment/appointmentSelection")
+          }
+        >
+          <Ionicons name="receipt-outline" size={26} color="#9CA3AF" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
+          <Ionicons name="cart" size={26} color="#94665B" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => router.push("/(tabs)/UserProfile/profile")}
+        >
+          <Ionicons name="person-outline" size={26} color="#9CA3AF" />
         </TouchableOpacity>
       </View>
     </>
@@ -130,115 +164,138 @@ export default function RentalLanding() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F7F7F8" },
-  topBar: {
+  container: {
+    flex: 1,
+    backgroundColor: "#fafafa",
+  },
+  header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
-  closeBtn: {
-    padding: 8,
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "ios" ? 50 : 20,
+    paddingBottom: 16,
     backgroundColor: "#fff",
-    borderRadius: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
   },
-  hero: { margin: 16, borderRadius: 16, overflow: "hidden" },
-  heroImage: { width: "100%", height: 180 },
-  heroBadgeRight: {
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  hero: {
+    margin: 20,
+    height: 220,
+    borderRadius: 28,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  heroImage: {
+    width: "100%",
+    height: "100%",
+  },
+  heroOverlay: {
     position: "absolute",
-    right: 12,
-    top: 16,
-    backgroundColor: "rgba(17,24,39,0.65)",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
+    bottom: 24,
+    left: 20,
+    right: 20,
+  },
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#fff",
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  heroSubtitle: {
+    fontSize: 16,
+    color: "#e2e8f0",
+    marginTop: 6,
+    fontWeight: "500",
+  },
+  sectionHeader: {
+    paddingHorizontal: 24,
+    marginTop: 20,
+    marginBottom: 16,
   },
   sectionTitle: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#222",
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#1e293b",
   },
-  productsRow: {
-    flexDirection: "row",
-    marginHorizontal: 16,
-    marginTop: 10,
-  },
-  productChip: { marginRight: 16, alignItems: "center" },
-  productIconImg: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    resizeMode: "cover",
-  },
-  productLabel: { marginTop: 6, fontSize: 12, color: "#6B7280" },
-  grid: {
+
+  // EXACT SAME RENTAL CARD STYLE AS HOME SCREEN
+  rentalGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    marginHorizontal: 16,
-    marginTop: 12,
+    paddingHorizontal: 20,
   },
-  itemCard: {
-    width: "48%",
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    marginBottom: 16,
+  rentalCard: {
+    width: width * 0.44,
+    height: width * 0.58,
+    backgroundColor: "#ffffff",
+    borderRadius: 24,
+    marginBottom: 20,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#EEE",
-    elevation: 2,
+    borderColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 12,
   },
-  itemImage: { width: "100%", height: 120 },
-  itemTitle: { fontWeight: "700", color: "#1F2937", fontSize: 14 },
-  viewBtn: {
-    marginTop: 8,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+  rentalImage: {
+    width: "100%",
+    height: "100%",
   },
-
-  // Fixed bottom nav - now safe outside ScrollView
-  bottomNav: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#EEE",
+  rentalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  rentalInfo: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    elevation: 10,
+    padding: 16,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  rentalTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#ffffff",
+    lineHeight: 18,
+  },
+  rentalPrice: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#fbbf24", // Golden color exactly like Home
+    marginTop: 4,
+  },
+
+  bottomNav: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 16,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
     shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: -3 },
-  },
-  navItemWrap: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  navItemWrapActive: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#FDE68A",
-    alignItems: "center",
-    justifyContent: "center",
+    shadowRadius: 12,
+    elevation: 15,
   },
 });

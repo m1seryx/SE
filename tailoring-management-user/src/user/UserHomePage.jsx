@@ -42,6 +42,30 @@ const serviceForms = {
   ],
 };
 
+// Add at the top of your component, before UserHomePage
+const serviceForms = {
+  Repair: [
+    { name: "repairType", label: "Repair Type", type: "text" },
+    { name: "notes", label: "Notes", type: "textarea" },
+    { name: "image", label: "Upload Picture", type: "file" },
+    { name: "datetime", label: "Preferred date & time", type: "datetime-local" },
+  ],
+  Customize: [
+    { name: "fabric", label: "Fabric", type: "text" },
+    { name: "style", label: "Style", type: "text" },
+    { name: "notes", label: "Notes", type: "textarea" },
+    { name: "datetime", label: "Preferred date & time", type: "datetime-local" },
+  ],
+  "Dry Cleaning": [
+    { name: "garmentType", label: "Garment Type", type: "text" },
+    { name: "stainNotes", label: "Stain Notes", type: "textarea" },
+    { name: "datetime", label: "Preferred date & time", type: "datetime-local" },
+  ],
+  Rental: [
+    { name: "pickupDate", label: "Pickup Date", type: "date" },
+  ],
+};
+
 const UserHomePage = ({ userName, setIsLoggedIn }) => {
   const navigate = useNavigate();
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
@@ -355,6 +379,58 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         </div>
       )}
 
+<<<<<<< HEAD
+    {cartOpen && (
+  <div className="cart-drawer" onClick={() => setCartOpen(false)}>
+    <div className="cart-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="cart-header">
+        <div className="cart-title">Cart ({cartItems.length})</div>
+        <button className="cart-close" onClick={() => setCartOpen(false)}>×</button>
+      </div>
+      <div className="cart-items">
+        {cartItems.length === 0 && <div className="cart-empty">No services selected</div>}
+        {cartItems.map((it) => (
+          <div key={it.id} className="cart-card">
+            <div className="cart-card-top">
+              <div className="cart-id">{it.id}</div>
+              <div className="cart-type">{it.type}</div>
+            </div>
+            <div className="cart-card-body">
+              <div className="cart-form">
+                {serviceForms[it.type]?.map((field) => (
+                  <div key={field.name} className="form-group">
+                    <label>{field.label}</label>
+                    {field.type === "textarea" ? (
+                      <textarea
+                        rows={3}
+                        value={it.details[field.name] || ""}
+                        onChange={(e) =>
+                          updateItemDetails(it.id, { [field.name]: e.target.value })
+                        }
+                      />
+                    ) : field.type === "file" ? (
+                      <input
+                        type="file"
+                        onChange={(e) =>
+                          updateItemDetails(it.id, { [field.name]: e.target.files[0] })
+                        }
+                      />
+                    ) : (
+                      <input
+                        type={field.type}
+                        value={it.details[field.name] || ""}
+                        onChange={(e) =>
+                          updateItemDetails(it.id, { [field.name]: e.target.value })
+                        }
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="cart-actions">
+                <button className="btn-danger" onClick={() => removeItem(it.id)}>Remove</button>
+              </div>
+=======
  
 
 {summaryModalOpen && (
@@ -427,6 +503,123 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
                   </div>
                 );
               })}
+>>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: '16px 18px', borderTop: '1px solid #eee' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
+            Select Appointment Date:
+          </label>
+          <input
+            type="date"
+            value={appointmentDate}
+            onChange={(e) => setAppointmentDate(e.target.value)}
+            style={{ 
+              width: '100%', 
+              padding: '12px 14px', 
+              marginBottom: '16px', 
+              border: '1px solid #ddd', 
+              borderRadius: '10px',
+              fontSize: '14px'
+            }}
+            min={new Date().toISOString().split('T')[0]}
+          />
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+            <button onClick={() => setSummaryModalOpen(false)} className="btn-secondary">
+              Back
+            </button>
+            <button 
+              onClick={submitAppointment} 
+              className="btn-primary" 
+              disabled={!appointmentDate || isSubmitting}
+            >
+              {isSubmitting ? 'Submitting...' : 'Confirm Booking'}
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="cart-footer">
+        <button className="btn-primary" disabled={cartItems.length === 0} onClick={() => { setCartOpen(false); setSummaryModalOpen(true); }}>Proceed to booking</button>
+      </div>
+    </div>
+  </div>
+)}
+
+{summaryModalOpen && (
+  <div className="auth-modal-overlay" onClick={() => setSummaryModalOpen(false)}>
+    <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="auth-container">
+        <div className="auth-header">
+          <h2>Finalize Appointment</h2>
+          <p className="auth-subtitle">Review your services</p>
+        </div>
+<<<<<<< HEAD
+        <div style={{ padding: '16px 18px' }}>
+          {cartItems.map((it) => (
+            <div key={it.id} style={{ marginBottom: '12px' }}>
+              <div style={{ fontWeight: 600 }}>{it.type} • {it.id}</div>
+              {serviceForms[it.type]?.map((field) => (
+                <div key={field.name} style={{ fontSize: '13px', color: '#666' }}>
+                  {field.label}: {it.details[field.name] || '-'}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: '16px 18px' }}>
+          <input
+            type="date"
+            value={appointmentDate}
+            onChange={(e) => setAppointmentDate(e.target.value)}
+            style={{ width: '100%', padding: '12px 14px', margin: '12px 0', border: '1px solid #ddd', borderRadius: '10px' }}
+            min={new Date().toISOString().split('T')[0]}
+          />
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
+            <button onClick={() => setSummaryModalOpen(false)} className="btn-secondary">Back</button>
+            <button onClick={submitAppointment} className="btn-primary" disabled={!appointmentDate || isSubmitting}>
+              {isSubmitting ? 'Submitting...' : 'Confirm booking'}
+            </button>
+          </div>
+        </div>
+=======
+>>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
+      </div>
+    </div>
+  </div>
+)}
+
+<<<<<<< HEAD
+
+     {summaryModalOpen && (
+  <div className="auth-modal-overlay" onClick={() => setSummaryModalOpen(false)}>
+    <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="auth-container">
+        <div className="auth-header">
+          <h2>Finalize Appointment</h2>
+          <p className="auth-subtitle">Review your services and select appointment date</p>
+        </div>
+        <div style={{ padding: '16px 18px', maxHeight: '400px', overflowY: 'auto' }}>
+          {cartItems.map((it) => (
+            <div key={it.id} style={{ marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid #eee' }}>
+              <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '8px', color: '#8B4513' }}>
+                {it.type} • {it.id}
+              </div>
+              {serviceForms[it.type]?.map((field) => {
+                const value = it.details[field.name];
+                let displayValue = value || '-';
+                
+                // Special handling for file inputs
+                if (field.type === 'file' && value) {
+                  displayValue = value.name || 'File uploaded';
+                }
+                
+                return (
+                  <div key={field.name} style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>
+                    <strong>{field.label}:</strong> {displayValue}
+                  </div>
+                );
+              })}
             </div>
           ))}
         </div>
@@ -465,7 +658,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
     </div>
   </div>
 )}
-
+=======
       {/* Cart Component */}
       <Cart 
         isOpen={cartOpen} 
@@ -486,6 +679,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         onClose={() => setDryCleaningFormModalOpen(false)}
         onCartUpdate={handleCartUpdate}
       />
+>>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
     </>
   );
 };
