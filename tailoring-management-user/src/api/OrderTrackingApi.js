@@ -85,12 +85,15 @@ export async function getStatusTransitions(orderItemId) {
 export function getStatusBadgeClass(status) {
   const statusMap = {
     'pending': 'pending',
+    'price_confirmation': 'price-confirmation',
     'in_progress': 'in-progress',
     'ready_to_pickup': 'ready',
     'picked_up': 'picked-up',
     'rented': 'rented',
     'returned': 'returned',
-    'completed': 'completed'
+    'completed': 'completed',
+    'cancelled': 'cancelled',
+    'price_declined': 'cancelled'
   };
   return statusMap[status] || 'unknown';
 }
@@ -99,12 +102,15 @@ export function getStatusBadgeClass(status) {
 export function getStatusLabel(status) {
   const statusMap = {
     'pending': 'Pending',
+    'price_confirmation': 'Price Confirmation',
     'in_progress': 'In Progress',
     'ready_to_pickup': 'Ready to Pickup',
     'picked_up': 'Picked Up',
     'rented': 'Rented',
     'returned': 'Returned',
-    'completed': 'Completed'
+    'completed': 'Completed',
+    'cancelled': 'Cancelled',
+    'price_declined': 'Price Declined'
   };
   return statusMap[status] || status;
 }

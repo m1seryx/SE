@@ -1,226 +1,244 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../adminStyle/dryclean.css';
 import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
+import { getAllDryCleaningOrders, updateDryCleaningOrderItem } from '../api/DryCleaningOrderApi';
 
 const DryCleaning = () => {
-  // Initial pending appointments (from customer requests)
-  const initialAppointments = [
-    {
-      id: 1,
-      uniqueNo: "D223111",
-      name: "Juan Dela Cruz",
-      garment: "Suit",
-      Quantity: "1 kilo",
-      price: 500,
-      date: "2024-11-25",
-      isPending: true
-    },
-    {
-      id: 2,
-      uniqueNo: "D223112",
-      name: "Ana Garcia",
-      garment: "Wedding Dress",
-      Quantity: "1 kilo",
-      price: 1200,
-      date: "2024-11-26",
-      isPending: true
-    }
-  ];
-
-  // Initial accepted orders
-  const initialOrders = [
-    {
-      id: 3,
-      uniqueNo: "D223113",
-      name: "Maria Santos",
-      garment: "Barong",
-      Quantity: "1 kilo",
-      price: 800,
-      date: "2024-11-20",
-      status: "In Progress",
-      isPending: false
-    },
-    {
-      id: 4,
-      uniqueNo: "D244222",
-      name: "Ben Santos",
-      garment: "Wedding Gown",
-      Quantity: "1 kilo",
-      price: 1500,
-      date: "2024-11-18",
-      status: "To Pick up",
-      isPending: false
-    },
-    {
-      id: 5,
-      uniqueNo: "D244333",
-      name: "Sofia Santos",
-      garment: "Dress",
-      Quantity: "1 kilo",
-      price: 600,
-      date: "2024-11-15",
-      status: "Completed",
-      isPending: false
-    },
-    {
-      id: 6,
-      uniqueNo: "D244444",
-      name: "Carlos Santos",
-      garment: "Barong",
-      Quantity: "1 kilo",
-      price: 750,
-      date: "2024-11-10",
-      status: "Overdue",
-      isPending: false
-    }
-  ];
-
-  const [allItems, setAllItems] = useState([...initialAppointments, ...initialOrders]);
+  const [allItems, setAllItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [viewFilter, setViewFilter] = useState("all");
-  const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [newOrder, setNewOrder] = useState({
-    name: '',
-    garment: '',
-    Quantity: '',
-    price: '',
-    status: 'In Progress'
+  const [editForm, setEditForm] = useState({
+    finalPrice: '',
+    approvalStatus: '',
+    adminNotes: ''
   });
-
-  // Get pending appointments
-  const pendingAppointments = allItems.filter(item => item.isPending);
-  
-  // Get accepted orders
-  const acceptedOrders = allItems.filter(item => !item.isPending);
-
-  const stats = {
-    pending: pendingAppointments.length,
-    inProgress: acceptedOrders.filter(o => o.status === 'In Progress').length,
-    toPickup: acceptedOrders.filter(o => o.status === 'To Pick up').length,
-    completed: acceptedOrders.filter(o => o.status === 'Completed').length,
-    overdue: acceptedOrders.filter(o => o.status === 'Overdue').length
-  };
 
   // Helper function for status styling
   const getStatusClass = (status) => {
     const statusMap = {
-      'In Progress': 'in-progress',
-      'To Pick up': 'to-pickup',
-      'Completed': 'completed',
-      'Overdue': 'overdue'
+      'pending_review': 'pending',
+      'pending': 'pending',
+      'price_confirmation': 'price-confirmation',
+      'confirmed': 'in-progress',
+      'ready_for_pickup': 'to-pickup',
+      'completed': 'completed',
+      'cancelled': 'rejected',
+      'auto_confirmed': 'in-progress'
     };
-    return statusMap[status] || '';
+    return statusMap[status] || 'pending';
   };
 
-  // Filter logic
+  // Helper function for status display text
+  const getStatusText = (status) => {
+    const statusTextMap = {
+      'pending_review': 'Pending',
+      'pending': 'Pending',
+      'price_confirmation': 'Price Confirmation',
+      'confirmed': 'In Progress',
+      'ready_for_pickup': 'To Pick up',
+      'completed': 'Completed',
+      'cancelled': 'Rejected',
+      'auto_confirmed': 'In Progress'
+    };
+    return statusTextMap[status] || 'Pending';
+  };
+
+  // Load dry cleaning orders on component mount
+  useEffect(() => {
+    loadDryCleaningOrders();
+  }, []);
+
+  const loadDryCleaningOrders = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await getAllDryCleaningOrders();
+      if (result.success) {
+        setAllItems(result.orders);
+      } else {
+        setError(result.message || 'Failed to load dry cleaning orders');
+      }
+    } catch (err) {
+      console.error("Load error:", err);
+      setError('Failed to load dry cleaning orders');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const pendingAppointments = allItems.filter(item =>
+    item.approval_status === 'pending_review' ||
+    item.approval_status === null ||
+    item.approval_status === undefined ||
+    item.approval_status === ''
+  );
+
+  const stats = {
+    pending: pendingAppointments.length,
+    inProgress: allItems.filter(o => o.approval_status === 'confirmed').length,
+    toPickup: allItems.filter(o => o.approval_status === 'ready_for_pickup').length,
+    completed: allItems.filter(o => o.approval_status === 'completed').length,
+    rejected: allItems.filter(o => o.approval_status === 'cancelled').length
+  };
+
   const getFilteredItems = () => {
     let items = [];
-    
+
     if (viewFilter === "pending") {
       items = pendingAppointments;
-    } else if (viewFilter === "accepted") {
-      items = acceptedOrders;
+    } else if (viewFilter === "price-confirmation") {
+      items = allItems.filter(item => item.approval_status === 'price_confirmation');
+    } else if (viewFilter === "in-progress") {
+      items = allItems.filter(item => item.approval_status === 'confirmed');
+    } else if (viewFilter === "to-pickup") {
+      items = allItems.filter(item => item.approval_status === 'ready_for_pickup');
+    } else if (viewFilter === "completed") {
+      items = allItems.filter(item => item.approval_status === 'completed');
+    } else if (viewFilter === "rejected") {
+      items = allItems.filter(item => item.approval_status === 'cancelled');
     } else {
       items = allItems;
     }
 
     // Apply search filter
-    items = items.filter(item => {
-      const matchesSearch = searchTerm === "" || 
-        item.uniqueNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.name.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      return matchesSearch;
-    });
+    items = items.filter(item =>
+      !searchTerm ||
+      item.order_id?.toString().includes(searchTerm.toLowerCase()) ||
+      `${item.first_name} ${item.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.specific_data?.garmentType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-    // Apply status filter only for accepted orders
-    if (statusFilter && viewFilter !== 'pending') {
-      items = items.filter(item => !item.isPending && item.status === statusFilter);
+    // Apply status filter only for "all" tab
+    if (statusFilter && viewFilter === 'all') {
+      items = items.filter(item => item.approval_status === statusFilter);
     }
 
     return items;
   };
 
-  const filteredItems = getFilteredItems();
-
-  // Accept appointment
-  const handleAccept = (id) => {
-    setAllItems(allItems.map(item => 
-      item.id === id 
-        ? { ...item, isPending: false, status: "In Progress" }
-        : item
-    ));
-    alert(`Appointment accepted and converted to order!`);
-  };
-
-  // Decline appointment
-  const handleDecline = (id) => {
-    if (window.confirm("Are you sure you want to decline this appointment?")) {
-      setAllItems(allItems.filter(item => item.id !== id));
-      alert("Appointment declined and removed.");
+  const handleAccept = async (itemId) => {
+    try {
+      const result = await updateDryCleaningOrderItem(itemId, {
+        approvalStatus: 'confirmed'
+      });
+      if (result.success) {
+        await loadDryCleaningOrders();
+        alert("Dry cleaning request approved!");
+      } else {
+        alert(result.message || "Failed to approve request");
+      }
+    } catch (err) {
+      console.error("Accept error:", err);
+      alert("Failed to approve request");
     }
   };
 
-  // Update status for accepted orders
-  const updateStatus = (orderId, newStatus) => {
-    setAllItems(allItems.map(item => 
-      item.id === orderId ? { ...item, status: newStatus } : item
-    ));
-    const item = allItems.find(o => o.id === orderId);
-    if (item) {
-      alert(`Order ${item.uniqueNo} status updated to ${newStatus}!`);
+  const handleDecline = async (itemId) => {
+    if (window.confirm("Decline this dry cleaning request?")) {
+      try {
+        const result = await updateDryCleaningOrderItem(itemId, {
+          approvalStatus: 'cancelled'
+        });
+        if (result.success) {
+          loadDryCleaningOrders();
+        } else {
+          alert(result.message || "Failed to decline request");
+        }
+      } catch (err) {
+        console.error("Decline error:", err);
+        alert("Failed to decline request");
+      }
     }
   };
 
-  const generateUniqueNo = () => 'D' + Date.now().toString().slice(-6);
+  const updateStatus = async (itemId, status) => {
+    try {
+      const result = await updateDryCleaningOrderItem(itemId, {
+        approvalStatus: status
+      });
+      if (result.success) {
+        await loadDryCleaningOrders();
 
-  const handleAddOrder = () => {
-    if (!newOrder.name || !newOrder.garment || !newOrder.Quantity || !newOrder.price || parseFloat(newOrder.price) <= 0) {
-      alert('Please fill all fields correctly.');
-      return;
+        // Automatically switch to the correct tab based on the new status
+        if (status === 'confirmed') {
+          setViewFilter('in-progress');
+        } else if (status === 'ready_for_pickup') {
+          setViewFilter('to-pickup');
+        } else if (status === 'completed') {
+          setViewFilter('completed');
+        } else if (status === 'cancelled') {
+          setViewFilter('rejected');
+        }
+
+        const item = allItems.find(o => o.item_id === itemId);
+        if (item) {
+          alert(`Order #${item.order_id} status updated!`);
+        }
+      } else {
+        alert(result.message || "Failed to update status");
+      }
+    } catch (err) {
+      alert("Failed to update status");
     }
-
-    const order = {
-      id: Date.now(),
-      uniqueNo: generateUniqueNo(),
-      name: newOrder.name,
-      garment: newOrder.garment,
-      Quantity: newOrder.Quantity,
-      price: parseFloat(newOrder.price),
-      date: new Date().toISOString().split('T')[0],
-      status: newOrder.status,
-      isPending: false
-    };
-
-    setAllItems([...allItems, order]);
-    setShowAddModal(false);
-    setNewOrder({ name: '', garment: '', Quantity: '', price: '', status: 'In Progress' });
-    alert('Order added successfully!');
   };
 
-  const handleViewDetails = (id) => {
-    const item = allItems.find(o => o.id === id);
+  const handleViewDetails = (item) => {
     setSelectedOrder(item);
     setShowDetailModal(true);
+  };
+
+  const handleEditOrder = (item) => {
+    setSelectedOrder(item);
+    setEditForm({
+      finalPrice: item.final_price || '',
+      approvalStatus: item.approval_status || '',
+      adminNotes: item.pricing_factors?.adminNotes || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedOrder) return;
+
+    try {
+      const result = await updateDryCleaningOrderItem(selectedOrder.item_id, editForm);
+
+      if (result.success) {
+        setShowEditModal(false);
+        loadDryCleaningOrders();
+        alert('Dry cleaning order updated successfully!');
+      } else {
+        alert(result.message || 'Failed to update order');
+      }
+    } catch (err) {
+      console.error("Update error:", err);
+      alert('Failed to update order');
+    }
   };
 
   return (
     <div className="dry-cleaning-management">
       <Sidebar />
       <AdminHeader />
+
       <div className="content">
         <div className="dashboard-title">
           <div>
             <h2>Dry Cleaning Management</h2>
             <p>Track and manage all dry cleaning orders</p>
           </div>
-          <button className="add-rep" onClick={() => setShowAddModal(true)}>Add Order +</button>
+          {error && <div className="error-message" style={{ color: 'red', marginBottom: '20px' }}>{error}</div>}
         </div>
 
+        {/* Stats */}
         <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-header">
@@ -252,103 +270,107 @@ const DryCleaning = () => {
           </div>
           <div className="stat-card">
             <div className="stat-header">
-              <span>Overdue</span>
-              <div className="stat-icon" style={{ background: '#ffebee', color: '#f44336' }}>⚠</div>
+              <span>Rejected</span>
+              <div className="stat-icon" style={{ background: '#ffebee', color: '#f44336' }}>✕</div>
             </div>
-            <div className="stat-number">{stats.overdue}</div>
+            <div className="stat-number">{stats.rejected}</div>
           </div>
         </div>
 
-        {/* View Filter Tabs */}
+        {/* Tabs */}
         <div className="view-tabs">
-          <button 
-            className={`tab-btn ${viewFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setViewFilter('all')}
-          >
+          <button className={viewFilter === 'all' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('all')}>
             All ({allItems.length})
           </button>
-          <button 
-            className={`tab-btn ${viewFilter === 'pending' ? 'active' : ''}`}
-            onClick={() => setViewFilter('pending')}
-          >
-            Pending Appointments ({pendingAppointments.length})
+          <button className={viewFilter === 'pending' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('pending')}>
+            Pending ({pendingAppointments.length})
           </button>
-          <button 
-            className={`tab-btn ${viewFilter === 'accepted' ? 'active' : ''}`}
-            onClick={() => setViewFilter('accepted')}
-          >
-            Accepted Orders ({acceptedOrders.length})
+          <button className={viewFilter === 'price-confirmation' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('price-confirmation')}>
+            Price Confirmation ({allItems.filter(o => o.approval_status === 'price_confirmation').length})
+          </button>
+          <button className={viewFilter === 'in-progress' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('in-progress')}>
+            In Progress ({allItems.filter(o => o.approval_status === 'confirmed').length})
+          </button>
+          <button className={viewFilter === 'to-pickup' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('to-pickup')}>
+            To Pick up ({allItems.filter(o => o.approval_status === 'ready_for_pickup').length})
+          </button>
+          <button className={viewFilter === 'completed' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('completed')}>
+            Completed ({allItems.filter(o => o.approval_status === 'completed').length})
+          </button>
+          <button className={viewFilter === 'rejected' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('rejected')}>
+            Rejected ({allItems.filter(o => o.approval_status === 'cancelled').length})
           </button>
         </div>
 
         <div className="search-container">
           <input
             type="text"
-            placeholder="Search by Unique No. or Name"
+            placeholder="Search by Unique No, Name, or Garment"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="">All Status</option>
-            <option value="In Progress">In Progress</option>
-            <option value="To Pick up">To Pick up</option>
-            <option value="Completed">Completed</option>
-            <option value="Overdue">Overdue</option>
+            <option value="price_confirmation">Price Confirmation</option>
+            <option value="confirmed">In Progress</option>
+            <option value="ready_for_pickup">To Pick up</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Rejected</option>
           </select>
         </div>
 
+        {/* Table */}
         <div className="table-container">
           <table>
             <thead>
               <tr>
-                <th>Unique No.</th>
-                <th>Name</th>
+                <th>Order ID</th>
+                <th>Customer</th>
                 <th>Garment</th>
-                <th>Quantity</th>
+                <th>Service</th>
                 <th>Date</th>
+                <th>Price</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredItems.length === 0 ? (
-                <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
-                    No items found
-                  </td>
-                </tr>
+              {loading ? (
+                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>Loading dry cleaning orders...</td></tr>
+              ) : getFilteredItems().length === 0 ? (
+                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>No dry cleaning orders found</td></tr>
               ) : (
-                filteredItems.map(item => (
-                  <tr key={item.id}>
-                    <td><strong>{item.uniqueNo}</strong></td>
-                    <td>{item.name}</td>
-                    <td>{item.garment}</td>
-                    <td>{item.Quantity}</td>
-                    <td>{item.date}</td>
+                getFilteredItems().map(item => (
+                  <tr key={item.item_id}>
+                    <td><strong>#{item.order_id}</strong></td>
+                    <td>{item.first_name} {item.last_name}</td>
+                    <td>{item.specific_data?.garmentType || 'N/A'}</td>
+                    <td><span style={{ fontSize: '0.9em', color: '#d32f2f' }}>{item.specific_data?.serviceName || 'N/A'}</span></td>
+                    <td>{new Date(item.order_date).toLocaleDateString()}</td>
+                    <td>₱{parseFloat(item.final_price || 0).toLocaleString()}</td>
                     <td>
-                      {item.isPending ? (
-                        <span className="status-badge pending">
-                          Pending
+                      {item.approval_status === 'pending_review' || item.approval_status === null || item.approval_status === undefined || item.approval_status === '' ? (
+                        <span className={`status-badge ${getStatusClass('pending')}`}>
+                          {getStatusText('pending')}
                         </span>
                       ) : (
                         <select
-                          className={`status-select ${getStatusClass(item.status)}`}
-                          value={item.status}
-                          onChange={(e) => updateStatus(item.id, e.target.value)}
+                          className={`status-select ${getStatusClass(item.approval_status)}`}
+                          value={item.approval_status || 'pending'}
+                          onChange={(e) => updateStatus(item.item_id, e.target.value)}
                         >
-                          <option value="In Progress">In Progress</option>
-                          <option value="To Pick up">To Pick up</option>
-                          <option value="Completed">Completed</option>
-                          <option value="Overdue">Overdue</option>
+                          <option value="price_confirmation">Price Confirmation</option>
+                          <option value="confirmed">In Progress</option>
+                          <option value="ready_for_pickup">To Pick up</option>
+                          <option value="completed">Completed</option>
+                          <option value="cancelled">Rejected</option>
                         </select>
                       )}
                     </td>
                     <td>
-                      {item.isPending ? (
+                      {item.approval_status === 'pending_review' || item.approval_status === null || item.approval_status === undefined || item.approval_status === '' ? (
                         <div className="buttons">
-                          <button
-                            className="accept-btn"
-                            onClick={() => handleAccept(item.id)}
+                          <button className="accept-btn" onClick={() => handleAccept(item.item_id)}
                             style={{
                               padding: '10px 10px',
                               border: 'none',
@@ -357,14 +379,22 @@ const DryCleaning = () => {
                               fontWeight: '600',
                               fontSize: '10px',
                               background: '#27AE60',
-                              color: 'white'
-                            }}
-                          >
-                            Accept
-                          </button>
-                          <button
-                            className="decline-btn"
-                            onClick={() => handleDecline(item.id)}
+                              color: 'white',
+                              marginRight: '5px'
+                            }}>Accept</button>
+                          <button className="edit-btn" onClick={() => handleEditOrder(item)}
+                            style={{
+                              padding: '10px 10px',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                              fontSize: '10px',
+                              background: '#ff9800',
+                              color: 'white',
+                              marginRight: '5px'
+                            }}>Edit Price</button>
+                          <button className="decline-btn" onClick={() => handleDecline(item.item_id)}
                             style={{
                               padding: '10px 10px',
                               border: 'none',
@@ -373,14 +403,10 @@ const DryCleaning = () => {
                               fontWeight: '600',
                               fontSize: '10px',
                               background: '#E74C3C',
-                              color: 'white'
-                            }}
-                          >
-                            Decline
-                          </button>
-                          <button
-                            className="action-btn"
-                            onClick={() => handleViewDetails(item.id)}
+                              color: 'white',
+                              marginRight: '5px'
+                            }}>Decline</button>
+                          <button className="action-btn view-btn" onClick={() => handleViewDetails(item)}
                             style={{
                               padding: '10px 10px',
                               border: 'none',
@@ -389,20 +415,47 @@ const DryCleaning = () => {
                               fontWeight: '600',
                               fontSize: '10px',
                               background: '#2196f3',
+                              color: 'white',
+                              marginRight: '5px'
+                            }}>View</button>
+                          <button className="action-btn edit-btn" onClick={() => handleEditOrder(item)}
+                            style={{
+                              padding: '10px 10px',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                              fontSize: '10px',
+                              background: '#ff9800',
                               color: 'white'
-                            }}
-                          >
-                            
-                            View
-                          </button>
+                            }}>Edit</button>
                         </div>
                       ) : (
-                        <button
-                          className="action-btn"
-                          onClick={() => handleViewDetails(item.id)}
-                        >
-                          View
-                        </button>
+                        <div className="buttons">
+                          <button className="action-btn view-btn" onClick={() => handleViewDetails(item)}
+                            style={{
+                              padding: '10px 10px',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                              fontSize: '10px',
+                              background: '#2196f3',
+                              color: 'white',
+                              marginRight: '5px'
+                            }}>View</button>
+                          <button className="action-btn edit-btn" onClick={() => handleEditOrder(item)}
+                            style={{
+                              padding: '10px 10px',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontWeight: '600',
+                              fontSize: '10px',
+                              background: '#ff9800',
+                              color: 'white'
+                            }}>Edit</button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -413,69 +466,60 @@ const DryCleaning = () => {
         </div>
       </div>
 
-      {/* Add Order Modal */}
-      {showAddModal && (
-        <div className="modal-overlay active" onClick={(e) => {
-          if (e.target.classList.contains('modal-overlay')) setShowAddModal(false);
-        }}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      {/* Edit Order Modal */}
+      {showEditModal && selectedOrder && (
+        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowEditModal(false)}>
+          <div className="modal-content">
             <div className="modal-header">
-              <h2>Add New Order</h2>
-              <span className="close-modal" onClick={() => setShowAddModal(false)}>×</span>
+              <h2>Edit Dry Cleaning Order</h2>
+              <span className="close-modal" onClick={() => setShowEditModal(false)}>×</span>
             </div>
             <div className="modal-body">
-              <div className="form-group">
-                <label>Customer Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Maria Santos"
-                  value={newOrder.name}
-                  onChange={(e) => setNewOrder({ ...newOrder, name: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Garment</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Wedding Gown"
-                  value={newOrder.garment}
-                  onChange={(e) => setNewOrder({ ...newOrder, garment: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Quantity</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 1 kilo"
-                  value={newOrder.Quantity}
-                  onChange={(e) => setNewOrder({ ...newOrder, Quantity: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Price</label>
+              <div className="detail-row"><strong>Order ID:</strong> #{selectedOrder.order_id}</div>
+              <div className="detail-row"><strong>Garment:</strong> {selectedOrder.specific_data?.garmentType || 'N/A'}</div>
+              <div className="detail-row"><strong>Service:</strong> {selectedOrder.specific_data?.serviceName || 'N/A'}</div>
+
+              <div className="form-group" style={{ marginTop: '20px' }}>
+                <label>Final Price (₱)</label>
                 <input
                   type="number"
-                  placeholder="e.g. 500"
-                  value={newOrder.price}
-                  onChange={(e) => setNewOrder({ ...newOrder, price: e.target.value })}
+                  value={editForm.finalPrice}
+                  onChange={(e) => setEditForm({ ...editForm, finalPrice: e.target.value })}
+                  placeholder="Enter final price"
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                 />
               </div>
+
               <div className="form-group">
                 <label>Status</label>
                 <select
-                  value={newOrder.status}
-                  onChange={(e) => setNewOrder({ ...newOrder, status: e.target.value })}
+                  value={editForm.approvalStatus}
+                  onChange={(e) => setEditForm({ ...editForm, approvalStatus: e.target.value })}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                 >
-                  <option value="In Progress">In Progress</option>
-                  <option value="To Pick up">To Pick up</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Overdue">Overdue</option>
+                  <option value="pending_review">Pending Review</option>
+                  <option value="price_confirmation">Price Confirmation</option>
+                  <option value="approved">In Progress</option>
+                  <option value="ready_for_pickup">Ready for Pickup</option>
+                  <option value="completed">Completed</option>
+                  <option value="rejected">Rejected</option>
                 </select>
+              </div>
+
+              <div className="form-group">
+                <label>Admin Notes</label>
+                <textarea
+                  value={editForm.adminNotes}
+                  onChange={(e) => setEditForm({ ...editForm, adminNotes: e.target.value })}
+                  placeholder="Add admin notes..."
+                  rows={3}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn-cancel" onClick={() => setShowAddModal(false)}>Cancel</button>
-              <button className="btn-save" onClick={handleAddOrder}>Add Order</button>
+              <button className="btn-cancel" onClick={() => setShowEditModal(false)}>Cancel</button>
+              <button className="btn-save" onClick={handleSaveEdit}>Save Changes</button>
             </div>
           </div>
         </div>
@@ -483,47 +527,27 @@ const DryCleaning = () => {
 
       {/* View Details Modal */}
       {showDetailModal && selectedOrder && (
-        <div className="modal-overlay active" onClick={(e) => {
-          if (e.target.classList.contains('modal-overlay')) setShowDetailModal(false);
-        }}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowDetailModal(false)}>
+          <div className="modal-content">
             <div className="modal-header">
               <h2>Order Details</h2>
               <span className="close-modal" onClick={() => setShowDetailModal(false)}>×</span>
             </div>
             <div className="modal-body">
-              <div className="detail-row">
-                <strong>Unique No:</strong> 
-                <span>{selectedOrder.uniqueNo}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Customer:</strong> 
-                <span>{selectedOrder.name}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Garment:</strong> 
-                <span>{selectedOrder.garment}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Quantity:</strong> 
-                <span>{selectedOrder.Quantity}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Date:</strong> 
-                <span>{selectedOrder.date}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Price:</strong> 
-                <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>
-                  ₱{selectedOrder.price?.toLocaleString() || '0'}
+              <div className="detail-row"><strong>Order ID:</strong> #{selectedOrder.order_id}</div>
+              <div className="detail-row"><strong>Garment:</strong> {selectedOrder.specific_data?.garmentType || 'N/A'}</div>
+              <div className="detail-row"><strong>Service:</strong> {selectedOrder.specific_data?.serviceName || 'N/A'}</div>
+              <div className="detail-row"><strong>Date Received:</strong> {new Date(selectedOrder.order_date).toLocaleDateString()}</div>
+              <div className="detail-row"><strong>Price:</strong> ₱{parseFloat(selectedOrder.final_price || 0).toLocaleString()}</div>
+              <div className="detail-row"><strong>Status:</strong>
+                <span className={`status-badge ${getStatusClass(selectedOrder.approval_status || 'pending')}`}>
+                  {getStatusText(selectedOrder.approval_status || 'pending')}
                 </span>
               </div>
-              <div className="detail-row">
-                <strong>Status:</strong> 
-                <span className={`status-badge ${selectedOrder.isPending ? 'pending' : selectedOrder.status.toLowerCase().replace(' ', '-')}`}>
-                  {selectedOrder.isPending ? 'Pending' : selectedOrder.status}
-                </span>
-              </div>
+
+              {selectedOrder.pricing_factors?.adminNotes && (
+                <div className="detail-row"><strong>Admin Notes:</strong> {selectedOrder.pricing_factors.adminNotes}</div>
+              )}
             </div>
             <div className="modal-footer">
               <button className="close-btn" onClick={() => setShowDetailModal(false)}>Close</button>

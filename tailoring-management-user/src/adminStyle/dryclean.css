@@ -354,6 +354,11 @@ tbody td {
   color: #1976d2;
 }
 
+.status-select.price-confirmation {
+  background: #fff3e0;
+  color: #ff9800;
+}
+
 .status-select.to-pickup {
   background: #fff3e0;
   color: #f57c00;
@@ -505,6 +510,11 @@ tbody td {
 .status-badge.in-progress {
   background: #e3f2fd;
   color: #1976d2;
+}
+
+.status-badge.price-confirmation {
+  background: #fff3e0;
+  color: #ff9800;
 }
 
 .status-badge.to-pick-up {

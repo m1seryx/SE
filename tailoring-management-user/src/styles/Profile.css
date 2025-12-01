@@ -4,6 +4,43 @@
 
 .section-title {
   margin-top: 20px;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Status Filters */
+.status-filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  background: #fff;
+  color: #666;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.filter-btn:hover {
+  border-color: #2196f3;
+  color: #2196f3;
+  background: #f8f9fa;
+}
+
+.filter-btn.active {
+  background: #2196f3;
+  border-color: #2196f3;
+  color: white;
 }
 
 .user-info-card {
@@ -46,6 +83,371 @@
   background: #fff3cd;
   border-color: #ffeaa7;
   color: #856404;
+}
+
+/* Order Cards Layout */
+.order-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.order-card {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.order-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.order-info h3.order-id {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 4px 0;
+}
+
+.service-type {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.service-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.order-price {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2196f3;
+  background: #e3f2fd;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.order-status {
+  margin-bottom: 20px;
+}
+
+.status-badge {
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.price-confirmation {
+  background: #fff3e0;
+  color: #ff9800;
+}
+
+/* Price Comparison Styles */
+.price-comparison {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.price-row:last-child {
+  margin-bottom: 0;
+}
+
+.price-label {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.price-value {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.price-value.estimated {
+  color: #666;
+}
+
+.price-value.same {
+  color: #4caf50;
+}
+
+.price-value.changed {
+  color: #ff9800;
+}
+
+.price-change-indicator {
+  margin-left: 8px;
+  font-size: 0.85rem;
+}
+
+.admin-notes {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #fff;
+  border-radius: 6px;
+  border-left: 3px solid #ff9800;
+}
+
+.notes-label {
+  font-size: 0.8rem;
+  color: #666;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.notes-text {
+  font-size: 0.9rem;
+  color: #333;
+}
+
+/* Price Confirmation Actions */
+.price-confirmation-actions {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #fff3cd;
+  border-radius: 8px;
+  border: 1px solid #ffeaa7;
+}
+
+.confirmation-message {
+  margin-bottom: 16px;
+}
+
+.confirmation-message strong {
+  color: #856404;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.confirmation-message p {
+  color: #856404;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-accept-price {
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.3s ease;
+}
+
+.btn-accept-price:hover {
+  background: #45a049;
+}
+
+.btn-decline-price {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.3s ease;
+}
+
+.btn-decline-price:hover {
+  background: #da190b;
+}
+
+.status-badge.pending {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.status-badge.in-progress {
+  background: #e3f2fd;
+  color: #2196f3;
+}
+
+.status-badge.ready {
+  background: #fff3e0;
+  color: #ff9800;
+}
+
+.status-badge.completed {
+  background: #e8f5e9;
+  color: #4caf50;
+}
+
+.status-badge.cancelled {
+  background: #ffebee;
+  color: #f44336;
+}
+
+/* Timeline Styles */
+.order-timeline {
+  margin-bottom: 20px;
+  padding: 16px 0;
+  border-top: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
+  overflow-x: auto;
+}
+
+.timeline-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 600px;
+  position: relative;
+}
+
+.timeline-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+  position: relative;
+  z-index: 2;
+}
+
+.timeline-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: calc(100% - 12px);
+  height: 2px;
+  background: #e0e0e0;
+  z-index: 1;
+}
+
+.timeline-item:not(:last-child).completed::after {
+  background: #4caf50;
+}
+
+.timeline-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.timeline-dot.completed {
+  background: #4caf50;
+  border: 2px solid #4caf50;
+}
+
+.timeline-dot.pending {
+  background: #e0e0e0;
+  border: 2px solid #e0e0e0;
+}
+
+.timeline-content {
+  flex: 1;
+}
+
+.timeline-title {
+  font-weight: 500;
+  color: #333;
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+.timeline-date {
+  font-size: 0.75rem;
+  color: #666;
+  line-height: 1.1;
+}
+
+.order-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.order-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.date-info {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.btn-view-details {
+  background: #2196f3;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.3s ease;
+}
+
+.btn-view-details:hover {
+  background: #1976d2;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .order-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .order-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .order-footer {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  
+  .timeline-item {
+    margin-bottom: 16px;
+  }
 }
 
 .service-type {

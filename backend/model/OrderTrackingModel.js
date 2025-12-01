@@ -27,7 +27,7 @@ const OrderTracking = {
         o.total_price
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.order_id
-      LEFT JOIN order_tracking ot ON oi.item_id = ot.item_id
+      LEFT JOIN order_tracking ot ON oi.item_id = ot.order_item_id
       WHERE o.user_id = ?
       ORDER BY o.order_date DESC, oi.item_id DESC, ot.created_at DESC
     `;
@@ -43,14 +43,27 @@ const OrderTracking = {
         oi.service_type,
         oi.final_price,
         oi.specific_data,
-        IFNULL(ot.status, 'pending') as status,
-        IFNULL(ot.notes, 'Order created') as notes,
-        IFNULL(ot.created_at, o.order_date) as status_updated_at,
+        IFNULL(latest_ot.status, 'pending') as status,
+        IFNULL(latest_ot.notes, 'Order created') as notes,
+        IFNULL(latest_ot.created_at, o.order_date) as status_updated_at,
         o.order_date,
         o.total_price
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.order_id
-      LEFT JOIN order_tracking ot ON oi.item_id = ot.order_item_id
+      LEFT JOIN (
+        SELECT 
+          ot1.order_item_id,
+          ot1.status,
+          ot1.notes,
+          ot1.created_at
+        FROM order_tracking ot1
+        INNER JOIN (
+          SELECT order_item_id, MAX(created_at) as max_created_at
+          FROM order_tracking
+          GROUP BY order_item_id
+        ) ot2 ON ot1.order_item_id = ot2.order_item_id 
+             AND ot1.created_at = ot2.max_created_at
+      ) latest_ot ON oi.item_id = latest_ot.order_item_id
       WHERE o.user_id = ?
       ORDER BY o.order_date DESC, oi.item_id DESC
     `;
@@ -107,21 +120,21 @@ const OrderTracking = {
         INSERT INTO order_tracking (order_item_id, status, notes, updated_by)
         VALUES (?, ?, ?, NULL)
       `;
-      
+
       db.query(sql, [item.order_item_id || item.item_id, initialStatus, 'Order created'], (err, result) => {
         completed++;
-        
+
         if (err) {
           errors.push(`Item ${index + 1}: ${err.message}`);
         }
-        
+
         // When all items are processed, callback with results
         if (completed === orderItems.length) {
           if (errors.length > 0) {
             console.warn('Some tracking items failed to initialize:', errors);
           }
-          callback(errors.length > 0 ? new Error(errors.join('; ')) : null, 
-                  { success: true, errors: errors });
+          callback(errors.length > 0 ? new Error(errors.join('; ')) : null,
+            { success: true, errors: errors });
         }
       });
     });
@@ -141,34 +154,101 @@ const OrderTracking = {
     }
   },
 
-  // Get next possible statuses based on current status and service type
-  getNextStatuses: (serviceType, currentStatus) => {
-    const statusFlows = {
-      'repair': ['pending', 'in_progress', 'ready_to_pickup'],
-      'customize': ['pending', 'in_progress', 'ready_to_pickup'],
-      'dry_cleaning': ['pending', 'in_progress', 'ready_to_pickup'],
-      'rental': ['pending', 'picked_up', 'rented', 'returned']
+  // Get available status transitions for an order item
+  getStatusTransitions: (serviceType, currentStatus) => {
+    const flows = {
+      'repair': {
+        'pending': ['price_confirmation'],
+        'price_confirmation': ['confirmed', 'price_declined'],
+        'confirmed': ['ready_to_pickup'],
+        'ready_to_pickup': ['completed'],
+        'completed': [],
+        'cancelled': [],
+        'price_declined': []
+      },
+      'customize': {
+        'pending': ['price_confirmation'],
+        'price_confirmation': ['confirmed', 'price_declined'],
+        'confirmed': ['ready_to_pickup'],
+        'ready_to_pickup': ['completed'],
+        'completed': [],
+        'cancelled': [],
+        'price_declined': []
+      },
+      'dry_cleaning': {
+        'pending': ['price_confirmation'],
+        'price_confirmation': ['confirmed', 'price_declined'],
+        'confirmed': ['ready_to_pickup'],
+        'ready_to_pickup': ['completed'],
+        'completed': [],
+        'cancelled': [],
+        'price_declined': []
+      },
+      'rental': {
+        'pending': ['rented', 'cancelled'],
+        'ready_to_pickup': ['rented', 'returned', 'completed', 'cancelled'],
+        'picked_up': ['rented'],
+        'rented': ['returned', 'completed'],
+        'returned': ['completed'],
+        'completed': [],
+        'cancelled': []
+      }
     };
 
-    const flow = statusFlows[serviceType] || statusFlows['repair'];
-    const currentIndex = flow.indexOf(currentStatus);
-    
-    if (currentIndex === -1) return flow; // Return all if current status not found
-    if (currentIndex === flow.length - 1) return [currentStatus]; // Return current if it's the last status
-    
-    return flow.slice(currentIndex + 1); // Return next statuses
+    return flows[serviceType]?.[currentStatus] || [];
   },
 
   // Get status display information
+  // Get available next statuses based on current status and service type
+  getNextStatuses: (serviceType, currentStatus) => {
+    const statusFlow = {
+      'repair': {
+        'pending': ['in_progress', 'cancelled'],
+        'price_confirmation': ['in_progress', 'cancelled'],
+        'in_progress': ['ready_to_pickup', 'cancelled'],
+        'ready_to_pickup': ['picked_up', 'cancelled'],
+        'picked_up': ['completed'],
+        'completed': [],
+        'cancelled': [],
+        'price_declined': []
+      },
+      'dry_cleaning': {
+        'pending': ['in_progress', 'cancelled'],
+        'price_confirmation': ['in_progress', 'cancelled'],
+        'in_progress': ['ready_to_pickup', 'cancelled'],
+        'ready_to_pickup': ['picked_up', 'cancelled'],
+        'picked_up': ['completed'],
+        'completed': [],
+        'cancelled': [],
+        'price_declined': []
+      },
+      'rental': {
+        'pending': ['rented', 'cancelled'],
+        'ready_to_pickup': ['rented', 'returned', 'completed', 'cancelled'],
+        'picked_up': ['rented'],
+        'rented': ['returned', 'completed'],
+        'returned': ['completed'],
+        'completed': [],
+        'cancelled': []
+      }
+    };
+
+    const flow = statusFlow[serviceType] || statusFlow['repair'];
+    return flow[currentStatus] || [];
+  },
+
   getStatusInfo: (status, serviceType) => {
     const statusMap = {
       'pending': { label: 'Pending', class: 'pending' },
+      'price_confirmation': { label: 'Price Confirmation', class: 'price-confirmation' },
       'in_progress': { label: 'In Progress', class: 'in-progress' },
       'ready_to_pickup': { label: 'Ready to Pickup', class: 'ready' },
       'picked_up': { label: 'Picked Up', class: 'picked-up' },
       'rented': { label: 'Rented', class: 'rented' },
       'returned': { label: 'Returned', class: 'returned' },
-      'completed': { label: 'Completed', class: 'completed' }
+      'completed': { label: 'Completed', class: 'completed' },
+      'cancelled': { label: 'Cancelled', class: 'cancelled' },
+      'price_declined': { label: 'Price Declined', class: 'cancelled' }
     };
 
     return statusMap[status] || { label: status, class: 'unknown' };

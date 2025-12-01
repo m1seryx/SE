@@ -25,16 +25,22 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(50px);
   }
-  to { 
+
+  to {
     opacity: 1;
     transform: translateY(0);
   }
@@ -103,8 +109,10 @@
   font-size: 1rem;
   font-family: inherit;
   box-sizing: border-box;
-  color: #333; /* Ensure text is visible */
-  background-color: #fff; /* Ensure background is white */
+  color: #333;
+  /* Ensure text is visible */
+  background-color: #fff;
+  /* Ensure background is white */
 }
 
 .form-group input:focus,

@@ -48,7 +48,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const calculatePrice = async () => {
     console.log('Calculating price for quantity:', formData.quantity);
     console.log('Available services:', services.length);
-    
+
     if (!formData.quantity) {
       setEstimatedPrice(0);
       return;
@@ -59,14 +59,14 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       // Use Basic Dry Cleaning as default service
       const defaultService = services.find(service => service.service_name === 'Basic Dry Cleaning') || services[0];
       console.log('Default service:', defaultService);
-      
+
       if (defaultService) {
         const basePrice = parseFloat(defaultService.base_price) || 200;
         const pricePerItem = parseFloat(defaultService.price_per_item) || 150;
         const quantity = parseInt(formData.quantity);
-        
+
         console.log('Price calculation:', { basePrice, pricePerItem, quantity });
-        
+
         // Calculate total price: base price + (price per item * quantity)
         const totalPrice = basePrice + (pricePerItem * quantity);
         console.log('Calculated total price:', totalPrice);
@@ -105,7 +105,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     setImageFile(file);
-    
+
     // Create preview
     if (file) {
       const reader = new FileReader();
@@ -120,7 +120,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.brand || !formData.datetime) {
       setMessage('Please fill in all required fields');
       return;
@@ -131,7 +131,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
 
     try {
       let imageUrl = '';
-      
+
       // Upload image if provided
       if (imageFile) {
         console.log('Uploading image file:', imageFile);
@@ -140,10 +140,10 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
           size: imageFile.size,
           type: imageFile.type
         });
-        
+
         const uploadResult = await uploadDryCleaningImage(imageFile);
         console.log('Upload result:', uploadResult);
-        
+
         if (uploadResult.success) {
           imageUrl = uploadResult.data.url || uploadResult.data.filename || '';
           console.log('Image uploaded successfully, URL:', imageUrl);
@@ -160,7 +160,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       const fallbackBasePrice = 200;
       const fallbackPricePerItem = 150;
       const fallbackEstimatedTime = '2-3 days';
-      
+
       const dryCleaningData = {
         serviceId: defaultService?.service_id || 1,
         serviceName: 'Basic Dry Cleaning',
@@ -178,7 +178,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       console.log('Dry cleaning data to send:', dryCleaningData);
 
       const result = await addDryCleaningToCart(dryCleaningData);
-      
+
       if (result.success) {
         setMessage(`✅ Dry cleaning service added to cart! Estimated price: ₱${estimatedPrice}${imageUrl ? ' (Image uploaded)' : ''}`);
         setTimeout(() => {
@@ -291,13 +291,13 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                 accept="image/*"
                 onChange={handleImageChange}
               />
-              
+
               {/* Image Preview */}
               {imagePreview && (
                 <div className="image-preview">
                   <img src={imagePreview} alt="Clothing preview" className="preview-image" />
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="remove-image-btn"
                     onClick={() => {
                       setImageFile(null);
@@ -305,11 +305,11 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                       document.getElementById('image').value = '';
                     }}
                   >
-                    ✕ Remove
+                    ✕
                   </button>
                 </div>
               )}
-              
+
               {imageFile && !imagePreview && (
                 <div className="file-info">
                   <span>📎 {imageFile.name}</span>
@@ -339,17 +339,17 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
 
             {/* Form Actions */}
             <div className="form-actions">
-              <button 
-                type="button" 
-                className="btn-cancel" 
+              <button
+                type="button"
+                className="btn-cancel"
                 onClick={handleClose}
                 disabled={loading}
               >
                 Cancel
               </button>
-              <button 
-                type="submit" 
-                className="btn-submit" 
+              <button
+                type="submit"
+                className="btn-submit"
                 disabled={loading || !formData.brand || !formData.datetime}
               >
                 {loading ? 'Adding to Cart...' : 'Add to Cart'}

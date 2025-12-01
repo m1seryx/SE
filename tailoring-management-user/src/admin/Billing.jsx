@@ -1,75 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../adminStyle/bill.css';
 import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
+import { getAllBillingRecords, getBillingStats, updateBillingRecordStatus } from '../api/BillingApi';
 
 const Billing = () => {
-  const initialBills = [
-    {
-      id: 1,
-      uniqueNo: "C223111",
-      customerName: "Juan Dela Cruz",
-      serviceType: "Customization",
-      date: "2024-11-25",
-      price: 1200,
-      status: "Unpaid"
-    },
-    {
-      id: 2,
-      uniqueNo: "D223112",
-      customerName: "Ana Garcia",
-      serviceType: "Dry Cleaning",
-      date: "2024-11-26",
-      price: 500,
-      status: "Paid"
-    },
-    {
-      id: 3,
-      uniqueNo: "R223113",
-      customerName: "Maria Santos",
-      serviceType: "Repair",
-      date: "2024-11-20",
-      price: 800,
-      status: "Paid"
-    },
-    {
-      id: 4,
-      uniqueNo: "RN244222",
-      customerName: "Ben Santos",
-      serviceType: "Rental",
-      date: "2024-11-18",
-      price: 1500,
-      status: "Unpaid"
-    },
-    {
-      id: 5,
-      uniqueNo: "C244333",
-      customerName: "Sofia Santos",
-      serviceType: "Customization",
-      date: "2024-11-15",
-      price: 2500,
-      status: "Paid"
-    },
-    {
-      id: 6,
-      uniqueNo: "D244444",
-      customerName: "Carlos Santos",
-      serviceType: "Dry Cleaning",
-      date: "2024-11-10",
-      price: 750,
-      status: "Unpaid"
-    }
-  ];
-
-  const [allBills, setAllBills] = useState(initialBills);
+  const [allBills, setAllBills] = useState([]);
+  const [billingStats, setBillingStats] = useState({
+    total: 0,
+    paid: 0,
+    unpaid: 0,
+    totalRevenue: 0,
+    pendingRevenue: 0
+  });
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [serviceFilter, setServiceFilter] = useState('');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
 
-  // Calculate statistics
-  const stats = {
+  // Fetch billing data on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch billing records
+        const recordsResponse = await getAllBillingRecords();
+        if (recordsResponse.success) {
+          setAllBills(recordsResponse.records);
+        }
+
+        // Fetch billing statistics
+        const statsResponse = await getBillingStats();
+        if (statsResponse.success) {
+          setBillingStats(statsResponse.stats);
+        }
+      } catch (error) {
+        console.error('Error fetching billing data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Calculate statistics from local data (fallback)
+  const localStats = {
     total: allBills.length,
     paid: allBills.filter(b => b.status === 'Paid').length,
     unpaid: allBills.filter(b => b.status === 'Unpaid').length,
@@ -106,13 +83,23 @@ const Billing = () => {
   const filteredBills = getFilteredBills();
 
   // Update payment status
-  const updatePaymentStatus = (billId, newStatus) => {
-    setAllBills(allBills.map(bill => 
-      bill.id === billId ? { ...bill, status: newStatus } : bill
-    ));
-    const bill = allBills.find(b => b.id === billId);
-    if (bill) {
-      alert(`Payment status for ${bill.uniqueNo} updated to ${newStatus}!`);
+  const updatePaymentStatus = async (billId, newStatus) => {
+    try {
+      const response = await updateBillingRecordStatus(billId, newStatus);
+      if (response.success) {
+        setAllBills(allBills.map(bill => 
+          bill.id === billId ? { ...bill, status: newStatus } : bill
+        ));
+        const bill = allBills.find(b => b.id === billId);
+        if (bill) {
+          alert(`Payment status for ${bill.uniqueNo} updated to ${newStatus}!`);
+        }
+      } else {
+        alert(response.message || 'Failed to update payment status');
+      }
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      alert('Error updating payment status');
     }
   };
 
@@ -122,12 +109,16 @@ const Billing = () => {
     setShowDetailModal(true);
   };
 
+  // Get service type color
   const getServiceTypeColor = (serviceType) => {
     const colors = {
-      'Customization': '#9c27b0',
-      'Dry Cleaning': '#2196f3',
-      'Repair': '#ff9800',
-      'Rental': '#4caf50'
+      'Customization': '#9c27b0', // Purple
+      'Dry Cleaning': '#2196f3',   // Blue
+      'Repair': '#ff9800',        // Orange
+      'Rental': '#4caf50',        // Green
+      'Alteration': '#f44336',    // Red
+      'Consultation': '#795548',  // Brown
+      'Other': '#607d8b'          // Blue Grey
     };
     return colors[serviceType] || '#666';
   };
@@ -152,7 +143,7 @@ const Billing = () => {
               <span>Total Bills</span>
               <div className="stat-icon" style={{ background: '#e3f2fd', color: '#2196f3' }}>📄</div>
             </div>
-            <div className="stat-number">{stats.total}</div>
+            <div className="stat-number">{billingStats.total || localStats.total}</div>
           </div>
 
           <div className="stat-card">
@@ -160,7 +151,7 @@ const Billing = () => {
               <span>Paid</span>
               <div className="stat-icon" style={{ background: '#e8f5e9', color: '#4caf50' }}>✓</div>
             </div>
-            <div className="stat-number">{stats.paid}</div>
+            <div className="stat-number">{billingStats.paid || localStats.paid}</div>
           </div>
 
           <div className="stat-card">
@@ -168,7 +159,7 @@ const Billing = () => {
               <span>Unpaid</span>
               <div className="stat-icon" style={{ background: '#ffebee', color: '#f44336' }}>⚠</div>
             </div>
-            <div className="stat-number">{stats.unpaid}</div>
+            <div className="stat-number">{billingStats.unpaid || localStats.unpaid}</div>
           </div>
 
           <div className="stat-card">
@@ -177,7 +168,7 @@ const Billing = () => {
               <div className="stat-icon" style={{ background: '#e8f5e9', color: '#4caf50' }}>💰</div>
             </div>
             <div className="stat-number" style={{ fontSize: '28px' }}>
-              ₱{stats.totalRevenue.toLocaleString()}
+              ₱{(billingStats.totalRevenue || localStats.totalRevenue).toLocaleString()}
             </div>
           </div>
 
@@ -187,7 +178,7 @@ const Billing = () => {
               <div className="stat-icon" style={{ background: '#fff3e0', color: '#ff9800' }}>⏳</div>
             </div>
             <div className="stat-number" style={{ fontSize: '28px' }}>
-              ₱{stats.pendingRevenue.toLocaleString()}
+              ₱{(billingStats.pendingRevenue || localStats.pendingRevenue).toLocaleString()}
             </div>
           </div>
         </div>
@@ -213,84 +204,85 @@ const Billing = () => {
             <option value="Dry Cleaning">Dry Cleaning</option>
             <option value="Repair">Repair</option>
             <option value="Rental">Rental</option>
+            <option value="Alteration">Alteration</option>
+            <option value="Consultation">Consultation</option>
           </select>
         </div>
 
         {/* Table */}
         <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Unique No.</th>
-                <th>Customer Name</th>
-                <th>Service Type</th>
-                <th>Date</th>
-                <th>Price</th>
-                <th>Payment Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredBills.length === 0 ? (
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '60px', color: '#888' }}>
+              Loading billing records...
+            </div>
+          ) : (
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
-                    No bills found
-                  </td>
+                  <th>Unique No.</th>
+                  <th>Customer Name</th>
+                  <th>Service Type</th>
+                  <th>Date</th>
+                  <th>Price</th>
+                  <th>Payment Status</th>
+                  <th>Actions</th>
                 </tr>
-              ) : (
-                filteredBills.map(bill => (
-                  <tr key={bill.id}>
-                    <td><strong>{bill.uniqueNo}</strong></td>
-                    <td>{bill.customerName}</td>
-                    <td>
-                      <span style={{
-                        padding: '6px 12px',
-                        borderRadius: '20px',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        color: 'white',
-                        backgroundColor: getServiceTypeColor(bill.serviceType)
-                      }}>
-                        {bill.serviceType}
-                      </span>
-                    </td>
-                    <td>{bill.date}</td>
-                    <td style={{ fontWeight: '600', color: '#2e7d32' }}>
-                      ₱{bill.price.toLocaleString()}
-                    </td>
-                    <td>
-                      <select
-                        className={`status-select ${bill.status.toLowerCase()}`}
-                        value={bill.status}
-                        onChange={(e) => updatePaymentStatus(bill.id, e.target.value)}
-                        style={{
-                          padding: '8px 16px',
-                          borderRadius: '20px',
-                          border: 'none',
-                          fontWeight: '600',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          backgroundColor: bill.status === 'Paid' ? '#e8f5e9' : '#ffebee',
-                          color: bill.status === 'Paid' ? '#2e7d32' : '#d32f2f'
-                        }}
-                      >
-                        <option value="Paid">Paid</option>
-                        <option value="Unpaid">Unpaid</option>
-                      </select>
-                    </td>
-                    <td>
-                      <button
-                        className="action-btn"
-                        onClick={() => handleViewDetails(bill.id)}
-                      >
-                        View
-                      </button>
+              </thead>
+              <tbody>
+                {filteredBills.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
+                      No bills found
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredBills.map(bill => (
+                    <tr key={bill.id}>
+                      <td><strong>{bill.uniqueNo}</strong></td>
+                      <td>{bill.customerName}</td>
+                      <td>
+                        <span className="service-type-badge" data-service-type={bill.serviceType}>
+                          {bill.serviceType}
+                        </span>
+                      </td>
+                      <td>{bill.date}</td>
+                      <td style={{ fontWeight: '600', color: '#2e7d32' }}>
+                        ₱{bill.price.toLocaleString()}
+                      </td>
+                      <td>
+                        <select
+                          className={`status-select ${bill.status.toLowerCase()}`}
+                          value={bill.status}
+                          onChange={(e) => updatePaymentStatus(bill.id, e.target.value)}
+                          style={{
+                            padding: '8px 16px',
+                            borderRadius: '20px',
+                            border: 'none',
+                            fontWeight: '600',
+                            fontSize: '14px',
+                            cursor: 'pointer',
+                            backgroundColor: bill.status === 'Paid' ? '#e8f5e9' : '#ffebee',
+                            color: bill.status === 'Paid' ? '#2e7d32' : '#d32f2f'
+                          }}
+                        >
+                          <option value="Paid">Paid</option>
+                          <option value="Unpaid">Unpaid</option>
+                        </select>
+                      </td>
+                      <td>
+                        <button
+                          className="action-btn"
+                          onClick={() => handleViewDetails(bill.id)}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
@@ -318,14 +310,7 @@ const Billing = () => {
               </div>
               <div className="detail-row">
                 <strong>Service Type:</strong>
-                <span style={{
-                  padding: '6px 12px',
-                  borderRadius: '20px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  color: 'white',
-                  backgroundColor: getServiceTypeColor(selectedBill.serviceType)
-                }}>
+                <span className="service-type-badge" data-service-type={selectedBill.serviceType}>
                   {selectedBill.serviceType}
                 </span>
               </div>
@@ -359,8 +344,8 @@ const Billing = () => {
               {selectedBill.status === 'Unpaid' && (
                 <button 
                   className="btn-save"
-                  onClick={() => {
-                    updatePaymentStatus(selectedBill.id, 'Paid');
+                  onClick={async () => {
+                    await updatePaymentStatus(selectedBill.id, 'Paid');
                     setShowDetailModal(false);
                   }}
                 >

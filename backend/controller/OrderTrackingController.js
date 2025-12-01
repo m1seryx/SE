@@ -3,7 +3,8 @@ const Order = require('../model/OrderModel');
 
 // Get all order tracking for a user
 exports.getUserOrderTracking = (req, res) => {
-  const userId = req.user.id;
+  const userId = req.user.id; // Use 'id' field from JWT token
+  console.log('Fetching orders for user ID:', userId); // Debug log
 
   OrderTracking.getLatestStatusByUserId(userId, (err, results) => {
     if (err) {
@@ -19,7 +20,29 @@ exports.getUserOrderTracking = (req, res) => {
 
     // Group by order and format the response
     const orders = {};
+    const processedKeys = new Set(); // Track processed items to avoid duplicates
+    
     results.forEach(item => {
+      console.log('Processing item:', item); // Debug log
+      
+      // Create a unique key for this item
+      const itemKey = `${item.order_id}-${item.order_item_id}-${item.service_type}`;
+      
+      // Skip if we've already processed this exact item
+      if (processedKeys.has(itemKey)) {
+        console.log('Skipping duplicate item:', itemKey);
+        return;
+      }
+      
+      // Skip rejected/cancelled orders
+      if (item.status === 'cancelled' || item.status === 'rejected' || item.status === 'price_declined') {
+        console.log('Skipping rejected item:', item.order_item_id, 'status:', item.status);
+        return;
+      }
+      
+      // Mark this item as processed
+      processedKeys.add(itemKey);
+      
       try {
         if (!orders[item.order_id]) {
           orders[item.order_id] = {
@@ -45,6 +68,21 @@ exports.getUserOrderTracking = (req, res) => {
           }
         }
 
+        // Get next statuses with fallback
+        let nextStatuses = [];
+        try {
+          if (OrderTracking.getNextStatuses && typeof OrderTracking.getNextStatuses === 'function') {
+            nextStatuses = OrderTracking.getNextStatuses(item.service_type, item.status || 'pending');
+            console.log(`Next statuses for item ${item.order_item_id} (${item.service_type}, ${item.status}):`, nextStatuses);
+          } else {
+            console.warn('getNextStatuses function not available, using empty array');
+            nextStatuses = [];
+          }
+        } catch (statusErr) {
+          console.warn('Failed to get next statuses for item:', item.order_item_id, statusErr);
+          nextStatuses = [];
+        }
+
         orders[item.order_id].items.push({
           order_item_id: item.order_item_id,
           service_type: item.service_type,
@@ -54,15 +92,22 @@ exports.getUserOrderTracking = (req, res) => {
           status_label: statusInfo.label,
           status_class: statusInfo.class,
           status_updated_at: item.status_updated_at,
-          next_statuses: OrderTracking.getNextStatuses(item.service_type, item.status || 'pending')
+          next_statuses: nextStatuses
         });
       } catch (itemErr) {
         console.error('Error processing order item:', item, itemErr);
+        console.error('Item details:', {
+          order_id: item.order_id,
+          order_item_id: item.order_item_id,
+          service_type: item.service_type,
+          status: item.status
+        });
         // Skip this item but continue processing others
       }
     });
 
-    const finalOrders = Object.values(orders);
+    // Filter out orders that have no items (all items were rejected)
+    const finalOrders = Object.values(orders).filter(order => order.items.length > 0);
     console.log('Final processed orders:', finalOrders);
 
     res.json({
@@ -74,7 +119,7 @@ exports.getUserOrderTracking = (req, res) => {
 
 // Get tracking history for a specific order item
 exports.getOrderItemTrackingHistory = (req, res) => {
-  const userId = req.user.id;
+  const userId = req.user.id; // Use 'id' field from JWT token
   const orderItemId = req.params.id;
 
   // First verify the order item belongs to the user
@@ -135,9 +180,8 @@ exports.getOrderItemTrackingHistory = (req, res) => {
 
 // Update tracking status (admin only)
 exports.updateTrackingStatus = (req, res) => {
-  const orderItemId = req.params.id;
+  const adminId = req.user.id; // Use 'id' field from JWT token
   const { status, notes } = req.body;
-  const adminId = req.user.id;
 
   // Validate status
   if (!status) {

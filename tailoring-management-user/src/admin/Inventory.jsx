@@ -1,266 +1,232 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../adminStyle/inventory.css';
 import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
+import { getCompletedItems, getItemsByServiceType, getInventoryStats } from '../api/InventoryApi';
 
 const Inventory = () => {
-  const initialOrders = [
-    { id: 1, uniqueNo: "C223111", customer: "Maria Santos", service: "Customization", item: "Barong Tagalog", date: "2024-11-15", price: 4500 },
-    { id: 2, uniqueNo: "DC244222", customer: "Ben Lim", service: "Dry Cleaning", item: "Wedding Gown", date: "2024-11-18", price: 1800 },
-    { id: 3, uniqueNo: "R333555", customer: "Sofia Reyes", service: "Rentals", item: "Black Suit", date: "2024-11-10", price: 3500 },
-    { id: 4, uniqueNo: "RP444666", customer: "Carlos Tan", service: "Repairs", item: "Leather Jacket", date: "2024-11-12", price: 2800 },
-    { id: 5, uniqueNo: "C555777", customer: "Anna Cruz", service: "Customization", item: "Formal Dress", date: "2024-11-19", price: 6200 },
-    { id: 6, uniqueNo: "DC666888", customer: "Mark Santos", service: "Dry Cleaning", item: "Blazer & Pants", date: "2024-11-17", price: 1500 }
-  ];
+  const [allItems, setAllItems] = useState([]);
+  const [inventoryStats, setInventoryStats] = useState({
+    total: 0,
+    customization: 0,
+    dryCleaning: 0,
+    repair: 0,
+    totalValue: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [serviceFilter, setServiceFilter] = useState('');
 
-  const [completedOrders, setCompletedOrders] = useState(initialOrders);
-  const [filter, setFilter] = useState("");
-  const [detailModal, setDetailModal] = useState({ open: false, order: null });
-  const [deleteModal, setDeleteModal] = useState({ open: false, orderId: null });
+  // Fetch inventory data on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch inventory items
+        const itemsResponse = await getCompletedItems();
+        if (itemsResponse.success) {
+          setAllItems(itemsResponse.items);
+        }
 
-  const stats = {
-    Customization: completedOrders.filter(o => o.service === "Customization").length,
-    "Dry Cleaning": completedOrders.filter(o => o.service === "Dry Cleaning").length,
-    Rentals: completedOrders.filter(o => o.service === "Rentals").length,
-    Repairs: completedOrders.filter(o => o.service === "Repairs").length
-  };
+        // Fetch inventory statistics
+        const statsResponse = await getInventoryStats();
+        if (statsResponse.success) {
+          setInventoryStats(statsResponse.stats);
+        }
+      } catch (error) {
+        console.error('Error fetching inventory data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const filteredOrders = filter 
-    ? completedOrders.filter(o => o.service === filter)
-    : completedOrders;
+    fetchData();
+  }, []);
 
-  const viewOrder = (id) => {
-    const order = completedOrders.find(o => o.id === id);
-    if (order) {
-      setDetailModal({ open: true, order });
+  // Filter items based on search term and service filter
+  const filteredItems = allItems.filter(item => {
+    const matchesSearch = 
+      item.uniqueNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.customerName.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesService = serviceFilter ? item.serviceType === serviceFilter : true;
+    
+    return matchesSearch && matchesService;
+  });
+
+  // Handle service filter change
+  const handleServiceFilterChange = async (e) => {
+    const serviceType = e.target.value;
+    setServiceFilter(serviceType);
+    
+    if (serviceType === '') {
+      // If no filter, fetch all items
+      setLoading(true);
+      const response = await getCompletedItems();
+      if (response.success) {
+        setAllItems(response.items);
+      }
+      setLoading(false);
+    } else {
+      // Fetch items for specific service type
+      setLoading(true);
+      const response = await getItemsByServiceType(serviceType);
+      if (response.success) {
+        setAllItems(response.items);
+      }
+      setLoading(false);
     }
   };
 
-  const confirmDelete = (id) => {
-    setDeleteModal({ open: true, orderId: id });
-  };
-
-  const handleDelete = () => {
-    setCompletedOrders(completedOrders.filter(o => o.id !== deleteModal.orderId));
-    setDeleteModal({ open: false, orderId: null });
-    alert("Order deleted permanently.");
-  };
-
-  const getServiceColor = (service) => {
+  // Get service type color
+  const getServiceTypeColor = (serviceType) => {
     const colors = {
-      'Customization': 'service-customization',
-      'Dry Cleaning': 'service-cleaning',
-      'Rentals': 'service-rentals',
-      'Repairs': 'service-repairs'
+      'Customization': '#9c27b0', // Purple
+      'Dry Cleaning': '#2196f3',   // Blue
+      'Repair': '#ff9800',        // Orange
+      'Rental': '#4caf50',        // Green
+      'Alteration': '#f44336',    // Red
+      'Consultation': '#795548',  // Brown
+      'Other': '#607d8b'          // Blue Grey
     };
-    return colors[service] || '';
+    return colors[serviceType] || '#666';
   };
 
   return (
-    <div className="inventory-container">
-              <Sidebar />
-              <AdminHeader />
-
-      {/* Main Content */}
+    <div className="inventory-management">
+      <Sidebar />
+      <AdminHeader />
+      
       <div className="content">
-        <h2>Completed Orders History</h2>
-        <p>View all completed services across Customization, Dry Cleaning, Rentals, and Repairs</p>
+        <div className="dashboard-title">
+          <div>
+            <h2>Inventory Management</h2>
+            <p>Track completed service items</p>
+          </div>
+        </div>
 
         {/* Stats Grid */}
         <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-header">
-              <span>Completed Customization</span>
-              <div className="stat-icon">✓</div>
+              <span>Total Items</span>
+              <div className="stat-icon" style={{ background: '#e3f2fd', color: '#2196f3' }}>📦</div>
             </div>
-            <div className="stat-number">{stats.Customization}</div>
+            <div className="stat-number">{inventoryStats.total}</div>
           </div>
+
           <div className="stat-card">
             <div className="stat-header">
-              <span>Completed Dry Cleaning</span>
-              <div className="stat-icon">✓</div>
+              <span>Customization</span>
+              <div className="stat-icon" style={{ background: '#f3e5f5', color: '#9c27b0' }}>✂️</div>
             </div>
-            <div className="stat-number">{stats['Dry Cleaning']}</div>
+            <div className="stat-number">{inventoryStats.customization}</div>
           </div>
+
           <div className="stat-card">
             <div className="stat-header">
-              <span>Returned Rentals</span>
-              <div className="stat-icon">✓</div>
+              <span>Dry Cleaning</span>
+              <div className="stat-icon" style={{ background: '#e3f2fd', color: '#2196f3' }}>🧺</div>
             </div>
-            <div className="stat-number">{stats.Rentals}</div>
+            <div className="stat-number">{inventoryStats.dryCleaning}</div>
           </div>
+
           <div className="stat-card">
             <div className="stat-header">
-              <span>Completed Repairs</span>
-              <div className="stat-icon">✓</div>
+              <span>Repair</span>
+              <div className="stat-icon" style={{ background: '#fff3e0', color: '#ff9800' }}>🔧</div>
             </div>
-            <div className="stat-number">{stats.Repairs}</div>
+            <div className="stat-number">{inventoryStats.repair}</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-header">
+              <span>Total Value</span>
+              <div className="stat-icon" style={{ background: '#e8f5e9', color: '#4caf50' }}>💰</div>
+            </div>
+            <div className="stat-number" style={{ fontSize: '24px' }}>
+              ₱{inventoryStats.totalValue.toLocaleString()}
+            </div>
           </div>
         </div>
 
-        {/* Filter */}
+        {/* Search and Filters */}
         <div className="search-container">
-          <select 
-            id="filter"
-            value={filter} 
-            onChange={(e) => setFilter(e.target.value)}
-          >
+          <input
+            type="text"
+            placeholder="Search by Unique No. or Customer Name"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          
+          <select value={serviceFilter} onChange={handleServiceFilterChange}>
             <option value="">All Services</option>
             <option value="Customization">Customization</option>
             <option value="Dry Cleaning">Dry Cleaning</option>
-            <option value="Rentals">Rentals</option>
-            <option value="Repairs">Repairs</option>
+            <option value="Repair">Repair</option>
+            <option value="Alteration">Alteration</option>
+            <option value="Consultation">Consultation</option>
           </select>
         </div>
 
         {/* Table */}
         <div className="table-container">
-          <table className="inventory-table">
-            <thead>
-              <tr>
-                <th>Unique No.</th>
-                <th>Customer</th>
-                <th>Service Type</th>
-                <th>Item</th>
-                <th>Date Completed</th>
-                <th>Price</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders.length === 0 ? (
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '60px', color: '#888' }}>
+              Loading inventory items...
+            </div>
+          ) : (
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan="7" className="empty-state">
-                    No completed orders found
-                  </td>
+                  <th>Unique No.</th>
+                  <th>Customer Name</th>
+                  <th>Service Type</th>
+                  <th>Date Completed</th>
+                  <th>Price</th>
+                  <th>Status</th>
                 </tr>
-              ) : (
-                filteredOrders.map(order => (
-                  <tr key={order.id}>
-                    <td><strong>{order.uniqueNo}</strong></td>
-                    <td>{order.customer}</td>
-                    <td>
-                      <span className={`service-badge ${getServiceColor(order.service)}`}>
-                        {order.service}
-                      </span>
-                    </td>
-                    <td>{order.item}</td>
-                    <td>{order.date}</td>
-                    <td>₱{order.price.toLocaleString()}</td>
-                    <td>
-                      <button 
-                        className="deleteBtn"
-                        onClick={() => confirmDelete(order.id)}
-                        style={{
-                          padding: '10px 10px',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontWeight: '600',
-                          fontSize: '10px',
-                          background: '#E74C3C',
-                          color: 'white'
-                        }}
-                      >
-                        Delete
-                      </button>
+              </thead>
+              <tbody>
+                {filteredItems.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '40px' }}>
+                      No inventory items found
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredItems.map(item => (
+                    <tr key={item.id}>
+                      <td><strong>{item.uniqueNo}</strong></td>
+                      <td>{item.customerName}</td>
+                      <td>
+                        <span className="service-type-badge" data-service-type={item.serviceType}>
+                          {item.serviceType}
+                        </span>
+                      </td>
+                      <td>{item.date}</td>
+                      <td style={{ fontWeight: '600', color: '#2e7d32' }}>
+                        ₱{item.price.toLocaleString()}
+                      </td>
+                      <td>
+                        <span style={{
+                          padding: '6px 12px',
+                          borderRadius: '20px',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          backgroundColor: '#e8f5e9',
+                          color: '#2e7d32'
+                        }}>
+                          {item.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
-
-      {/* Detail Modal */}
-      {detailModal.open && (
-        <div 
-          className="modal-overlay"
-          onClick={() => setDetailModal({ open: false, order: null })}
-        >
-          <div 
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-header">
-              <h2>Order Details</h2>
-              <span 
-                className="close-modal"
-                onClick={() => setDetailModal({ open: false, order: null })}
-              >
-                ×
-              </span>
-            </div>
-            <div className="modal-body">
-              <div className="detail-row">
-                <strong>Unique No:</strong>
-                <span>{detailModal.order?.uniqueNo}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Customer:</strong>
-                <span>{detailModal.order?.customer}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Service:</strong>
-                <span>{detailModal.order?.service}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Item:</strong>
-                <span>{detailModal.order?.item}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Date Completed:</strong>
-                <span>{detailModal.order?.date}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Price:</strong>
-                <span className="price-highlight">
-                  ₱{detailModal.order?.price.toLocaleString()}
-                </span>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button 
-                className="close-btn"
-                onClick={() => setDetailModal({ open: false, order: null })}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deleteModal.open && (
-        <div 
-          className="modal delete-modal"
-          onClick={() => setDeleteModal({ open: false, orderId: null })}
-        >
-          <div 
-            className="modal-content small"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3>Delete Order?</h3>
-            <p>This completed order will be permanently removed from records.</p>
-            <div className="modal-buttons">
-              <button 
-                id="cancelDelete"
-                onClick={() => setDeleteModal({ open: false, orderId: null })}
-              >
-                Cancel
-              </button>
-              <button 
-                id="confirmDelete"
-                onClick={handleDelete}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
