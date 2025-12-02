@@ -56,7 +56,7 @@ const acceptPrice = async (req, res) => {
 
         // 3. Update the status
         Order.updateRepairOrderItem(itemId, {
-          approvalStatus: 'confirmed'
+          approvalStatus: 'accepted'
         }, (updateErr, result) => {
           if (updateErr) {
             console.error("Error updating order status:", updateErr);
@@ -69,7 +69,7 @@ const acceptPrice = async (req, res) => {
           console.log("Successfully updated order status");
           res.json({
             success: true,
-            message: 'Price accepted successfully. Order is now in progress.'
+            message: 'Price accepted successfully. Order is now accepted.'
           });
         });
       });

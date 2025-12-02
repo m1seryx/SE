@@ -144,17 +144,7 @@
   background-color: #45a049;
 }
 
-/* Service type badge styles */
-.inventory-management .service-type-badge {
-  padding: 6px 12px !important;
-  border-radius: 20px !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  color: white !important;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-  display: inline-block !important;
-  transition: all 0.2s ease-in-out !important;
-}
+
 
 .inventory-management .service-type-badge:hover {
   transform: scale(1.05) !important;
@@ -162,7 +152,8 @@
 }
 
 .service-type-badge[data-service-type="customization"] {
-  background-color: #9c27b0 !important;
+   background-color: #e8f5e9;
+   color: #9c27b0 !important;
 }
 
 .service-type-badge[data-service-type="dry_cleaning"] {
@@ -170,7 +161,8 @@
 }
 
 .service-type-badge[data-service-type="repair"] {
-  background-color: #ff9800 !important; 
+   background-color: #fff3e0;
+  color: #f57c00;
 }
 
 .service-type-badge[data-service-type="rental"] {
@@ -178,9 +170,6 @@
 }
 
 
-.service-type-badge[data-service-type="Other"] {
-  background-color: #607d8b !important; 
-}
 
 
 /* Status badge styles */

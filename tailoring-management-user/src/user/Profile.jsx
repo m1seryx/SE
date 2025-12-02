@@ -8,19 +8,13 @@ import { getUserOrderTracking, getStatusBadgeClass, getStatusLabel } from '../ap
 
 const Profile = () => {
   const navigate = useNavigate();
-<<<<<<< HEAD
-=======
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedItem, setSelectedItem] = useState(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
-<<<<<<< HEAD
   const [statusFilter, setStatusFilter] = useState('all');
   const [serviceFilter, setServiceFilter] = useState('all');
-=======
->>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
->>>>>>> 8218db4ebcbcda9c9d31e5847d89c63fd9e7cff3
 
   const user = {
     name: (typeof window !== 'undefined' && localStorage.getItem('userName')) || 'Guest',
@@ -135,7 +129,7 @@ const Profile = () => {
       const result = await response.json();
 
       if (result.success) {
-        alert('Price accepted! Your order is now in progress.');
+        alert('Price accepted! Your order is now accepted.');
         // Refresh orders to show updated status
         const ordersResult = await getUserOrderTracking();
         if (ordersResult.success) {
@@ -475,7 +469,8 @@ const Profile = () => {
   const getStatusDotClass = (currentStatus, stepStatus, serviceType = null) => {
     // Define status flows for different service types
     const rentalFlow = ['pending', 'ready_to_pickup', 'ready_for_pickup', 'rented', 'returned', 'completed'];
-    const defaultFlow = ['pending', 'price_confirmation', 'in_progress', 'ready_to_pickup', 'completed'];
+    // Updated default flow to handle both workflows
+    const defaultFlow = ['pending', 'price_confirmation', 'accepted', 'in_progress', 'ready_to_pickup', 'completed'];
 
     const statusFlow = serviceType === 'rental' ? rentalFlow : defaultFlow;
 
@@ -497,7 +492,8 @@ const Profile = () => {
   const getTimelineDate = (updatedAt, currentStatus, stepStatus, serviceType = null) => {
     // Define status flows for different service types
     const rentalFlow = ['pending', 'ready_to_pickup', 'ready_for_pickup', 'rented', 'returned', 'completed'];
-    const defaultFlow = ['pending', 'price_confirmation', 'in_progress', 'ready_to_pickup', 'completed'];
+    // Updated default flow to handle both workflows
+    const defaultFlow = ['pending', 'price_confirmation', 'accepted', 'in_progress', 'ready_to_pickup', 'completed'];
 
     const statusFlow = serviceType === 'rental' ? rentalFlow : defaultFlow;
 
@@ -525,7 +521,8 @@ const Profile = () => {
   const getTimelineItemClass = (currentStatus, stepStatus, serviceType = null) => {
     // Define status flows for different service types
     const rentalFlow = ['pending', 'ready_to_pickup', 'ready_for_pickup', 'rented', 'returned', 'completed'];
-    const defaultFlow = ['pending', 'price_confirmation', 'in_progress', 'ready_to_pickup', 'completed'];
+    // Updated default flow to handle both workflows
+    const defaultFlow = ['pending', 'price_confirmation', 'accepted', 'in_progress', 'ready_to_pickup', 'completed'];
 
     const statusFlow = serviceType === 'rental' ? rentalFlow : defaultFlow;
 
@@ -585,15 +582,57 @@ const Profile = () => {
 
   // Helper function to check if price changed
   const hasPriceChanged = (specificData, finalPrice, serviceType) => {
-    const estimatedPrice = getEstimatedPrice(specificData, serviceType);
-
-    // If there's an estimated price and it differs from final price, it was updated by admin
-    if (estimatedPrice > 0) {
-      return Math.abs(finalPrice - estimatedPrice) > 0.01; // Allow for small floating point differences
+    console.log('=== DEBUG hasPriceChanged ===');
+    console.log('specificData:', specificData);
+    console.log('finalPrice:', finalPrice);
+    console.log('serviceType:', serviceType);
+    
+    // Check if admin has explicitly marked the price as updated
+    if (specificData?.adminPriceUpdated === true) {
+      console.log('Admin price updated flag is TRUE');
+      return true;
     }
-
-    // If no estimated price, admin set the final price (this is normal, not a "change")
+    
+    console.log('adminPriceUpdated flag:', specificData?.adminPriceUpdated);
+    
+    // For backward compatibility, check if there's a significant difference
+    // but only if there's an admin note indicating intentional change
+    const estimatedPrice = getEstimatedPrice(specificData, serviceType);
+    console.log('Estimated price:', estimatedPrice);
+    
+    if (estimatedPrice > 0 && specificData?.adminNotes) {
+      const difference = Math.abs(finalPrice - estimatedPrice);
+      console.log('Price difference:', difference);
+      console.log('Difference > 0.01:', difference > 0.01);
+      return difference > 0.01; // Allow for small floating point differences
+    }
+    
+    // If no explicit indication from admin, it's not considered a change
+    console.log('No price change detected');
     return false;
+  };
+
+  // Helper function to determine if price confirmation should be shown
+  const shouldShowPriceConfirmation = (item) => {
+    console.log('=== DEBUG shouldShowPriceConfirmation ===');
+    console.log('Item status:', item.status);
+    console.log('Item final_price:', item.final_price);
+    console.log('Item specific_data:', item.specific_data);
+    console.log('Item service_type:', item.service_type);
+    
+    const isPriceConfirmationStatus = item.status === 'price_confirmation';
+    console.log('Is price confirmation status:', isPriceConfirmationStatus);
+    
+    const priceChanged = hasPriceChanged(item.specific_data, parseFloat(item.final_price), item.service_type);
+    console.log('Price changed result:', priceChanged);
+    
+    // Show price confirmation only if:
+    // 1. Status is 'price_confirmation'
+    // 2. Price has actually been changed by admin (not just set)
+    const result = isPriceConfirmationStatus && priceChanged;
+    console.log('Should show price confirmation:', result);
+    
+    return result;
   };
 
   // Filter orders based on status
@@ -643,6 +682,7 @@ const Profile = () => {
     const counts = {
       all: 0,
       pending: 0,
+      accepted: 0,
       price_confirmation: 0,
       in_progress: 0,
       ready_to_pickup: 0,
@@ -731,56 +771,6 @@ const Profile = () => {
           </div>
         </div>
 
-<<<<<<< HEAD
-        <h2 className="section-title">Order Tracking (Sample)</h2>
-
-        <div className="order-section">
-          <table className="order-table">
-            <thead>
-              <tr>
-                <th>Order ID</th>
-                <th>Service</th>
-                <th>Status</th>
-                <th>Requested</th>
-                <th>Last Update</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              <tr>
-                <td>ORD-1001</td>
-                <td>Repair</td>
-                <td><span className="status-badge in-progress">In Progress</span></td>
-                <td>2025-11-10</td>
-                <td>2025-11-12</td>
-              </tr>
-
-              <tr>
-                <td>ORD-1002</td>
-                <td>Customize</td>
-                <td><span className="status-badge design">Design</span></td>
-                <td>2025-11-08</td>
-                <td>2025-11-11</td>
-              </tr>
-
-              <tr>
-                <td>ORD-1003</td>
-                <td>Dry Cleaning</td>
-                <td><span className="status-badge cleaning">Cleaning</span></td>
-                <td>2025-11-09</td>
-                <td>2025-11-10</td>
-              </tr>
-
-              <tr>
-                <td>ORD-1004</td>
-                <td>Rental</td>
-                <td><span className="status-badge active">Active</span></td>
-                <td>2025-11-07</td>
-                <td>2025-11-13</td>
-              </tr>
-            </tbody>
-          </table>
-=======
         <h2 className="section-title">Order Tracking</h2>
 
         {/* Service Filters */}
@@ -914,7 +904,7 @@ const Profile = () => {
                               <span className="price-label">Final Price:</span>
                               <span className={`price-value ${priceChanged ? 'changed' : 'same'}`}>
                                 ₱{parseFloat(item.final_price).toFixed(2)}
-                                {priceChanged && <span className="price-change-indicator">⚠️ Updated by Admin</span>}
+                                {priceChanged && item.status === 'price_confirmation' && <span className="price-change-indicator">⚠️ Updated by Admin</span>}
                               </span>
                             </div>
                           </>
@@ -924,7 +914,7 @@ const Profile = () => {
                             <span className="price-value final">₱{parseFloat(item.final_price).toFixed(2)}</span>
                           </div>
                         )}
-                        {priceChanged && item.specific_data?.adminNotes && (
+                        {priceChanged && item.status === 'price_confirmation' && item.specific_data?.adminNotes && (
                           <div className="admin-notes">
                             <span className="notes-label">Admin Note:</span>
                             <span className="notes-text">{item.specific_data.adminNotes}</span>
@@ -1003,7 +993,7 @@ const Profile = () => {
                           </>
                         ) : (
                           <>
-                            {/* Default Timeline for Repair/Dry Cleaning/Customize: Order Placed → Price Confirmation → In Progress → Ready to Pick Up → Completed */}
+                            {/* Default Timeline for Repair/Dry Cleaning/Customize */}
                             <div className={`timeline-item ${getTimelineItemClass(item.status, 'pending')}`}>
                               <div className={`timeline-dot ${getStatusDotClass(item.status, 'pending')}`}></div>
                               <div className="timeline-content">
@@ -1012,13 +1002,27 @@ const Profile = () => {
                               </div>
                             </div>
 
-                            <div className={`timeline-item ${getTimelineItemClass(item.status, 'price_confirmation')}`}>
-                              <div className={`timeline-dot ${getStatusDotClass(item.status, 'price_confirmation')}`}></div>
-                              <div className="timeline-content">
-                                <div className="timeline-title">Price Confirmation</div>
-                                <div className="timeline-date">{getTimelineDate(item.status_updated_at, item.status, 'price_confirmation')}</div>
+                            {/* Show Price Confirmation step only when status is price_confirmation */}
+                            {item.status === 'price_confirmation' && (
+                              <div className={`timeline-item ${getTimelineItemClass(item.status, 'price_confirmation')}`}>
+                                <div className={`timeline-dot ${getStatusDotClass(item.status, 'price_confirmation')}`}></div>
+                                <div className="timeline-content">
+                                  <div className="timeline-title">Price Confirmation</div>
+                                  <div className="timeline-date">{getTimelineDate(item.status_updated_at, item.status, 'price_confirmation')}</div>
+                                </div>
                               </div>
-                            </div>
+                            )}
+                            
+                            {/* Show Accepted step only when status is accepted */}
+                            {item.status === 'accepted' && (
+                              <div className={`timeline-item ${getTimelineItemClass(item.status, 'accepted')}`}>
+                                <div className={`timeline-dot ${getStatusDotClass(item.status, 'accepted')}`}></div>
+                                <div className="timeline-content">
+                                  <div className="timeline-title">Accepted</div>
+                                  <div className="timeline-date">{getTimelineDate(item.status_updated_at, item.status, 'accepted')}</div>
+                                </div>
+                              </div>
+                            )}
 
                             <div className={`timeline-item ${getTimelineItemClass(item.status, 'in_progress')}`}>
                               <div className={`timeline-dot ${getStatusDotClass(item.status, 'in_progress')}`}></div>
@@ -1048,23 +1052,33 @@ const Profile = () => {
                       </div>
                     </div>
 
-                    {/* Price Confirmation Actions */}
-                    {item.status === 'price_confirmation' && (
-                      <div className="price-confirmation-actions">
-                        <div className="confirmation-message">
-                          <strong>Price Update Required</strong>
-                          <p>Please review the updated pricing and confirm to proceed.</p>
+                    {/* Price Confirmation Actions - Only show when admin has actually edited the price */}
+                    {(() => {
+                      const showConfirmation = shouldShowPriceConfirmation(item);
+                      console.log('=== RENDERING PRICE CONFIRMATION ACTIONS ===');
+                      console.log('Item:', item);
+                      console.log('Show confirmation:', showConfirmation);
+                      console.log('Item status:', item.status);
+                      console.log('Item specific_data:', item.specific_data);
+                      console.log('Item final_price:', item.final_price);
+                      console.log('Has price changed result:', hasPriceChanged(item.specific_data, parseFloat(item.final_price), item.service_type));
+                      return showConfirmation ? (
+                        <div className="price-confirmation-actions">
+                          <div className="confirmation-message">
+                            <strong>Price Update Required</strong>
+                            <p>Please review the updated pricing and confirm to proceed.</p>
+                          </div>
+                          <div className="action-buttons">
+                            <button className="btn-accept-price" onClick={() => handleAcceptPrice(item)}>
+                              Accept Price - Continue
+                            </button>
+                            <button className="btn-decline-price" onClick={() => handleDeclinePrice(item)}>
+                              Decline Price
+                            </button>
+                          </div>
                         </div>
-                        <div className="action-buttons">
-                          <button className="btn-accept-price" onClick={() => handleAcceptPrice(item)}>
-                            Accept Price - Continue
-                          </button>
-                          <button className="btn-decline-price" onClick={() => handleDeclinePrice(item)}>
-                            Decline Price
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                      ) : null;
+                    })()}
 
                     <div className="order-footer">
                       <div className="order-dates">
@@ -1077,7 +1091,6 @@ const Profile = () => {
                       >
                         View Details
                       </button>
-<<<<<<< HEAD
                     </div>
                   </div>
                 );
@@ -1087,17 +1100,6 @@ const Profile = () => {
           }
         </div >
       </main >
-=======
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
->>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
-        </div>
-      </main>
->>>>>>> 8218db4ebcbcda9c9d31e5847d89c63fd9e7cff3
 
       {/* Order Details Modal */}
       {

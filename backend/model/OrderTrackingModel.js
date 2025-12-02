@@ -8,7 +8,11 @@ const OrderTracking = {
       WHERE order_item_id = ? 
       ORDER BY created_at DESC
     `;
-    db.query(sql, [orderItemId], callback);
+    console.log("Getting tracking entries for item:", orderItemId);
+    db.query(sql, [orderItemId], (err, results) => {
+      console.log("Tracking entries found:", err, results);
+      callback(err, results);
+    });
   },
 
   // Get all tracking for a user's orders
@@ -43,27 +47,35 @@ const OrderTracking = {
         oi.service_type,
         oi.final_price,
         oi.specific_data,
-        IFNULL(latest_ot.status, 'pending') as status,
-        IFNULL(latest_ot.notes, 'Order created') as notes,
-        IFNULL(latest_ot.created_at, o.order_date) as status_updated_at,
+        oi.pricing_factors,
+        COALESCE(
+          (SELECT ot.status 
+           FROM order_tracking ot 
+           WHERE ot.order_item_id = oi.item_id 
+           ORDER BY ot.created_at DESC 
+           LIMIT 1), 
+          'pending'
+        ) as status,
+        COALESCE(
+          (SELECT ot.notes 
+           FROM order_tracking ot 
+           WHERE ot.order_item_id = oi.item_id 
+           ORDER BY ot.created_at DESC 
+           LIMIT 1), 
+          'Order created'
+        ) as notes,
+        COALESCE(
+          (SELECT ot.created_at 
+           FROM order_tracking ot 
+           WHERE ot.order_item_id = oi.item_id 
+           ORDER BY ot.created_at DESC 
+           LIMIT 1), 
+          o.order_date
+        ) as status_updated_at,
         o.order_date,
         o.total_price
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.order_id
-      LEFT JOIN (
-        SELECT 
-          ot1.order_item_id,
-          ot1.status,
-          ot1.notes,
-          ot1.created_at
-        FROM order_tracking ot1
-        INNER JOIN (
-          SELECT order_item_id, MAX(created_at) as max_created_at
-          FROM order_tracking
-          GROUP BY order_item_id
-        ) ot2 ON ot1.order_item_id = ot2.order_item_id 
-             AND ot1.created_at = ot2.max_created_at
-      ) latest_ot ON oi.item_id = latest_ot.order_item_id
       WHERE o.user_id = ?
       ORDER BY o.order_date DESC, oi.item_id DESC
     `;
@@ -76,7 +88,11 @@ const OrderTracking = {
       INSERT INTO order_tracking (order_item_id, status, notes, updated_by)
       VALUES (?, ?, ?, ?)
     `;
-    db.query(sql, [orderItemId, status, notes, adminId], callback);
+    console.log("Adding tracking entry:", { orderItemId, status, notes, adminId });
+    db.query(sql, [orderItemId, status, notes, adminId], (err, result) => {
+      console.log("Tracking add result:", err, result);
+      callback(err, result);
+    });
   },
 
   // Update tracking status
@@ -85,7 +101,11 @@ const OrderTracking = {
       INSERT INTO order_tracking (order_item_id, status, notes, updated_by)
       VALUES (?, ?, ?, ?)
     `;
-    db.query(sql, [orderItemId, status, notes, adminId], callback);
+    console.log("Inserting tracking entry:", { orderItemId, status, notes, adminId });
+    db.query(sql, [orderItemId, status, notes, adminId], (err, result) => {
+      console.log("Tracking insert result:", err, result);
+      callback(err, result);
+    });
   },
 
   // Get tracking history for a specific order item
@@ -156,30 +176,26 @@ const OrderTracking = {
 
   // Get available status transitions for an order item
   getStatusTransitions: (serviceType, currentStatus) => {
+    // Use the same flows as getNextStatuses for consistency
     const flows = {
       'repair': {
-        'pending': ['price_confirmation'],
-        'price_confirmation': ['confirmed', 'price_declined'],
-        'confirmed': ['ready_to_pickup'],
-        'ready_to_pickup': ['completed'],
-        'completed': [],
-        'cancelled': [],
-        'price_declined': []
-      },
-      'customize': {
-        'pending': ['price_confirmation'],
-        'price_confirmation': ['confirmed', 'price_declined'],
-        'confirmed': ['ready_to_pickup'],
-        'ready_to_pickup': ['completed'],
+        'pending': ['accepted', 'cancelled'],
+        'accepted': ['in_progress', 'cancelled'],
+        'price_confirmation': ['accepted', 'cancelled'],
+        'in_progress': ['ready_to_pickup', 'cancelled'],
+        'ready_to_pickup': ['picked_up', 'cancelled'],
+        'picked_up': ['completed'],
         'completed': [],
         'cancelled': [],
         'price_declined': []
       },
       'dry_cleaning': {
-        'pending': ['price_confirmation'],
-        'price_confirmation': ['confirmed', 'price_declined'],
-        'confirmed': ['ready_to_pickup'],
-        'ready_to_pickup': ['completed'],
+        'pending': ['accepted', 'cancelled'],
+        'accepted': ['in_progress', 'cancelled'],
+        'price_confirmation': ['accepted', 'cancelled'],
+        'in_progress': ['ready_to_pickup', 'cancelled'],
+        'ready_to_pickup': ['picked_up', 'cancelled'],
+        'picked_up': ['completed'],
         'completed': [],
         'cancelled': [],
         'price_declined': []
@@ -195,7 +211,8 @@ const OrderTracking = {
       }
     };
 
-    return flows[serviceType]?.[currentStatus] || [];
+    const flow = flows[serviceType] || flows['repair'];
+    return flow[currentStatus] || [];
   },
 
   // Get status display information
@@ -203,8 +220,9 @@ const OrderTracking = {
   getNextStatuses: (serviceType, currentStatus) => {
     const statusFlow = {
       'repair': {
-        'pending': ['in_progress', 'cancelled'],
-        'price_confirmation': ['in_progress', 'cancelled'],
+        'pending': ['accepted', 'cancelled'],
+        'accepted': ['in_progress', 'cancelled'],
+        'price_confirmation': ['accepted', 'cancelled'],
         'in_progress': ['ready_to_pickup', 'cancelled'],
         'ready_to_pickup': ['picked_up', 'cancelled'],
         'picked_up': ['completed'],
@@ -213,8 +231,9 @@ const OrderTracking = {
         'price_declined': []
       },
       'dry_cleaning': {
-        'pending': ['in_progress', 'cancelled'],
-        'price_confirmation': ['in_progress', 'cancelled'],
+        'pending': ['accepted', 'cancelled'],
+        'accepted': ['in_progress', 'cancelled'],
+        'price_confirmation': ['accepted', 'cancelled'],
         'in_progress': ['ready_to_pickup', 'cancelled'],
         'ready_to_pickup': ['picked_up', 'cancelled'],
         'picked_up': ['completed'],
@@ -240,6 +259,7 @@ const OrderTracking = {
   getStatusInfo: (status, serviceType) => {
     const statusMap = {
       'pending': { label: 'Pending', class: 'pending' },
+      'accepted': { label: 'Accepted', class: 'accepted' },
       'price_confirmation': { label: 'Price Confirmation', class: 'price-confirmation' },
       'in_progress': { label: 'In Progress', class: 'in-progress' },
       'ready_to_pickup': { label: 'Ready to Pickup', class: 'ready' },

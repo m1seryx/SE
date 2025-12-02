@@ -381,6 +381,12 @@ const Order = {
       console.log("Adding adminNotes update:", adminNotes);
     }
 
+    // If final price is being updated, set adminPriceUpdated flag
+    if (finalPrice !== undefined) {
+      updates.push('pricing_factors = JSON_SET(pricing_factors, \'$.adminPriceUpdated\', true)');
+      console.log("Setting adminPriceUpdated flag");
+    }
+
     if (updates.length === 0) {
       return callback(new Error('No fields to update'));
     }
@@ -406,6 +412,8 @@ const Order = {
         // Map approval_status to tracking status
         const statusMap = {
           'pending_review': 'pending',
+          'pending': 'pending',
+          'accepted': 'accepted',
           'price_confirmation': 'price_confirmation',
           'confirmed': 'in_progress',
           'ready_for_pickup': 'ready_to_pickup',
@@ -418,6 +426,9 @@ const Order = {
         const notes = getStatusNote(approvalStatus);
 
         console.log("Syncing to tracking table:", itemId, "from", approvalStatus, "to", trackingStatus);
+        console.log("Status map:", statusMap);
+        console.log("Approval status:", approvalStatus);
+        console.log("Tracking status:", trackingStatus);
 
         // First check if tracking entry exists
         OrderTracking.getByOrderItemId(itemId, (err, existingTracking) => {
@@ -465,6 +476,8 @@ const Order = {
 function getStatusNote(approvalStatus) {
   const notesMap = {
     'pending_review': 'Order pending review',
+    'pending': 'Order pending review',
+    'accepted': 'Order accepted by admin',
     'price_confirmation': 'Price confirmation needed from user',
     'confirmed': 'Order approved and in progress',
     'ready_for_pickup': 'Order ready for pickup',
@@ -530,7 +543,7 @@ Order.getRentalOrdersByStatus = (status, callback) => {
 
 // Update rental order item status (rental has different status flow)
 Order.updateRentalOrderItem = (itemId, updateData, callback) => {
-  const { approvalStatus, adminNotes } = updateData;
+  const { finalPrice, approvalStatus, adminNotes } = updateData;
 
   console.log("Model - Updating rental item:", itemId, updateData);
 
@@ -547,6 +560,12 @@ Order.updateRentalOrderItem = (itemId, updateData, callback) => {
     updates.push('pricing_factors = JSON_SET(pricing_factors, \'$.adminNotes\', ?)');
     values.push(adminNotes || '');
     console.log("Adding adminNotes update:", adminNotes);
+  }
+
+  // If final price is being updated, set adminPriceUpdated flag
+  if (finalPrice !== undefined) {
+    updates.push('pricing_factors = JSON_SET(pricing_factors, \'$.adminPriceUpdated\', true)');
+    console.log("Setting adminPriceUpdated flag");
   }
 
   if (updates.length === 0) {

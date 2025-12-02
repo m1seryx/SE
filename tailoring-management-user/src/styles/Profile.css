@@ -294,6 +294,11 @@
   color: #f57c00;
 }
 
+.status-badge.accepted {
+  background: #e1f5fe;
+  color: #039be5;
+}
+
 .status-badge.in-progress {
   background: #e3f2fd;
   color: #2196f3;

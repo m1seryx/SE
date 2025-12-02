@@ -15,6 +15,9 @@ export const getAllDryCleaningOrders = async () => {
         const response = await fetch(`${API_URL}/dry-cleaning/orders`, {
             headers: getAuthHeader()
         });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         return await response.json();
     } catch (error) {
         console.error('Error fetching dry cleaning orders:', error);
@@ -28,6 +31,9 @@ export const getDryCleaningOrdersByStatus = async (status) => {
         const response = await fetch(`${API_URL}/dry-cleaning/orders/status/${status}`, {
             headers: getAuthHeader()
         });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         return await response.json();
     } catch (error) {
         console.error(`Error fetching dry cleaning orders with status ${status}:`, error);
@@ -43,6 +49,9 @@ export const updateDryCleaningOrderItem = async (itemId, updateData) => {
             headers: getAuthHeader(),
             body: JSON.stringify(updateData)
         });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         return await response.json();
     } catch (error) {
         console.error(`Error updating dry cleaning order item ${itemId}:`, error);

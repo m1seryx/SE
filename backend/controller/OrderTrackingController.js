@@ -67,6 +67,22 @@ exports.getUserOrderTracking = (req, res) => {
             specificData = {};
           }
         }
+        
+        // Safely parse pricing_factors
+        let pricingFactors = {};
+        if (item.pricing_factors) {
+          try {
+            pricingFactors = typeof item.pricing_factors === 'string' 
+              ? JSON.parse(item.pricing_factors) 
+              : item.pricing_factors;
+          } catch (parseErr) {
+            console.warn('Failed to parse pricing_factors for item:', item.order_item_id, parseErr);
+            pricingFactors = {};
+          }
+        }
+        
+        // Merge pricing_factors into specific_data to maintain backward compatibility
+        specificData = { ...specificData, ...pricingFactors };
 
         // Get next statuses with fallback
         let nextStatuses = [];
@@ -182,12 +198,21 @@ exports.getOrderItemTrackingHistory = (req, res) => {
 exports.updateTrackingStatus = (req, res) => {
   const adminId = req.user.id; // Use 'id' field from JWT token
   const { status, notes } = req.body;
+  const orderItemId = req.params.id; // Extract orderItemId from route parameters
 
   // Validate status
   if (!status) {
     return res.status(400).json({
       success: false,
       message: "Status is required"
+    });
+  }
+
+  // Validate orderItemId
+  if (!orderItemId) {
+    return res.status(400).json({
+      success: false,
+      message: "Order item ID is required"
     });
   }
 
@@ -264,7 +289,7 @@ exports.initializeOrderTracking = (orderItems, callback) => {
   }
 
   orderItems.forEach(item => {
-    OrderTracking.initializeTracking(item.order_item_id, item.service_type, (err) => {
+    OrderTracking.initializeOrderTracking([item], (err, result) => {
       completed++;
       
       if (err) {

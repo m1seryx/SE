@@ -139,6 +139,16 @@ html {
   font-weight: 400;
 }
 
+/* Error Message */
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  border-left: 4px solid #c62828;
+}
+
 /* ============ STATS GRID ============ */
 .stats-grid {
   display: grid;
@@ -193,35 +203,23 @@ html {
   width: 100%;
   margin: 20px 0;
   overflow: hidden;
-}
-
-.recent-activity table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  background-color: #fff;
+  background: #FFFFFF;
   border-radius: 16px;
-  overflow: hidden;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+  padding: 20px;
 }
 
-.recent-activity caption {
-  caption-side: top;
-  text-align: left;
-  font-size: 22px;
-  font-weight: 700;
-  color: #2d3436;
-  padding: 24px 24px 16px 24px;
-  background-color: #fff;
-  border-top-left-radius: 16px;
-  border-top-right-radius: 16px;
+.activity-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
 }
 
-.recent-activity thead {
-  background-color: #ffffff;
+.activity-table thead {
+  background-color: #f8f9fa;
 }
 
-.recent-activity th {
+.activity-table th {
   color: #636E72;
   font-weight: 600;
   text-transform: uppercase;
@@ -232,23 +230,25 @@ html {
   letter-spacing: 0.5px;
 }
 
-.recent-activity td {
+.activity-table td {
   padding: 20px 24px;
   border-bottom: 1px solid #F1F3F5;
-  font-size: 15px;
   color: #2D3436;
 }
 
-.recent-activity tbody tr {
+.activity-table tbody tr {
   transition: background-color 0.2s ease;
 }
 
-.recent-activity tbody tr:hover {
+.activity-table tbody tr:hover {
   background-color: #F8F9FA;
 }
 
-.recent-activity tbody tr:last-child td {
-  border-bottom: none;
+.activity-table .loading-cell,
+.activity-table .no-data-cell {
+  text-align: center;
+  padding: 40px;
+  color: #636E72;
 }
 
 /* Customer name styling */
@@ -276,6 +276,10 @@ html {
 .status.completed {
   background-color: #e3f2fd;
   color: #1976d2;
+}
+.status.rented{
+  background-color: #e8f5e9;
+  color: #5d37ae;
 }
 
 .status.in-progress {

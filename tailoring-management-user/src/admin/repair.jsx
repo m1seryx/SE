@@ -26,6 +26,7 @@ const Repair = () => {
     const statusMap = {
       'pending_review': 'pending',
       'pending': 'pending',
+      'accepted': 'accepted',
       'price_confirmation': 'price-confirmation',
       'confirmed': 'in-progress',
       'ready_for_pickup': 'to-pickup',
@@ -41,6 +42,7 @@ const Repair = () => {
     const statusTextMap = {
       'pending_review': 'Pending',
       'pending': 'Pending',
+      'accepted': 'Accepted',
       'price_confirmation': 'Price Confirmation',
       'confirmed': 'In Progress',
       'ready_for_pickup': 'To Pick up',
@@ -85,6 +87,7 @@ const Repair = () => {
 
   const pendingAppointments = allItems.filter(item => 
     item.approval_status === 'pending_review' || 
+    item.approval_status === 'pending' ||
     item.approval_status === null || 
     item.approval_status === undefined ||
     item.approval_status === ''
@@ -92,6 +95,7 @@ const Repair = () => {
 
   const stats = {
     pending: pendingAppointments.length,
+    accepted: allItems.filter(o => o.approval_status === 'accepted').length,
     inProgress: allItems.filter(o => o.approval_status === 'confirmed').length,
     toPickup: allItems.filter(o => o.approval_status === 'ready_for_pickup').length,
     completed: allItems.filter(o => o.approval_status === 'completed').length,
@@ -103,6 +107,8 @@ const Repair = () => {
     
     if (viewFilter === "pending") {
       items = pendingAppointments;
+    } else if (viewFilter === "accepted") {
+      items = allItems.filter(item => item.approval_status === 'accepted');
     } else if (viewFilter === "price-confirmation") {
       items = allItems.filter(item => item.approval_status === 'price_confirmation');
     } else if (viewFilter === "in-progress") {
@@ -138,20 +144,20 @@ const Repair = () => {
     console.log("Accepting item:", itemId);
     try {
       const result = await updateRepairOrderItem(itemId, {
-        approvalStatus: 'confirmed'  // Use 'confirmed' instead of 'approved'
+        approvalStatus: 'accepted'  // Use 'accepted' instead of 'confirmed'
       });
       console.log("Accept result:", result);
       if (result.success) {
         console.log("Refreshing data...");
         await loadRepairOrders(); // Refresh data
         console.log("Data refreshed");
-        alert("Repair request approved!");
+        alert("Repair request accepted!");
       } else {
-        alert(result.message || "Failed to approve repair request");
+        alert(result.message || "Failed to accept repair request");
       }
     } catch (err) {
       console.error("Accept error:", err);
-      alert("Failed to approve repair request");
+      alert("Failed to accept repair request");
     }
   };
 
@@ -184,7 +190,9 @@ const Repair = () => {
         await loadRepairOrders(); // Refresh data
         
         // Automatically switch to the correct tab based on the new status
-        if (status === 'confirmed') {
+        if (status === 'accepted') {
+          setViewFilter('accepted');
+        } else if (status === 'confirmed') {
           setViewFilter('in-progress');
         } else if (status === 'ready_for_pickup') {
           setViewFilter('to-pickup');
@@ -269,6 +277,13 @@ const Repair = () => {
           </div>
           <div className="stat-card">
             <div className="stat-header">
+              <span>Accepted</span>
+              <div className="stat-icon" style={{ background: '#e1f5fe', color: '#039be5' }}>✓</div>
+            </div>
+            <div className="stat-number">{stats.accepted}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-header">
               <span>In Progress</span>
               <div className="stat-icon" style={{ background: '#e3f2fd', color: '#2196f3' }}>🔄</div>
             </div>
@@ -305,6 +320,9 @@ const Repair = () => {
           <button className={viewFilter === 'pending' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('pending')}>
             Pending ({pendingAppointments.length})
           </button>
+          <button className={viewFilter === 'accepted' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('accepted')}>
+            Accepted ({allItems.filter(o => o.approval_status === 'accepted').length})
+          </button>
           <button className={viewFilter === 'price-confirmation' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('price-confirmation')}>
             Price Confirmation ({allItems.filter(o => o.approval_status === 'price_confirmation').length})
           </button>
@@ -331,6 +349,8 @@ const Repair = () => {
           />
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="accepted">Accepted</option>
             <option value="price_confirmation">Price Confirmation</option>
             <option value="confirmed">In Progress</option>
             <option value="ready_for_pickup">To Pick up</option>
@@ -381,6 +401,8 @@ const Repair = () => {
                           value={item.approval_status || 'pending'}
                           onChange={(e) => updateStatus(item.item_id, e.target.value)}
                         >
+                          <option value="pending">Pending</option>
+                          <option value="accepted">Accepted</option>
                           <option value="price_confirmation">Price Confirmation</option>
                           <option value="confirmed">In Progress</option>
                           <option value="ready_for_pickup">To Pick up</option>
@@ -390,7 +412,7 @@ const Repair = () => {
                       )}
                     </td>
                     <td>
-                      {item.approval_status === 'pending_review' || item.approval_status === null || item.approval_status === undefined || item.approval_status === '' ? (
+                      {item.approval_status === 'pending_review' || item.approval_status === 'pending' || item.approval_status === null || item.approval_status === undefined || item.approval_status === '' ? (
                         <div className="buttons">
                           <button className="accept-btn" onClick={() => handleAccept(item.item_id)}
                              style={{
@@ -532,12 +554,13 @@ const Repair = () => {
                   onChange={(e) => setEditForm({...editForm, approvalStatus: e.target.value})}
                   style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                 >
-                  <option value="pending_review">Pending Review</option>
+                  <option value="pending">Pending</option>
+                  <option value="accepted">Accepted</option>
                   <option value="price_confirmation">Price Confirmation</option>
-                  <option value="approved">In Progress</option>
+                  <option value="confirmed">In Progress</option>
                   <option value="ready_for_pickup">Ready for Pickup</option>
                   <option value="completed">Completed</option>
-                  <option value="rejected">Rejected</option>
+                  <option value="cancelled">Rejected</option>
                 </select>
               </div>
               

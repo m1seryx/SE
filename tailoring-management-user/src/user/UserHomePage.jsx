@@ -18,53 +18,6 @@ import Cart from './components/Cart';
 import RepairFormModal from './components/RepairFormModal';
 import DryCleaningFormModal from './components/DryCleaningFormModal';
 
-// Add at the top of your component, before UserHomePage
-const serviceForms = {
-  Repair: [
-    { name: "repairType", label: "Repair Type", type: "text" },
-    { name: "notes", label: "Notes", type: "textarea" },
-    { name: "image", label: "Upload Picture", type: "file" },
-    { name: "datetime", label: "Preferred date & time", type: "datetime-local" },
-  ],
-  Customize: [
-    { name: "fabric", label: "Fabric", type: "text" },
-    { name: "style", label: "Style", type: "text" },
-    { name: "notes", label: "Notes", type: "textarea" },
-    { name: "datetime", label: "Preferred date & time", type: "datetime-local" },
-  ],
-  "Dry Cleaning": [
-    { name: "garmentType", label: "Garment Type", type: "text" },
-    { name: "stainNotes", label: "Stain Notes", type: "textarea" },
-    { name: "datetime", label: "Preferred date & time", type: "datetime-local" },
-  ],
-  Rental: [
-    { name: "pickupDate", label: "Pickup Date", type: "date" },
-  ],
-};
-
-// Add at the top of your component, before UserHomePage
-const serviceForms = {
-  Repair: [
-    { name: "repairType", label: "Repair Type", type: "text" },
-    { name: "notes", label: "Notes", type: "textarea" },
-    { name: "image", label: "Upload Picture", type: "file" },
-    { name: "datetime", label: "Preferred date & time", type: "datetime-local" },
-  ],
-  Customize: [
-    { name: "fabric", label: "Fabric", type: "text" },
-    { name: "style", label: "Style", type: "text" },
-    { name: "notes", label: "Notes", type: "textarea" },
-    { name: "datetime", label: "Preferred date & time", type: "datetime-local" },
-  ],
-  "Dry Cleaning": [
-    { name: "garmentType", label: "Garment Type", type: "text" },
-    { name: "stainNotes", label: "Stain Notes", type: "textarea" },
-    { name: "datetime", label: "Preferred date & time", type: "datetime-local" },
-  ],
-  Rental: [
-    { name: "pickupDate", label: "Pickup Date", type: "date" },
-  ],
-};
 
 const UserHomePage = ({ userName, setIsLoggedIn }) => {
   const navigate = useNavigate();
@@ -120,25 +73,25 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
 
   const handleCartUpdate = () => {
     console.log('Cart was updated from repair modal!');
-    // You can add additional logic here like updating cart badge
+   
   };
 
   const addServiceToCart = (type) => {
     if (type === 'Repair') {
-      // Open repair form modal
+     
       setServiceModalOpen(false);
       setRepairFormModalOpen(true);
       return;
     }
     
     if (type === 'Dry Cleaning') {
-      // Open dry cleaning form modal
+   
       setServiceModalOpen(false);
       setDryCleaningFormModalOpen(true);
       return;
     }
     
-    // Handle other service types with old cart system (for now)
+  
     setCartItems((prev) => {
       const id = 'ORD-' + String(prev.length + 1).padStart(4, '0');
       const newItem = {
@@ -217,7 +170,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         </nav>
         <a href="#About">About</a>
         <button className="notif-button" onClick={() => setNotificationsOpen(true)} aria-label="Notifications">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3a6 6 0 0 1 6 6v4l2 2H4l2-2V9a6 6 0 0 1 6-6z" stroke="#8B4513" strokeWidth="2" fill="none"/><circle cx="12" cy="20" r="2" fill="#8B4513"/></svg>
+          <svg width="24" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3a6 6 0 0 1 6 6v4l2 2H4l2-2V9a6 6 0 0 1 6-6z" stroke="#8B4513" strokeWidth="2" fill="none"/><circle cx="12" cy="20" r="2" fill="#8B4513"/></svg>
           {appointments.length > 0 && <span className="notif-badge">{appointments.length}</span>}
         </button>
         <button className="cart-button" onClick={() => setCartOpen(true)} aria-label="Cart">
@@ -379,7 +332,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         </div>
       )}
 
-<<<<<<< HEAD
+
     {cartOpen && (
   <div className="cart-drawer" onClick={() => setCartOpen(false)}>
     <div className="cart-panel" onClick={(e) => e.stopPropagation()}>
@@ -430,115 +383,10 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
               <div className="cart-actions">
                 <button className="btn-danger" onClick={() => removeItem(it.id)}>Remove</button>
               </div>
-=======
- 
-
-{summaryModalOpen && (
-  <div className="auth-modal-overlay" onClick={() => setSummaryModalOpen(false)}>
-    <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
-      <div className="auth-container">
-        <div className="auth-header">
-          <h2>Finalize Appointment</h2>
-          <p className="auth-subtitle">Review your services</p>
-        </div>
-        <div style={{ padding: '16px 18px' }}>
-          {cartItems.map((it) => (
-            <div key={it.id} style={{ marginBottom: '12px' }}>
-              <div style={{ fontWeight: 600 }}>{it.type} • {it.id}</div>
-              {serviceForms[it.type]?.map((field) => (
-                <div key={field.name} style={{ fontSize: '13px', color: '#666' }}>
-                  {field.label}: {it.details[field.name] || '-'}
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-        <div style={{ padding: '16px 18px' }}>
-          <input
-            type="date"
-            value={appointmentDate}
-            onChange={(e) => setAppointmentDate(e.target.value)}
-            style={{ width: '100%', padding: '12px 14px', margin: '12px 0', border: '1px solid #ddd', borderRadius: '10px' }}
-            min={new Date().toISOString().split('T')[0]}
-          />
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
-            <button onClick={() => setSummaryModalOpen(false)} className="btn-secondary">Back</button>
-            <button onClick={submitAppointment} className="btn-primary" disabled={!appointmentDate || isSubmitting}>
-              {isSubmitting ? 'Submitting...' : 'Confirm booking'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-
-
-     {summaryModalOpen && (
-  <div className="auth-modal-overlay" onClick={() => setSummaryModalOpen(false)}>
-    <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
-      <div className="auth-container">
-        <div className="auth-header">
-          <h2>Finalize Appointment</h2>
-          <p className="auth-subtitle">Review your services and select appointment date</p>
-        </div>
-        <div style={{ padding: '16px 18px', maxHeight: '400px', overflowY: 'auto' }}>
-          {cartItems.map((it) => (
-            <div key={it.id} style={{ marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid #eee' }}>
-              <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '8px', color: '#8B4513' }}>
-                {it.type} • {it.id}
-              </div>
-              {serviceForms[it.type]?.map((field) => {
-                const value = it.details[field.name];
-                let displayValue = value || '-';
-                
-                // Special handling for file inputs
-                if (field.type === 'file' && value) {
-                  displayValue = value.name || 'File uploaded';
-                }
-                
-                return (
-                  <div key={field.name} style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>
-                    <strong>{field.label}:</strong> {displayValue}
-                  </div>
-                );
-              })}
->>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
-            </div>
-          ))}
-        </div>
-        <div style={{ padding: '16px 18px', borderTop: '1px solid #eee' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>
-            Select Appointment Date:
-          </label>
-          <input
-            type="date"
-            value={appointmentDate}
-            onChange={(e) => setAppointmentDate(e.target.value)}
-            style={{ 
-              width: '100%', 
-              padding: '12px 14px', 
-              marginBottom: '16px', 
-              border: '1px solid #ddd', 
-              borderRadius: '10px',
-              fontSize: '14px'
-            }}
-            min={new Date().toISOString().split('T')[0]}
-          />
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-            <button onClick={() => setSummaryModalOpen(false)} className="btn-secondary">
-              Back
-            </button>
-            <button 
-              onClick={submitAppointment} 
-              className="btn-primary" 
-              disabled={!appointmentDate || isSubmitting}
-            >
-              {isSubmitting ? 'Submitting...' : 'Confirm Booking'}
-            </button>
-          </div>
+            </div> {/* End of cart-card-body */}
+          </div> // End of cart-card
         ))}
-      </div>
+      </div> {/* End of cart-items */}
       <div className="cart-footer">
         <button className="btn-primary" disabled={cartItems.length === 0} onClick={() => { setCartOpen(false); setSummaryModalOpen(true); }}>Proceed to booking</button>
       </div>
@@ -546,50 +394,6 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
   </div>
 )}
 
-{summaryModalOpen && (
-  <div className="auth-modal-overlay" onClick={() => setSummaryModalOpen(false)}>
-    <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
-      <div className="auth-container">
-        <div className="auth-header">
-          <h2>Finalize Appointment</h2>
-          <p className="auth-subtitle">Review your services</p>
-        </div>
-<<<<<<< HEAD
-        <div style={{ padding: '16px 18px' }}>
-          {cartItems.map((it) => (
-            <div key={it.id} style={{ marginBottom: '12px' }}>
-              <div style={{ fontWeight: 600 }}>{it.type} • {it.id}</div>
-              {serviceForms[it.type]?.map((field) => (
-                <div key={field.name} style={{ fontSize: '13px', color: '#666' }}>
-                  {field.label}: {it.details[field.name] || '-'}
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-        <div style={{ padding: '16px 18px' }}>
-          <input
-            type="date"
-            value={appointmentDate}
-            onChange={(e) => setAppointmentDate(e.target.value)}
-            style={{ width: '100%', padding: '12px 14px', margin: '12px 0', border: '1px solid #ddd', borderRadius: '10px' }}
-            min={new Date().toISOString().split('T')[0]}
-          />
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
-            <button onClick={() => setSummaryModalOpen(false)} className="btn-secondary">Back</button>
-            <button onClick={submitAppointment} className="btn-primary" disabled={!appointmentDate || isSubmitting}>
-              {isSubmitting ? 'Submitting...' : 'Confirm booking'}
-            </button>
-          </div>
-        </div>
-=======
->>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
-      </div>
-    </div>
-  </div>
-)}
-
-<<<<<<< HEAD
 
      {summaryModalOpen && (
   <div className="auth-modal-overlay" onClick={() => setSummaryModalOpen(false)}>
@@ -658,7 +462,6 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
     </div>
   </div>
 )}
-=======
       {/* Cart Component */}
       <Cart 
         isOpen={cartOpen} 
@@ -679,7 +482,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         onClose={() => setDryCleaningFormModalOpen(false)}
         onCartUpdate={handleCartUpdate}
       />
->>>>>>> bee3d85cfeb54b9ff1dbe00c18c1732d3e26d9e9
+
     </>
   );
 };

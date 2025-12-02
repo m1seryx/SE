@@ -376,24 +376,19 @@ tbody td {
 }
 
 .service-type-badge[data-service-type="repair"] {
-  background-color: #ff9800 !important; /* Orange */
+  background-color: #ff9800 !important; 
 }
 
 .service-type-badge[data-service-type="rental"] {
-  background-color: #4caf50 !important; /* Green */
+  background-color: #4caf50 !important; 
 }
-
-.service-type-badge[data-service-type="Alteration"] {
-  background-color: #f44336 !important; /* Red */
-}
-
 
 
 .service-type-badge[data-service-type="Other"] {
-  background-color: #607d8b !important; /* Blue Grey */
+  background-color: #607d8b !important; 
 }
 
-/* Fallback for unknown service types */
+
 
 
 /* ============ RESPONSIVE ============ */

@@ -85,6 +85,7 @@ export async function getStatusTransitions(orderItemId) {
 export function getStatusBadgeClass(status) {
   const statusMap = {
     'pending': 'pending',
+    'accepted': 'accepted',
     'price_confirmation': 'price-confirmation',
     'in_progress': 'in-progress',
     'ready_to_pickup': 'ready',
@@ -102,6 +103,7 @@ export function getStatusBadgeClass(status) {
 export function getStatusLabel(status) {
   const statusMap = {
     'pending': 'Pending',
+    'accepted': 'Accepted',
     'price_confirmation': 'Price Confirmation',
     'in_progress': 'In Progress',
     'ready_to_pickup': 'Ready to Pickup',
@@ -118,9 +120,9 @@ export function getStatusLabel(status) {
 // Helper function to get service type specific status flow
 export function getServiceStatusFlow(serviceType) {
   const flows = {
-    'repair': ['pending', 'in_progress', 'ready_to_pickup'],
-    'customize': ['pending', 'in_progress', 'ready_to_pickup'],
-    'dry_cleaning': ['pending', 'in_progress', 'ready_to_pickup'],
+    'repair': ['pending', 'accepted', 'in_progress', 'ready_to_pickup'],
+    'customize': ['pending', 'accepted', 'in_progress', 'ready_to_pickup'],
+    'dry_cleaning': ['pending', 'accepted', 'in_progress', 'ready_to_pickup'],
     'rental': ['pending', 'picked_up', 'rented', 'returned']
   };
   return flows[serviceType] || flows['repair'];

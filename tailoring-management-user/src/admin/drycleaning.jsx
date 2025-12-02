@@ -25,6 +25,7 @@ const DryCleaning = () => {
     const statusMap = {
       'pending_review': 'pending',
       'pending': 'pending',
+      'accepted': 'accepted',
       'price_confirmation': 'price-confirmation',
       'confirmed': 'in-progress',
       'ready_for_pickup': 'to-pickup',
@@ -40,6 +41,7 @@ const DryCleaning = () => {
     const statusTextMap = {
       'pending_review': 'Pending',
       'pending': 'Pending',
+      'accepted': 'Accepted',
       'price_confirmation': 'Price Confirmation',
       'confirmed': 'In Progress',
       'ready_for_pickup': 'To Pick up',
@@ -75,6 +77,7 @@ const DryCleaning = () => {
 
   const pendingAppointments = allItems.filter(item =>
     item.approval_status === 'pending_review' ||
+    item.approval_status === 'pending' ||
     item.approval_status === null ||
     item.approval_status === undefined ||
     item.approval_status === ''
@@ -82,6 +85,7 @@ const DryCleaning = () => {
 
   const stats = {
     pending: pendingAppointments.length,
+    accepted: allItems.filter(o => o.approval_status === 'accepted').length,
     inProgress: allItems.filter(o => o.approval_status === 'confirmed').length,
     toPickup: allItems.filter(o => o.approval_status === 'ready_for_pickup').length,
     completed: allItems.filter(o => o.approval_status === 'completed').length,
@@ -93,6 +97,8 @@ const DryCleaning = () => {
 
     if (viewFilter === "pending") {
       items = pendingAppointments;
+    } else if (viewFilter === "accepted") {
+      items = allItems.filter(item => item.approval_status === 'accepted');
     } else if (viewFilter === "price-confirmation") {
       items = allItems.filter(item => item.approval_status === 'price_confirmation');
     } else if (viewFilter === "in-progress") {
@@ -127,17 +133,17 @@ const DryCleaning = () => {
   const handleAccept = async (itemId) => {
     try {
       const result = await updateDryCleaningOrderItem(itemId, {
-        approvalStatus: 'confirmed'
+        approvalStatus: 'accepted'
       });
       if (result.success) {
         await loadDryCleaningOrders();
-        alert("Dry cleaning request approved!");
+        alert("Dry cleaning request accepted!");
       } else {
-        alert(result.message || "Failed to approve request");
+        alert(result.message || "Failed to accept request");
       }
     } catch (err) {
       console.error("Accept error:", err);
-      alert("Failed to approve request");
+      alert("Failed to accept request");
     }
   };
 
@@ -168,7 +174,9 @@ const DryCleaning = () => {
         await loadDryCleaningOrders();
 
         // Automatically switch to the correct tab based on the new status
-        if (status === 'confirmed') {
+        if (status === 'accepted') {
+          setViewFilter('accepted');
+        } else if (status === 'confirmed') {
           setViewFilter('in-progress');
         } else if (status === 'ready_for_pickup') {
           setViewFilter('to-pickup');
@@ -285,6 +293,9 @@ const DryCleaning = () => {
           <button className={viewFilter === 'pending' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('pending')}>
             Pending ({pendingAppointments.length})
           </button>
+          <button className={viewFilter === 'accepted' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('accepted')}>
+            Accepted ({allItems.filter(o => o.approval_status === 'accepted').length})
+          </button>
           <button className={viewFilter === 'price-confirmation' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('price-confirmation')}>
             Price Confirmation ({allItems.filter(o => o.approval_status === 'price_confirmation').length})
           </button>
@@ -311,6 +322,8 @@ const DryCleaning = () => {
           />
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="accepted">Accepted</option>
             <option value="price_confirmation">Price Confirmation</option>
             <option value="confirmed">In Progress</option>
             <option value="ready_for_pickup">To Pick up</option>
@@ -359,6 +372,8 @@ const DryCleaning = () => {
                           value={item.approval_status || 'pending'}
                           onChange={(e) => updateStatus(item.item_id, e.target.value)}
                         >
+                          <option value="pending">Pending</option>
+                          <option value="accepted">Accepted</option>
                           <option value="price_confirmation">Price Confirmation</option>
                           <option value="confirmed">In Progress</option>
                           <option value="ready_for_pickup">To Pick up</option>
@@ -368,7 +383,7 @@ const DryCleaning = () => {
                       )}
                     </td>
                     <td>
-                      {item.approval_status === 'pending_review' || item.approval_status === null || item.approval_status === undefined || item.approval_status === '' ? (
+                      {item.approval_status === 'pending_review' || item.approval_status === 'pending' || item.approval_status === null || item.approval_status === undefined || item.approval_status === '' ? (
                         <div className="buttons">
                           <button className="accept-btn" onClick={() => handleAccept(item.item_id)}
                             style={{
@@ -497,12 +512,13 @@ const DryCleaning = () => {
                   onChange={(e) => setEditForm({ ...editForm, approvalStatus: e.target.value })}
                   style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                 >
-                  <option value="pending_review">Pending Review</option>
+                  <option value="pending">Pending</option>
+                  <option value="accepted">Accepted</option>
                   <option value="price_confirmation">Price Confirmation</option>
-                  <option value="approved">In Progress</option>
+                  <option value="confirmed">In Progress</option>
                   <option value="ready_for_pickup">Ready for Pickup</option>
                   <option value="completed">Completed</option>
-                  <option value="rejected">Rejected</option>
+                  <option value="cancelled">Rejected</option>
                 </select>
               </div>
 

@@ -38,6 +38,7 @@ const orderTrackingRoutes = require('./routes/OrderTrackingRoutes');
 const dryCleaningRoutes = require('./routes/DryCleaningRoutes');
 const billingRoutes = require('./routes/BillingRoutes');
 const inventoryRoutes = require('./routes/InventoryRoutes');
+const adminDashboardRoutes = require('./routes/AdminDashboardRoutes');
 
 app.use('/api', authRoutes);
 app.use('/api/rentals', rentalRoutes);
@@ -49,6 +50,7 @@ app.use('/api/dry-cleaning', dryCleaningRoutes);
 app.use('/api/tracking', orderTrackingRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/admin', adminDashboardRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5000;
