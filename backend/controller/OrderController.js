@@ -670,3 +670,47 @@ exports.updateRentalOrderItem = (req, res) => {
   });
 };
 
+// Get order item details by item ID
+exports.getOrderItemDetails = (req, res) => {
+  const itemId = req.params.itemId;
+  const userId = req.user.id;
+
+  Order.getOrderItemById(itemId, (err, result) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+        error: err
+      });
+    }
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: "Order item not found"
+      });
+    }
+
+    // Check if user owns this order item (unless admin)
+    if (req.user.role !== 'admin' && result.user_id !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied"
+      });
+    }
+
+    // Parse JSON fields
+    const orderItem = {
+      ...result,
+      pricing_factors: JSON.parse(result.pricing_factors || '{}'),
+      specific_data: JSON.parse(result.specific_data || '{}')
+    };
+
+    res.json({
+      success: true,
+      message: "Order item details retrieved successfully",
+      order_item: orderItem
+    });
+  });
+};
+

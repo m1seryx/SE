@@ -76,8 +76,16 @@ const Notification = {
 
   // Helper function to create notification when order is accepted
   createAcceptedNotification: (userId, orderItemId, serviceType, callback) => {
-    const title = 'Service Accepted!';
-    const message = 'Your service request has been accepted. Please drop the item in the store.';
+    const serviceTypeLabels = {
+      'repair': 'Repair',
+      'dry_cleaning': 'Dry Cleaning',
+      'rental': 'Rental',
+      'customize': 'Customization'
+    };
+    
+    const serviceLabel = serviceTypeLabels[serviceType] || 'Service';
+    const title = `${serviceLabel} Accepted!`;
+    const message = `Your ${serviceLabel.toLowerCase()} request has been accepted. Please drop the item in the store.`;
     Notification.create(userId, orderItemId, 'accepted', title, message, callback);
   },
 

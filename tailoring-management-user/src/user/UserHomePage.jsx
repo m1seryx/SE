@@ -13,11 +13,12 @@ import full from "../assets/full.png";
 import tuxedo from "../assets/tuxedo.png";
 import dryCleanBg from "../assets/dryclean.png";
 import { getUser, logoutUser } from '../api/AuthApi';
+import { notificationApi } from '../api/NotificationApi';
 import RentalClothes from './components/RentalClothes';
 import Cart from './components/Cart';
 import RepairFormModal from './components/RepairFormModal';
 import DryCleaningFormModal from './components/DryCleaningFormModal';
-
+import OrderDetailsModal from './OrderDetailsModal';
 
 const UserHomePage = ({ userName, setIsLoggedIn }) => {
   const navigate = useNavigate();
@@ -39,6 +40,10 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [orderDetailsModalOpen, setOrderDetailsModalOpen] = useState(false);
+  const [selectedOrderItemId, setSelectedOrderItemId] = useState(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -49,6 +54,75 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [profileDropdownOpen]);
+
+  // Fetch notifications and unread count on mount
+  useEffect(() => {
+    fetchNotifications();
+    fetchUnreadCount();
+  }, []);
+
+  // Refetch when notifications modal opens
+  useEffect(() => {
+    if (notificationsOpen) {
+      fetchNotifications();
+    }
+  }, [notificationsOpen]);
+
+  const fetchNotifications = async () => {
+    try {
+      const result = await notificationApi.getNotifications();
+      if (result.success) {
+        setNotifications(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    }
+  };
+
+  const fetchUnreadCount = async () => {
+    try {
+      const count = await notificationApi.getUnreadCount();
+      setUnreadCount(count);
+    } catch (err) {
+      console.error('Failed to fetch unread count:', err);
+    }
+  };
+
+  const handleMarkAsRead = async (notificationId) => {
+    try {
+      await notificationApi.markAsRead(notificationId);
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.notification_id === notificationId ? { ...n, is_read: 1 } : n
+        )
+      );
+      setUnreadCount((prev) => Math.max(prev - 1, 0));
+    } catch (err) {
+      console.error('Failed to mark as read:', err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await notificationApi.markAllAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: 1 })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Failed to mark all as read:', err);
+    }
+  };
+
+  const handleNotificationClick = (notif) => {
+    // Mark as read if unread
+    if (!notif.is_read) {
+      handleMarkAsRead(notif.notification_id);
+    }
+    // Open order details modal if order_item_id exists
+    if (notif.order_item_id) {
+      setSelectedOrderItemId(notif.order_item_id);
+      setOrderDetailsModalOpen(true);
+    }
+  };
 
   const serviceOptions = [
     { type: 'Repair', description: 'Fix and enhance your clothes' },
@@ -171,7 +245,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         <a href="#About">About</a>
         <button className="notif-button" onClick={() => setNotificationsOpen(true)} aria-label="Notifications">
           <svg width="24" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3a6 6 0 0 1 6 6v4l2 2H4l2-2V9a6 6 0 0 1 6-6z" stroke="#8B4513" strokeWidth="2" fill="none"/><circle cx="12" cy="20" r="2" fill="#8B4513"/></svg>
-          {appointments.length > 0 && <span className="notif-badge">{appointments.length}</span>}
+          {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
         </button>
         <button className="cart-button" onClick={() => setCartOpen(true)} aria-label="Cart">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 6h14l-2 9H8L6 6z" stroke="#8B4513" strokeWidth="2" fill="none"/><circle cx="9" cy="20" r="2" fill="#8B4513"/><circle cx="17" cy="20" r="2" fill="#8B4513"/></svg>
@@ -313,17 +387,59 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
             <div className="auth-container">
               <div className="auth-header">
                 <h2>Notifications</h2>
-                <p className="auth-subtitle">Recent appointments and updates</p>
+                <p className="auth-subtitle">
+                  {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
+                </p>
+                {notifications.length > 0 && (
+                  <button
+                    className="btn-secondary"
+                    onClick={handleMarkAllAsRead}
+                    style={{ fontSize: '13px', padding: '6px 12px', marginTop: '8px' }}
+                  >
+                    Mark all as read
+                  </button>
+                )}
               </div>
-              <div style={{ padding: '14px', display: 'grid', gap: '10px' }}>
-                {appointments.length === 0 && <div>No notifications</div>}
-                {appointments.map((apt) => (
-                  <div key={apt.id} style={{ border: '1px solid #eee', borderRadius: '10px', padding: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <div style={{ fontWeight: 600 }}>Appointment {apt.id}</div>
-                      <div style={{ fontSize: '12px', color: '#666' }}>{apt.date || '-'}</div>
+              <div style={{ padding: '14px', maxHeight: '400px', overflowY: 'auto', display: 'grid', gap: '10px' }}>
+                {notifications.length === 0 && (
+                  <div style={{ textAlign: 'center', color: '#999', padding: '40px 0' }}>
+                    No notifications yet
+                  </div>
+                )}
+                {notifications.map((notif) => (
+                  <div
+                    key={notif.notification_id}
+                    onClick={() => handleNotificationClick(notif)}
+                    style={{
+                      border: '1px solid #eee',
+                      borderRadius: '10px',
+                      padding: '12px',
+                      backgroundColor: notif.is_read ? '#f9f9f9' : '#fff',
+                      cursor: notif.is_read ? 'default' : 'pointer',
+                      opacity: notif.is_read ? 0.7 : 1,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, marginBottom: '4px' }}>{notif.title}</div>
+                        <div style={{ fontSize: '14px', color: '#555', lineHeight: 1.4 }}>{notif.message}</div>
+                        <div style={{ fontSize: '12px', color: '#999', marginTop: '6px' }}>
+                          {new Date(notif.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                      {!notif.is_read && (
+                        <div
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            backgroundColor: '#8B4513',
+                            marginTop: 4,
+                            marginLeft: 8,
+                          }}
+                        />
+                      )}
                     </div>
-                    <div style={{ fontSize: '13px', color: '#666' }}>{(apt.services||[]).length} services</div>
                   </div>
                 ))}
               </div>
@@ -481,6 +597,13 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         isOpen={dryCleaningFormModalOpen} 
         onClose={() => setDryCleaningFormModalOpen(false)}
         onCartUpdate={handleCartUpdate}
+      />
+
+      {/* Order Details Modal Component */}
+      <OrderDetailsModal
+        isOpen={orderDetailsModalOpen}
+        onClose={() => setOrderDetailsModalOpen(false)}
+        orderItemId={selectedOrderItemId}
       />
 
     </>

@@ -4,6 +4,7 @@ import '../styles/UserHomePage.css';
 import '../styles/Profile.css';
 import logo from "../assets/logo.png";
 import dp from "../assets/dp.png";
+import { getUser } from '../api/AuthApi';
 import { getUserOrderTracking, getStatusBadgeClass, getStatusLabel } from '../api/OrderTrackingApi';
 
 const Profile = () => {
@@ -16,10 +17,11 @@ const Profile = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [serviceFilter, setServiceFilter] = useState('all');
 
-  const user = {
-    name: (typeof window !== 'undefined' && localStorage.getItem('userName')) || 'Guest',
-    email: (typeof window !== 'undefined' && localStorage.getItem('userEmail')) || 'guest@example.com',
+  const user = getUser() || {
+    name: 'Guest',
+    email: 'guest@example.com',
   };
+  console.log('Profile user from getUser():', user);
 
   // Fetch order tracking data
   useEffect(() => {
@@ -765,8 +767,7 @@ const Profile = () => {
           <div className="user-card-row">
             <img src={dp} alt="User" className="user-avatar" />
             <div>
-              <div className="user-name">{user.name}</div>
-              <div className="user-email">{user.email}</div>
+              <div className="user-name">{user.first_name} {user.last_name}</div>
             </div>
           </div>
         </div>
@@ -1101,7 +1102,7 @@ const Profile = () => {
         </div >
       </main >
 
-      {/* Order Details Modal */}
+    * Order Details Modal */
       {
         detailsModalOpen && selectedItem && (
           <div className="details-modal-overlay" onClick={closeDetailsModal}>

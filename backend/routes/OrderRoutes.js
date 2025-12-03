@@ -44,4 +44,7 @@ router.put('/rental/items/:id', orderController.updateRentalOrderItem);
 router.post('/:itemId/accept-price', orderPriceController.acceptPrice);
 router.post('/:itemId/decline-price', orderPriceController.declinePrice);
 
+// Get order item details
+router.get('/items/:itemId', orderController.getOrderItemDetails);
+
 module.exports = router;
