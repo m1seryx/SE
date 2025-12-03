@@ -12,6 +12,7 @@ SafeAreaView,} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import { cartService } from "../../utils/apiService";
 
 const { width, height } = Dimensions.get("window");
 
@@ -19,6 +20,12 @@ export default function CustomizeClothes() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [image, setImage] = useState<string | null>(null);
+  const [garmentCategory, setGarmentCategory] = useState("");
+  const [style, setStyle] = useState("");
+  const [fabricType, setFabricType] = useState("");
+  const [buttonStyle, setButtonStyle] = useState("");
+  const [sizeMeasurement, setSizeMeasurement] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -27,6 +34,73 @@ export default function CustomizeClothes() {
     });
     if (!result.canceled) {
       setImage(result.assets[0].uri);
+    }
+  };
+
+  const getPriceForGarment = (garment: string): number => {
+    const prices: { [key: string]: number } = {
+      Shirt: 800,
+      Pants: 900,
+      Suit: 2500,
+      Dress: 1800,
+      Jacket: 1200,
+      Coat: 1500,
+      Skirt: 700,
+      Blouse: 600,
+    };
+    return prices[garment] || 1000;
+  };
+
+  const handleAddToCart = async () => {
+    if (!garmentCategory) {
+      Alert.alert("Missing Information", "Please select a garment category");
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      // Prepare customize data for backend
+      const customizeData = {
+        serviceType: 'customize',
+        serviceId: 2, // Assuming customize service ID is 2
+        serviceName: `Custom ${garmentCategory}`,
+        basePrice: getPriceForGarment(garmentCategory).toString(),
+        finalPrice: getPriceForGarment(garmentCategory).toString(),
+        specificData: {
+          garmentType: garmentCategory,
+          style: style,
+          fabricType: fabricType,
+          buttonStyle: buttonStyle,
+          sizeMeasurement: sizeMeasurement,
+          imageUrl: image || 'no-image'
+        }
+      };
+
+      const result = await cartService.addToCart(customizeData);
+      
+      if (result.success) {
+        Alert.alert("Success!", "Customize service added to cart!", [
+          {
+            text: "View Cart",
+            onPress: () => router.push("/(tabs)/cart/Cart"),
+          },
+          {
+            text: "Continue Shopping",
+            onPress: () => router.push("/home"),
+          },
+        ]);
+      } else {
+        throw new Error(result.message || "Failed to add customize service to cart");
+      }
+    } catch (error: any) {
+      console.error("Add service error:", error);
+      Alert.alert(
+        "Error", 
+        error.message || "Failed to add customize service. Please try again."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -63,12 +137,16 @@ export default function CustomizeClothes() {
               <TextInput
                 placeholder="Select garment (e.g. pants, suit)"
                 style={styles.input}
+                value={garmentCategory}
+                onChangeText={setGarmentCategory}
               />
 
               <Text style={styles.label}>Style</Text>
               <TextInput
                 placeholder="Select style (casual, formal, business)"
                 style={styles.input}
+                value={style}
+                onChangeText={setStyle}
               />
 
               <Text style={styles.label}>Reference Image</Text>
@@ -126,16 +204,20 @@ export default function CustomizeClothes() {
               <TextInput
                 placeholder="Select fabric (cotton, silk, etc.)"
                 style={styles.input}
+                value={fabricType}
+                onChangeText={setFabricType}
               />
 
               <Text style={styles.label}>Button Style</Text>
               <TextInput
                 placeholder="Select button style"
                 style={styles.input}
+                value={buttonStyle}
+                onChangeText={setButtonStyle}
               />
 
               <Text style={styles.label}>Size Measurement</Text>
-              <TextInput placeholder="Enter your size details" style={styles.input} />
+              <TextInput placeholder="Enter your size details" style={styles.input} value={sizeMeasurement} onChangeText={setSizeMeasurement} />
 
               <View style={styles.buttonRow}>
                 <TouchableOpacity
@@ -146,9 +228,12 @@ export default function CustomizeClothes() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.button, styles.nextBtn]}
-                  onPress={() => router.push("../orders/PreviewOrder")}
+                  onPress={handleAddToCart}
+                  disabled={loading}
                 >
-                  <Text style={styles.nextText}>Confirm</Text>
+                  <Text style={styles.nextText}>
+                    {loading ? "Adding..." : "Add to Cart"}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>

@@ -39,6 +39,7 @@ const dryCleaningRoutes = require('./routes/DryCleaningRoutes');
 const billingRoutes = require('./routes/BillingRoutes');
 const inventoryRoutes = require('./routes/InventoryRoutes');
 const adminDashboardRoutes = require('./routes/AdminDashboardRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 app.use('/api', authRoutes);
 app.use('/api/rentals', rentalRoutes);
@@ -51,9 +52,10 @@ app.use('/api/tracking', orderTrackingRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/admin', adminDashboardRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });

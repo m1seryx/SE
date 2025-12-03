@@ -8,6 +8,8 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,16 +21,21 @@ import {
   Poppins_700Bold,
 } from "@expo-google-fonts/poppins";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService } from '@/app/utils/apiService';
 
 export default function SignupScreen() {
   const router = useRouter();
 
   const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -36,6 +43,58 @@ export default function SignupScreen() {
     Poppins_600SemiBold,
     Poppins_700Bold,
   });
+
+  const handleSignup = async () => {
+    // Validate required inputs
+    if (!fullName || !username || !email || !password || !confirmPassword) {
+      Alert.alert("Error", "Please fill in all required fields");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match");
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Split full name into first and last name
+      const nameParts = fullName.trim().split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+      
+      const response = await authService.register({
+        first_name: firstName,
+        last_name: lastName,
+        username: username,
+        email: email,
+        password: password,
+        phone_number: phoneNumber
+      });
+
+      if (response.token) {
+        // Save token and user data to AsyncStorage
+        await AsyncStorage.setItem('userToken', response.token);
+        await AsyncStorage.setItem('userRole', response.role);
+        await AsyncStorage.setItem('userData', JSON.stringify(response.user));
+        
+        // Navigate to home screen
+        router.replace("/home");
+      } else {
+        Alert.alert("Signup Failed", response.message || "Failed to create account");
+      }
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      Alert.alert("Error", error.message || "Failed to connect to server. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!fontsLoaded) {
     return null;
@@ -58,148 +117,195 @@ export default function SignupScreen() {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ flex: 1, justifyContent: "center" }}
+          style={{ flex: 1 }}
         >
-          <View style={styles.container}>
-            {/* Sign Up Card */}
-            <View style={styles.card}>
-              <Text style={styles.title}>Create Account</Text>
-              <Text style={styles.subtitle}>
-                Join the finest tailoring experience
-              </Text>
-
-              {/* Full Name */}
-              <View style={styles.inputContainer}>
-                <Ionicons
-                  name="person-outline"
-                  size={20}
-                  color="#94a3b8"
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Full Name"
-                  placeholderTextColor="#94a3b8"
-                  autoCapitalize="words"
-                  value={fullName}
-                  onChangeText={setFullName}
-                />
-              </View>
-
-              {/* Email */}
-              <View style={styles.inputContainer}>
-                <Ionicons
-                  name="mail-outline"
-                  size={20}
-                  color="#94a3b8"
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email address"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  value={email}
-                  onChangeText={setEmail}
-                />
-              </View>
-
-              {/* Password */}
-              <View style={styles.inputContainer}>
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={20}
-                  color="#94a3b8"
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Create Password"
-                  placeholderTextColor="#94a3b8"
-                  secureTextEntry={!showPassword}
-                  value={password}
-                  onChangeText={setPassword}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={22}
-                    color="#94a3b8"
-                  />
-                </TouchableOpacity>
-              </View>
-
-              {/* Confirm Password */}
-              <View style={styles.inputContainer}>
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={20}
-                  color="#94a3b8"
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Confirm Password"
-                  placeholderTextColor="#94a3b8"
-                  secureTextEntry={!showConfirmPassword}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  <Ionicons
-                    name={
-                      showConfirmPassword ? "eye-off-outline" : "eye-outline"
-                    }
-                    size={22}
-                    color="#94a3b8"
-                  />
-                </TouchableOpacity>
-              </View>
-
-              {/* Sign Up Button */}
-              <TouchableOpacity
-                style={styles.loginButton}
-                onPress={() => router.replace("/home")}
-                activeOpacity={0.9}
-              >
-                <LinearGradient
-                  colors={["#991b1b", "#7f1d1d", "#6b1414"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.gradientButton}
-                >
-                  <Text style={styles.loginButtonText}>Create Account</Text>
-                  <Ionicons
-                    name="arrow-forward"
-                    size={20}
-                    color="#fff"
-                    style={{ marginLeft: 8 }}
-                  />
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {/* Divider */}
-              <View style={styles.divider}>
-                <View style={styles.line} />
-                <Text style={styles.orText}>or</Text>
-                <View style={styles.line} />
-              </View>
-
-              {/* Login Link */}
-              <TouchableOpacity onPress={() => router.push("/login")}>
-                <Text style={styles.signupText}>
-                  Already have an account?{" "}
-                  <Text style={styles.signupLink}>Login</Text>
+          <ScrollView 
+            contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.container}>
+              {/* Sign Up Card */}
+              <View style={styles.card}>
+                <Text style={styles.title}>Create Account</Text>
+                <Text style={styles.subtitle}>
+                  Join the finest tailoring experience
                 </Text>
-              </TouchableOpacity>
+
+                {/* Full Name */}
+                <View style={styles.inputContainer}>
+                  <Ionicons
+                    name="person-outline"
+                    size={20}
+                    color="#94a3b8"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Full Name"
+                    placeholderTextColor="#94a3b8"
+                    autoCapitalize="words"
+                    value={fullName}
+                    onChangeText={setFullName}
+                  />
+                </View>
+
+                {/* Username */}
+                <View style={styles.inputContainer}>
+                  <Ionicons
+                    name="at-outline"
+                    size={20}
+                    color="#94a3b8"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Username"
+                    placeholderTextColor="#94a3b8"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    value={username}
+                    onChangeText={setUsername}
+                  />
+                </View>
+
+                {/* Email */}
+                <View style={styles.inputContainer}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={20}
+                    color="#94a3b8"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Email address"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    value={email}
+                    onChangeText={setEmail}
+                  />
+                </View>
+
+                {/* Password */}
+                <View style={styles.inputContainer}>
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color="#94a3b8"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Create Password"
+                    placeholderTextColor="#94a3b8"
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={22}
+                      color="#94a3b8"
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Confirm Password */}
+                <View style={styles.inputContainer}>
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color="#94a3b8"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Confirm Password"
+                    placeholderTextColor="#94a3b8"
+                    secureTextEntry={!showConfirmPassword}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    <Ionicons
+                      name={
+                        showConfirmPassword ? "eye-off-outline" : "eye-outline"
+                      }
+                      size={22}
+                      color="#94a3b8"
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Phone Number */}
+                <View style={styles.inputContainer}>
+                  <Ionicons
+                    name="call-outline"
+                    size={20}
+                    color="#94a3b8"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Phone Number (Optional)"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="phone-pad"
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                  />
+                </View>
+
+                {/* Sign Up Button */}
+                <TouchableOpacity
+                  style={styles.loginButton}
+                  onPress={handleSignup}
+                  activeOpacity={0.9}
+                  disabled={loading}
+                >
+                  <LinearGradient
+                    colors={["#991b1b", "#7f1d1d", "#6b1414"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.gradientButton}
+                  >
+                    <Text style={styles.loginButtonText}>
+                      {loading ? "Creating Account..." : "Create Account"}
+                    </Text>
+                    {!loading && (
+                      <Ionicons
+                        name="arrow-forward"
+                        size={20}
+                        color="#fff"
+                        style={{ marginLeft: 8 }}
+                      />
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {/* Divider */}
+                <View style={styles.divider}>
+                  <View style={styles.line} />
+                  <Text style={styles.orText}>or</Text>
+                  <View style={styles.line} />
+                </View>
+
+                {/* Login Link */}
+                <TouchableOpacity onPress={() => router.push("/login")}>
+                  <Text style={styles.signupText}>
+                    Already have an account?{" "}
+                    <Text style={styles.signupLink}>Login</Text>
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
     </ImageBackground>

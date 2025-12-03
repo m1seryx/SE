@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,7 +17,8 @@ import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { cartStore } from "../../utils/cartStore";
+import { addRepairToCart, uploadRepairImage } from "../../utils/repairService";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get("window");
 
@@ -26,14 +27,68 @@ export default function RepairClothes() {
 
   // Form States
   const [image, setImage] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState("");
-  const [damageType, setDamageType] = useState("");
-  const [instruction, setInstruction] = useState("");
-
-  // Date & Time Picker States
+  const [damageLevel, setDamageLevel] = useState("");
+  const [description, setDescription] = useState("");
   const [appointmentDate, setAppointmentDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [estimatedPrice, setEstimatedPrice] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  // Damage levels with base prices
+  const damageLevels = [
+    { value: 'minor', label: 'Minor', basePrice: 300, description: 'Small tears, loose threads, missing buttons' },
+    { value: 'moderate', label: 'Moderate', basePrice: 500, description: 'Broken zippers, medium tears, seam repairs' },
+    { value: 'major', label: 'Major', basePrice: 800, description: 'Large tears, structural damage, extensive repairs' },
+    { value: 'severe', label: 'Severe', basePrice: 1500, description: 'Complete reconstruction, multiple major issues' }
+  ];
+
+  const itemTypes = [
+    "Shirt", "Pants", "Jacket", "Coat", "Dress", "Skirt", "Suit", "Blouse", "Sweater", "Other"
+  ];
+
+  // Calculate estimated price when damage level or garment type changes
+  useEffect(() => {
+    if (damageLevel) {
+      calculateEstimatedPrice();
+    } else {
+      setEstimatedPrice(0);
+    }
+  }, [damageLevel, selectedItem]);
+
+  const calculateEstimatedPrice = async () => {
+    if (!damageLevel) {
+      setEstimatedPrice(0);
+      return;
+    }
+
+    // Get base price from damage level
+    const damageLevelObj = damageLevels.find(level => level.value === damageLevel);
+    let basePrice = damageLevelObj ? damageLevelObj.basePrice : 500;
+    
+    // Add garment type complexity factor
+    let garmentMultiplier = 1.0;
+    if (selectedItem === 'Suit' || selectedItem === 'Coat') {
+      garmentMultiplier = 1.3;
+    } else if (selectedItem === 'Dress') {
+      garmentMultiplier = 1.2;
+    }
+
+    const finalPrice = Math.round(basePrice * garmentMultiplier);
+    setEstimatedPrice(finalPrice);
+  };
+
+  const getEstimatedTime = (damageLevel: string) => {
+    const times: {[key: string]: string} = {
+      'minor': '2-3 days',
+      'moderate': '3-5 days',
+      'major': '5-7 days',
+      'severe': '1-2 weeks'
+    };
+    return times[damageLevel] || '3-5 days';
+  };
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -42,42 +97,13 @@ export default function RepairClothes() {
     });
     if (!result.canceled) {
       setImage(result.assets[0].uri);
+      setImagePreview(result.assets[0].uri);
     }
   };
 
-  const itemTypes = [
-    "Pants",
-    "Suit",
-    "Dress",
-    "Uniform",
-    "Jacket",
-    "Skirt",
-    "Blouse",
-  ];
-
-  const damageOptions = [
-    "Tears / Holes",
-    "Loose seams / Stitch unraveling",
-    "Missing buttons / Fasteners",
-    "Broken zippers",
-    "Fraying edges / Hems",
-    "Snags / Pulls",
-    "Stretching / Misshaping",
-    "Fabric thinning",
-  ];
-
-  const getPriceForDamage = (damage: string): number => {
-    const prices: { [key: string]: number } = {
-      "Tears / Holes": 250,
-      "Loose seams / Stitch unraveling": 180,
-      "Missing buttons / Fasteners": 100,
-      "Broken zippers": 350,
-      "Fraying edges / Hems": 200,
-      "Snags / Pulls": 150,
-      "Stretching / Misshaping": 300,
-      "Fabric thinning": 400,
-    };
-    return prices[damage] || 300;
+  const removeImage = () => {
+    setImage(null);
+    setImagePreview(null);
   };
 
   // Date & Time Handlers
@@ -105,56 +131,131 @@ export default function RepairClothes() {
     }
   };
 
-  const handleAddService = () => {
-    if (!selectedItem || !damageType || !appointmentDate) {
+  const uploadImageIfNeeded = async () => {
+    if (!image) return null;
+
+    try {
+      const formData = new FormData();
+      formData.append('repairImage', {
+        uri: image,
+        type: 'image/jpeg',
+        name: 'repair-image.jpg',
+      } as any);
+
+      const response = await uploadRepairImage(formData);
+      const result = await response.json();
+      
+      if (result.success) {
+        return result.data.url || result.data.filename;
+      } else {
+        throw new Error(result.message || 'Image upload failed');
+      }
+    } catch (error) {
+      console.error('Image upload error:', error);
+      throw error;
+    }
+  };
+
+  const handleAddService = async () => {
+    if (!selectedItem || !damageLevel || !description || !appointmentDate) {
       Alert.alert(
         "Missing Information",
-        "Please select garment, damage type, and appointment date & time"
+        "Please fill in all required fields"
       );
       return;
     }
 
-    const price = getPriceForDamage(damageType);
+    // Check if user is authenticated
+    const token = await AsyncStorage.getItem('userToken');
+    if (!token) {
+      Alert.alert(
+        "Authentication Required",
+        "Please log in to add items to your cart."
+      );
+      router.push("/login");
+      return;
+    }
 
-    const cartItem = {
-      id: Date.now().toString(),
-      service: "Repair Service",
-      item: selectedItem,
-      description: `${damageType}${instruction ? ` - ${instruction}` : ""}`,
-      price: price,
-      icon: "construct-outline" as const,
-      garmentType: selectedItem,
-      damageType: damageType,
-      specialInstructions: instruction,
-      image: image || undefined,
-      appointmentDate: appointmentDate.toLocaleString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      }),
-    };
+    setLoading(true);
+    
+    try {
+      // Upload image if provided
+      let imageUrl = '';
+      if (image) {
+        try {
+          imageUrl = await uploadImageIfNeeded() || 'no-image';
+        } catch (uploadError) {
+          console.error('Image upload failed:', uploadError);
+          Alert.alert('Warning', 'Image upload failed. Continuing without image.');
+        }
+      }
 
-    cartStore.addItem(cartItem);
+      // Prepare repair data
+      const repairData = {
+        serviceType: 'repair', // Add serviceType
+        serviceId: 1, // Assuming repair service ID is 1
+        quantity: 1, // Add quantity
+        serviceName: `${damageLevel} Repair`,
+        basePrice: estimatedPrice.toString(),
+        finalPrice: estimatedPrice.toString(), // Use finalPrice instead of estimatedPrice
+        damageLevel: damageLevel,
+        damageDescription: description,
+        damageLocation: selectedItem,
+        garmentType: selectedItem,
+        pickupDate: appointmentDate ? appointmentDate.toISOString() : new Date().toISOString(),
+        imageUrl: imageUrl || 'no-image',
+        estimatedTime: getEstimatedTime(damageLevel)
+      };
+      
+      // Log the data being sent for debugging
+      console.log('Sending repair data to cart:', JSON.stringify(repairData, null, 2));
 
-    Alert.alert("Success!", "Repair service added to cart!", [
-      {
-        text: "View Cart",
-        onPress: () => router.push("/(tabs)/cart/Cart"),
-      },
-      {
-        text: "Add More",
-        onPress: () => {
-          setSelectedItem("");
-          setDamageType("");
-          setInstruction("");
-          setImage(null);
-          setAppointmentDate(null);
-        },
-      },
-    ]);
+      // Add to cart via API
+      const result = await addRepairToCart(repairData);
+      
+      if (result.success) {
+        Alert.alert(
+          "Success!", 
+          `Repair service added to cart! Estimated price: ₱${estimatedPrice}`, 
+          [
+            {
+              text: "View Cart",
+              onPress: () => router.push("/(tabs)/cart/Cart"),
+            },
+            {
+              text: "Add More",
+              onPress: () => {
+                setSelectedItem("");
+                setDamageLevel("");
+                setDescription("");
+                setImage(null);
+                setImagePreview(null);
+                setAppointmentDate(null);
+                setEstimatedPrice(0);
+              },
+            },
+          ]
+        );
+      } else {
+        throw new Error(result.message || "Failed to add repair service to cart");
+      }
+    } catch (error: any) {
+      console.error("Add service error:", error);
+      // Show more detailed error information
+      let errorMessage = error.message || "Failed to add repair service. Please try again.";
+      
+      // If it's a network error, provide more context
+      if (error.name === 'TypeError' && error.message.includes('Network request failed')) {
+        errorMessage = "Network error: Unable to connect to the server. Please check your internet connection and ensure the backend server is running."
+      }
+      
+      Alert.alert(
+        "Error Adding to Cart", 
+        errorMessage
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -178,27 +279,35 @@ export default function RepairClothes() {
           </View>
 
           {/* Image Upload */}
-          <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
-            {image ? (
-              <Image source={{ uri: image }} style={styles.previewImage} />
-            ) : (
-              <View style={styles.uploadContent}>
-                <View style={styles.uploadIconCircle}>
-                  <Ionicons name="camera-outline" size={36} color="#9dc5e3" />
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Upload Damage Photo (Recommended)</Text>
+            <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
+              {imagePreview ? (
+                <View style={styles.imagePreviewContainer}>
+                  <Image source={{ uri: imagePreview }} style={styles.previewImage} />
+                  <TouchableOpacity style={styles.removeImageButton} onPress={removeImage}>
+                    <Text style={styles.removeImageText}>✕ Remove</Text>
+                  </TouchableOpacity>
                 </View>
-                <Text style={styles.uploadText}>
-                  Tap to upload photo of damage
-                </Text>
-                <Text style={styles.uploadSubtext}>
-                  Clear image helps us serve you better
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+              ) : (
+                <View style={styles.uploadContent}>
+                  <View style={styles.uploadIconCircle}>
+                    <Ionicons name="camera-outline" size={36} color="#9dc5e3" />
+                  </View>
+                  <Text style={styles.uploadText}>
+                    Tap to upload photo of damage
+                  </Text>
+                  <Text style={styles.uploadSubtext}>
+                    Clear image helps us serve you better
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
 
           {/* Garment Type */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Type of Garment *</Text>
+            <Text style={styles.label}>Garment Type *</Text>
             <View style={styles.pickerWrapper}>
               <Picker
                 selectedValue={selectedItem}
@@ -213,40 +322,47 @@ export default function RepairClothes() {
             </View>
           </View>
 
-          {/* Damage Type */}
+          {/* Damage Level */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Type of Damage *</Text>
+            <Text style={styles.label}>Damage Level *</Text>
             <View style={styles.pickerWrapper}>
               <Picker
-                selectedValue={damageType}
-                onValueChange={(value) => setDamageType(value)}
+                selectedValue={damageLevel}
+                onValueChange={(value) => setDamageLevel(value)}
                 style={styles.picker}
               >
-                <Picker.Item label="Describe the damage..." value="" />
-                {damageOptions.map((damage) => (
-                  <Picker.Item label={damage} value={damage} key={damage} />
+                <Picker.Item label="Select damage level..." value="" />
+                {damageLevels.map((level) => (
+                  <Picker.Item 
+                    label={`${level.label} - ${level.description}`} 
+                    value={level.value} 
+                    key={level.value} 
+                  />
                 ))}
               </Picker>
             </View>
-            {damageType && (
+            {damageLevel && (
               <Text style={styles.priceIndicator}>
-                Estimated price: ₱{getPriceForDamage(damageType)}
+                Estimated price: ₱{estimatedPrice}
               </Text>
             )}
           </View>
 
-          {/* Special Instructions */}
+          {/* Detailed Description */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Special Instructions (Optional)</Text>
+            <Text style={styles.label}>Detailed Description *</Text>
             <TextInput
-              placeholder="e.g., Keep original buttons, match thread color..."
+              placeholder="Please describe the damage in detail (size, location, extent of damage)..."
               style={styles.textArea}
               placeholderTextColor="#94a3b8"
               multiline
-              value={instruction}
-              onChangeText={setInstruction}
+              value={description}
+              onChangeText={setDescription}
               textAlignVertical="top"
             />
+            <Text style={styles.smallText}>
+              Examples: 2-inch hole in left sleeve, broken zipper on jacket back, torn seam on pants
+            </Text>
           </View>
 
           {/* Appointment Date & Time Picker */}
@@ -297,11 +413,28 @@ export default function RepairClothes() {
             )}
           </View>
 
+          {/* Price Estimate */}
+          {estimatedPrice > 0 && (
+            <View style={styles.estimateContainer}>
+              <Text style={styles.estimateTitle}>Estimated Price: ₱{estimatedPrice}</Text>
+              <Text style={styles.estimateDetail}>
+                Based on damage level: {damageLevel} • Garment type: {selectedItem}
+              </Text>
+              <Text style={styles.estimateTime}>
+                ⏱️ Estimated time: {getEstimatedTime(damageLevel)}
+              </Text>
+              <Text style={styles.estimateNote}>
+                Final price will be confirmed after admin review
+              </Text>
+            </View>
+          )}
+
           {/* Buttons */}
           <View style={styles.buttonRow}>
             <TouchableOpacity
               style={[styles.button, styles.cancelBtn]}
               onPress={() => router.push("./appointmentSelection")}
+              disabled={loading}
             >
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
@@ -309,8 +442,11 @@ export default function RepairClothes() {
             <TouchableOpacity
               style={[styles.button, styles.submitBtn]}
               onPress={handleAddService}
+              disabled={loading || !estimatedPrice}
             >
-              <Text style={styles.submitText}>Add to Cart</Text>
+              <Text style={styles.submitText}>
+                {loading ? "Adding..." : `Add to Cart - ₱${estimatedPrice || 0}`}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -406,10 +542,35 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 32,
+    marginBottom: 16,
   },
-  previewImage: { width: "100%", height: "100%", borderRadius: 22 },
-  uploadContent: { alignItems: "center", paddingHorizontal: 32 },
+  imagePreviewContainer: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 22,
+    position: "relative",
+  },
+  previewImage: { 
+    width: "100%", 
+    height: "100%", 
+    borderRadius: 22 
+  },
+  removeImageButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 15,
+    padding: 8,
+  },
+  removeImageText: {
+    color: "white",
+    fontWeight: "bold",
+  },
+  uploadContent: { 
+    alignItems: "center", 
+    paddingHorizontal: 32 
+  },
   uploadIconCircle: {
     width: 72,
     height: 72,
@@ -467,6 +628,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     minHeight: 130,
     color: "#1e293b",
+  },
+  smallText: {
+    fontSize: 12,
+    color: "#64748b",
+    marginTop: 8,
+    marginLeft: 4,
   },
   buttonRow: {
     flexDirection: "row",
@@ -554,5 +721,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#1e293b",
     fontWeight: "500",
+  },
+  estimateContainer: {
+    backgroundColor: "#eff6ff",
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 28,
+    borderWidth: 1,
+    borderColor: "#dbeafe",
+  },
+  estimateTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1e40af",
+    marginBottom: 8,
+  },
+  estimateDetail: {
+    fontSize: 14,
+    color: "#374151",
+    marginBottom: 4,
+  },
+  estimateTime: {
+    fontSize: 14,
+    color: "#374151",
+    marginBottom: 4,
+  },
+  estimateNote: {
+    fontSize: 13,
+    color: "#6b7280",
+    fontStyle: "italic",
   },
 });

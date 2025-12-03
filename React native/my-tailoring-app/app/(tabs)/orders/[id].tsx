@@ -10,64 +10,117 @@ import {
   SafeAreaView,
   Dimensions,
   Alert,
-  Modal,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { orderStore, Order } from "../../utils/orderStore";
+import { orderTrackingService } from "../../utils/apiService";
 
 const { width } = Dimensions.get("window");
 
 export default function OrderDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [order, setOrder] = useState<Order | null>(null);
-  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const foundOrder = orderStore.getOrderById(id);
-    setOrder(foundOrder || null);
+    fetchOrderDetails();
   }, [id]);
 
-  if (!order) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.notFound}>Order not found</Text>
-      </SafeAreaView>
-    );
-  }
+  const fetchOrderDetails = async () => {
+    try {
+      setLoading(true);
+      const result = await orderTrackingService.getUserOrderTracking();
+      if (result.success) {
+        // Find the specific order item by order_item_id
+        let foundItem = null;
+        for (const order of result.data) {
+          const item = order.items.find((i: any) => i.order_item_id === parseInt(id));
+          if (item) {
+            foundItem = { ...item, order_date: order.order_date };
+            break;
+          }
+        }
+        setOrder(foundItem);
+      }
+    } catch (error) {
+      console.error('Error fetching order details:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Pending":
+    switch (status?.toLowerCase()) {
+      case "pending":
         return "#8B5CF6";
-      case "In Progress":
+      case "in_progress":
+      case "processing":
         return "#3B82F6";
-      case "To Pick up":
+      case "ready_to_pickup":
+      case "to pick up":
         return "#F59E0B";
-      case "Completed":
+      case "completed":
         return "#10B981";
-      case "Cancelled":
+      case "cancelled":
         return "#EF4444";
+      case "price_confirmation":
+        return "#F59E0B";
       default:
         return "#6B7280";
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "pending": return "Pending";
+      case "in_progress": return "In Progress";
+      case "processing": return "Processing";
+      case "ready_to_pickup": return "Ready to Pick Up";
+      case "completed": return "Completed";
+      case "cancelled": return "Cancelled";
+      case "price_confirmation": return "Price Confirmation";
+      default: return status;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#94665B" />
+          <Text style={styles.loadingText}>Loading order details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!order) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.push("/(tabs)/UserProfile/profile")}
+          >
+            <Ionicons name="arrow-back" size={26} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Order Details</Text>
+          <View style={{ width: 26 }} />
+        </View>
+        <Text style={styles.notFound}>Order not found</Text>
+      </SafeAreaView>
+    );
+  }
+
   const statusColor = getStatusColor(order.status);
-
-  const handleCancelOrder = () => {
-    setShowCancelModal(true);
-  };
-
-  const confirmCancel = () => {
-    orderStore.updateOrderStatus(id, "Cancelled");
-    setOrder({ ...order, status: "Cancelled" });
-    setShowCancelModal(false);
-  };
-
-  const isPending = order.status === "Pending";
 
   return (
     <SafeAreaView style={styles.container}>
@@ -86,7 +139,7 @@ export default function OrderDetails() {
         <View style={styles.card}>
           {/* Order Header */}
           <View style={styles.orderHeader}>
-            <Text style={styles.orderNo}>{order.orderNo}</Text>
+            <Text style={styles.orderNo}>ORD-{order.order_id}</Text>
             <View
               style={[
                 styles.statusBadge,
@@ -94,74 +147,173 @@ export default function OrderDetails() {
               ]}
             >
               <Text style={[styles.statusText, { color: statusColor }]}>
-                {order.status}
+                {getStatusLabel(order.status)}
               </Text>
             </View>
           </View>
 
-          <Text style={styles.date}>Placed on {order.date}</Text>
-          {order.appointmentDate && (
-            <Text style={styles.appointment}>
-              Appointment: {order.appointmentDate}
-            </Text>
-          )}
+          <Text style={styles.date}>Placed on {formatDate(order.order_date)}</Text>
+          <Text style={styles.serviceType}>
+            {order.service_type.charAt(0).toUpperCase() + order.service_type.slice(1)} Service
+          </Text>
 
           <View style={styles.divider} />
 
           {/* Image */}
-          {order.image && (
+          {((order.specific_data?.imageUrl && order.specific_data?.imageUrl !== 'no-image') || 
+            (order.specific_data?.image_url && order.specific_data?.image_url !== 'no-image')) && (
             <Image
-              source={{ uri: order.image }}
+              source={{ 
+                uri: (() => {
+                  const imageUrl = order.specific_data?.imageUrl || order.specific_data?.image_url;
+                  if (!imageUrl || imageUrl === 'no-image') return '';
+                  if (imageUrl.startsWith('http')) return imageUrl;
+                  return `http://192.168.1.202:5000${imageUrl}`;
+                })() 
+              }}
               style={styles.image}
-              resizeMode="contain"
+              resizeMode="cover"
             />
           )}
 
-          {/* Details */}
-          <View style={styles.detailRow}>
-            <Text style={styles.label}>Service</Text>
-            <Text style={styles.value}>{order.service}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.label}>Item</Text>
-            <Text style={styles.value}>{order.item}</Text>
-          </View>
-
-          {order.description && (
-            <View style={styles.detailRow}>
-              <Text style={styles.label}>Description</Text>
-              <Text style={styles.value}>{order.description}</Text>
-            </View>
-          )}
-
-          {order.garmentType && (
-            <View style={styles.detailRow}>
-              <Text style={styles.label}>Garment Type</Text>
-              <Text style={styles.value}>{order.garmentType}</Text>
-            </View>
-          )}
-
-          {order.damageType && (
-            <View style={styles.detailRow}>
-              <Text style={styles.label}>Damage Type</Text>
-              <Text style={styles.value}>{order.damageType}</Text>
-            </View>
-          )}
-
-          {order.quantity && (
-            <View style={styles.detailRow}>
-              <Text style={styles.label}>Quantity</Text>
-              <Text style={styles.value}>{order.quantity} item(s)</Text>
-            </View>
-          )}
-
-          {order.specialInstructions && (
-            <View style={styles.detailRow}>
-              <Text style={styles.label}>Special Instructions</Text>
-              <Text style={[styles.value, styles.multiline]}>
-                {order.specialInstructions}
-              </Text>
+          {/* Service Details Section */}
+          {order.specific_data && (
+            <View style={styles.serviceDetailsSection}>
+              <Text style={styles.sectionTitle}>Service Details</Text>
+              
+              {/* Dry Cleaning Details */}
+              {order.service_type === 'dry_cleaning' && (
+                <>
+                  {order.specific_data.serviceName && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Service</Text>
+                      <Text style={styles.value}>{order.specific_data.serviceName}</Text>
+                    </View>
+                  )}
+                  {order.specific_data.garmentType && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Garment Type</Text>
+                      <Text style={styles.value}>{order.specific_data.garmentType}</Text>
+                    </View>
+                  )}
+                  {order.specific_data.clothingBrand && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Brand</Text>
+                      <Text style={styles.value}>{order.specific_data.clothingBrand}</Text>
+                    </View>
+                  )}
+                  {order.specific_data.quantity && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Quantity</Text>
+                      <Text style={styles.value}>{order.specific_data.quantity} items</Text>
+                    </View>
+                  )}
+                  {order.specific_data.specialInstructions && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Special Instructions</Text>
+                      <Text style={[styles.value, styles.multiline]}>
+                        {order.specific_data.specialInstructions}
+                      </Text>
+                    </View>
+                  )}
+                  {order.specific_data.pickupDate && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Pickup Date</Text>
+                      <Text style={styles.value}>
+                        {formatDate(order.specific_data.pickupDate)}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
+              
+              {/* Repair Details */}
+              {order.service_type === 'repair' && (
+                <>
+                  {order.specific_data.garmentType && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Garment Type</Text>
+                      <Text style={styles.value}>{order.specific_data.garmentType}</Text>
+                    </View>
+                  )}
+                  {order.specific_data.damageLevel && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Damage Level</Text>
+                      <Text style={styles.value}>{order.specific_data.damageLevel}</Text>
+                    </View>
+                  )}
+                  {order.specific_data.damageDescription && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Damage Description</Text>
+                      <Text style={[styles.value, styles.multiline]}>
+                        {order.specific_data.damageDescription}
+                      </Text>
+                    </View>
+                  )}
+                  {order.specific_data.damageLocation && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Damage Location</Text>
+                      <Text style={styles.value}>{order.specific_data.damageLocation}</Text>
+                    </View>
+                  )}
+                  {order.specific_data.pickupDate && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Expected Pickup Date</Text>
+                      <Text style={styles.value}>
+                        {formatDate(order.specific_data.pickupDate)}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
+              
+              {/* Rental Details */}
+              {order.service_type === 'rental' && (
+                <>
+                  {order.specific_data.item_name && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Item Name</Text>
+                      <Text style={styles.value}>{order.specific_data.item_name}</Text>
+                    </View>
+                  )}
+                  {order.specific_data.brand && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Brand</Text>
+                      <Text style={styles.value}>{order.specific_data.brand}</Text>
+                    </View>
+                  )}
+                  {order.specific_data.size && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Size</Text>
+                      <Text style={styles.value}>{order.specific_data.size}</Text>
+                    </View>
+                  )}
+                  {order.specific_data.category && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Category</Text>
+                      <Text style={styles.value}>{order.specific_data.category}</Text>
+                    </View>
+                  )}
+                  {order.rental_period && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Rental Period</Text>
+                      <Text style={styles.value}>{order.rental_period} days</Text>
+                    </View>
+                  )}
+                  {order.rental_start_date && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Start Date</Text>
+                      <Text style={styles.value}>{formatDate(order.rental_start_date)}</Text>
+                    </View>
+                  )}
+                  {order.rental_end_date && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>End Date</Text>
+                      <Text style={styles.value}>{formatDate(order.rental_end_date)}</Text>
+                    </View>
+                  )}
+                </>
+              )}
             </View>
           )}
 
@@ -169,19 +321,9 @@ export default function OrderDetails() {
           <View style={styles.priceSection}>
             <Text style={styles.totalLabel}>Total Amount</Text>
             <Text style={styles.totalPrice}>
-              ₱{order.price.toLocaleString()}
+              ₱{parseFloat(order.final_price).toLocaleString()}
             </Text>
           </View>
-
-          {/* Cancel Button - Only show if Pending */}
-          {isPending && (
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={handleCancelOrder}
-            >
-              <Text style={styles.cancelButtonText}>Cancel Order</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         <View style={{ height: 120 }} />
@@ -208,36 +350,6 @@ export default function OrderDetails() {
           <Ionicons name="person" size={26} color="#7A5A00" />
         </TouchableOpacity>
       </View>
-
-      {/* Cancel Confirmation Modal */}
-      <Modal visible={showCancelModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Ionicons name="alert-circle-outline" size={60} color="#EF4444" />
-            <Text style={styles.modalTitle}>Cancel Order?</Text>
-            <Text style={styles.modalMessage}>
-              Are you sure you want to cancel this order? This action cannot be
-              undone.
-            </Text>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.cancelBtn]}
-                onPress={() => setShowCancelModal(false)}
-              >
-                <Text style={styles.cancelBtnText}>Keep Order</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.confirmBtn]}
-                onPress={confirmCancel}
-              >
-                <Text style={styles.confirmBtnText}>Yes, Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -276,7 +388,7 @@ const styles = StyleSheet.create({
   statusBadge: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   statusText: { fontSize: 14, fontWeight: "600" },
   date: { fontSize: 14, color: "#6B7280", marginBottom: 4 },
-  appointment: {
+  serviceType: {
     fontSize: 15.5,
     color: "#94665B",
     fontWeight: "600",
@@ -289,6 +401,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 20,
     backgroundColor: "#F9FAFB",
+  },
+  serviceDetailsSection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 16,
   },
   detailRow: { marginBottom: 18 },
   label: { fontSize: 14, color: "#6B7280", marginBottom: 6 },
@@ -303,24 +424,21 @@ const styles = StyleSheet.create({
   },
   totalLabel: { fontSize: 18, color: "#6B7280", marginBottom: 6 },
   totalPrice: { fontSize: 32, fontWeight: "800", color: "#94665B" },
-  cancelButton: {
-    marginTop: 24,
-    paddingVertical: 14,
-    borderWidth: 2,
-    borderColor: "#EF4444",
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  cancelButtonText: {
-    color: "#EF4444",
-    fontSize: 16,
-    fontWeight: "600",
-  },
   notFound: {
     flex: 1,
     textAlign: "center",
     marginTop: 100,
     fontSize: 18,
+    color: "#6B7280",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
     color: "#6B7280",
   },
   bottomNav: {
@@ -336,60 +454,5 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#E5E7EB",
     elevation: 10,
-  },
-
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    width: width * 0.85,
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 24,
-    alignItems: "center",
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    marginTop: 16,
-    color: "#1F2937",
-  },
-  modalMessage: {
-    fontSize: 16,
-    color: "#6B7280",
-    textAlign: "center",
-    marginTop: 12,
-    lineHeight: 22,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 24,
-  },
-  modalBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  cancelBtn: {
-    backgroundColor: "#F3F4F6",
-  },
-  cancelBtnText: {
-    color: "#374151",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  confirmBtn: {
-    backgroundColor: "#EF4444",
-  },
-  confirmBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
   },
 });

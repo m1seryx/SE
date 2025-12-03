@@ -1,5 +1,5 @@
 // app/(tabs)/rental/[id].tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -9,99 +9,23 @@ import {
   Modal,
   Platform,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Text } from "react-native-paper";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Calendar } from "react-native-calendars";
-import { cartStore } from "../../utils/cartStore";
-
-// Rental items data - matches home.tsx
-const rentalItems = [
-  {
-    id: "1",
-    title: "Men Suit All in Gray",
-    price: 500,
-    size: "Medium",
-    fabric: "Wool blend",
-    color: "Gray",
-    length: "Regular",
-    category: "Men's Formal",
-    image: require("../../../assets/images/graysuit.jpg"),
-    description:
-      "Professional gray suit perfect for business meetings and formal events. Made from premium wool blend fabric.",
-  },
-  {
-    id: "2",
-    title: "Classic Black Tuxedo",
-    price: 750,
-    size: "Large",
-    fabric: "Premium cotton",
-    color: "Black",
-    length: "Regular",
-    category: "Men's Formal",
-    image: require("../../../assets/images/blacktuxedo.jpg"),
-    description:
-      "Elegant black tuxedo for weddings and special occasions. Includes jacket, pants, and bow tie.",
-  },
-  {
-    id: "3",
-    title: "Royal Blue Coat Set",
-    price: 650,
-    size: "Medium",
-    fabric: "Polyester blend",
-    color: "Royal Blue",
-    length: "Regular",
-    category: "Men's Formal",
-    image: require("../../../assets/images/royalblue.jpg"),
-    description:
-      "Stylish royal blue coat set for formal gatherings. Premium polyester blend for comfort and durability.",
-  },
-  {
-    id: "4",
-    title: "Elegant Evening Gown",
-    price: 900,
-    size: "Small",
-    fabric: "Silk",
-    color: "Burgundy",
-    length: "Floor length",
-    category: "Women's Formal",
-    image: require("../../../assets/images/gown.jpg"),
-    description:
-      "Stunning burgundy evening gown in luxurious silk. Perfect for galas and formal events.",
-  },
-  {
-    id: "5",
-    title: "Barong Tagalog Premium",
-    price: 400,
-    size: "Medium",
-    fabric: "Jusi",
-    color: "Cream White",
-    length: "Regular",
-    category: "Traditional",
-    image: require("../../../assets/images/barong.jpg"),
-    description:
-      "Premium Barong Tagalog in traditional Jusi fabric. Perfect for Filipino formal occasions.",
-  },
-  {
-    id: "6",
-    title: "Formal Black Dress",
-    price: 700,
-    size: "Medium",
-    fabric: "Crepe",
-    color: "Black",
-    length: "Knee length",
-    category: "Women's Formal",
-    image: require("../../../assets/images/blackdress.jpg"),
-    description:
-      "Classic black formal dress in elegant crepe fabric. Versatile for various formal occasions.",
-  },
-];
+import { rentalService } from "../../utils/rentalService";
+import { cartService } from "../../utils/apiService";
 
 export default function RentalDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const item = rentalItems.find((i) => i.id === id);
+  
+  const [item, setItem] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [addingToCart, setAddingToCart] = useState(false);
 
   const today = new Date();
   const [startDate, setStartDate] = useState<Date | null>(null);
@@ -111,10 +35,65 @@ export default function RentalDetail() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  if (!item) {
+  // Fetch rental item details
+  useEffect(() => {
+    if (id) {
+      fetchRentalDetails();
+    }
+  }, [id]);
+
+  const fetchRentalDetails = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const result = await rentalService.getRentalById(id as string);
+      console.log('Rental details:', result);
+      
+      if (result.item) {
+        setItem(result.item);
+      } else {
+        setError('Rental item not found');
+      }
+    } catch (err) {
+      console.error('Error fetching rental:', err);
+      setError('Failed to load rental details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getImageSource = () => {
+    if (item?.image_url) {
+      const imageUrl = rentalService.getImageUrl(item.image_url);
+      if (imageUrl) {
+        return { uri: imageUrl };
+      }
+    }
+    return require("../../../assets/images/rent.jpg");
+  };
+
+  // Loading state
+  if (loading) {
     return (
-      <View style={styles.container}>
-        <Text>Item not found</Text>
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#94665B" />
+        <Text style={{ marginTop: 12, color: '#6B7280' }}>Loading rental details...</Text>
+      </View>
+    );
+  }
+
+  // Error state
+  if (error || !item) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+        <Ionicons name="alert-circle-outline" size={60} color="#EF4444" />
+        <Text style={{ marginTop: 12, color: '#EF4444', fontSize: 16 }}>{error || 'Item not found'}</Text>
+        <TouchableOpacity 
+          style={{ marginTop: 16, backgroundColor: '#94665B', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}
+          onPress={() => router.push('/rental')}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600' }}>Back to Rentals</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -135,7 +114,12 @@ export default function RentalDetail() {
     return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1; // inclusive count
   };
 
-  const calculateTotal = () => item.price * getRentalDays();
+  const calculateTotal = () => {
+    const days = getRentalDays();
+    const dailyRate = parseFloat(item.daily_rate) || 0;
+    const baseFee = parseFloat(item.base_rental_fee) || 0;
+    return baseFee + (dailyRate * days);
+  };
 
   const getMarkedDates = () => {
     const marked: any = {};
@@ -198,32 +182,53 @@ export default function RentalDetail() {
     setShowConfirmModal(true);
   };
 
-  const confirmAddToCart = () => {
-    const days = getRentalDays();
-    const totalPrice = calculateTotal();
+  const confirmAddToCart = async () => {
+    try {
+      setAddingToCart(true);
+      const days = getRentalDays();
+      const totalPrice = calculateTotal();
 
-    const cartItem = {
-      id: Date.now().toString(),
-      service: "Rental",
-      item: item.title,
-      description: `${days} day${days > 1 ? "s" : ""} rental`,
-      price: totalPrice,
-      icon: "business-outline",
-      quantity: days,
-      garmentType: item.category,
-      specialInstructions: `Rental: ${formatDate(startDate)} → ${formatDate(
-        endDate
-      )}`,
-      appointmentDate: `${formatDate(startDate)} – ${formatDate(endDate)}`,
-    };
+      const rentalData = {
+        serviceType: 'rental',
+        serviceId: item.item_id,
+        quantity: 1,
+        basePrice: item.base_rental_fee || '0',
+        finalPrice: totalPrice.toString(),
+        pricingFactors: {
+          daily_rate: item.daily_rate || '0',
+          days: days,
+          deposit_amount: item.deposit_amount || '0'
+        },
+        specificData: {
+          item_name: item.item_name,
+          brand: item.brand || '',
+          size: item.size || '',
+          category: item.category || '',
+          image_url: item.image_url
+        },
+        rentalDates: {
+          startDate: startDate!.toISOString().split('T')[0],
+          endDate: endDate!.toISOString().split('T')[0]
+        }
+      };
 
-    cartStore.addItem(cartItem);
-    setShowConfirmModal(false);
-
-    Alert.alert("Success!", "Rental added to cart!", [
-      { text: "View Cart", onPress: () => router.push("/(tabs)/cart/Cart") },
-      { text: "Continue", onPress: () => router.push("/rental") },
-    ]);
+      const result = await cartService.addToCart(rentalData);
+      
+      if (result.success) {
+        setShowConfirmModal(false);
+        Alert.alert("Success!", "Rental added to cart!", [
+          { text: "View Cart", onPress: () => router.push("/(tabs)/cart/Cart") },
+          { text: "Continue", onPress: () => router.push("/rental") },
+        ]);
+      } else {
+        Alert.alert("Error", result.message || "Failed to add to cart");
+      }
+    } catch (error) {
+      console.error('Add to cart error:', error);
+      Alert.alert("Error", "Failed to add rental to cart. Please try again.");
+    } finally {
+      setAddingToCart(false);
+    }
   };
 
   return (
@@ -235,49 +240,59 @@ export default function RentalDetail() {
         <Ionicons name="arrow-back" size={24} color="#1F2937" />
       </TouchableOpacity>
 
-      <Image source={item.image} style={styles.image} resizeMode="cover" />
+      <Image source={getImageSource()} style={styles.image} resizeMode="cover" />
 
       <View style={styles.sheet}>
         <View style={styles.titlePill}>
           <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
-            {item.title}
+            {item.item_name}
           </Text>
         </View>
 
         <View style={styles.priceSection}>
           <Text style={styles.priceLabel}>Rental Price</Text>
-          <Text style={styles.priceValue}>₱{item.price}/day</Text>
+          <Text style={styles.priceValue}>₱{item.daily_rate}/day</Text>
         </View>
 
         {/* Details Grid */}
         <View style={styles.detailsGrid}>
-          {["size", "fabric", "color", "length"].map((key) => (
-            <View key={key} style={styles.detailItem}>
-              <Ionicons
-                name={
-                  key === "size"
-                    ? "resize-outline"
-                    : key === "fabric"
-                    ? "shirt-outline"
-                    : key === "color"
-                    ? "color-palette-outline"
-                    : "swap-vertical-outline"
-                }
-                size={20}
-                color="#94665B"
-              />
-              <Text style={styles.detailLabel}>
-                {key.charAt(0).toUpperCase() + key.slice(1)}
-              </Text>
-              <Text style={styles.detailValue}>{(item as any)[key]}</Text>
+          {item.size && (
+            <View style={styles.detailItem}>
+              <Ionicons name="resize-outline" size={20} color="#94665B" />
+              <Text style={styles.detailLabel}>Size</Text>
+              <Text style={styles.detailValue}>{item.size}</Text>
             </View>
-          ))}
+          )}
+          {item.material && (
+            <View style={styles.detailItem}>
+              <Ionicons name="shirt-outline" size={20} color="#94665B" />
+              <Text style={styles.detailLabel}>Material</Text>
+              <Text style={styles.detailValue}>{item.material}</Text>
+            </View>
+          )}
+          {item.color && (
+            <View style={styles.detailItem}>
+              <Ionicons name="color-palette-outline" size={20} color="#94665B" />
+              <Text style={styles.detailLabel}>Color</Text>
+              <Text style={styles.detailValue}>{item.color}</Text>
+            </View>
+          )}
+          {item.brand && (
+            <View style={styles.detailItem}>
+              <Ionicons name="pricetag-outline" size={20} color="#94665B" />
+              <Text style={styles.detailLabel}>Brand</Text>
+              <Text style={styles.detailValue}>{item.brand}</Text>
+            </View>
+          )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Description</Text>
-          <Text style={styles.desc}>{item.description}</Text>
-        </View>
+        {/* Description */}
+        {item.description && (
+          <View style={styles.descSection}>
+            <Text style={styles.descTitle}>Description</Text>
+            <Text style={styles.descText}>{item.description}</Text>
+          </View>
+        )}
 
         {/* Calendar Picker */}
         <View style={styles.section}>
@@ -311,11 +326,34 @@ export default function RentalDetail() {
           </TouchableOpacity>
 
           {startDate && endDate && (
-            <View style={styles.totalSection}>
-              <Text style={styles.totalLabel}>Total Cost</Text>
-              <Text style={styles.totalValue}>
-                ₱{calculateTotal().toLocaleString()}
-              </Text>
+            <View style={styles.paymentDetailsSection}>
+              <Text style={styles.paymentTitle}>Payment Details</Text>
+              
+              <View style={styles.paymentItem}>
+                <Text style={styles.paymentLabel}>Security Deposit (Due Upon Pick Up):</Text>
+                <Text style={styles.paymentValue}>₱{parseFloat(item.deposit_amount || '0').toLocaleString()}</Text>
+              </View>
+              
+              <View style={styles.paymentItem}>
+                <Text style={styles.paymentLabel}>Base Fee:</Text>
+                <Text style={styles.paymentValue}>₱{parseFloat(item.base_rental_fee || '0').toLocaleString()}</Text>
+              </View>
+              
+              <View style={styles.paymentItem}>
+                <Text style={styles.paymentLabel}>
+                  Daily Rate (₱{item.daily_rate} × {getRentalDays()} day{getRentalDays() > 1 ? 's' : ''}):
+                </Text>
+                <Text style={styles.paymentValue}>
+                  ₱{(parseFloat(item.daily_rate || '0') * getRentalDays()).toLocaleString()}
+                </Text>
+              </View>
+              
+              <View style={styles.paymentDivider} />
+              
+              <View style={styles.paymentTotal}>
+                <Text style={styles.paymentTotalLabel}>Total Rental Cost (Due on Return):</Text>
+                <Text style={styles.paymentTotalValue}>₱{calculateTotal().toLocaleString()}</Text>
+              </View>
             </View>
           )}
         </View>
@@ -329,7 +367,7 @@ export default function RentalDetail() {
           <Text style={styles.infoTitle}>Rental Info</Text>
           <Text style={styles.infoText}>• Min: 1 day | Max: 30 days</Text>
           <Text style={styles.infoText}>• Late fee: ₱100/day</Text>
-          <Text style={styles.infoText}>• Deposit: ₱500 (refundable)</Text>
+          <Text style={styles.infoText}>• Deposit: ₱{parseFloat(item.deposit_amount || '0').toLocaleString()} (refundable)</Text>
         </View>
       </View>
 
@@ -398,13 +436,13 @@ export default function RentalDetail() {
           <View style={styles.modalContent}>
             <View style={styles.modalIcon}>
               <Ionicons
-                name="calendar-check-outline"
+                name="calendar-clear-outline"
                 size={48}
                 color="#94665B"
               />
             </View>
             <Text style={styles.modalTitle}>Confirm Rental</Text>
-            <Text style={styles.modalValue}>{item.title}</Text>
+            <Text style={styles.modalValue}>{item.item_name}</Text>
             <Text style={styles.modalValue}>
               {formatDate(startDate)} → {formatDate(endDate)}
             </Text>
@@ -524,6 +562,23 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     marginTop: 4,
   },
+  descSection: {
+    marginTop: 20,
+    backgroundColor: "#F9FAFB",
+    padding: 16,
+    borderRadius: 12,
+  },
+  descTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 8,
+  },
+  descText: {
+    fontSize: 14,
+    color: "#6B7280",
+    lineHeight: 22,
+  },
   section: {
     marginTop: 20,
   },
@@ -606,6 +661,58 @@ const styles = StyleSheet.create({
   },
   totalValue: {
     fontSize: 24,
+    fontWeight: "800",
+    color: "#94665B",
+  },
+  paymentDetailsSection: {
+    marginTop: 16,
+    backgroundColor: "#FDF4F0",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#F3E8DC",
+  },
+  paymentTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 12,
+  },
+  paymentItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  paymentLabel: {
+    fontSize: 14,
+    color: "#6B7280",
+    flex: 1,
+  },
+  paymentValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  paymentDivider: {
+    height: 1,
+    backgroundColor: "#E5E7EB",
+    marginVertical: 12,
+  },
+  paymentTotal: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 8,
+  },
+  paymentTotalLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1F2937",
+    flex: 1,
+  },
+  paymentTotalValue: {
+    fontSize: 20,
     fontWeight: "800",
     color: "#94665B",
   },

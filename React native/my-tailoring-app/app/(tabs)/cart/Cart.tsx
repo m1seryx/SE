@@ -11,30 +11,70 @@ import {
   Image,
   Platform,
   Dimensions,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { cartStore, CartItem } from "../../utils/cartStore";
+import { CartItem } from "../../utils/cartStore";
 import { orderStore } from "../../utils/orderStore";
+import { cartService } from "../../utils/apiService";
 
 const { height } = Dimensions.get("window");
 
 export default function CartScreen() {
   const router = useRouter();
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedItemDetails, setSelectedItemDetails] =
-    useState<CartItem | null>(null);
+    useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  // Fetch cart items from backend
   useEffect(() => {
-    setCartItems(cartStore.getItems());
-    const unsubscribe = cartStore.subscribe(() => {
-      setCartItems(cartStore.getItems());
-    });
-    return () => unsubscribe();
+    fetchCartItems();
   }, []);
+
+  const fetchCartItems = async () => {
+    try {
+      setLoading(true);
+      const response = await cartService.getCart();
+      console.log('Raw cart response from backend:', response);
+      if (response.success) {
+        console.log('Cart items from backend:', response.items);
+        // Transform backend cart items to match frontend CartItem interface
+        const transformedItems = response.items.map((item: any) => {
+          console.log('Processing cart item:', item);
+          console.log('Specific data:', item.specific_data);
+          console.log('Image URL from backend:', item.specific_data?.imageUrl);
+          return ({
+          id: item.cart_id,
+          service: item.service_type,
+          item: item.specific_data?.serviceName || item.service_type || 'Service',
+          description: item.specific_data?.damageDescription || item.specific_data?.specialInstructions || '',
+          price: parseFloat(item.final_price) || 0,
+          icon: "construct-outline",
+          garmentType: item.specific_data?.garmentType || '',
+          damageType: item.specific_data?.damageLevel || item.specific_data?.damageType || '',
+          specialInstructions: item.specific_data?.specialInstructions || '',
+          image: item.specific_data?.imageUrl && item.specific_data?.imageUrl !== 'no-image' ? 
+            (item.specific_data?.imageUrl.startsWith('http') ? 
+              item.specific_data?.imageUrl : 
+              `http://192.168.1.202:5000${item.specific_data?.imageUrl}`) : 
+            '',
+          appointmentDate: item.specific_data?.pickupDate || item.appointment_date || ''
+        })});
+        console.log('Transformed cart items:', transformedItems);
+        setCartItems(transformedItems);
+      }
+    } catch (error) {
+      console.error("Error fetching cart items:", error);
+      Alert.alert("Error", "Failed to load cart items");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const toggleItemSelection = (id: string) => {
     setSelectedItems((prev) =>
@@ -64,51 +104,77 @@ export default function CartScreen() {
     setShowConfirmModal(true);
   };
 
-  const confirmBooking = () => {
-    const selectedCartItems = cartItems.filter((item) =>
-      selectedItems.includes(item.id)
-    );
+  const confirmBooking = async () => {
+    try {
+      // Submit cart to create order
+      const response = await cartService.submitCart();
+      if (response.success) {
+        // Add items to order store for local tracking
+        const selectedCartItems = cartItems.filter((item) =>
+          selectedItems.includes(item.id)
+        );
 
-    selectedCartItems.forEach((item) => {
-      orderStore.addOrder({
-        service: item.service,
-        item: item.item,
-        description: item.description,
-        price: item.price,
-        status: "Pending",
-        estimatedCompletion: new Date(
-          Date.now() + 7 * 24 * 60 * 60 * 1000
-        ).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-        garmentType: item.garmentType,
-        damageType: item.damageType,
-        specialInstructions: item.specialInstructions,
-        clothingBrand: item.clothingBrand,
-        quantity: item.quantity,
-        image: item.image,
-        appointmentDate: item.appointmentDate || "Not specified",
-      });
-    });
+        selectedCartItems.forEach((item) => {
+          orderStore.addOrder({
+            service: item.service,
+            item: item.item,
+            description: item.description,
+            price: item.price,
+            status: "Pending",
+            estimatedCompletion: new Date(
+              Date.now() + 7 * 24 * 60 * 60 * 1000
+            ).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }),
+            garmentType: item.garmentType,
+            damageType: item.damageType,
+            specialInstructions: item.specialInstructions,
+            clothingBrand: item.clothingBrand,
+            quantity: item.quantity,
+            image: item.image,
+            appointmentDate: item.appointmentDate || "Not specified",
+          });
+        });
 
-    selectedItems.forEach((id) => cartStore.removeItem(id));
-    setSelectedItems([]);
+        // Remove items from local cart state
+        setSelectedItems([]);
+        setCartItems(prev => prev.filter(item => !selectedItems.includes(item.id)));
 
-    alert("Appointment booked successfully! Check your order history.");
-    setShowConfirmModal(false);
-    router.push("/home");
+        Alert.alert("Success", "Appointment booked successfully! Check your order history.");
+        setShowConfirmModal(false);
+        router.push("/home");
+      } else {
+        Alert.alert("Error", response.message || "Failed to submit cart");
+      }
+    } catch (error) {
+      console.error("Error submitting cart:", error);
+      Alert.alert("Error", "Failed to submit cart");
+    }
   };
 
-  const showItemDetails = (item: CartItem) => {
+  const showItemDetails = (item: any) => {
+    console.log('Showing item details:', item);
+    console.log('Image URL:', item.image);
     setSelectedItemDetails(item);
     setShowDetailsModal(true);
   };
 
-  const handleRemoveItem = (id: string) => {
-    cartStore.removeItem(id);
-    setSelectedItems((prev) => prev.filter((i) => i !== id));
+  const handleRemoveItem = async (id: string) => {
+    try {
+      const response = await cartService.removeFromCart(id);
+      if (response.success) {
+        setCartItems((prev) => prev.filter((item) => item.id !== id));
+        setSelectedItems((prev) => prev.filter((i) => i !== id));
+        Alert.alert("Success", "Item removed from cart");
+      } else {
+        Alert.alert("Error", response.message || "Failed to remove item");
+      }
+    } catch (error) {
+      console.error("Error removing item:", error);
+      Alert.alert("Error", "Failed to remove item");
+    }
   };
 
   return (
@@ -249,15 +315,11 @@ export default function CartScreen() {
                   ₱{getSelectedTotal().toLocaleString()}
                 </Text>
               </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Service Fee</Text>
-                <Text style={styles.summaryValue}>₱50</Text>
-              </View>
               <View style={styles.divider} />
               <View style={styles.summaryRow}>
                 <Text style={styles.totalLabel}>Total Amount</Text>
                 <Text style={styles.totalValue}>
-                  ₱{(getSelectedTotal() + 50).toLocaleString()}
+                  ₱{getSelectedTotal().toLocaleString()}
                 </Text>
               </View>
             </View>
@@ -284,11 +346,20 @@ export default function CartScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
               {selectedItemDetails && (
                 <>
-                  {selectedItemDetails.image && (
+                  {selectedItemDetails.image && selectedItemDetails.image !== 'no-image' && selectedItemDetails.image.trim() !== '' && !selectedItemDetails.image.includes('no-image') ? (
                     <Image
                       source={{ uri: selectedItemDetails.image }}
                       style={styles.detailsImage}
+                      onError={(error) => {
+                        console.log('Image load error:', error);
+                        console.log('Failed to load image URL:', selectedItemDetails.image);
+                      }}
+                      onLoad={() => console.log('Image loaded successfully:', selectedItemDetails.image)}
                     />
+                  ) : (
+                    <View style={[styles.detailsImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f0f0' }]}> 
+                      <Text style={{ color: '#666' }}>No image available</Text>
+                    </View>
                   )}
 
                   <View style={styles.detailsSection}>
@@ -383,7 +454,7 @@ export default function CartScreen() {
             <View style={styles.modalTotal}>
               <Text style={styles.modalTotalLabel}>Total Amount:</Text>
               <Text style={styles.modalTotalValue}>
-                ₱{(getSelectedTotal() + 50).toLocaleString()}
+                ₱{getSelectedTotal().toLocaleString()}
               </Text>
             </View>
 
@@ -415,9 +486,7 @@ export default function CartScreen() {
             </Text>
             <Text style={styles.checkoutTotal}>
               ₱
-              {(
-                getSelectedTotal() + (selectedItems.length > 0 ? 50 : 0)
-              ).toLocaleString()}
+              {getSelectedTotal().toLocaleString()}
             </Text>
           </View>
           <TouchableOpacity

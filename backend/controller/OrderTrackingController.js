@@ -1,5 +1,6 @@
 const OrderTracking = require('../model/OrderTrackingModel');
 const Order = require('../model/OrderModel');
+const Notification = require('../model/NotificationModel');
 
 // Get all order tracking for a user
 exports.getUserOrderTracking = (req, res) => {
@@ -200,6 +201,25 @@ exports.updateTrackingStatus = (req, res) => {
   const { status, notes } = req.body;
   const orderItemId = req.params.id; // Extract orderItemId from route parameters
 
+  console.log('Received request to update tracking status');
+  console.log('Request params:', req.params);
+  console.log('Request body:', req.body);
+  console.log('Order item ID from params:', orderItemId);
+  console.log('Parsed order item ID type:', typeof orderItemId);
+  console.log('Admin ID:', adminId);
+
+  // Validate that orderItemId is a valid number
+  const orderItemID = parseInt(orderItemId);
+  if (isNaN(orderItemID)) {
+    console.log('Invalid order item ID provided:', orderItemId);
+    return res.status(400).json({
+      success: false,
+      message: "Invalid order item ID provided"
+    });
+  }
+
+  console.log('Updating tracking status for order item:', orderItemID, 'to status:', status);
+
   // Validate status
   if (!status) {
     return res.status(400).json({
@@ -208,17 +228,10 @@ exports.updateTrackingStatus = (req, res) => {
     });
   }
 
-  // Validate orderItemId
-  if (!orderItemId) {
-    return res.status(400).json({
-      success: false,
-      message: "Order item ID is required"
-    });
-  }
-
   // Get order item to validate service type
-  Order.getOrderItemById(orderItemId, (err, orderItem) => {
+  Order.getOrderItemById(orderItemID, (err, orderItem) => {
     if (err) {
+      console.error('Error fetching order item:', err);
       return res.status(500).json({
         success: false,
         message: "Error fetching order item",
@@ -227,15 +240,19 @@ exports.updateTrackingStatus = (req, res) => {
     }
 
     if (!orderItem) {
+      console.log('Order item not found:', orderItemID);
       return res.status(404).json({
         success: false,
         message: "Order item not found"
       });
     }
 
+    console.log('Found order item:', orderItem);
+
     // Get current status to validate transition
-    OrderTracking.getByOrderItemId(orderItemId, (err, currentTracking) => {
+    OrderTracking.getByOrderItemId(orderItemID, (err, currentTracking) => {
       if (err) {
+        console.error('Error fetching current tracking:', err);
         return res.status(500).json({
           success: false,
           message: "Error fetching current tracking",
@@ -246,6 +263,8 @@ exports.updateTrackingStatus = (req, res) => {
       const currentStatus = currentTracking.length > 0 ? currentTracking[0].status : 'pending';
       const nextStatuses = OrderTracking.getNextStatuses(orderItem.service_type, currentStatus);
 
+      console.log('Current status:', currentStatus, 'Next statuses:', nextStatuses);
+
       // Validate status transition
       if (!nextStatuses.includes(status) && currentStatus !== status) {
         return res.status(400).json({
@@ -255,8 +274,9 @@ exports.updateTrackingStatus = (req, res) => {
       }
 
       // Update tracking
-      OrderTracking.updateStatus(orderItemId, status, notes || '', adminId, (err, result) => {
+      OrderTracking.updateStatus(orderItemID, status, notes || '', adminId, (err, result) => {
         if (err) {
+          console.error('Error updating tracking status:', err);
           return res.status(500).json({
             success: false,
             message: "Error updating tracking status",
@@ -264,11 +284,49 @@ exports.updateTrackingStatus = (req, res) => {
           });
         }
 
+        console.log('Tracking status updated successfully for order item:', orderItemID);
+
+        // Get user_id from the order to create notification
+        Order.getById(orderItem.order_id, (orderErr, order) => {
+          if (orderErr) {
+            console.error('Error fetching order:', orderErr);
+          }
+          
+          if (!orderErr && order) {
+            console.log('Found order for notification:', order);
+            const userId = order.user_id;
+            console.log('Creating notification for user:', userId, 'status:', status);
+            
+            // Create notification based on status
+            if (status === 'accepted') {
+              console.log('Creating accepted notification');
+              Notification.createAcceptedNotification(userId, orderItemID, orderItem.service_type, (notifErr) => {
+                if (notifErr) {
+                  console.error('Failed to create accepted notification:', notifErr);
+                } else {
+                  console.log('Accepted notification created successfully');
+                }
+              });
+            } else if (['in_progress', 'ready_to_pickup', 'completed', 'rented', 'returned'].includes(status)) {
+              console.log('Creating status update notification');
+              Notification.createStatusUpdateNotification(userId, orderItemID, status, notes, (notifErr) => {
+                if (notifErr) {
+                  console.error('Failed to create status update notification:', notifErr);
+                } else {
+                  console.log('Status update notification created successfully');
+                }
+              });
+            }
+          } else {
+            console.log('Order not found or error fetching order for order item:', orderItem.order_id);
+          }
+        });
+
         res.json({
           success: true,
           message: "Tracking status updated successfully",
           data: {
-            order_item_id: orderItemId,
+            order_item_id: orderItemID,
             new_status: status,
             status_info: OrderTracking.getStatusInfo(status, orderItem.service_type)
           }
@@ -312,8 +370,15 @@ exports.initializeOrderTracking = (orderItems, callback) => {
 // Get available status transitions for an order item
 exports.getStatusTransitions = (req, res) => {
   const orderItemId = req.params.id;
+  const orderItemID = parseInt(orderItemId);
+  if (isNaN(orderItemID)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid order item ID provided"
+    });
+  }
 
-  Order.getOrderItemById(orderItemId, (err, orderItem) => {
+  Order.getOrderItemById(orderItemID, (err, orderItem) => {
     if (err) {
       return res.status(500).json({
         success: false,
@@ -330,7 +395,7 @@ exports.getStatusTransitions = (req, res) => {
     }
 
     // Get current status
-    OrderTracking.getByOrderItemId(orderItemId, (err, tracking) => {
+    OrderTracking.getByOrderItemId(orderItemID, (err, tracking) => {
       if (err) {
         return res.status(500).json({
           success: false,

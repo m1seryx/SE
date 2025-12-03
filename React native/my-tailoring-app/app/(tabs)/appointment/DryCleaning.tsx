@@ -16,7 +16,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
-import { cartStore } from "../../utils/cartStore";
+import { cartService } from "../../utils/apiService";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get("window");
 
@@ -67,7 +68,7 @@ export default function DryCleaningClothes() {
     return prices[garment] || 200;
   };
 
-  const handleAddService = () => {
+  const handleAddService = async () => {
     if (!selectedItem || !quantity) {
       Alert.alert("Missing Information", "Please fill in all required fields");
       return;
@@ -90,38 +91,87 @@ export default function DryCleaningClothes() {
       description += ` - ${specialInstructions}`;
     }
 
-    const cartItem = {
-      id: Date.now().toString(),
-      service: "Dry Cleaning",
-      item: selectedItem,
-      description: description,
-      price: totalPrice,
-      icon: "water-outline",
-      quantity: qty,
-      garmentType: selectedItem,
-      clothingBrand: clothingBrand,
-      specialInstructions: specialInstructions,
-      image: image || undefined,
-    };
+    try {
+      // Upload image if provided
+      let imageUrl = '';
+      if (image) {
+        try {
+          const formData = new FormData();
+          formData.append('dryCleaningImage', {
+            uri: image,
+            type: 'image/jpeg',
+            name: 'dryclean-image.jpg',
+          } as any);
 
-    cartStore.addItem(cartItem);
+          const token = await AsyncStorage.getItem('userToken');
+          const uploadResponse = await fetch('http://192.168.1.202:5000/api/dry-cleaning/upload-image', {
+            method: 'POST',
+            headers: {
+              'Authorization': token ? `Bearer ${token}` : '',
+            },
+            body: formData,
+          });
 
-    Alert.alert("Success!", "Dry cleaning service added to cart!", [
-      {
-        text: "View Cart",
-        onPress: () => router.push("/(tabs)/cart/Cart"),
-      },
-      {
-        text: "Add More",
-        onPress: () => {
-          setSelectedItem("");
-          setQuantity("");
-          setSpecialInstructions("");
-          setClothingBrand("");
-          setImage(null);
-        },
-      },
-    ]);
+          const uploadResult = await uploadResponse.json();
+          
+          if (uploadResult.success) {
+            imageUrl = uploadResult.data.url || uploadResult.data.filename || '';
+            console.log('Image uploaded successfully, URL:', imageUrl);
+          } else {
+            console.warn('Image upload failed, continuing without image:', uploadResult.message);
+          }
+        } catch (uploadError) {
+          console.error('Image upload failed:', uploadError);
+          Alert.alert('Warning', 'Image upload failed. Continuing without image.');
+        }
+      }
+
+      // Prepare dry cleaning data for backend
+      const dryCleaningData = {
+        serviceType: 'dry_cleaning',
+        serviceId: 3,
+        serviceName: `${selectedItem} Dry Cleaning`,
+        basePrice: unitPrice.toString(),
+        finalPrice: totalPrice.toString(),
+        quantity: qty,
+        specificData: {
+          garmentType: selectedItem,
+          clothingBrand: clothingBrand,
+          specialInstructions: specialInstructions,
+          quantity: qty,
+          imageUrl: imageUrl || 'no-image'
+        }
+      };
+
+      const result = await cartService.addToCart(dryCleaningData);
+      
+      if (result.success) {
+        Alert.alert("Success!", "Dry cleaning service added to cart!", [
+          {
+            text: "View Cart",
+            onPress: () => router.push("/(tabs)/cart/Cart"),
+          },
+          {
+            text: "Add More",
+            onPress: () => {
+              setSelectedItem("");
+              setQuantity("");
+              setSpecialInstructions("");
+              setClothingBrand("");
+              setImage(null);
+            },
+          },
+        ]);
+      } else {
+        throw new Error(result.message || "Failed to add dry cleaning service to cart");
+      }
+    } catch (error: any) {
+      console.error("Add service error:", error);
+      Alert.alert(
+        "Error", 
+        error.message || "Failed to add dry cleaning service. Please try again."
+      );
+    }
   };
 
   return (

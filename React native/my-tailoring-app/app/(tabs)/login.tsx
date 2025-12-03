@@ -8,6 +8,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,12 +20,15 @@ import {
   Poppins_700Bold,
 } from "@expo-google-fonts/poppins";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService } from '@/app/utils/apiService';
 
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -32,6 +36,36 @@ export default function LoginScreen() {
     Poppins_600SemiBold,
     Poppins_700Bold,
   });
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both username and password");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Use email field as username
+      const response = await authService.login(email, password);
+      
+      if (response.token) {
+        // Save token and user data to AsyncStorage
+        await AsyncStorage.setItem('userToken', response.token);
+        await AsyncStorage.setItem('userRole', response.role);
+        await AsyncStorage.setItem('userData', JSON.stringify(response.user));
+        
+        // Navigate to home screen
+        router.replace("/home");
+      } else {
+        Alert.alert("Login Failed", response.message || "Invalid credentials");
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      Alert.alert("Error", error.message || "Failed to connect to server. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!fontsLoaded) {
     return null; // Or a beautiful loader
@@ -81,9 +115,8 @@ export default function LoginScreen() {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="Email address"
+                  placeholder="Username"
                   placeholderTextColor="#94a3b8"
-                  keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
                   value={email}
@@ -121,8 +154,9 @@ export default function LoginScreen() {
               {/* Login Button */}
               <TouchableOpacity
                 style={styles.loginButton}
-                onPress={() => router.replace("/home")}
+                onPress={handleLogin}
                 activeOpacity={0.9}
+                disabled={loading}
               >
                 <LinearGradient
                   colors={["#991b1b", "#7f1d1d", "#6b1414"]}
@@ -130,13 +164,17 @@ export default function LoginScreen() {
                   end={{ x: 1, y: 0 }}
                   style={styles.gradientButton}
                 >
-                  <Text style={styles.loginButtonText}>Login</Text>
-                  <Ionicons
-                    name="arrow-forward"
-                    size={20}
-                    color="#fff"
-                    style={{ marginLeft: 8 }}
-                  />
+                  <Text style={styles.loginButtonText}>
+                    {loading ? "Logging in..." : "Login"}
+                  </Text>
+                  {!loading && (
+                    <Ionicons
+                      name="arrow-forward"
+                      size={20}
+                      color="#fff"
+                      style={{ marginLeft: 8 }}
+                    />
+                  )}
                 </LinearGradient>
               </TouchableOpacity>
 

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -8,11 +9,14 @@ import {
   Dimensions,
   Platform,
   SafeAreaView,
+  ActivityIndicator,
 } from "react-native";
 import { Text } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { rentalService } from "../utils/rentalService";
+import { notificationService } from "../utils/apiService";
 
 const { height, width } = Dimensions.get("window");
 
@@ -39,59 +43,54 @@ const services = [
   },
 ];
 
-const rentals = [
-  {
-    id: "1",
-    title: "Men Suit All in Gray",
-    price: 500,
-    image: require("../../assets/images/graysuit.jpg"),
-  },
-  {
-    id: "2",
-    title: "Classic Black Tuxedo",
-    price: 750,
-    image: require("../../assets/images/blacktuxedo.jpg"),
-  },
-  {
-    id: "3",
-    title: "Royal Blue Coat Set",
-    price: 650,
-    image: require("../../assets/images/royalblue.jpg"),
-  },
-  {
-    id: "4",
-    title: "Elegant Evening Gown",
-    price: 900,
-    image: require("../../assets/images/gown.jpg"),
-  },
-  {
-    id: "5",
-    title: "Barong Tagalog Premium",
-    price: 400,
-    image: require("../../assets/images/barong.jpg"),
-  },
-  {
-    id: "6",
-    title: "Formal Black Dress",
-    price: 700,
-    image: require("../../assets/images/blackdress.jpg"),
-  },
-  {
-    id: "7",
-    title: "Wedding Suit Beige",
-    price: 850,
-    image: require("../../assets/images/beige.jpg"),
-  },
-  {
-    id: "8",
-    title: "Traditional Filipiniana",
-    price: 600,
-    image: require("../../assets/images/filipiniana.jpg"),
-  },
-];
-
 export default function HomeScreen() {
   const router = useRouter();
+  const [rentals, setRentals] = useState<any[]>([]);
+  const [loadingRentals, setLoadingRentals] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch rentals on mount
+  useEffect(() => {
+    fetchRentals();
+    fetchUnreadCount();
+  }, []);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const result = await notificationService.getUnreadCount();
+      if (result.success) {
+        setUnreadCount(result.count || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
+  const fetchRentals = async () => {
+    try {
+      setLoadingRentals(true);
+      const result = await rentalService.getAvailableRentals();
+      
+      if (result.items && result.items.length > 0) {
+        // Show only first 6 items on homepage
+        setRentals(result.items.slice(0, 6));
+      }
+    } catch (err) {
+      console.error('Error fetching rentals:', err);
+    } finally {
+      setLoadingRentals(false);
+    }
+  };
+
+  const getImageSource = (item: any) => {
+    if (item.image_url) {
+      const imageUrl = rentalService.getImageUrl(item.image_url);
+      if (imageUrl) {
+        return { uri: imageUrl };
+      }
+    }
+    return require("../../assets/images/rent.jpg");
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -110,8 +109,18 @@ export default function HomeScreen() {
           </View>
 
           {/* Fixed: Removed the dangerous {" "} after Ionicons */}
-          <TouchableOpacity style={styles.profileIcon}>
+          <TouchableOpacity 
+            style={styles.profileIcon}
+            onPress={() => router.push("/notifications")}
+          >
             <Ionicons name="notifications-outline" size={25} color="black" />
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -176,32 +185,43 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.rentalGrid}>
-          {rentals.map((r) => (
-            <TouchableOpacity
-              key={r.id}
-              style={styles.rentalCard}
-              activeOpacity={0.9}
-              onPress={() => router.push(`/rental/${r.id}`)}
-            >
-              <Image
-                source={r.image}
-                style={styles.rentalImage}
-                resizeMode="cover"
-              />
-              <LinearGradient
-                colors={["transparent", "rgba(0,0,0,0.6)"]}
-                style={styles.rentalOverlay}
-              />
-              <View style={styles.rentalInfo}>
-                <Text style={styles.rentalTitle} numberOfLines={2}>
-                  {r.title}
-                </Text>
-                <Text style={styles.rentalPrice}>₱{r.price}/3days</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {loadingRentals ? (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#991b1b" />
+            <Text style={{ marginTop: 12, color: '#6B7280' }}>Loading rentals...</Text>
+          </View>
+        ) : rentals.length > 0 ? (
+          <View style={styles.rentalGrid}>
+            {rentals.map((r) => (
+              <TouchableOpacity
+                key={r.item_id}
+                style={styles.rentalCard}
+                activeOpacity={0.9}
+                onPress={() => router.push(`/rental/${r.item_id}`)}
+              >
+                <Image
+                  source={getImageSource(r)}
+                  style={styles.rentalImage}
+                  resizeMode="cover"
+                />
+                <LinearGradient
+                  colors={["transparent", "rgba(0,0,0,0.6)"]}
+                  style={styles.rentalOverlay}
+                />
+                <View style={styles.rentalInfo}>
+                  <Text style={styles.rentalTitle} numberOfLines={2}>
+                    {r.item_name}
+                  </Text>
+                  <Text style={styles.rentalPrice}>₱{r.daily_rate}/day</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <Text style={{ color: '#9CA3AF' }}>No rentals available</Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* Bottom Navigation */}
@@ -256,7 +276,24 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   greetingRow: { flexDirection: "row", alignItems: "center", flex: 1 },
-  profileIcon: { padding: 4 },
+  profileIcon: { padding: 4, position: "relative" },
+  badge: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    backgroundColor: "#EF4444",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "700",
+  },
   heroContainer: {
     margin: 20,
     height: height * 0.26,

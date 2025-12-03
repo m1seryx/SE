@@ -1,5 +1,5 @@
 // app/(tabs)/rental/index.tsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -8,73 +8,86 @@ import {
   ScrollView,
   Platform,
   Dimensions,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { Text } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { rentalService } from "../../utils/rentalService";
 
 const { width } = Dimensions.get("window");
 
-const rentals = [
-  {
-    id: "1",
-    title: "Men Suit All in Gray",
-    price: 500,
-    image: require("../../../assets/images/graysuit.jpg"),
-  },
-  {
-    id: "2",
-    title: "Classic Black Tuxedo",
-    price: 750,
-    image: require("../../../assets/images/blacktuxedo.jpg"),
-  },
-  {
-    id: "3",
-    title: "Royal Blue Coat Set",
-    price: 650,
-    image: require("../../../assets/images/royalblue.jpg"),
-  },
-  {
-    id: "4",
-    title: "Elegant Evening Gown",
-    price: 900,
-    image: require("../../../assets/images/gown.jpg"),
-  },
-  {
-    id: "5",
-    title: "Barong Tagalog Premium",
-    price: 400,
-    image: require("../../../assets/images/barong.jpg"),
-  },
-  {
-    id: "6",
-    title: "Formal Black Dress",
-    price: 700,
-    image: require("../../../assets/images/blackdress.jpg"),
-  },
-  {
-    id: "7",
-    title: "Wedding Suit Beige",
-    price: 850,
-    image: require("../../../assets/images/beige.jpg"),
-  },
-  {
-    id: "8",
-    title: "Traditional Filipiniana",
-    price: 600,
-    image: require("../../../assets/images/filipiniana.jpg"),
-  },
-];
-
 export default function RentalLanding() {
   const router = useRouter();
+  const [rentals, setRentals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+
+  // Fetch rentals on mount
+  useEffect(() => {
+    fetchRentals();
+  }, []);
+
+  const fetchRentals = async (isRefreshing = false) => {
+    try {
+      if (isRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError('');
+      
+      const result = await rentalService.getAvailableRentals();
+      console.log('Rentals fetched:', result);
+      
+      if (result.items && result.items.length > 0) {
+        setRentals(result.items);
+      } else {
+        setError('No rental items available');
+      }
+    } catch (err) {
+      console.error('Error fetching rentals:', err);
+      setError('Failed to load rental items');
+    } finally {
+      if (isRefreshing) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
+    }
+  };
+
+  const onRefresh = () => {
+    fetchRentals(true);
+  };
+
+  const getImageSource = (item: any) => {
+    if (item.image_url) {
+      const imageUrl = rentalService.getImageUrl(item.image_url);
+      if (imageUrl) {
+        return { uri: imageUrl };
+      }
+    }
+    // Fallback to placeholder
+    return require("../../../assets/images/rent.jpg");
+  };
 
   return (
     <>
       <ScrollView
         style={styles.container}
         contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#94665B"]}
+            tintColor="#94665B"
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -109,33 +122,54 @@ export default function RentalLanding() {
           <Text style={styles.sectionTitle}>Available Rentals</Text>
         </View>
 
-        {/* Rental Grid - EXACT SAME STYLE AS HOME SCREEN */}
-        <View style={styles.rentalGrid}>
-          {rentals.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.rentalCard}
-              activeOpacity={0.9}
-              onPress={() => router.push(`/rental/${item.id}`)}
-            >
-              <Image
-                source={item.image}
-                style={styles.rentalImage}
-                resizeMode="cover"
-              />
-              <LinearGradient
-                colors={["transparent", "rgba(0,0,0,0.6)"]}
-                style={styles.rentalOverlay}
-              />
-              <View style={styles.rentalInfo}>
-                <Text style={styles.rentalTitle} numberOfLines={2}>
-                  {item.title}
-                </Text>
-                <Text style={styles.rentalPrice}>₱{item.price}/day</Text>
-              </View>
+        {/* Loading State */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#94665B" />
+            <Text style={styles.loadingText}>Loading rentals...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={60} color="#EF4444" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => fetchRentals()}>
+              <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
-          ))}
-        </View>
+          </View>
+        ) : rentals.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="shirt-outline" size={60} color="#D1D5DB" />
+            <Text style={styles.emptyText}>No rentals available</Text>
+          </View>
+        ) : (
+          /* Rental Grid */
+          <View style={styles.rentalGrid}>
+            {rentals.map((item) => (
+              <TouchableOpacity
+                key={item.item_id}
+                style={styles.rentalCard}
+                activeOpacity={0.9}
+                onPress={() => router.push(`/rental/${item.item_id}`)}
+              >
+                <Image
+                  source={getImageSource(item)}
+                  style={styles.rentalImage}
+                  resizeMode="cover"
+                />
+                <LinearGradient
+                  colors={["transparent", "rgba(0,0,0,0.6)"]}
+                  style={styles.rentalOverlay}
+                />
+                <View style={styles.rentalInfo}>
+                  <Text style={styles.rentalTitle} numberOfLines={2}>
+                    {item.item_name}
+                  </Text>
+                  <Text style={styles.rentalPrice}>₱{item.daily_rate}/day</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
       {/* Bottom Navigation */}
@@ -278,6 +312,50 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#fbbf24", // Golden color exactly like Home
     marginTop: 4,
+  },
+
+  loadingContainer: {
+    padding: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#6B7280",
+  },
+  errorContainer: {
+    padding: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#EF4444",
+    textAlign: "center",
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: "#94665B",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#9CA3AF",
   },
 
   bottomNav: {

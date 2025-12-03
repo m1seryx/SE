@@ -404,6 +404,34 @@ const Order = {
         return callback(err);
       }
 
+      // Get order item details to find user_id for notification
+      const getOrderSql = `
+        SELECT oi.*, o.user_id 
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.order_id
+        WHERE oi.item_id = ?
+      `;
+      
+      db.query(getOrderSql, [itemId], (orderErr, orderResults) => {
+        if (!orderErr && orderResults && orderResults.length > 0) {
+          const orderItem = orderResults[0];
+          const userId = orderItem.user_id;
+          const Notification = require('./NotificationModel');
+          
+          // Create notification when price is updated and status is price_confirmation
+          if (finalPrice !== undefined && approvalStatus === 'price_confirmation') {
+            Notification.createPriceConfirmationNotification(userId, itemId, finalPrice, (notifErr) => {
+              if (notifErr) console.error('Failed to create price confirmation notification:', notifErr);
+            });
+          }
+        }
+
+        // Continue with existing tracking logic
+        continueWithTracking();
+      });
+
+      function continueWithTracking() {
+
       // If approval status was updated, also update the order_tracking table
       if (approvalStatus !== undefined) {
         console.log("Approval status was updated, syncing to tracking table...");
@@ -430,8 +458,9 @@ const Order = {
         console.log("Approval status:", approvalStatus);
         console.log("Tracking status:", trackingStatus);
 
-        // First check if tracking entry exists
+        
         OrderTracking.getByOrderItemId(itemId, (err, existingTracking) => {
+        
           if (err) {
             console.error("Error checking existing tracking:", err);
             callback(null, result);
@@ -468,6 +497,7 @@ const Order = {
         // No status update needed, return main result
         callback(null, result);
       }
+      } // End of continueWithTracking
     });
   }
 };
