@@ -539,7 +539,7 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <View style={styles.orderCards}>
-              {orders.flatMap((order: any) => 
+              {orders?.flatMap((order: any) => 
                 order.items.map((item: any) => {
                   const estimatedPrice = getEstimatedPrice(item.specific_data, item.service_type);
                   const priceChanged = hasPriceChanged(item.specific_data, parseFloat(item.final_price), item.service_type);

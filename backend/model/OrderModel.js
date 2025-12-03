@@ -424,6 +424,41 @@ const Order = {
               if (notifErr) console.error('Failed to create price confirmation notification:', notifErr);
             });
           }
+          
+          // Create notification when order is accepted
+          if (approvalStatus === 'accepted') {
+            Notification.createAcceptedNotification(userId, itemId, orderItem.service_type, (notifErr) => {
+              if (notifErr) console.error('Failed to create accepted notification:', notifErr);
+            });
+          }
+
+          // Create generic status update notifications for in-progress / ready / completed states
+          const statusNotificationStatuses = [
+            'confirmed',
+            'in_progress',
+            'ready_for_pickup',
+            'ready_to_pickup',
+            'completed'
+          ];
+
+          if (approvalStatus && statusNotificationStatuses.includes(approvalStatus)) {
+            // Map admin status to notification status key
+            const statusForNotification =
+              approvalStatus === 'confirmed' ? 'in_progress' :
+              approvalStatus === 'ready_for_pickup' ? 'ready_to_pickup' :
+              approvalStatus === 'ready_to_pickup' ? 'ready_to_pickup' :
+              approvalStatus;
+
+            Notification.createStatusUpdateNotification(
+              userId,
+              itemId,
+              statusForNotification,
+              null,
+              (notifErr) => {
+                if (notifErr) console.error('Failed to create status update notification:', notifErr);
+              }
+            );
+          }
         }
 
         // Continue with existing tracking logic
@@ -615,61 +650,125 @@ Order.updateRentalOrderItem = (itemId, updateData, callback) => {
       return callback(err);
     }
 
-    // If approval status was updated, also update the order_tracking table
-    if (approvalStatus !== undefined) {
-      console.log("Approval status was updated, syncing to tracking table...");
-      const OrderTracking = require('./OrderTrackingModel');
-
-      // Map approval_status to tracking status for rental
-      const statusMap = {
-        'pending': 'pending',
-        'ready_to_pickup': 'ready_to_pickup',
-        'ready_for_pickup': 'ready_to_pickup',
-        'picked_up': 'picked_up',
-        'rented': 'rented',
-        'returned': 'returned',
-        'completed': 'completed',
-        'cancelled': 'cancelled'
-      };
-
-      const trackingStatus = statusMap[approvalStatus] || 'pending';
-      const notes = getRentalStatusNote(approvalStatus);
-
-      console.log("Syncing to tracking table:", itemId, "from", approvalStatus, "to", trackingStatus);
-
-      OrderTracking.getByOrderItemId(itemId, (err, existingTracking) => {
-        if (err) {
-          console.error("Error checking existing tracking:", err);
-          callback(null, result);
-          return;
-        }
-
-        console.log("Existing tracking:", existingTracking);
-
-        if (existingTracking && existingTracking.length > 0) {
-          console.log("Updating existing tracking entry...");
-          OrderTracking.updateStatus(itemId, trackingStatus, notes, null, (trackingErr, trackingResult) => {
-            if (trackingErr) {
-              console.error("Failed to update tracking table:", trackingErr);
-            } else {
-              console.log("Successfully updated tracking table:", trackingResult);
-            }
-            callback(null, result);
-          });
-        } else {
-          console.log("Creating new tracking entry...");
-          OrderTracking.addTracking(itemId, trackingStatus, notes, null, (trackingErr, trackingResult) => {
-            if (trackingErr) {
-              console.error("Failed to create tracking entry:", trackingErr);
-            } else {
-              console.log("Successfully created tracking entry");
-            }
-            callback(null, result);
+    // Get order item details to find user_id for notification
+    const getOrderSql = `
+      SELECT oi.*, o.user_id 
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.order_id
+      WHERE oi.item_id = ?
+    `;
+    
+    db.query(getOrderSql, [itemId], (orderErr, orderResults) => {
+      if (!orderErr && orderResults && orderResults.length > 0) {
+        const orderItem = orderResults[0];
+        const userId = orderItem.user_id;
+        const Notification = require('./NotificationModel');
+        
+        // Create notification when price is updated and status is price_confirmation
+        if (finalPrice !== undefined && approvalStatus === 'price_confirmation') {
+          Notification.createPriceConfirmationNotification(userId, itemId, finalPrice, (notifErr) => {
+            if (notifErr) console.error('Failed to create price confirmation notification:', notifErr);
           });
         }
-      });
-    } else {
-      callback(null, result);
+        
+        // Create notification when order is accepted
+        if (approvalStatus === 'accepted') {
+          Notification.createAcceptedNotification(userId, itemId, orderItem.service_type, (notifErr) => {
+            if (notifErr) console.error('Failed to create accepted notification:', notifErr);
+          });
+        }
+
+        // Create generic status update notifications for rental statuses
+        const statusNotificationStatuses = [
+          'confirmed',
+          'in_progress',
+          'ready_for_pickup',
+          'ready_to_pickup',
+          'rented',
+          'returned',
+          'completed'
+        ];
+
+        if (approvalStatus && statusNotificationStatuses.includes(approvalStatus)) {
+          const statusForNotification =
+            approvalStatus === 'confirmed' ? 'in_progress' :
+            approvalStatus === 'ready_for_pickup' ? 'ready_to_pickup' :
+            approvalStatus === 'ready_to_pickup' ? 'ready_to_pickup' :
+            approvalStatus;
+
+          Notification.createStatusUpdateNotification(
+            userId,
+            itemId,
+            statusForNotification,
+            null,
+            (notifErr) => {
+              if (notifErr) console.error('Failed to create status update notification:', notifErr);
+            }
+          );
+        }
+      }
+
+      // Continue with existing tracking logic
+      continueWithTracking();
+    });
+
+    function continueWithTracking() {
+      // If approval status was updated, also update the order_tracking table
+      if (approvalStatus !== undefined) {
+        console.log("Approval status was updated, syncing to tracking table...");
+        const OrderTracking = require('./OrderTrackingModel');
+
+        // Map approval_status to tracking status for rental
+        const statusMap = {
+          'pending': 'pending',
+          'ready_to_pickup': 'ready_to_pickup',
+          'ready_for_pickup': 'ready_to_pickup',
+          'picked_up': 'picked_up',
+          'rented': 'rented',
+          'returned': 'returned',
+          'completed': 'completed',
+          'cancelled': 'cancelled'
+        };
+
+        const trackingStatus = statusMap[approvalStatus] || 'pending';
+        const notes = getRentalStatusNote(approvalStatus);
+
+        console.log("Syncing to tracking table:", itemId, "from", approvalStatus, "to", trackingStatus);
+
+        OrderTracking.getByOrderItemId(itemId, (err, existingTracking) => {
+          if (err) {
+            console.error("Error checking existing tracking:", err);
+            callback(null, result);
+            return;
+          }
+
+          console.log("Existing tracking:", existingTracking);
+
+          if (existingTracking && existingTracking.length > 0) {
+            console.log("Updating existing tracking entry...");
+            OrderTracking.updateStatus(itemId, trackingStatus, notes, null, (trackingErr, trackingResult) => {
+              if (trackingErr) {
+                console.error("Failed to update tracking table:", trackingErr);
+              } else {
+                console.log("Successfully updated tracking table:", trackingResult);
+              }
+              callback(null, result);
+            });
+          } else {
+            console.log("Creating new tracking entry...");
+            OrderTracking.addTracking(itemId, trackingStatus, notes, null, (trackingErr, trackingResult) => {
+              if (trackingErr) {
+                console.error("Failed to create tracking entry:", trackingErr);
+              } else {
+                console.log("Successfully created tracking entry");
+              }
+              callback(null, result);
+            });
+          }
+        });
+      } else {
+        callback(null, result);
+      }
     }
   });
 };

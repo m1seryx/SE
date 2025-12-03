@@ -15,7 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
-import { notificationService } from "./utils/apiService";
+import { notificationService } from "../utils/apiService";
 
 interface Notification {
   notification_id: number;
