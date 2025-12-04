@@ -1,10 +1,8 @@
-// app/utils/apiService.ts
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// API base URL - adjust this to match your backend server
-// For Android emulator, use 10.0.2.2 instead of localhost
-// For iOS simulator or physical device, use your computer's IP address
-const API_BASE_URL = 'http://192.168.1.202:5000/api'; // Replace YOUR_ACTUAL_IP_ADDRESS with your laptop's IP
+
+const API_BASE_URL = 'http://192.168.1.202:5000/api'; 
 
 // Helper function to decode JWT token
 const decodeToken = (token: string) => {

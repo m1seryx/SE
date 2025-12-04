@@ -1,10 +1,10 @@
 const multer = require('multer');
 const path = require('path');
 
-// Storage configuration
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Determine upload folder based on file type or route
+ 
     let uploadPath = 'uploads/';
     
     if (req.originalUrl && req.originalUrl.includes('/rentals')) {
@@ -26,9 +26,9 @@ const storage = multer.diskStorage({
   }
 });
 
-// File filter
+
 const fileFilter = (req, file, cb) => {
-  // Allow only image files
+
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
@@ -36,12 +36,12 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Upload configurations
+
 const uploadSingle = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 5 * 1024 * 1024 
   }
 });
 
@@ -49,12 +49,12 @@ const uploadMultiple = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB per file
-    files: 5 // Maximum 5 files
+    fileSize: 5 * 1024 * 1024,
+    files: 5 
   }
 });
 
-// Error handling middleware
+
 const handleUploadError = (error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {

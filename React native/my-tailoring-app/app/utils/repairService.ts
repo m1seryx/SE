@@ -6,7 +6,7 @@ import apiCall from './apiService';
 export const uploadRepairImage = async (formData: FormData) => {
   const token = await AsyncStorage.getItem('userToken');
   
-  const response = await fetch('http://192.168.1.202:5000/api/repair/upload-image', {
+  const response = await fetch('http://192.168.254.107:5000/api/repair/upload-image', {
     method: 'POST',
     headers: {
       'Authorization': token ? `Bearer ${token}` : '',

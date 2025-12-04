@@ -89,7 +89,7 @@ export async function addDryCleaningToCart(dryCleaningData) {
       }
     };
 
-    // Import and use the existing addToCart function
+   
     const { addToCart } = await import('./CartApi');
     return await addToCart(cartItem);
   } catch (error) {
@@ -101,7 +101,7 @@ export async function addDryCleaningToCart(dryCleaningData) {
   }
 }
 
-// Search dry cleaning services
+
 export async function searchDryCleaningServices(query) {
   try {
     const response = await axios.get(`${BASE_URL}/dry-cleaning/search?q=${encodeURIComponent(query)}`, {
@@ -120,7 +120,7 @@ export async function searchDryCleaningServices(query) {
   }
 }
 
-// Get price estimate for dry cleaning
+
 export async function getDryCleaningPriceEstimate(serviceId, quantity) {
   try {
     const response = await axios.get(`${BASE_URL}/dry-cleaning/estimate/${serviceId}?quantity=${quantity}`, {

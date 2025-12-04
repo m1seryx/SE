@@ -2,7 +2,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // API base URL - adjust this to match your backend server
-const API_BASE_URL = 'http://192.168.1.202:5000/api';
+const API_BASE_URL = 'http://192.168.254.107:5000/api';
 
 // Helper function to get auth headers
 const getAuthHeaders = async () => {
