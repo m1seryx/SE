@@ -40,6 +40,11 @@ router.get('/rental/orders', orderController.getRentalOrders);
 router.get('/rental/orders/status/:status', orderController.getRentalOrdersByStatus);
 router.put('/rental/items/:id', orderController.updateRentalOrderItem);
 
+// Customization specific routes (admin only)
+router.get('/customization/orders', orderController.getCustomizationOrders);
+router.get('/customization/orders/status/:status', orderController.getCustomizationOrdersByStatus);
+router.put('/customization/items/:id', orderController.updateCustomizationOrderItem);
+
 // Price confirmation routes (user only)
 router.post('/:itemId/accept-price', orderPriceController.acceptPrice);
 router.post('/:itemId/decline-price', orderPriceController.declinePrice);

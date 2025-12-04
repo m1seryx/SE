@@ -670,6 +670,132 @@ exports.updateRentalOrderItem = (req, res) => {
   });
 };
 
+// Get all customization orders (admin only)
+exports.getCustomizationOrders = (req, res) => {
+  // Only admins can view all customization orders
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: "Access denied. Admin only."
+    });
+  }
+
+  Order.getCustomizationOrders((err, results) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+        error: err
+      });
+    }
+
+    // Parse JSON fields for each item
+    const orders = results.map(item => ({
+      ...item,
+      pricing_factors: JSON.parse(item.pricing_factors || '{}'),
+      specific_data: JSON.parse(item.specific_data || '{}')
+    }));
+
+    res.json({
+      success: true,
+      message: "Customization orders retrieved successfully",
+      orders: orders
+    });
+  });
+};
+
+// Get customization orders by status (admin only)
+exports.getCustomizationOrdersByStatus = (req, res) => {
+  const { status } = req.params;
+
+  if (!status) {
+    return res.status(400).json({
+      success: false,
+      message: "Status is required"
+    });
+  }
+
+  // Only admins can view customization orders by status
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: "Access denied. Admin only."
+    });
+  }
+
+  Order.getCustomizationOrdersByStatus(status, (err, results) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+        error: err
+      });
+    }
+
+    // Parse JSON fields for each item
+    const orders = results.map(item => ({
+      ...item,
+      pricing_factors: JSON.parse(item.pricing_factors || '{}'),
+      specific_data: JSON.parse(item.specific_data || '{}')
+    }));
+
+    res.json({
+      success: true,
+      message: `Customization orders with status '${status}' retrieved successfully`,
+      orders: orders
+    });
+  });
+};
+
+// Update customization order item (admin only)
+exports.updateCustomizationOrderItem = (req, res) => {
+  const itemId = req.params.id;
+  const { finalPrice, approvalStatus, adminNotes } = req.body;
+
+  // Only admins can update customization order items
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: "Access denied. Admin only."
+    });
+  }
+
+  const updateData = {
+    finalPrice: finalPrice || undefined,
+    approvalStatus: approvalStatus || undefined,
+    adminNotes: adminNotes || undefined
+  };
+
+  // Remove undefined values
+  Object.keys(updateData).forEach(key => {
+    if (updateData[key] === undefined) {
+      delete updateData[key];
+    }
+  });
+
+  if (Object.keys(updateData).length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "At least one field to update is required"
+    });
+  }
+
+  Order.updateCustomizationOrderItem(itemId, updateData, (err, result) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Error updating customization order item",
+        error: err
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Customization order item updated successfully"
+    });
+  });
+};
+
 // Get order item details by item ID
 exports.getOrderItemDetails = (req, res) => {
   const itemId = req.params.itemId;

@@ -196,7 +196,7 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
     <div className="cart-overlay">
       <div className="cart-container">
         <div className="cart-header">
-          <h2>Shopping Cart</h2>
+          <h2>Service Cart</h2>
           <button className="cart-close-btn" onClick={onClose}>×</button>
         </div>
 
@@ -222,6 +222,9 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                       <h4>{getServiceTypeDisplay(item.service_type)}</h4>
                       <p>Service ID: {item.service_id}</p>
                       <p>Base Price: {formatPrice(item.base_price)}</p>
+                      
+                      {/* Debug: Log item data */}
+                      {console.log('Cart item:', item)}
                       
                       {/* Show estimated price for repair and dry cleaning, final price for others */}
                       {(item.service_type === 'repair' || item.service_type === 'dry_cleaning') ? (
@@ -275,6 +278,65 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                                 }}
                               />
                               <small>Clothing photo uploaded</small>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Debug: Log customization data */}
+                      {item.service_type === 'customization' && console.log('Customization item data:', item.specific_data)}
+                      
+                      {/* Show customization details */}
+                      {item.service_type === 'customize' && item.specific_data && (
+                        <div className="customization-details">
+                          <p>Service Name: {item.specific_data.serviceName || 'Customization Service'}</p>
+                          <p>Style Complexity: {item.specific_data.styleComplexity || 'N/A'}</p>
+                          <p>Garment: {item.specific_data.garmentType || item.specific_data.clothingType || 'N/A'}</p>
+                          <p>Details: {item.specific_data.customizationDetails || 'N/A'}</p>
+                          <p>Pickup Date: {item.specific_data.pickupDate || 'N/A'}</p>
+                          
+                          {/* Show 2D customization details if available */}
+                          {(item.specific_data.clothingType || item.specific_data.variantId || item.specific_data.fabricType) && (
+                            <>
+                              <p>Clothing Type: {item.specific_data.clothingType || 'N/A'}</p>
+                              <p>Variant: {item.specific_data.variantId || 'N/A'}</p>
+                              <p>Gender: {item.specific_data.gender || 'N/A'}</p>
+                              <p>Fabric: {item.specific_data.fabricType || 'N/A'}</p>
+                              <p>Pattern: {item.specific_data.patternType || 'N/A'}</p>
+                              {item.specific_data.colorValue && item.specific_data.colorValue !== '#000000' && (
+                                <p>Color: <span style={{backgroundColor: item.specific_data.colorValue, padding: '2px 8px', borderRadius: '4px', color: '#fff'}}>{item.specific_data.colorValue}</span></p>
+                              )}
+                              <p>Fit: {item.specific_data.clothingFit || 'N/A'}</p>
+                            </>
+                          )}
+                          
+                          {/* Show customization photo if available */}
+                          {item.specific_data.imageUrl && item.specific_data.imageUrl !== 'no-image' && (
+                            <div className="cart-item-image">
+                              <img 
+                                src={`http://localhost:5000${item.specific_data.imageUrl}`} 
+                                alt="Customization preview" 
+                                className="cart-damage-photo"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                              <small>Reference image uploaded</small>
+                            </div>
+                          )}
+                          
+                          {/* Show AI preview if available */}
+                          {item.specific_data.aiImageUrl && item.specific_data.aiImageUrl !== '' && (
+                            <div className="cart-item-image">
+                              <img 
+                                src={item.specific_data.aiImageUrl} 
+                                alt="AI customization preview" 
+                                className="cart-damage-photo"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                              <small>AI preview generated</small>
                             </div>
                           )}
                         </div>

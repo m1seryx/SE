@@ -18,6 +18,7 @@ import RentalClothes from './components/RentalClothes';
 import Cart from './components/Cart';
 import RepairFormModal from './components/RepairFormModal';
 import DryCleaningFormModal from './components/DryCleaningFormModal';
+import CustomizationFormModal from './components/CustomizationFormModal';
 import OrderDetailsModal from './OrderDetailsModal';
 
 const UserHomePage = ({ userName, setIsLoggedIn }) => {
@@ -29,6 +30,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [repairFormModalOpen, setRepairFormModalOpen] = useState(false);
   const [dryCleaningFormModalOpen, setDryCleaningFormModalOpen] = useState(false);
+  const [customizationFormModalOpen, setCustomizationFormModalOpen] = useState(false);
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointments, setAppointments] = useState(() => {
     try {
@@ -165,7 +167,12 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
       return;
     }
     
-  
+    if (type === 'Customize') {
+      setServiceModalOpen(false);
+      setCustomizationFormModalOpen(true);
+      return;
+    }
+    
     setCartItems((prev) => {
       const id = 'ORD-' + String(prev.length + 1).padStart(4, '0');
       const newItem = {
@@ -242,7 +249,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
           <a href="#Repair">Repair</a>
           <a href="#DryCleaning">Dry Cleaning</a>
         </nav>
-        <a href="#About">About</a>
+       
         <button className="notif-button" onClick={() => setNotificationsOpen(true)} aria-label="Notifications">
           <svg width="24" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3a6 6 0 0 1 6 6v4l2 2H4l2-2V9a6 6 0 0 1 6-6z" stroke="#8B4513" strokeWidth="2" fill="none"/><circle cx="12" cy="20" r="2" fill="#8B4513"/></svg>
           {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
@@ -251,10 +258,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 6h14l-2 9H8L6 6z" stroke="#8B4513" strokeWidth="2" fill="none"/><circle cx="9" cy="20" r="2" fill="#8B4513"/><circle cx="17" cy="20" r="2" fill="#8B4513"/></svg>
           {cartItems.length > 0 && <span className="cart-badge">{cartItems.length}</span>}
         </button>
-        <div className="user-info">
-          <span className="welcome-text">Welcome back,</span>
-          <span className="user-name">{user.name}</span>
-        </div>
+        -
         <div className="profile-dropdown">
           <img
             src={user.avatar}
@@ -596,6 +600,13 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
       <DryCleaningFormModal 
         isOpen={dryCleaningFormModalOpen} 
         onClose={() => setDryCleaningFormModalOpen(false)}
+        onCartUpdate={handleCartUpdate}
+      />
+
+      {/* Customization Form Modal Component */}
+      <CustomizationFormModal 
+        isOpen={customizationFormModalOpen} 
+        onClose={() => setCustomizationFormModalOpen(false)}
         onCartUpdate={handleCartUpdate}
       />
 

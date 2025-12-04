@@ -2,7 +2,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
-const API_BASE_URL = 'http://192.168.1.202:5000/api'; 
+const API_BASE_URL = 'http://192.168.1.38:5000/api'; 
 
 // Helper function to decode JWT token
 const decodeToken = (token: string) => {

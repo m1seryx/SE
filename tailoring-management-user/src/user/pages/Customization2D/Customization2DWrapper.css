@@ -1,0 +1,119 @@
+.customization-2d-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.customization-2d-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f8f8f8;
+}
+
+.customization-2d-header h2 {
+  margin: 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0.5rem;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.customization-2d-content {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+}
+
+/* Import the original 2dtryy styles */
+@import url('./src/styles/CustomizationPage.css');
+@import url('./src/styles/ReviewPage.css');
+
+/* Override any conflicting styles */
+.customization-page {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.controls-panel-custom {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.preview-panel {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.btn-next, .btn-back, .btn-back-review, .btn-confirm {
+  background-color: #6A3C3E;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.btn-next:hover, .btn-confirm:hover {
+  background-color: #5a3234;
+}
+
+.btn-back:hover, .btn-back-review:hover {
+  background-color: #e0e0e0;
+}
+
+.generate-btn {
+  background-color: #6A3C3E;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.generate-btn:hover {
+  background-color: #5a3234;
+}
+
+.download-btn {
+  background-color: #f0f0f0;
+  color: #333;
+  border: 1px solid #ddd;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.download-btn:hover {
+  background-color: #e0e0e0;
+}

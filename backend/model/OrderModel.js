@@ -556,6 +556,65 @@ function getStatusNote(approvalStatus) {
   return notesMap[approvalStatus] || 'Status updated';
 }
 
+// Get customization orders specifically
+Order.getCustomizationOrders = (callback) => {
+  const sql = `
+    SELECT 
+      oi.*,
+      o.order_id,
+      o.user_id,
+      o.status as order_status,
+      o.notes as order_notes,
+      u.first_name,
+      u.last_name,
+      u.email,
+      u.phone_number,
+      DATE_FORMAT(o.order_date, '%Y-%m-%d %H:%i:%s') as order_date,
+      DATE_FORMAT(oi.appointment_date, '%Y-%m-%d %H:%i:%s') as appointment_date,
+      DATE_FORMAT(oi.rental_start_date, '%Y-%m-%d') as rental_start_date,
+      DATE_FORMAT(oi.rental_end_date, '%Y-%m-%d') as rental_end_date
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.order_id
+    JOIN user u ON o.user_id = u.user_id
+    WHERE oi.service_type = 'customization'
+    ORDER BY o.order_date DESC
+  `;
+  db.query(sql, callback);
+};
+
+// Get customization orders by status
+Order.getCustomizationOrdersByStatus = (status, callback) => {
+  const sql = `
+    SELECT 
+      oi.*,
+      o.order_id,
+      o.user_id,
+      o.status as order_status,
+      o.notes as order_notes,
+      u.first_name,
+      u.last_name,
+      u.email,
+      u.phone_number,
+      DATE_FORMAT(o.order_date, '%Y-%m-%d %H:%i:%s') as order_date,
+      DATE_FORMAT(oi.appointment_date, '%Y-%m-%d %H:%i:%s') as appointment_date,
+      DATE_FORMAT(oi.rental_start_date, '%Y-%m-%d') as rental_start_date,
+      DATE_FORMAT(oi.rental_end_date, '%Y-%m-%d') as rental_end_date
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.order_id
+    JOIN user u ON o.user_id = u.user_id
+    WHERE oi.service_type = 'customization' 
+    AND (o.status = ? OR oi.approval_status = ?)
+    ORDER BY o.order_date DESC
+  `;
+  db.query(sql, [status, status], callback);
+};
+
+// Update customization order item price and status (Reuse logic but specific method for clarity)
+Order.updateCustomizationOrderItem = (itemId, updateData, callback) => {
+  // This reuses the same logic as repair since the underlying table structure is the same
+  Order.updateRepairOrderItem(itemId, updateData, callback);
+};
+
 // Get rental orders specifically
 Order.getRentalOrders = (callback) => {
   const sql = `

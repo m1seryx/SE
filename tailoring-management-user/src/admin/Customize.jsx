@@ -1,124 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../adminStyle/customize.css';
 import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
+import { getCustomizationOrders, updateCustomizationOrderItem } from '../api/CustomizationApi';
 
 const Customize = () => {
-  // Initial pending appointments (from customer requests)
-  const initialAppointments = [
-    {
-      id: 1,
-      uniqueNo: "C223111",
-      name: "Juan Dela Cruz",
-      garment: "Suit",
-      date: "2024-11-25",
-      price: 1200,
-      isPending: true,
-      measurements: {
-        chest: "",
-        waist: "",
-        hips: "",
-        shoulders: "",
-        sleeves: "",
-        length: ""
-      }
-    },
-    {
-      id: 2,
-      uniqueNo: "C223112",
-      name: "Ana Garcia",
-      garment: "Wedding Dress",
-      date: "2024-11-26",
-      price: 2500,
-      isPending: true,
-      measurements: {
-        chest: "",
-        waist: "",
-        hips: "",
-        shoulders: "",
-        sleeves: "",
-        length: ""
-      }
-    }
-  ];
-
-  // Initial accepted orders
-  const initialOrders = [
-    {
-      id: 3,
-      uniqueNo: "C223111",
-      name: "Maria Santos",
-      garment: "Barong",
-      date: "2024-11-20",
-      price: 900,
-      status: "In Progress",
-      isPending: false,
-      measurements: {
-        chest: "38",
-        waist: "32",
-        hips: "40",
-        shoulders: "16",
-        sleeves: "24",
-        length: "30"
-      }
-    },
-    {
-      id: 4,
-      uniqueNo: "C244222",
-      name: "Ben Santos",
-      garment: "Wedding Gown",
-      date: "2024-11-18",
-      price: 1800,
-      status: "To Pick up",
-      isPending: false,
-      measurements: {
-        chest: "36",
-        waist: "28",
-        hips: "38",
-        shoulders: "15",
-        sleeves: "22",
-        length: "58"
-      }
-    },
-    {
-      id: 5,
-      uniqueNo: "C244333",
-      name: "Sofia Santos",
-      garment: "Dress",
-      date: "2024-11-15",
-      price: 800,
-      status: "Completed",
-      isPending: false,
-      measurements: {
-        chest: "34",
-        waist: "26",
-        hips: "36",
-        shoulders: "14",
-        sleeves: "20",
-        length: "40"
-      }
-    },
-    {
-      id: 6,
-      uniqueNo: "C244444",
-      name: "Carlos Santos",
-      garment: "Barong",
-      date: "2024-11-10",
-      price: 1200,
-      status: "Overdue",
-      isPending: false,
-      measurements: {
-        chest: "40",
-        waist: "34",
-        hips: "42",
-        shoulders: "17",
-        sleeves: "25",
-        length: "32"
-      }
-    }
-  ];
-
-  const [allItems, setAllItems] = useState([...initialAppointments, ...initialOrders]);
+  const [allItems, setAllItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [viewFilter, setViewFilter] = useState("all");
@@ -126,6 +15,59 @@ const Customize = () => {
   const [editMode, setEditMode] = useState(false);
   const [editedOrder, setEditedOrder] = useState(null);
   const [messageModal, setMessageModal] = useState({ open: false, orderId: null, message: "" });
+
+  // Fetch customization orders
+  useEffect(() => {
+    fetchCustomizationOrders();
+  }, []);
+
+  const fetchCustomizationOrders = async () => {
+    try {
+      setLoading(true);
+      const result = await getCustomizationOrders();
+      
+      if (result.success) {
+        // Transform the data to match the existing structure
+        const transformedItems = result.orders.map(order => {
+          // Extract specific data from the order
+          const specificData = order.specific_data || {};
+          
+          return {
+            id: order.item_id,
+            uniqueNo: `C${String(order.item_id).padStart(6, '0')}`,
+            name: `${order.first_name} ${order.last_name}`,
+            garment: specificData.garmentType || specificData.serviceName || 'Customization',
+            date: order.appointment_date ? new Date(order.appointment_date).toISOString().split('T')[0] : new Date(order.order_date).toISOString().split('T')[0],
+            price: parseFloat(order.final_price) || 0,
+            isPending: order.approval_status === 'pending' || order.approval_status === 'pending_review',
+            status: order.approval_status === 'pending' || order.approval_status === 'pending_review' ? 'Pending' : 
+                   order.approval_status === 'accepted' ? 'In Progress' :
+                   order.approval_status === 'in_progress' ? 'In Progress' :
+                   order.approval_status === 'ready_for_pickup' || order.approval_status === 'ready_to_pickup' ? 'To Pick up' :
+                   order.approval_status === 'completed' ? 'Completed' :
+                   order.approval_status === 'cancelled' ? 'Cancelled' : 'Pending',
+            measurements: {
+              chest: specificData.chest || '',
+              waist: specificData.waist || '',
+              hips: specificData.hips || '',
+              shoulders: specificData.shoulders || '',
+              sleeves: specificData.sleeves || '',
+              length: specificData.length || ''
+            }
+          };
+        });
+        
+        setAllItems(transformedItems);
+      } else {
+        setError(result.message || 'Failed to fetch customization orders');
+      }
+    } catch (err) {
+      setError('Failed to fetch customization orders');
+      console.error('Error fetching customization orders:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Get pending appointments
   const pendingAppointments = allItems.filter(item => item.isPending);
@@ -171,13 +113,32 @@ const Customize = () => {
   const filteredItems = getFilteredItems();
 
   // Accept appointment
-  const handleAccept = (id) => {
-    setAllItems(allItems.map(item => 
-      item.id === id 
-        ? { ...item, isPending: false, status: "In Progress", uniqueNo: item.uniqueNo.replace('A', 'C') }
-        : item
-    ));
-    alert(`Appointment accepted and converted to order!`);
+  const handleAccept = async (id) => {
+    try {
+      // Find the item in our local state
+      const item = allItems.find(i => i.id === id);
+      if (!item) return;
+      
+      // Update the order status via API
+      const result = await updateCustomizationOrderItem(id, {
+        approvalStatus: 'accepted'
+      });
+      
+      if (result.success) {
+        // Update local state
+        setAllItems(allItems.map(item => 
+          item.id === id 
+            ? { ...item, isPending: false, status: "In Progress", uniqueNo: item.uniqueNo.replace('A', 'C') }
+            : item
+        ));
+        alert(`Appointment accepted and converted to order!`);
+      } else {
+        alert(`Error accepting appointment: ${result.message}`);
+      }
+    } catch (err) {
+      console.error('Error accepting appointment:', err);
+      alert('Failed to accept appointment');
+    }
   };
 
   // Decline appointment
@@ -189,13 +150,39 @@ const Customize = () => {
   };
 
   // Update status for accepted orders
-  const updateStatus = (orderId, newStatus) => {
-    setAllItems(allItems.map(item => 
-      item.id === orderId ? { ...item, status: newStatus } : item
-    ));
-    const item = allItems.find(o => o.id === orderId);
-    if (item) {
-      alert(`Order ${item.uniqueNo} status updated to ${newStatus}!`);
+  const updateStatus = async (orderId, newStatus) => {
+    try {
+      // Map UI status to backend status
+      const statusMap = {
+        'In Progress': 'in_progress',
+        'To Pick up': 'ready_to_pickup',
+        'Completed': 'completed',
+        'Overdue': 'overdue',
+        'Cancelled': 'cancelled'
+      };
+      
+      const backendStatus = statusMap[newStatus] || newStatus.toLowerCase();
+      
+      // Update the order status via API
+      const result = await updateCustomizationOrderItem(orderId, {
+        approvalStatus: backendStatus
+      });
+      
+      if (result.success) {
+        // Update local state
+        setAllItems(allItems.map(item => 
+          item.id === orderId ? { ...item, status: newStatus } : item
+        ));
+        const item = allItems.find(o => o.id === orderId);
+        if (item) {
+          alert(`Order ${item.uniqueNo} status updated to ${newStatus}!`);
+        }
+      } else {
+        alert(`Error updating status: ${result.message}`);
+      }
+    } catch (err) {
+      console.error('Error updating status:', err);
+      alert('Failed to update status');
     }
   };
 
@@ -279,6 +266,33 @@ const Customize = () => {
           </div>
           <div className="add-rep">Add Customize +</div>
         </div>
+        
+        {/* Loading and Error States */}
+        {loading && (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <p>Loading customization orders...</p>
+          </div>
+        )}
+        
+        {error && (
+          <div style={{ textAlign: 'center', padding: '20px', color: 'red' }}>
+            <p>Error: {error}</p>
+            <button 
+              onClick={fetchCustomizationOrders}
+              style={{
+                padding: '10px 20px',
+                background: '#6A3C3E',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="stats-grid">

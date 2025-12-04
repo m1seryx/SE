@@ -1,0 +1,128 @@
+/* ===== GLOBAL STYLES ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--c-ink);
+  background: linear-gradient(180deg, var(--c-ivory) 0%, var(--c-soft) 100%);
+  line-height: 1.6;
+}
+
+/* ===== APP WRAPPER ===== */
+.app-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* ===== APP HEADER ===== */
+.app-header {
+  background: linear-gradient(135deg, rgba(50,45,41,0.98) 0%, rgba(114,59,61,0.95) 100%);
+  color: var(--c-ivory);
+  padding: 0;
+  box-shadow: 0 6px 18px rgba(50,45,41,0.12);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 18px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 40px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.logo-icon {
+  font-size: 2.5rem;
+  color: var(--c-ivory);
+}
+
+.logo h1 {
+  font-size: 2rem;
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--c-ivory);
+}
+
+.nav-links {
+  display: flex;
+  gap: 20px;
+}
+
+.nav-btn {
+  background: transparent;
+  color: var(--c-ivory);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.22s ease;
+}
+
+.nav-btn:hover {
+  background: rgba(255,255,255,0.06);
+  transform: translateY(-2px);
+}
+
+.nav-btn.active {
+  background: linear-gradient(90deg, var(--c-accent), var(--c-warm));
+  color: var(--c-ivory);
+  border-color: transparent;
+  box-shadow: 0 6px 18px rgba(114,59,61,0.12);
+}
+
+/* ===== APP MAIN ===== */
+.app-main {
+  flex: 1;
+  width: 100%;
+  min-height: calc(100vh - 80px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .header-container {
+    padding: 15px 20px;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .logo {
+    width: 100%;
+  }
+
+  .logo h1 {
+    font-size: 1.5rem;
+  }
+
+  .nav-links {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .nav-btn {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+  }
+}
+
+

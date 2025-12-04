@@ -17,6 +17,9 @@ const Cart = {
 
   // Add item to cart
   addToCart: (userId, serviceType, serviceId, quantity, basePrice, finalPrice, pricingFactors, specificData, rentalDates, callback) => {
+    // Debug: Log parameters
+    console.log('Cart model addToCart params:', { userId, serviceType, serviceId, quantity, basePrice, finalPrice });
+    
     const sql = `
       INSERT INTO cart (
         user_id, service_type, service_id, quantity, base_price, final_price,

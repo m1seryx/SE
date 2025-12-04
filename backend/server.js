@@ -10,6 +10,8 @@ app.use(cors({
   origin: [
     'http://localhost:5173', 
     'http://localhost:5174', 
+    'http://localhost:5175',
+    'http://localhost:5176', 
     'http://localhost:3000',
     'http://localhost:19006', // Expo React Native
     'http://127.0.0.1:19006', // Expo alternative
@@ -40,6 +42,7 @@ const billingRoutes = require('./routes/BillingRoutes');
 const inventoryRoutes = require('./routes/InventoryRoutes');
 const adminDashboardRoutes = require('./routes/AdminDashboardRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const customizationRoutes = require('./routes/CustomizationRoutes');
 
 app.use('/api', authRoutes);
 app.use('/api/rentals', rentalRoutes);
@@ -53,6 +56,7 @@ app.use('/api/billing', billingRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/admin', adminDashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/customization', customizationRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5000;
