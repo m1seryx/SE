@@ -50,7 +50,7 @@ const OrderTracking = {
         oi.pricing_factors,
         DATE_FORMAT(oi.rental_start_date, '%Y-%m-%d') as rental_start_date,
         DATE_FORMAT(oi.rental_end_date, '%Y-%m-%d') as rental_end_date,
-        DATEDIFF(oi.rental_end_date, oi.rental_start_date) as rental_period,
+        COALESCE(oi.duration_days, DATEDIFF(oi.rental_end_date, oi.rental_start_date)) as rental_period,
         COALESCE(
           (SELECT ot.status 
            FROM order_tracking ot 

@@ -72,7 +72,8 @@ exports.addToCart = (req, res) => {
     finalPrice, 
     pricingFactors, 
     specificData,
-    rentalDates 
+    rentalDates,
+    durationDays // Added durationDays parameter
   } = req.body;
 
   if (!serviceType || !serviceId) {
@@ -235,7 +236,29 @@ exports.getCartSummary = (req, res) => {
 // Submit cart as order
 exports.submitCart = (req, res) => {
   const userId = req.user.id;
-  const { notes } = req.body;
+  const { notes, appointmentDate } = req.body;
+
+  // Validate appointment date if provided
+  if (appointmentDate) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(appointmentDate)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid appointment date format. Use YYYY-MM-DD" 
+      });
+    }
+    
+    const selectedDate = new Date(appointmentDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Appointment date cannot be in the past" 
+      });
+    }
+  }
 
   // Get cart items
   Cart.getCartItemsForOrder(userId, (err, cartItems) => {
@@ -254,13 +277,22 @@ exports.submitCart = (req, res) => {
       });
     }
 
+    // Add appointment date to each cart item if not already present
+    const updatedCartItems = cartItems.map(item => {
+      // Only add appointment date if the item doesn't already have one
+      if (!item.appointment_date && appointmentDate) {
+        return { ...item, appointment_date: appointmentDate };
+      }
+      return item;
+    });
+
     // Calculate total price
-    const totalPrice = cartItems.reduce((total, item) => {
+    const totalPrice = updatedCartItems.reduce((total, item) => {
       return total + (parseFloat(item.final_price) * (item.quantity || 1));
     }, 0);
 
     // Create order from cart
-    Order.createFromCart(userId, cartItems, totalPrice.toString(), notes, (err, orderResult) => {
+    Order.createFromCart(userId, updatedCartItems, totalPrice.toString(), notes, (err, orderResult) => {
       if (err) {
         return res.status(500).json({ 
           success: false, 

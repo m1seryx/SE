@@ -20,16 +20,32 @@ const Cart = {
     // Debug: Log parameters
     console.log('Cart model addToCart params:', { userId, serviceType, serviceId, quantity, basePrice, finalPrice });
     
+    // Modified to use duration_days instead of rental_start_date and rental_end_date
     const sql = `
       INSERT INTO cart (
         user_id, service_type, service_id, quantity, base_price, final_price,
-        rental_start_date, rental_end_date, pricing_factors, specific_data, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        duration_days, pricing_factors, specific_data, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     `;
+    
+    // Extract duration from either rentalDates or pricingFactors for backward compatibility
+    let durationDays = null;
+    if (rentalDates && typeof rentalDates === 'object' && rentalDates.startDate && rentalDates.endDate) {
+      // Calculate duration from start and end dates for backward compatibility
+      const startDate = new Date(rentalDates.startDate);
+      const endDate = new Date(rentalDates.endDate);
+      durationDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+    } else if (pricingFactors && pricingFactors.days) {
+      // Use duration from pricing factors
+      durationDays = pricingFactors.days;
+    } else if (specificData && specificData.duration_days) {
+      // Use duration from specific data
+      durationDays = specificData.duration_days;
+    }
     
     const values = [
       userId, serviceType, serviceId, quantity || 1, basePrice, finalPrice,
-      rentalDates?.startDate, rentalDates?.endDate, 
+      durationDays, // Store duration days instead of start/end dates
       JSON.stringify(pricingFactors || {}), JSON.stringify(specificData || {})
     ];
     
@@ -54,13 +70,21 @@ const Cart = {
       setClauses.push("appointment_date = ?");
       values.push(updates.appointment_date);
     }
-    if (updates.rental_start_date !== undefined) {
-      setClauses.push("rental_start_date = ?");
-      values.push(updates.rental_start_date);
+    // Updated to use duration_days instead of rental_start_date and rental_end_date
+    if (updates.duration_days !== undefined) {
+      setClauses.push("duration_days = ?");
+      values.push(updates.duration_days);
     }
-    if (updates.rental_end_date !== undefined) {
-      setClauses.push("rental_end_date = ?");
-      values.push(updates.rental_end_date);
+    // Kept for backward compatibility
+    if (updates.rental_start_date !== undefined || updates.rental_end_date !== undefined) {
+      // Convert dates to duration if both are provided
+      if (updates.rental_start_date !== undefined && updates.rental_end_date !== undefined) {
+        const startDate = new Date(updates.rental_start_date);
+        const endDate = new Date(updates.rental_end_date);
+        const durationDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+        setClauses.push("duration_days = ?");
+        values.push(durationDays);
+      }
     }
     if (updates.pricing_factors !== undefined) {
       setClauses.push("pricing_factors = ?");
@@ -122,8 +146,7 @@ const Cart = {
         base_price,
         final_price,
         appointment_date,
-        rental_start_date,
-        rental_end_date,
+        duration_days,  -- Changed from rental_start_date and rental_end_date
         pricing_factors,
         specific_data
       FROM cart 

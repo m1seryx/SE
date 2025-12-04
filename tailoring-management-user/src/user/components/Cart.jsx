@@ -18,6 +18,7 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
   const [summary, setSummary] = useState({ itemCount: 0, totalAmount: 0 });
   const [submitting, setSubmitting] = useState(false);
   const [orderNotes, setOrderNotes] = useState('');
+  const [appointmentDate, setAppointmentDate] = useState(''); // Added appointment date state
 
   // Load cart when component opens
   useEffect(() => {
@@ -117,6 +118,12 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
       return;
     }
 
+    // Check if appointment date is required and not set
+    if (!appointmentDate) {
+      setError('Please select an appointment date');
+      return;
+    }
+
     if (!window.confirm('Are you sure you want to submit this order?')) {
       return;
     }
@@ -125,12 +132,14 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
     setError('');
     
     try {
-      const result = await submitCart(orderNotes);
+      // Pass appointment date along with order notes
+      const result = await submitCart(orderNotes, appointmentDate);
       if (result.success) {
         setSuccess('Order submitted successfully!');
         setCartItems([]);
         setSummary({ itemCount: 0, totalAmount: 0 });
         setOrderNotes('');
+        setAppointmentDate(''); // Reset appointment date
         if (onCartUpdate) onCartUpdate();
         
         // Close cart after successful submission
@@ -163,6 +172,8 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
         setSuccess('Cart cleared successfully');
         setCartItems([]);
         setSummary({ itemCount: 0, totalAmount: 0 });
+        setOrderNotes('');
+        setAppointmentDate(''); // Reset appointment date
         if (onCartUpdate) onCartUpdate();
       } else {
         setError(result.message || 'Error clearing cart');
@@ -346,7 +357,15 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                         <p>Appointment: {new Date(item.appointment_date).toLocaleDateString()}</p>
                       )}
                       
-                      {item.rental_start_date && item.rental_end_date && (
+                      {/* Updated to show duration instead of date range */}
+                      {item.duration_days && (
+                        <p>
+                          Rental Duration: {item.duration_days} day{item.duration_days !== 1 ? 's' : ''}
+                        </p>
+                      )}
+                      
+                      {/* Fallback for backward compatibility with start/end dates */}
+                      {!item.duration_days && item.rental_start_date && item.rental_end_date && (
                         <p>
                           Rental: {new Date(item.rental_start_date).toLocaleDateString()} - {' '}
                           {new Date(item.rental_end_date).toLocaleDateString()}
@@ -383,6 +402,17 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                 <div className="cart-summary-row">
                   <span>Items ({summary.itemCount}):</span>
                   <span>{formatPrice(summary.totalAmount)}</span>
+                </div>
+                
+                {/* Appointment Date Selection */}
+                <div className="cart-appointment-date">
+                  <label>Select Appointment Date:</label>
+                  <input
+                    type="date"
+                    value={appointmentDate}
+                    onChange={(e) => setAppointmentDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                  />
                 </div>
                 
                 <div className="cart-notes">

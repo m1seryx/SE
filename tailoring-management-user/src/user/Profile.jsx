@@ -236,8 +236,11 @@ const Profile = () => {
             <div className="detail-row">
               <span className="detail-label">Rental Period:</span>
               <span className="detail-value">
-                {specific_data.rental_start_date ? new Date(specific_data.rental_start_date).toLocaleDateString() : 'N/A'} to {' '}
-                {specific_data.rental_end_date ? new Date(specific_data.rental_end_date).toLocaleDateString() : 'N/A'}
+                {specific_data.duration_days 
+                  ? `${specific_data.duration_days} day${specific_data.duration_days !== 1 ? 's' : ''} rental`
+                  : (specific_data.rental_start_date && specific_data.rental_end_date
+                    ? `${new Date(specific_data.rental_start_date).toLocaleDateString()} to ${new Date(specific_data.rental_end_date).toLocaleDateString()}`
+                    : 'N/A')}
               </span>
             </div>
             {specific_data.notes && (

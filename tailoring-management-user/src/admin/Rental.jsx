@@ -588,9 +588,11 @@ function Rental() {
               <div className="detail-row">
                 <strong>Rental Period:</strong>
                 <span>
-                  {selectedRental.rental_start_date && selectedRental.rental_end_date
-                    ? `${selectedRental.rental_start_date} to ${selectedRental.rental_end_date}`
-                    : 'N/A'}
+                  {selectedRental.duration_days 
+                    ? `${selectedRental.duration_days} day${selectedRental.duration_days !== 1 ? 's' : ''} rental`
+                    : (selectedRental.rental_start_date && selectedRental.rental_end_date
+                      ? `${selectedRental.rental_start_date} to ${selectedRental.rental_end_date}`
+                      : 'N/A')}
                 </span>
               </div>
               <div className="detail-row">
