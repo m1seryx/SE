@@ -6,13 +6,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  Platform,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   useFonts,
-  Poppins_300Light,
+  Poppins_300Light_Italic,
   Poppins_400Regular,
   Poppins_500Medium,
   Poppins_600SemiBold,
@@ -20,91 +20,82 @@ import {
 } from "@expo-google-fonts/poppins";
 import { Ionicons } from "@expo/vector-icons";
 
-const { height, width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 export default function LandingScreen() {
   const router = useRouter();
 
   const [fontsLoaded] = useFonts({
-    Poppins_300Light,
+    Poppins_300Light_Italic,
     Poppins_400Regular,
     Poppins_500Medium,
     Poppins_600SemiBold,
     Poppins_700Bold,
   });
 
-  if (!fontsLoaded) {
-    return null;
-  }
+  if (!fontsLoaded) return null;
 
   return (
     <ImageBackground
       source={require("../../assets/images/tailorbackground.jpg")}
       style={styles.background}
       resizeMode="cover"
-      blurRadius={3}
+      blurRadius={1.2} // Reduced blur → image now beautifully visible
     >
+      {/* Lighter, elegant overlay so background shines through */}
       <LinearGradient
         colors={[
-          "rgba(15, 23, 42, 0.97)",
-          "rgba(30, 41, 59, 0.92)",
-          "rgba(51, 65, 85, 0.98)",
+          "rgba(15, 23, 42, 0.78)",
+          "rgba(30, 41, 59, 0.68)",
+          "rgba(51, 65, 85, 0.82)",
         ]}
-        style={styles.overlay}
-      >
-        {/* Main Content */}
-        <View style={styles.container}>
-          {/* Logo + Brand */}
-          <View style={styles.header}>
-            <View style={styles.logoCircle}>
-              <Ionicons name="cut-outline" size={48} color="#fbbf24" />
-            </View>
-            <Text style={styles.brandName}>D’Jackmans</Text>
-            <Text style={styles.brandSubtitle}>Tailor Deluxe</Text>
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      <View style={styles.container}>
+        {/* Logo + Centered Brand Name */}
+        <View style={styles.header}>
+          <View style={styles.logoCircle}>
+            <Image
+              source={require("../../assets/images/logo.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
           </View>
 
-          {/* Hero Text */}
-          <View style={styles.hero}>
-            <Text style={styles.title}>Exquisite Craftsmanship</Text>
-            <Text style={styles.subtitle}>
-              Your perfect fit awaits — tailored with precision, worn with
-              pride.
-            </Text>
-          </View>
-
-          {/* Luxury Maroon Button */}
-          <TouchableOpacity
-            style={styles.buttonContainer}
-            onPress={() => router.replace("/login")}
-            activeOpacity={0.9}
-          >
-            <LinearGradient
-              colors={["#991b1b", "#7f1d1d", "#6b1414"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.gradientButton}
-            >
-              <Text style={styles.buttonText}>Get Started!</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* Subtle tagline */}
-          <Text style={styles.footerText}>Precision tailoring since 1987</Text>
+          <Text style={styles.brandName}>
+            Welcome to Jackmans Tailor Deluxe!
+          </Text>
         </View>
-      </LinearGradient>
+
+        {/* Hero Subtitle */}
+        <View style={styles.hero}>
+          <Text style={styles.subtitle}>Your perfect fit awaits</Text>
+        </View>
+
+        {/* Luxury Button */}
+        <TouchableOpacity
+          style={styles.buttonContainer}
+          onPress={() => router.replace("/login")}
+          activeOpacity={0.9}
+        >
+          <LinearGradient
+            colors={["#A0522D", "#8B4513", "#6B3A0A"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.gradientButton}
+          >
+            <Text style={styles.buttonText}>Get Started</Text>
+            <Ionicons name="arrow-forward" size={22} color="#FFFFFF" />
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
-  overlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  background: { flex: 1 },
   container: {
     flex: 1,
     justifyContent: "center",
@@ -112,104 +103,98 @@ const styles = StyleSheet.create({
     paddingHorizontal: width * 0.08,
   },
 
-  // Logo Section
   header: {
     alignItems: "center",
-    marginBottom: height * 0.06,
+    marginBottom: height * 0.07,
   },
   logoCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: "rgba(251, 191, 36, 0.18)",
+    width: 100,
+    height: 100,
+    borderRadius: 70,
+    backgroundColor: "rgba(251, 191, 36, 0.15)",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 4,
-    borderColor: "rgba(251, 191, 36, 0.35)",
-    marginBottom: 20,
+    borderWidth: 5,
+    borderColor: "rgba(251, 191, 36, 0.4)",
+    marginBottom: 28,
     shadowColor: "#fbbf24",
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 15,
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    elevation: 25,
   },
-  brandName: {
-    fontFamily: "Poppins_700Bold",
-    fontSize: width * 0.095,
-    color: "#fbbf24",
-    letterSpacing: 2,
-    textShadowColor: "rgba(251, 191, 36, 0.4)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 10,
-  },
-  brandSubtitle: {
-    fontFamily: "Poppins_500Medium",
-    fontSize: width * 0.05,
-    color: "#e2e8f0",
-    letterSpacing: 4,
-    marginTop: 4,
+  logo: {
+    width: 100,
+    height: 100,
   },
 
-  // Hero Text
+  brandName: {
+    fontFamily: "Poppins_700Bold",
+    fontSize: 20,
+    color: "white",
+    letterSpacing: 2,
+    textAlign: "center",
+    textShadowColor: "rgba(251, 191, 36, 0.4)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 12,
+  },
+  brandSubtitle: {
+    fontFamily: "Poppins_300Light_Italic",
+    fontSize: width * 0.068,
+    color: "#e2e8f0",
+    letterSpacing: 5,
+    marginTop: 8,
+    textAlign: "center",
+    opacity: 0.95,
+  },
+
   hero: {
     alignItems: "center",
     marginBottom: height * 0.08,
-    paddingHorizontal: width * 0.06,
-  },
-  title: {
-    fontFamily: "Poppins_700Bold",
-    fontSize: width * 0.09,
-    color: "#ffffff",
-    textAlign: "center",
-    lineHeight: width * 0.11,
-    marginBottom: 16,
-    textShadowColor: "rgba(0, 0, 0, 0.6)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
+    paddingHorizontal: width * 0.1,
   },
   subtitle: {
     fontFamily: "Poppins_400Regular",
-    fontSize: width * 0.045,
+    fontSize: 18,
     color: "#cbd5e1",
     textAlign: "center",
-    lineHeight: width * 0.065,
-    paddingHorizontal: width * 0.05,
+    lineHeight: 30,
+    paddingHorizontal: width * 0.06,
+    opacity: 0.92,
+    fontStyle: "italic",
   },
 
-  // Maroon Luxury Button
   buttonContainer: {
-    width: "85%",
-    maxWidth: 360,
-    borderRadius: 20,
-    overflow: "hidden",
     marginBottom: height * 0.06,
-    shadowColor: "#991b1b",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 18,
+    borderRadius: 70,
+    overflow: "hidden",
+    shadowColor: "#D4AF37",
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.7,
+    shadowRadius: 40,
+    elevation: 40,
   },
   gradientButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 15,
-    borderWidth: 1.5,
-    borderColor: "rgba(153, 27, 27, 0.4)",
+    paddingVertical: 22,
+    paddingHorizontal: 50,
+    gap: 16,
   },
   buttonText: {
-    fontFamily: "Poppins_600SemiBold",
-    fontSize: 15,
-    color: "#ffffff",
-    letterSpacing: 1,
-    padding: 10,
+    fontFamily: "Poppins_700Bold",
+    fontSize: 19,
+    color: "#FFFFFF",
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
   },
 
-  // Footer
   footerText: {
-    fontFamily: "Poppins_300Light",
-    fontSize: 13,
+    fontFamily: "Poppins_300Light_Italic",
+    fontSize: 14,
     color: "#94a3b8",
-    letterSpacing: 2,
-    marginTop: 10,
+    letterSpacing: 2.5,
+    textAlign: "center",
+    opacity: 0.9,
   },
 });

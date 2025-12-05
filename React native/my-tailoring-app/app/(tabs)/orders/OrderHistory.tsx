@@ -168,13 +168,12 @@ export default function OrderHistoryScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity
+          onPress={() => router.replace("../UserProfile/profile")}
+        >
           <Ionicons name="arrow-back" size={26} color="#1F2937" />
         </TouchableOpacity>
         <Text style={styles.title}>Order History</Text>
-        <TouchableOpacity>
-          <Ionicons name="search-outline" size={26} color="#1F2937" />
-        </TouchableOpacity>
       </View>
 
       {/* Stats Row */}
@@ -308,7 +307,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     backgroundColor: "#fff",
   },
-  title: { fontSize: 22, fontWeight: "700", color: "#1F2937" },
+  title: { fontSize: 22, fontWeight: "700", color: "#1F2937", margin: "auto" },
 
   statsRow: { paddingLeft: 20, marginVertical: 16 },
   statCard: {
@@ -323,20 +322,38 @@ const styles = StyleSheet.create({
   statBig: { fontSize: 32, fontWeight: "800", marginVertical: 4 },
   statLabel: { fontSize: 13, color: "#4B5563" },
 
-  filterRow: { paddingLeft: 20, marginBottom: 20 },
+  filterRow: {
+    paddingLeft: width * 0.05,
+    paddingBottom: 16,
+  },
+
   filterTab: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     borderRadius: 30,
-    marginRight: 10,
-    borderWidth: 1,
+    marginRight: 12,
+    borderWidth: 1.5,
     borderColor: "#E5E7EB",
+    minHeight: 44,
   },
-  activeTab: { backgroundColor: "#94665B", borderColor: "#94665B" },
-  filterText: { fontSize: 14, fontWeight: "600", color: "#4B5563" },
+
+  activeTab: {
+    backgroundColor: "#94665B",
+    borderColor: "#94665B",
+  },
+
+  filterText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#4B5563", // default (inactive)
+  },
+
+  activeFilterText: {
+    color: "#FFFFFF", // ← THIS IS THE MISSING PIECE
+  },
   activeText: { color: "#fff" },
   badge: {
     backgroundColor: "#F3F4F6",
