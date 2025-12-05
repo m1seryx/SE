@@ -2,7 +2,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
-const API_BASE_URL = 'http://192.168.1.202:5000/api'; 
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.1.202:5000/api';
+const REQUEST_TIMEOUT = parseInt(process.env.EXPO_PUBLIC_REQUEST_TIMEOUT || '10000', 10);
 
 // Helper function to decode JWT token
 const decodeToken = (token: string) => {
@@ -47,26 +48,39 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
 
     console.log('API Call:', url, config);
     
-    const response = await fetch(url, config);
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
     
-    console.log('API Response Status:', response.status);
-    console.log('API Response Headers:', [...response.headers.entries()]);
-    
-    if (!response.ok) {
-      let errorData;
-      try {
-        errorData = await response.json();
-        console.log('API Error Data:', errorData);
-      } catch (jsonError) {
-        console.log('API Response Text:', await response.text());
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    try {
+      const response = await fetch(url, { ...config, signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      console.log('API Response Status:', response.status);
+      console.log('API Response Headers:', [...response.headers.entries()]);
+      
+      if (!response.ok) {
+        let errorData;
+        try {
+          errorData = await response.json();
+          console.log('API Error Data:', errorData);
+        } catch (jsonError) {
+          console.log('API Response Text:', await response.text());
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
       }
-      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      
+      const result = await response.json();
+      console.log('API Success Result:', result);
+      return result;
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        throw new Error(`Request timeout after ${REQUEST_TIMEOUT}ms. Please check your network connection and ensure the backend server is running at ${API_BASE_URL}`);
+      }
+      throw fetchError;
     }
-    
-    const result = await response.json();
-    console.log('API Success Result:', result);
-    return result;
   } catch (error) {
     console.error('API call error:', error);
     throw error;

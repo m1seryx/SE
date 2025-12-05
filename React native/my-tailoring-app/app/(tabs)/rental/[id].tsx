@@ -15,8 +15,8 @@ import { Text } from "react-native-paper";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Calendar } from "react-native-calendars";
-import { rentalService } from "../../utils/rentalService";
-import { cartService } from "../../utils/apiService";
+import { rentalService } from "../../../utils/rentalService";
+import { cartService } from "../../../utils/apiService";
 
 export default function RentalDetail() {
   const router = useRouter();

@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { orderStore, Order } from "../../utils/orderStore";
+import { orderStore, Order } from "../../../utils/orderStore";
 
 const { width } = Dimensions.get("window");
 

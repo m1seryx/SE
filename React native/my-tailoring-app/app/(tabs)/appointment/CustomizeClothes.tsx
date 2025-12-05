@@ -8,11 +8,13 @@ import {
   Image,
   ScrollView,
   Dimensions,
-SafeAreaView,} from "react-native";
+  SafeAreaView,
+  Alert,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { cartService } from "../../utils/apiService";
+import { cartService } from "../../../utils/apiService";
 
 const { width, height } = Dimensions.get("window");
 

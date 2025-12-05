@@ -20,8 +20,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
-import { orderStore, Order } from "../../utils/orderStore";
-import { authService, orderTrackingService, notificationService } from "../../utils/apiService";
+import { orderStore, Order } from "../../../utils/orderStore";
+import { authService, orderTrackingService, notificationService } from "../../../utils/apiService";
 
 const { width, height } = Dimensions.get("window");
 

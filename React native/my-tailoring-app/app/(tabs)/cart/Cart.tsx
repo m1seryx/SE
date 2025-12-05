@@ -15,9 +15,9 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { CartItem } from "../../utils/cartStore";
-import { orderStore } from "../../utils/orderStore";
-import { cartService } from "../../utils/apiService";
+import { CartItem } from "../../../utils/cartStore";
+import { orderStore } from "../../../utils/orderStore";
+import { cartService } from "../../../utils/apiService";
 
 const { height } = Dimensions.get("window");
 

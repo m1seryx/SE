@@ -2,19 +2,31 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiCall from './apiService';
 
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.254.103:5000/api';
+const REQUEST_TIMEOUT = parseInt(process.env.EXPO_PUBLIC_REQUEST_TIMEOUT || '10000', 10);
+
 // Upload repair image
 export const uploadRepairImage = async (formData: FormData) => {
   const token = await AsyncStorage.getItem('userToken');
   
-  const response = await fetch('http://192.168.254.107:5000/api/repair/upload-image', {
-    method: 'POST',
-    headers: {
-      'Authorization': token ? `Bearer ${token}` : '',
-    },
-    body: formData,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
   
-  return response;
+  try {
+    const response = await fetch(`${API_BASE_URL}/repair/upload-image`, {
+      method: 'POST',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+      body: formData,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
 };
 
 // Add repair item to cart

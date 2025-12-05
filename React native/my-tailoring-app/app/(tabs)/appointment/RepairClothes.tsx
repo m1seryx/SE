@@ -17,7 +17,7 @@ import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { addRepairToCart, uploadRepairImage } from "../../utils/repairService";
+import { addRepairToCart, uploadRepairImage } from "../../../utils/repairService";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get("window");

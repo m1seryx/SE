@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { orderTrackingService } from "../../utils/apiService";
+import { orderTrackingService } from "../../../utils/apiService";
 
 const { width } = Dimensions.get("window");
 

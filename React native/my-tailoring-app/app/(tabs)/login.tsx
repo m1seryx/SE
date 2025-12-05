@@ -21,7 +21,7 @@ import {
 } from "@expo-google-fonts/poppins";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authService } from '@/app/utils/apiService';
+import { authService } from '@/utils/apiService';
 
 export default function LoginScreen() {
   const router = useRouter();

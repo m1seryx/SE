@@ -98,7 +98,7 @@ exports.getRentalById = (req, res) => {
 
 
 exports.getAvailableRentals = (req, res) => {
-  RentalInventory.getAvailable((err, results) => {
+  RentalInventory.getAvailableItems({}, (err, results) => {
     if (err) {
       console.error("Error fetching available rentals:", err);
       return res.status(500).json({ 

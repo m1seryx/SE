@@ -15,7 +15,7 @@ import { Text } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { rentalService } from "../../utils/rentalService";
+import { rentalService } from "../../../utils/rentalService";
 
 const { width } = Dimensions.get("window");
 
