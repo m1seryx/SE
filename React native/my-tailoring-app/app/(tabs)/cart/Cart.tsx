@@ -1,4 +1,3 @@
-// app/(tabs)/cart/Cart.tsx
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -10,14 +9,13 @@ import {
   Modal,
   Image,
   Platform,
-  Dimensions,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { cartStore, CartItem } from "../../utils/cartStore";
 import { orderStore } from "../../utils/orderStore";
-
-const { height } = Dimensions.get("window");
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function CartScreen() {
   const router = useRouter();
@@ -25,14 +23,12 @@ export default function CartScreen() {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedItemDetails, setSelectedItemDetails] =
-    useState<CartItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<CartItem | null>(null);
 
   useEffect(() => {
-    setCartItems(cartStore.getItems());
-    const unsubscribe = cartStore.subscribe(() => {
-      setCartItems(cartStore.getItems());
-    });
+    const update = () => setCartItems(cartStore.getItems());
+    update();
+    const unsubscribe = cartStore.subscribe(update);
     return () => unsubscribe();
   }, []);
 
@@ -44,7 +40,7 @@ export default function CartScreen() {
 
   const selectAllItems = () => {
     setSelectedItems(
-      selectedItems.length === cartItems.length
+      selectedItems.length === cartItems.length && cartItems.length > 0
         ? []
         : cartItems.map((item) => item.id)
     );
@@ -58,18 +54,37 @@ export default function CartScreen() {
 
   const handleCheckout = () => {
     if (selectedItems.length === 0) {
-      alert("Please select at least one service");
+      Alert.alert(
+        "No Items Selected",
+        "Please select at least one service to book."
+      );
       return;
     }
     setShowConfirmModal(true);
   };
 
   const confirmBooking = () => {
-    const selectedCartItems = cartItems.filter((item) =>
+    const selected = cartItems.filter((item) =>
       selectedItems.includes(item.id)
     );
 
-    selectedCartItems.forEach((item) => {
+    selected.forEach((item) => {
+      const formatDate = (dateStr?: string) => {
+        if (!dateStr) return "To be scheduled";
+        try {
+          const date = new Date(dateStr);
+          return date.toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          });
+        } catch {
+          return "Invalid date";
+        }
+      };
+
       orderStore.addOrder({
         service: item.service,
         item: item.item,
@@ -89,155 +104,183 @@ export default function CartScreen() {
         clothingBrand: item.clothingBrand,
         quantity: item.quantity,
         image: item.image,
-        appointmentDate: item.appointmentDate || "Not specified",
+        appointmentDate: formatDate(item.appointmentDate),
       });
     });
 
     selectedItems.forEach((id) => cartStore.removeItem(id));
     setSelectedItems([]);
-
-    alert("Appointment booked successfully! Check your order history.");
     setShowConfirmModal(false);
-    router.push("/home");
+
+    Alert.alert(
+      "Booked Successfully!",
+      "Your appointment has been confirmed!",
+      [{ text: "OK", onPress: () => router.replace("/home") }]
+    );
   };
 
-  const showItemDetails = (item: CartItem) => {
-    setSelectedItemDetails(item);
+  const openDetails = (item: CartItem) => {
+    setSelectedItem(item);
     setShowDetailsModal(true);
   };
 
   const handleRemoveItem = (id: string) => {
-    cartStore.removeItem(id);
-    setSelectedItems((prev) => prev.filter((i) => i !== id));
+    Alert.alert("Remove Item", "Remove this service from your cart?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          cartStore.removeItem(id);
+          setSelectedItems((prev) => prev.filter((i) => i !== id));
+        },
+      },
+    ]);
+  };
+
+  const formatDisplayDate = (dateStr?: string) => {
+    if (!dateStr) return "Not scheduled yet";
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    } catch {
+      return "Invalid date";
+    }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.headerSection}>
+        <View style={styles.headerTitleContainer}>
+          <Ionicons name="cart" size={26} color="#F59E0B" />
+          <Text style={styles.headerTitle}>My Cart</Text>
+        </View>
+        <TouchableOpacity onPress={selectAllItems}>
+          <Text style={styles.selectAllText}>
+            {selectedItems.length === cartItems.length && cartItems.length > 0
+              ? "Deselect All"
+              : "Select All"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 180 }}
+        contentContainerStyle={{ paddingBottom: 140 }}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={28} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>My Cart</Text>
-          <TouchableOpacity onPress={selectAllItems}>
-            <Text style={styles.selectAllText}>
-              {selectedItems.length === cartItems.length && cartItems.length > 0
-                ? "Deselect"
-                : "Select All"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Empty State */}
         {cartItems.length === 0 ? (
-          <View style={styles.emptyCart}>
-            <Ionicons name="cart-outline" size={100} color="#D1D5DB" />
-            <Text style={styles.emptyCartText}>Your cart is empty</Text>
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="cart-outline" size={80} color="#D1D5DB" />
+            </View>
+            <Text style={styles.emptyTitle}>Your cart is empty</Text>
+            <Text style={styles.emptySubtitle}>
+              Add services to get started
+            </Text>
             <TouchableOpacity
               style={styles.shopButton}
-              onPress={() => router.push("/home")}
+              onPress={() => router.replace("/home")}
             >
               <Text style={styles.shopButtonText}>Browse Services</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <>
+            {/* Cart Items */}
             <View style={styles.cartList}>
               {cartItems.map((item) => (
-                <TouchableOpacity
+                <View
                   key={item.id}
                   style={[
                     styles.cartItem,
                     selectedItems.includes(item.id) && styles.cartItemSelected,
                   ]}
-                  onPress={() => toggleItemSelection(item.id)}
-                  activeOpacity={0.8}
                 >
-                  {/* Checkbox */}
-                  <View style={styles.checkboxContainer}>
-                    <View
-                      style={[
-                        styles.checkbox,
-                        selectedItems.includes(item.id) &&
-                          styles.checkboxChecked,
-                      ]}
-                    >
+                  <TouchableOpacity
+                    style={{ flex: 1, flexDirection: "row", paddingRight: 60 }}
+                    onPress={() => toggleItemSelection(item.id)}
+                    activeOpacity={0.9}
+                  >
+                    <View style={styles.checkbox}>
                       {selectedItems.includes(item.id) && (
-                        <Ionicons name="checkmark" size={20} color="#fff" />
+                        <Ionicons name="checkmark" size={20} color="#78350F" />
                       )}
                     </View>
-                  </View>
 
-                  {/* Icon */}
-                  <View style={styles.iconContainer}>
-                    <Ionicons
-                      name={item.icon as any}
-                      size={32}
-                      color="#94665B"
-                    />
-                  </View>
-
-                  {/* Details */}
-                  <View style={styles.itemDetails}>
-                    <Text style={styles.serviceType}>{item.service}</Text>
-                    <Text style={styles.itemName}>{item.item}</Text>
-                    <Text style={styles.itemDescription} numberOfLines={2}>
-                      {item.description}
-                    </Text>
-
-                    {/* Appointment Tag */}
-                    {item.appointmentDate && (
-                      <View style={styles.appointmentTag}>
-                        <Ionicons name="calendar" size={16} color="#94665B" />
-                        <Text style={styles.appointmentText}>
-                          {item.appointmentDate}
-                        </Text>
-                      </View>
-                    )}
-
-                    {/* View Details – Now Clickable! */}
-                    <TouchableOpacity
-                      onPress={(e) => {
-                        e.stopPropagation(); // ← Stops parent onPress
-                        showItemDetails(item);
-                      }}
-                      style={styles.viewDetailsLink}
-                    >
-                      <Text style={styles.viewDetailsLinkText}>
-                        View Details
-                      </Text>
+                    <View style={styles.iconWrapper}>
                       <Ionicons
-                        name="chevron-forward"
-                        size={14}
-                        color="#94665B"
+                        name={item.icon as any}
+                        size={34}
+                        color="#78350F"
                       />
-                    </TouchableOpacity>
+                    </View>
 
-                    <Text style={styles.itemPrice}>
-                      ₱{item.price.toLocaleString()}
-                    </Text>
-                  </View>
+                    <View style={styles.itemInfo}>
+                      <Text style={styles.serviceTag}>{item.service}</Text>
+                      <Text style={styles.itemTitle}>{item.item}</Text>
+                      <Text style={styles.itemDesc} numberOfLines={2}>
+                        {item.description}
+                      </Text>
 
-                  {/* Remove Button */}
-                  <TouchableOpacity
-                    style={styles.removeButton}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleRemoveItem(item.id);
-                    }}
-                  >
-                    <Ionicons name="trash-outline" size={24} color="#EF4444" />
+                      {item.appointmentDate && (
+                        <View style={styles.dateTag}>
+                          <Ionicons
+                            name="calendar-outline"
+                            size={16}
+                            color="#78350F"
+                          />
+                          <Text style={styles.dateText}>
+                            {formatDisplayDate(item.appointmentDate)}
+                          </Text>
+                        </View>
+                      )}
+
+                      <TouchableOpacity
+                        style={styles.detailsLink}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          openDetails(item);
+                        }}
+                      >
+                        <Text style={styles.detailsLinkText}>View Details</Text>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={16}
+                          color="#78350F"
+                        />
+                      </TouchableOpacity>
+
+                      <Text style={styles.price}>
+                        ₱{item.price.toLocaleString()}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
-                </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.removeBtnContainer}
+                    onPress={() => handleRemoveItem(item.id)}
+                  >
+                    <View style={styles.removeBtn}>
+                      <Ionicons
+                        name="trash-outline"
+                        size={22}
+                        color="#FFFFFF"
+                      />
+                    </View>
+                  </TouchableOpacity>
+                </View>
               ))}
             </View>
 
             {/* Order Summary */}
-            <View style={styles.summarySection}>
+            <View style={styles.summaryCard}>
               <Text style={styles.summaryTitle}>Order Summary</Text>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Selected Items</Text>
@@ -254,139 +297,62 @@ export default function CartScreen() {
                 <Text style={styles.summaryValue}>₱50</Text>
               </View>
               <View style={styles.divider} />
-              <View style={styles.summaryRow}>
+              <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Total Amount</Text>
-                <Text style={styles.totalValue}>
+                <Text style={styles.totalPrice}>
                   ₱{(getSelectedTotal() + 50).toLocaleString()}
                 </Text>
+              </View>
+            </View>
+
+            {/* Checkout Bar */}
+            <View style={styles.checkoutSection}>
+              <View style={styles.checkoutBar}>
+                <View>
+                  <Text style={styles.checkoutItems}>
+                    {selectedItems.length}{" "}
+                    {selectedItems.length === 1 ? "item" : "items"} selected
+                  </Text>
+                  <Text style={styles.checkoutAmount}>
+                    ₱{(getSelectedTotal() + 50).toLocaleString()}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.checkoutBtn,
+                    selectedItems.length === 0 && styles.checkoutBtnDisabled,
+                  ]}
+                  onPress={handleCheckout}
+                  disabled={selectedItems.length === 0}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.checkoutBtnText}>Book</Text>
+                  <Ionicons name="arrow-forward" size={20} color="#fff" />
+                </TouchableOpacity>
               </View>
             </View>
           </>
         )}
       </ScrollView>
 
-      {/* ==================== ITEM DETAILS MODAL (FIXED & BEAUTIFUL) ==================== */}
-      <Modal
-        visible={showDetailsModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowDetailsModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.detailsModalContent}>
-            <View style={styles.detailsModalHeader}>
-              <Text style={styles.detailsModalTitle}>Service Details</Text>
-              <TouchableOpacity onPress={() => setShowDetailsModal(false)}>
-                <Ionicons name="close" size={28} color="#1F2937" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {selectedItemDetails && (
-                <>
-                  {selectedItemDetails.image && (
-                    <Image
-                      source={{ uri: selectedItemDetails.image }}
-                      style={styles.detailsImage}
-                    />
-                  )}
-
-                  <View style={styles.detailsSection}>
-                    <Text style={styles.detailsLabel}>Service</Text>
-                    <Text style={styles.detailsValue}>
-                      {selectedItemDetails.service}
-                    </Text>
-                  </View>
-
-                  <View style={styles.detailsSection}>
-                    <Text style={styles.detailsLabel}>Item</Text>
-                    <Text style={styles.detailsValue}>
-                      {selectedItemDetails.item}
-                    </Text>
-                  </View>
-
-                  {selectedItemDetails.garmentType && (
-                    <View style={styles.detailsSection}>
-                      <Text style={styles.detailsLabel}>Garment Type</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedItemDetails.garmentType}
-                      </Text>
-                    </View>
-                  )}
-
-                  {selectedItemDetails.damageType && (
-                    <View style={styles.detailsSection}>
-                      <Text style={styles.detailsLabel}>Type of Damage</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedItemDetails.damageType}
-                      </Text>
-                    </View>
-                  )}
-
-                  {selectedItemDetails.appointmentDate && (
-                    <View style={styles.detailsSection}>
-                      <Text style={styles.detailsLabel}>Appointment Date</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedItemDetails.appointmentDate}
-                      </Text>
-                    </View>
-                  )}
-
-                  {selectedItemDetails.specialInstructions && (
-                    <View style={styles.detailsSection}>
-                      <Text style={styles.detailsLabel}>
-                        Special Instructions
-                      </Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedItemDetails.specialInstructions}
-                      </Text>
-                    </View>
-                  )}
-
-                  <View style={styles.detailsSection}>
-                    <Text style={styles.detailsLabel}>Price</Text>
-                    <Text style={styles.detailsPriceValue}>
-                      ₱{selectedItemDetails.price.toLocaleString()}
-                    </Text>
-                  </View>
-                </>
-              )}
-              <View style={{ height: 60 }} />
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
       {/* Confirmation Modal */}
-      <Modal visible={showConfirmModal} transparent animationType="fade">
+      <Modal visible={showConfirmModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={styles.confirmModal}>
             <View style={styles.modalIcon}>
-              <Ionicons name="calendar-outline" size={48} color="#94665B" />
+              <Ionicons name="checkmark-circle" size={64} color="#10B981" />
             </View>
             <Text style={styles.modalTitle}>Confirm Booking</Text>
             <Text style={styles.modalText}>
-              You are booking {selectedItems.length} service
-              {selectedItems.length > 1 ? "s" : ""}
+              You are about to book {selectedItems.length} service
+              {selectedItems.length > 1 ? "s" : ""}.
             </Text>
-
-            <View style={{ width: "100%", marginVertical: 16 }}>
-              {cartItems
-                .filter((item) => selectedItems.includes(item.id))
-                .map((item) => (
-                  <Text key={item.id} style={styles.modalItemDate}>
-                    • {item.item}: {item.appointmentDate || "No date set"}
-                  </Text>
-                ))}
-            </View>
-
-            <View style={styles.modalTotal}>
-              <Text style={styles.modalTotalLabel}>Total Amount:</Text>
-              <Text style={styles.modalTotalValue}>
+            <View style={styles.modalTotalBox}>
+              <Text style={styles.modalTotalLabel}>Total Amount</Text>
+              <Text style={styles.modalTotalPrice}>
                 ₱{(getSelectedTotal() + 50).toLocaleString()}
               </Text>
             </View>
-
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.modalCancelButton}
@@ -398,48 +364,101 @@ export default function CartScreen() {
                 style={styles.modalConfirmButton}
                 onPress={confirmBooking}
               >
-                <Text style={styles.modalConfirmText}>Confirm Booking</Text>
+                <Text style={styles.modalConfirmText}>Confirm</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* Checkout Bar */}
-      {cartItems.length > 0 && (
-        <View style={styles.checkoutContainer}>
-          <View style={styles.checkoutInfo}>
-            <Text style={styles.checkoutLabel}>
-              {selectedItems.length}{" "}
-              {selectedItems.length === 1 ? "item" : "items"} selected
-            </Text>
-            <Text style={styles.checkoutTotal}>
-              ₱
-              {(
-                getSelectedTotal() + (selectedItems.length > 0 ? 50 : 0)
-              ).toLocaleString()}
-            </Text>
+      {/* Item Details Modal */}
+      <Modal visible={showDetailsModal} transparent animationType="slide">
+        <View style={styles.detailsOverlay}>
+          <View style={styles.detailsModal}>
+            <LinearGradient
+              colors={["#78350F", "#92400E"]}
+              style={styles.detailsHeader}
+            >
+              <Text style={styles.detailsTitle}>Service Details</Text>
+              <TouchableOpacity onPress={() => setShowDetailsModal(false)}>
+                <Ionicons name="close" size={30} color="#FFFFFF" />
+              </TouchableOpacity>
+            </LinearGradient>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {selectedItem && (
+                <>
+                  <View style={styles.imageWrapper}>
+                    {selectedItem.image ? (
+                      <Image
+                        source={{ uri: selectedItem.image }}
+                        style={styles.detailsImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.noImage}>
+                        <Ionicons
+                          name="image-outline"
+                          size={90}
+                          color="#94a3b8"
+                        />
+                        <Text style={styles.noImageText}>No Photo</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.detailsCard}>
+                    <View style={styles.cardHeader}>
+                      <Text style={styles.cardTitle}>Order Summary</Text>
+                      <Text style={styles.cardSubtitle}>
+                        All details for your selected service
+                      </Text>
+                      <View style={styles.decorativeLine} />
+                    </View>
+
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Service Type</Text>
+                      <Text style={styles.detailValue}>
+                        {selectedItem.service}
+                      </Text>
+                    </View>
+
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Item</Text>
+                      <Text style={styles.detailValue}>
+                        {selectedItem.item}
+                      </Text>
+                    </View>
+
+                    {selectedItem.appointmentDate && (
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Appointment</Text>
+                        <Text style={styles.detailValue}>
+                          {formatDisplayDate(selectedItem.appointmentDate)}
+                        </Text>
+                      </View>
+                    )}
+
+                    <View style={styles.priceSection}>
+                      <Text style={styles.priceLabel}>Total Amount</Text>
+                      <Text style={styles.detailPrice}>
+                        ₱{selectedItem.price.toLocaleString()}
+                      </Text>
+                    </View>
+                  </View>
+                </>
+              )}
+              <View style={{ height: 100 }} />
+            </ScrollView>
           </View>
-          <TouchableOpacity
-            style={[
-              styles.checkoutButton,
-              selectedItems.length === 0 && styles.checkoutButtonDisabled,
-            ]}
-            onPress={handleCheckout}
-            disabled={selectedItems.length === 0}
-          >
-            <Text style={styles.checkoutButtonText}>Book Appointment</Text>
-            <Ionicons name="arrow-forward" size={22} color="#fff" />
-          </TouchableOpacity>
         </View>
-      )}
+      </Modal>
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity onPress={() => router.replace("/home")}>
-          <View style={styles.navItemWrap}>
-            <Ionicons name="home" size={20} color="#9CA3AF" />
-          </View>
+          <Ionicons name="home-outline" size={26} color="#9CA3AF" />
+          <Text style={styles.navLabel}>Home</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -447,220 +466,241 @@ export default function CartScreen() {
             router.push("/(tabs)/appointment/appointmentSelection")
           }
         >
-          <View style={styles.navItemWrap}>
-            <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
-          </View>
+          <Ionicons name="calendar-outline" size={26} color="#9CA3AF" />
+          <Text style={styles.navLabel}>Book</Text>
         </TouchableOpacity>
 
-        <View style={styles.navItemWrapActive}>
-          <Ionicons name="cart-outline" size={20} color="#7A5A00" />
+        <View style={styles.navItemActive}>
+          <Ionicons name="cart" size={26} color="#78350F" />
+          <Text style={styles.navLabelActive}>Cart</Text>
         </View>
 
         <TouchableOpacity onPress={() => router.push("../UserProfile/profile")}>
-          <View style={styles.navItemWrap}>
-            <Ionicons name="person-outline" size={20} color="#9CA3AF" />
-          </View>
+          <Ionicons name="person-outline" size={26} color="#9CA3AF" />
+          <Text style={styles.navLabel}>Profile</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
+/* ---------- STYLES (unchanged) ---------- */
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F9FAFB" },
-  header: {
+  container: { flex: 1, backgroundColor: "#FAFAF9" },
+  headerSection: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: "#fff",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === "ios" ? 10 : 20,
+    paddingBottom: 20,
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: "#F5F5F4",
   },
-  headerTitle: { fontSize: 22, fontWeight: "700", color: "#1F2937" },
-  selectAllText: { fontSize: 15, fontWeight: "600", color: "#94665B" },
-  emptyCart: {
+  headerTitleContainer: { flexDirection: "row", alignItems: "center", gap: 10 },
+  headerTitle: { fontSize: 24, fontWeight: "800", color: "#0F172A" },
+  selectAllText: { fontSize: 15, fontWeight: "700", color: "#78350F" },
+
+  emptyState: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingTop: 100,
+    paddingTop: 80,
   },
-  emptyCartText: {
-    fontSize: 20,
-    color: "#6B7280",
-    marginTop: 20,
-    marginBottom: 30,
+  emptyIcon: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "#FEF3C7",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
   },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#1F2937",
+    marginBottom: 8,
+  },
+  emptySubtitle: { fontSize: 16, color: "#64748B", marginBottom: 32 },
   shopButton: {
-    backgroundColor: "#94665B",
-    paddingHorizontal: 36,
-    paddingVertical: 14,
+    backgroundColor: "#78350F",
+    paddingHorizontal: 32,
+    paddingVertical: 16,
     borderRadius: 30,
+    shadowColor: "#78350F",
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10,
   },
-  shopButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  shopButtonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" },
+
   cartList: { paddingHorizontal: 20, paddingTop: 10 },
   cartItem: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 14,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
     flexDirection: "row",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 10,
     borderWidth: 2,
     borderColor: "transparent",
   },
-  cartItemSelected: { borderColor: "#94665B", backgroundColor: "#FDF4F0" },
-  checkboxContainer: { marginRight: 16 },
+  cartItemSelected: { borderColor: "#78350F", backgroundColor: "#FFFBEB" },
   checkbox: {
     width: 28,
     height: 28,
     borderRadius: 8,
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: "#D1D5DB",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  checkboxChecked: { backgroundColor: "#94665B", borderColor: "#94665B" },
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#FDF4F0",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 16,
   },
-  itemDetails: { flex: 1 },
-  serviceType: {
+  iconWrapper: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: "#FEF3C7",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  itemInfo: { flex: 1 },
+  serviceTag: {
     fontSize: 13,
-    color: "#94665B",
-    fontWeight: "600",
+    color: "#F59E0B",
+    fontWeight: "700",
+    backgroundColor: "#FFF7ED",
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  itemTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1F2937",
     marginBottom: 4,
   },
-  itemName: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 6,
-  },
-  itemDescription: {
-    fontSize: 14,
-    color: "#6B7280",
-    lineHeight: 20,
-    marginBottom: 6,
-  },
-  appointmentTag: {
+  itemDesc: { fontSize: 14, color: "#64748B", lineHeight: 20, marginBottom: 8 },
+  dateTag: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FDF4F0",
+    backgroundColor: "#FEF3C7",
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 20,
-    marginTop: 8,
     alignSelf: "flex-start",
+    marginTop: 8,
+    marginBottom: 12,
   },
-  appointmentText: {
+  dateText: {
     marginLeft: 6,
     fontSize: 13,
-    color: "#94665B",
+    color: "#78350F",
     fontWeight: "600",
   },
-  viewDetailsLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 10,
-  },
-  viewDetailsLinkText: {
-    fontSize: 13,
-    color: "#94665B",
-    fontWeight: "600",
-    marginRight: 4,
-  },
-  itemPrice: { fontSize: 20, fontWeight: "800", color: "#94665B" },
-  removeButton: { padding: 10 },
+  detailsLink: { flexDirection: "row", alignItems: "center", marginTop: 8 },
+  detailsLinkText: { fontSize: 14, color: "#78350F", fontWeight: "700" },
+  price: { fontSize: 22, fontWeight: "900", color: "#78350F" },
 
-  summarySection: {
-    marginHorizontal: 20,
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 24,
+  removeBtnContainer: { position: "absolute", right: 16, top: 16 },
+  removeBtn: {
+    width: 48,
+    height: 48,
+    backgroundColor: "#EF4444",
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
     shadowColor: "#000",
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.3,
     shadowRadius: 12,
-    elevation: 10,
-    marginTop: 10,
-    marginBottom: 100,
+    elevation: 12,
+  },
+
+  summaryCard: {
+    marginHorizontal: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 24,
+    marginTop: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 12,
   },
   summaryTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1F2937",
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#0F172A",
     marginBottom: 20,
   },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  summaryLabel: { fontSize: 16, color: "#6B7280" },
-  summaryValue: { fontSize: 16, fontWeight: "600", color: "#1F2937" },
+  summaryLabel: { fontSize: 16, color: "#64748B" },
+  summaryValue: { fontSize: 16, fontWeight: "700", color: "#1F2937" },
   divider: { height: 1, backgroundColor: "#E5E7EB", marginVertical: 16 },
-  totalLabel: { fontSize: 20, fontWeight: "800", color: "#1F2937" },
-  totalValue: { fontSize: 26, fontWeight: "800", color: "#94665B" },
-
-  checkoutContainer: {
-    position: "absolute",
-    bottom: 80,
-    left: 0,
-    right: 0,
-    backgroundColor: "#fff",
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 20,
-  },
-  checkoutInfo: { marginBottom: 16 },
-  checkoutLabel: { fontSize: 15, color: "#6B7280" },
-  checkoutTotal: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#1F2937",
-    marginTop: 4,
-  },
-  checkoutButton: {
-    backgroundColor: "#94665B",
-    borderRadius: 20,
-    paddingVertical: 18,
+  totalRow: {
     flexDirection: "row",
-    justifyContent: "center",
+    justifyContent: "space-between",
     alignItems: "center",
   },
-  checkoutButtonDisabled: { backgroundColor: "#D1D5DB" },
-  checkoutButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-    marginRight: 10,
+  totalLabel: { fontSize: 20, fontWeight: "800", color: "#0F172A" },
+  totalPrice: { fontSize: 28, fontWeight: "900", color: "#F59E0B" },
+
+  checkoutSection: { paddingHorizontal: 20, paddingBottom: 40 },
+  checkoutBar: {
+    backgroundColor: "#FFFFFF",
+    padding: 24,
+    borderRadius: 28,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 25,
+    elevation: 18,
   },
+  checkoutItems: { fontSize: 16, color: "#64748B", fontWeight: "600" },
+  checkoutAmount: {
+    fontSize: 30,
+    fontWeight: "900",
+    color: "#78350F",
+    marginTop: 6,
+  },
+  checkoutBtn: {
+    backgroundColor: "#78350F",
+    paddingHorizontal: 32,
+    paddingVertical: 18,
+    borderRadius: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  checkoutBtnDisabled: { backgroundColor: "#94A3B8" },
+  checkoutBtnText: { color: "#FFFFFF", fontSize: 18, fontWeight: "700" },
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "rgba(0,0,0,0.7)",
     justifyContent: "center",
     alignItems: "center",
   },
-  modalContent: {
-    backgroundColor: "#fff",
-    borderRadius: 24,
+  confirmModal: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 28,
     padding: 32,
     width: "90%",
     maxWidth: 400,
@@ -670,34 +710,29 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: "#FDF4F0",
+    backgroundColor: "#FEF3C7",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
   },
-  modalTitle: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 12,
-  },
+  modalTitle: { fontSize: 26, fontWeight: "800", color: "#1F2937" },
   modalText: {
     fontSize: 17,
-    color: "#6B7280",
+    color: "#64748B",
     textAlign: "center",
-    marginBottom: 8,
+    marginVertical: 16,
   },
-  modalTotal: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    backgroundColor: "#F9FAFB",
+  modalTotalBox: {
+    backgroundColor: "#FFF7ED",
     padding: 20,
     borderRadius: 16,
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 30,
   },
-  modalTotalLabel: { fontSize: 18, color: "#6B7280" },
-  modalTotalValue: { fontSize: 28, fontWeight: "800", color: "#94665B" },
+  modalTotalLabel: { fontSize: 18, color: "#78350F", fontWeight: "600" },
+  modalTotalPrice: { fontSize: 28, fontWeight: "900", color: "#F59E0B" },
   modalButtons: { flexDirection: "row", gap: 16, width: "100%" },
   modalCancelButton: {
     flex: 1,
@@ -709,85 +744,151 @@ const styles = StyleSheet.create({
   modalCancelText: { color: "#6B7280", fontWeight: "600", fontSize: 17 },
   modalConfirmButton: {
     flex: 1,
-    backgroundColor: "#94665B",
+    backgroundColor: "#78350F",
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: "center",
   },
-  modalConfirmText: { color: "#fff", fontWeight: "700", fontSize: 17 },
+  modalConfirmText: { color: "#FFFFFF", fontWeight: "700", fontSize: 17 },
 
-  // Fixed Details Modal
-  detailsModalContent: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    maxHeight: height * 0.88,
-    width: "100%",
-    marginTop: "auto",
+  detailsOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.9)",
+    justifyContent: "flex-end",
   },
-  detailsModalHeader: {
+  detailsModal: {
+    backgroundColor: "#fafafa",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    maxHeight: "94%",
+    overflow: "hidden",
+  },
+  detailsHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    paddingHorizontal: 28,
+    paddingVertical: 24,
+    paddingTop: 40,
   },
-  detailsModalTitle: { fontSize: 22, fontWeight: "700", color: "#1F2937" },
-  detailsImage: { width: "100%", height: 250, resizeMode: "cover" },
-  detailsSection: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+  detailsTitle: { fontSize: 24, fontWeight: "900", color: "#FFFFFF" },
+
+  imageWrapper: {
+    width: "100%",
+    aspectRatio: 1,
+    padding: 20,
+    paddingBottom: 10,
   },
-  detailsLabel: {
-    fontSize: 14,
+  detailsImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 28,
+    borderWidth: 3,
+    borderColor: "#ffffff",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 15,
+  },
+  noImage: {
+    flex: 1,
+    backgroundColor: "#f1f5f9",
+    borderRadius: 28,
+    borderWidth: 3,
+    borderStyle: "dashed",
+    borderColor: "#e2e8f0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  noImageText: {
+    marginTop: 16,
+    fontSize: 18,
+    color: "#64748b",
     fontWeight: "600",
-    color: "#6B7280",
-    marginBottom: 6,
   },
-  detailsValue: { fontSize: 17, color: "#1F2937", fontWeight: "500" },
-  detailsPriceValue: { fontSize: 24, fontWeight: "800", color: "#94665B" },
+
+  detailsCard: {
+    marginHorizontal: 20,
+    marginTop: -40,
+    backgroundColor: "#ffffff",
+    borderRadius: 32,
+    padding: 32,
+    paddingTop: 40,
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 35,
+    elevation: 25,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  cardHeader: { alignItems: "center", marginBottom: 32 },
+  cardTitle: { fontSize: 28, fontWeight: "900", color: "#1e293b" },
+  cardSubtitle: {
+    fontSize: 16,
+    color: "#64748b",
+    marginTop: 10,
+    textAlign: "center",
+  },
+  decorativeLine: {
+    width: 90,
+    height: 6,
+    backgroundColor: "#F59E0B",
+    borderRadius: 3,
+    marginTop: 20,
+  },
+
+  detailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  detailLabel: { fontSize: 16, color: "#64748b", fontWeight: "600" },
+  detailValue: {
+    fontSize: 17,
+    color: "#1e293b",
+    fontWeight: "700",
+    textAlign: "right",
+    flex: 1,
+    marginLeft: 20,
+  },
+
+  priceSection: {
+    marginTop: 30,
+    paddingTop: 30,
+    borderTopWidth: 3,
+    borderTopColor: "#FEF3C7",
+    alignItems: "center",
+  },
+  priceLabel: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#78350F",
+    marginBottom: 12,
+  },
+  detailPrice: { fontSize: 42, fontWeight: "900", color: "#F59E0B" },
 
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    paddingVertical: 12,
+    paddingVertical: 16,
+    paddingBottom: Platform.OS === "ios" ? 28 : 16,
     borderTopWidth: 1,
-    borderTopColor: "#EEE",
+    borderTopColor: "#F1F5F9",
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    elevation: 10,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 20,
   },
-  navItemWrap: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  navItemWrapActive: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#FDE68A",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalItemDate: {
-    fontSize: 15,
-    color: "#4B5563",
-    marginVertical: 4,
-    textAlign: "left",
-  },
+  navLabel: { fontSize: 11, color: "#64748B", fontWeight: "600" },
+  navLabelActive: { fontSize: 11, color: "#78350F", fontWeight: "700" },
+  navItemActive: { alignItems: "center" },
 });

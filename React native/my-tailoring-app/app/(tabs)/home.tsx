@@ -1,3 +1,4 @@
+// app/(tabs)/home/index.tsx  (or wherever your HomeScreen is)
 import * as React from "react";
 import {
   View,
@@ -95,27 +96,28 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Scrollable Content */}
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }} // Extra space for bottom nav
       >
-        {/* Header Section */}
+        {/* Header */}
         <View style={styles.headerSection}>
           <View style={styles.greetingRow}>
             <Image
               source={require("../../assets/images/logo.png")}
               style={styles.logo}
             />
-            <Text style={styles.headerTitle}>Jackman Tailor Deluxe</Text>
+            <View style={styles.brandInfo}>
+              <Text style={styles.headerTitle}>Jackman Tailor Deluxe</Text>
+            </View>
           </View>
-
-          {/* Fixed: Removed the dangerous {" "} after Ionicons */}
-          <TouchableOpacity style={styles.profileIcon}>
-            <Ionicons name="notifications-outline" size={25} color="black" />
+          <TouchableOpacity style={styles.notificationButton}>
+            <Ionicons name="notifications-outline" size={24} color="#78350F" />
           </TouchableOpacity>
         </View>
 
-        {/* Hero Section */}
+        {/* Hero */}
         <View style={styles.heroContainer}>
           <Image
             source={require("../../assets/images/tailorbackground.jpg")}
@@ -123,289 +125,381 @@ export default function HomeScreen() {
             resizeMode="cover"
           />
           <LinearGradient
-            colors={["transparent", "rgba(0,0,0,0.7)"]}
+            colors={["rgba(0,0,0,0.1)", "rgba(120,53,15,0.8)"]}
             style={StyleSheet.absoluteFill}
           />
           <View style={styles.heroBadge}>
-            <Text style={styles.heroTitle}>Jackman Tailor Deluxe</Text>
-            <Text style={styles.heroSubtitle}>Your perfect fit awaits.</Text>
+            <Text style={styles.heroTitle}>
+              Welcome to Jackman's Tailor Deluxe!
+            </Text>
+            <View style={styles.heroButton}>
+              <Text style={styles.heroButtonText}>Your Perfect Fit Awaits</Text>
+            </View>
           </View>
         </View>
 
         {/* Services */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Our Services</Text>
-          <Ionicons name="cut-outline" size={24} color="#991b1b" />
-        </View>
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleContainer}>
+              <View style={styles.iconWrapper}>
+                <Ionicons name="heart" size={20} color="#F59E0B" />
+              </View>
+              <Text style={styles.sectionTitle}>Our Services</Text>
+            </View>
+          </View>
 
-        <View style={styles.servicesGrid}>
-          {services.map((s) => (
-            <TouchableOpacity
-              key={s.id}
-              style={styles.serviceCard}
-              activeOpacity={0.85}
-              onPress={() => {
-                if (s.id === "s1") router.push("/rental");
-                else if (s.id === "s2")
-                  router.push("/(tabs)/appointment/CustomizeClothes");
-                else if (s.id === "s3")
-                  router.push("/(tabs)/appointment/RepairClothes");
-                else if (s.id === "s4")
-                  router.push("/(tabs)/appointment/DryCleaning");
-              }}
-            >
-              <LinearGradient
-                colors={["rgba(153,27,27,0.08)", "rgba(153,27,27,0.04)"]}
-                style={styles.serviceGradient}
-              />
-              <Image
-                source={s.icon}
-                style={styles.serviceImage}
-                resizeMode="cover"
-              />
-              <Text style={styles.serviceLabel}>{s.label}</Text>
-            </TouchableOpacity>
-          ))}
+          <View style={styles.servicesGrid}>
+            {services.map((s) => (
+              <TouchableOpacity
+                key={s.id}
+                style={styles.serviceCard}
+                activeOpacity={0.85}
+                onPress={() => {
+                  if (s.id === "s1") router.push("/rental");
+                  else if (s.id === "s2")
+                    router.push("/(tabs)/appointment/CustomizeClothes");
+                  else if (s.id === "s3")
+                    router.push("/(tabs)/appointment/RepairClothes");
+                  else router.push("/(tabs)/appointment/DryCleaning");
+                }}
+              >
+                <View style={styles.serviceImageContainer}>
+                  <Image
+                    source={s.icon}
+                    style={styles.serviceImage}
+                    resizeMode="cover"
+                  />
+                  <LinearGradient
+                    colors={["transparent", "rgba(15,23,42,0.92)"]}
+                    style={styles.serviceGradient}
+                  />
+                </View>
+                <View style={styles.serviceLabelContainer}>
+                  <Text style={styles.serviceLabel}>{s.label}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Featured Rentals */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Rentals</Text>
-          <TouchableOpacity onPress={() => router.push("/rental")}>
-            <Text style={styles.seeAll}>See all</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.rentalGrid}>
-          {rentals.map((r) => (
-            <TouchableOpacity
-              key={r.id}
-              style={styles.rentalCard}
-              activeOpacity={0.9}
-              onPress={() => router.push(`/rental/${r.id}`)}
-            >
-              <Image
-                source={r.image}
-                style={styles.rentalImage}
-                resizeMode="cover"
-              />
-              <LinearGradient
-                colors={["transparent", "rgba(0,0,0,0.6)"]}
-                style={styles.rentalOverlay}
-              />
-              <View style={styles.rentalInfo}>
-                <Text style={styles.rentalTitle} numberOfLines={2}>
-                  {r.title}
-                </Text>
-                <Text style={styles.rentalPrice}>₱{r.price}/3days</Text>
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleContainer}>
+              <View style={styles.iconWrapper}>
+                <Ionicons name="shirt-outline" size={24} color="#F59E0B" />
               </View>
+              <Text style={styles.sectionTitle}>Rentals</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.seeMoreButton}
+              onPress={() => router.push("/rental")}
+            >
+              <Text style={styles.seeMoreText}>See All</Text>
+              <Ionicons name="chevron-forward" size={18} color="#B45309" />
             </TouchableOpacity>
-          ))}
+          </View>
+
+          <View style={styles.rentalGrid}>
+            {rentals.slice(0, 6).map((r) => (
+              <TouchableOpacity
+                key={r.id}
+                style={styles.rentalCard}
+                activeOpacity={0.88}
+                onPress={() => router.push(`/rental/${r.id}`)}
+              >
+                <View style={styles.imageWrapper}>
+                  <Image
+                    source={r.image}
+                    style={styles.rentalImage}
+                    resizeMode="cover"
+                  />
+                  <LinearGradient
+                    colors={["transparent", "rgba(0,0,0,0.8)"]}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+                </View>
+                <View style={styles.rentalInfoOverlay}>
+                  <Text style={styles.rentalTitle} numberOfLines={2}>
+                    {r.title}
+                  </Text>
+                  <View style={styles.priceRow}>
+                    <Text style={styles.rentalPrice}>₱{r.price}</Text>
+                    <Text style={styles.priceLabel}>/3 days</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation */}
+      {/* FIXED BOTTOM NAVIGATION — ALWAYS VISIBLE */}
       <View style={styles.bottomNav}>
+        {/* Home - Active */}
         <View style={styles.navItemWrapActive}>
-          <Ionicons name="home" size={20} color="#7A5A00" />
+          <Ionicons name="home" size={24} color="#78350F" />
+          <Text style={styles.navLabelActive}>Home</Text>
         </View>
 
         <TouchableOpacity
           onPress={() =>
             router.push("/(tabs)/appointment/appointmentSelection")
           }
+          style={styles.navItemWrap}
         >
-          <View style={styles.navItemWrap}>
-            <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
-          </View>
+          <Ionicons name="calendar-outline" size={24} color="#64748B" />
+          <Text style={styles.navLabel}>Book</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
-          <View style={styles.navItemWrap}>
-            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
-          </View>
+        <TouchableOpacity
+          onPress={() => router.push("/(tabs)/cart/Cart")}
+          style={styles.navItemWrap}
+        >
+          <Ionicons name="cart-outline" size={24} color="#64748B" />
+          <Text style={styles.navLabel}>Cart</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("../UserProfile/profile")}>
-          <View style={styles.navItemWrap}>
-            <Ionicons name="person-outline" size={20} color="#9CA3AF" />
-          </View>
+        <TouchableOpacity
+          onPress={() => router.push("/(tabs)/UserProfile/profile")}
+          style={styles.navItemWrap}
+        >
+          <Ionicons name="person-outline" size={24} color="#64748B" />
+          <Text style={styles.navLabel}>Profile</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
-// Styles unchanged (perfect as-is)
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fafafa" },
-  logo: { width: 50, height: 50, borderRadius: 50 },
-  headerTitle: {
-    fontWeight: "600",
-    fontSize: width * 0.035,
-    color: "#222",
-    flex: 1,
-    marginLeft: 8,
-  },
+  container: { flex: 1, backgroundColor: "#FAFAF9" },
+
+  // Header
   headerSection: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 24,
     paddingTop: Platform.OS === "ios" ? 10 : 20,
-    paddingBottom: 12,
+    paddingBottom: 20,
+    backgroundColor: "white",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F5F5F4",
   },
   greetingRow: { flexDirection: "row", alignItems: "center", flex: 1 },
-  profileIcon: { padding: 4 },
+  logo: { width: 44, height: 44, borderRadius: 22 },
+  brandInfo: { marginLeft: 12 },
+  headerTitle: { fontWeight: "700", fontSize: 16, color: "#0F172A" },
+  notificationButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#FEF3C7",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  // Hero
   heroContainer: {
-    margin: 20,
+    marginHorizontal: 20,
+    marginTop: 20,
     height: height * 0.26,
-    borderRadius: 28,
+    borderRadius: 24,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 20,
-    elevation: 20,
+    elevation: 18,
   },
   heroImage: { width: "100%", height: "100%" },
-  heroBadge: { position: "absolute", bottom: 50, left: 20, right: 20 },
+  heroBadge: { position: "absolute", bottom: 24, left: 24, right: 24 },
   heroTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "800",
-    color: "#ffffff",
+    color: "#fff",
     textShadowColor: "rgba(0,0,0,0.6)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
+    textShadowRadius: 10,
+    marginBottom: 16,
   },
-  heroSubtitle: {
-    fontSize: 16,
-    color: "#e2e8f0",
-    marginTop: 6,
-    fontWeight: "500",
+  heroButton: {
+    backgroundColor: "#FDE68A",
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 30,
+    alignSelf: "flex-start",
   },
+  heroButtonText: { color: "#78350F", fontWeight: "700", fontSize: 15 },
+
+  // Sections
+  sectionContainer: { marginTop: 36, paddingHorizontal: 20 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 24,
-    marginTop: 32,
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  sectionTitle: { fontSize: 22, fontWeight: "800", color: "#1e293b" },
-  seeAll: { fontSize: 15, color: "#991b1b", fontWeight: "600" },
+  sectionTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  iconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "#FEF3C7",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sectionTitle: { fontSize: 24, fontWeight: "800", color: "#0F172A" },
+  seeMoreButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  seeMoreText: { fontSize: 14, color: "#B45309", fontWeight: "700" },
+
+  // Services Grid
   servicesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
+    gap: 16,
   },
   serviceCard: {
-    width: width * 0.44,
-    height: width * 0.44,
-    backgroundColor: "#ffffff",
+    width: (width - 56) / 2,
+    height: 180,
+    backgroundColor: "#FFFFFF",
     borderRadius: 24,
-    marginBottom: 16,
     overflow: "hidden",
-    borderWidth: 1.5,
-    borderColor: "rgba(153,27,27,0.12)",
-    shadowColor: "#991b1b",
+    elevation: 10,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.12,
     shadowRadius: 16,
-    elevation: 12,
   },
+  serviceImageContainer: { flex: 1 },
+  serviceImage: { width: "100%", height: "100%" },
   serviceGradient: { ...StyleSheet.absoluteFillObject },
-  serviceImage: { width: "100%", height: "100%", opacity: 0.92 },
+  serviceLabelContainer: { position: "absolute", bottom: 16, left: 16 },
   serviceLabel: {
-    position: "absolute",
-    bottom: 16,
-    left: 0,
-    right: 0,
-    textAlign: "center",
     fontSize: 17,
     fontWeight: "700",
     color: "#ffffff",
-    textShadowColor: "rgba(0,0,0,0.7)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
+    textShadowColor: "rgba(0,0,0,0.8)",
+    textShadowRadius: 8,
   },
+
+  // Rentals Grid
   rentalGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    justifyContent: "flex-start",
   },
   rentalCard: {
-    width: width * 0.44,
-    height: width * 0.58,
-    backgroundColor: "#ffffff",
-    borderRadius: 24,
-    marginBottom: 20,
+    width: (width - 40 - 32) / 2,
+    height: 200,
+    marginHorizontal: 8,
+    marginBottom: 16,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
+    elevation: 10,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
   },
+  imageWrapper: { width: "100%", height: "100%" },
   rentalImage: { width: "100%", height: "100%" },
-  rentalOverlay: { ...StyleSheet.absoluteFillObject },
-  rentalInfo: {
+  rentalInfoOverlay: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     padding: 16,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingBottom: 20,
   },
   rentalTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#ffffff",
-    lineHeight: 18,
-  },
-  rentalPrice: {
     fontSize: 15,
-    fontWeight: "800",
-    color: "#fbbf24",
-    marginTop: 4,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    lineHeight: 20,
+    marginBottom: 6,
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowRadius: 4,
   },
+  priceRow: { flexDirection: "row", alignItems: "baseline", gap: 6 },
+  rentalPrice: { fontSize: 20, fontWeight: "900", color: "#F59E0B" },
+  priceLabel: { fontSize: 12, color: "#CBD5E1", fontWeight: "600" },
+
+  // FIXED BOTTOM NAV — ALWAYS ON TOP
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    paddingVertical: 12,
+    paddingVertical: 16,
+    paddingBottom: Platform.OS === "ios" ? 28 : 16,
     borderTopWidth: 1,
-    borderTopColor: "#EEE",
+    borderTopColor: "#F1F5F9",
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    elevation: 10,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 20,
   },
   navItemWrap: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#F3F4F6",
     alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: 12,
+    gap: 4,
   },
   navItemWrapActive: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#FDE68A",
     alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 20,
+    gap: 4,
+  },
+  navLabel: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "600",
+  },
+  navLabelActive: {
+    fontSize: 11,
+    color: "#78350F",
+    fontWeight: "700",
+  },
+  cartBadgeContainer: {
+    position: "relative",
+  },
+  cartBadge: {
+    position: "absolute",
+    top: -4,
+    right: -8,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#DC2626",
     justifyContent: "center",
+    alignItems: "center",
+  },
+  cartBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "700",
   },
 });

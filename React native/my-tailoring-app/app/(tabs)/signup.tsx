@@ -8,6 +8,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -37,49 +38,44 @@ export default function SignupScreen() {
     Poppins_700Bold,
   });
 
-  if (!fontsLoaded) {
-    return null;
-  }
+  if (!fontsLoaded) return null;
 
   return (
     <ImageBackground
       source={require("../../assets/images/tailorbackground.jpg")}
       style={styles.background}
       resizeMode="cover"
-      blurRadius={2}
+      blurRadius={1.5}
     >
-      <LinearGradient
-        colors={[
-          "rgba(15, 23, 42, 0.95)",
-          "rgba(30, 41, 59, 0.9)",
-          "rgba(51, 65, 85, 0.95)",
-        ]}
-        style={styles.overlay}
+      {/* Elegant dark overlay with warm brown tint */}
+      <View style={styles.overlay} />
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ flex: 1, justifyContent: "center" }}
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.container}>
-            {/* Sign Up Card */}
+            {/* Sign Up Card - Now in your web theme */}
             <View style={styles.card}>
               <Text style={styles.title}>Create Account</Text>
-              <Text style={styles.subtitle}>
-                Join the finest tailoring experience
-              </Text>
 
               {/* Full Name */}
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="person-outline"
                   size={20}
-                  color="#94a3b8"
+                  color="#8B4513"
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Full Name"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor="#999"
                   autoCapitalize="words"
                   value={fullName}
                   onChangeText={setFullName}
@@ -91,13 +87,13 @@ export default function SignupScreen() {
                 <Ionicons
                   name="mail-outline"
                   size={20}
-                  color="#94a3b8"
+                  color="#8B4513"
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Email address"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor="#999"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -111,13 +107,13 @@ export default function SignupScreen() {
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color="#94a3b8"
+                  color="#8B4513"
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Create Password"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor="#999"
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
@@ -128,7 +124,7 @@ export default function SignupScreen() {
                   <Ionicons
                     name={showPassword ? "eye-off-outline" : "eye-outline"}
                     size={22}
-                    color="#94a3b8"
+                    color="#8B4513"
                   />
                 </TouchableOpacity>
               </View>
@@ -138,13 +134,13 @@ export default function SignupScreen() {
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color="#94a3b8"
+                  color="#8B4513"
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Confirm Password"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor="#999"
                   secureTextEntry={!showConfirmPassword}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -157,19 +153,15 @@ export default function SignupScreen() {
                       showConfirmPassword ? "eye-off-outline" : "eye-outline"
                     }
                     size={22}
-                    color="#94a3b8"
+                    color="#8B4513"
                   />
                 </TouchableOpacity>
               </View>
 
-              {/* Sign Up Button */}
-              <TouchableOpacity
-                style={styles.loginButton}
-                onPress={() => router.replace("/home")}
-                activeOpacity={0.9}
-              >
+              {/* Sign Up Button - Now in your signature brown */}
+              <TouchableOpacity style={styles.loginButton} activeOpacity={0.9}>
                 <LinearGradient
-                  colors={["#991b1b", "#7f1d1d", "#6b1414"]}
+                  colors={["#8B4513", "#A0522D", "#6B3A0A"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.gradientButton}
@@ -200,16 +192,19 @@ export default function SignupScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </KeyboardAvoidingView>
-      </LinearGradient>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </ImageBackground>
   );
 }
 
-// SAME EXACT STYLES AS LOGIN SCREEN
 const styles = StyleSheet.create({
   background: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.5)", // Same cinematic 50% black overlay as landing
+  },
+
   container: {
     flex: 1,
     justifyContent: "center",
@@ -217,80 +212,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
 
-  header: {
-    alignItems: "center",
-    marginBottom: 40,
-  },
-  logoCircle: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: "rgba(251, 191, 36, 0.15)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: "rgba(251, 191, 36, 0.3)",
-    marginBottom: 16,
-  },
-  appName: {
-    fontFamily: "Poppins_700Bold",
-    fontSize: 32,
-    color: "#fbbf24",
-    letterSpacing: 1,
-  },
-  tagline: {
-    fontFamily: "Poppins_400Regular",
-    fontSize: 14,
-    color: "#cbd5e1",
-    marginTop: 4,
-  },
-
   card: {
     width: "100%",
     maxWidth: 380,
-    backgroundColor: "rgba(255, 255, 255, 0.96)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 28,
     padding: 32,
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: "#8B4513",
     shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 40,
-    elevation: 20,
+    elevation: 25,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    borderColor: "rgba(139, 69, 19, 0.15)",
   },
 
   title: {
     fontFamily: "Poppins_700Bold",
     fontSize: 30,
-    color: "#1e293b",
+    color: "#8B4513",
     marginBottom: 8,
   },
   subtitle: {
     fontFamily: "Poppins_400Regular",
     fontSize: 16,
-    color: "#64748b",
+    color: "#777",
     marginBottom: 32,
   },
 
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#fdfaf7",
     borderRadius: 16,
     paddingHorizontal: 18,
     marginBottom: 18,
     height: 58,
-    borderWidth: 1.5,
-    borderColor: "#e2e8f0",
+    borderWidth: 2,
+    borderColor: "#e8d5c4",
   },
   inputIcon: { marginRight: 12 },
   input: {
     flex: 1,
     fontFamily: "Poppins_500Medium",
     fontSize: 16,
-    color: "#1e293b",
+    color: "#333",
   },
 
   loginButton: {
@@ -306,9 +273,10 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
   loginButtonText: {
-    fontFamily: "Poppins_600SemiBold",
+    fontFamily: "Poppins_700Bold",
     fontSize: 17,
     color: "#ffffff",
+    letterSpacing: 0.5,
   },
 
   divider: {
@@ -319,23 +287,23 @@ const styles = StyleSheet.create({
   },
   line: {
     flex: 1,
-    height: 1,
-    backgroundColor: "#e2e8f0",
+    height: 1.5,
+    backgroundColor: "#ddd",
   },
   orText: {
     marginHorizontal: 16,
-    fontFamily: "Poppins_500Medium",
-    color: "#94a3b8",
-    fontSize: 14,
+    fontFamily: "Poppins_600SemiBold",
+    color: "#8B4513",
+    fontSize: 15,
   },
 
   signupText: {
     fontFamily: "Poppins_500Medium",
     fontSize: 15,
-    color: "#64748b",
+    color: "#666",
   },
   signupLink: {
-    color: "#f97316",
-    fontFamily: "Poppins_600SemiBold",
+    color: "#8B4513",
+    fontFamily: "Poppins_700Bold",
   },
 });

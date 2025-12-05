@@ -9,6 +9,7 @@ import {
   Image,
   ScrollView,
   Dimensions,
+  Platform,
   SafeAreaView,
   Alert,
 } from "react-native";
@@ -16,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { cartStore } from "../../utils/cartStore";
 
 const { width, height } = Dimensions.get("window");
@@ -27,6 +29,11 @@ export default function DryCleaningClothes() {
   const [quantity, setQuantity] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [clothingBrand, setClothingBrand] = useState("");
+
+  // Appointment Date & Time
+  const [appointmentDate, setAppointmentDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -67,9 +74,35 @@ export default function DryCleaningClothes() {
     return prices[garment] || 200;
   };
 
+  // Date & Time Handlers
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    const currentDate = selectedDate || appointmentDate;
+    setShowDatePicker(Platform.OS === "ios");
+    if (currentDate) {
+      setAppointmentDate(currentDate);
+      if (Platform.OS === "android") {
+        setShowDatePicker(false);
+        setShowTimePicker(true);
+      }
+    }
+  };
+
+  const onTimeChange = (event: any, selectedTime?: Date) => {
+    setShowTimePicker(Platform.OS === "ios");
+    if (selectedTime && appointmentDate) {
+      const updated = new Date(appointmentDate);
+      updated.setHours(selectedTime.getHours());
+      updated.setMinutes(selectedTime.getMinutes());
+      setAppointmentDate(updated);
+    }
+  };
+
   const handleAddService = () => {
-    if (!selectedItem || !quantity) {
-      Alert.alert("Missing Information", "Please fill in all required fields");
+    if (!selectedItem || !quantity || !appointmentDate) {
+      Alert.alert(
+        "Missing Information",
+        "Please fill all required fields including appointment date & time"
+      );
       return;
     }
 
@@ -83,34 +116,34 @@ export default function DryCleaningClothes() {
     const totalPrice = unitPrice * qty;
 
     let description = `${qty} ${selectedItem}(s) - Professional dry cleaning`;
-    if (clothingBrand) {
-      description += ` (${clothingBrand})`;
-    }
-    if (specialInstructions) {
-      description += ` - ${specialInstructions}`;
-    }
+    if (clothingBrand) description += ` (${clothingBrand})`;
+    if (specialInstructions) description += ` - ${specialInstructions}`;
 
     const cartItem = {
       id: Date.now().toString(),
       service: "Dry Cleaning",
       item: selectedItem,
-      description: description,
+      description,
       price: totalPrice,
-      icon: "water-outline",
+      icon: "water-outline" as const,
       quantity: qty,
       garmentType: selectedItem,
-      clothingBrand: clothingBrand,
-      specialInstructions: specialInstructions,
+      clothingBrand,
+      specialInstructions,
       image: image || undefined,
+      appointmentDate: appointmentDate.toLocaleString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }),
     };
 
     cartStore.addItem(cartItem);
 
     Alert.alert("Success!", "Dry cleaning service added to cart!", [
-      {
-        text: "View Cart",
-        onPress: () => router.push("/(tabs)/cart/Cart"),
-      },
+      { text: "View Cart", onPress: () => router.push("/(tabs)/cart/Cart") },
       {
         text: "Add More",
         onPress: () => {
@@ -119,6 +152,7 @@ export default function DryCleaningClothes() {
           setSpecialInstructions("");
           setClothingBrand("");
           setImage(null);
+          setAppointmentDate(null);
         },
       },
     ]);
@@ -126,10 +160,7 @@ export default function DryCleaningClothes() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={{ paddingBottom: height * 0.18 }}
-      >
+      <ScrollView contentContainerStyle={{ paddingBottom: height * 0.18 }}>
         <View style={styles.header}>
           <Image
             source={require("../../../assets/images/logo.png")}
@@ -146,6 +177,7 @@ export default function DryCleaningClothes() {
             </Text>
           </View>
 
+          {/* Image Upload */}
           <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
             {image ? (
               <Image source={{ uri: image }} style={styles.previewImage} />
@@ -164,20 +196,16 @@ export default function DryCleaningClothes() {
             )}
           </TouchableOpacity>
 
+          {/* Garment Type */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Type of Garment *</Text>
             <View style={styles.pickerWrapper}>
               <Picker
                 selectedValue={selectedItem}
-                onValueChange={(value) => setSelectedItem(value)}
+                onValueChange={setSelectedItem}
                 style={styles.picker}
-                dropdownIconColor="#9dc5e3"
               >
-                <Picker.Item
-                  label="Select garment type..."
-                  value=""
-                  color="#999"
-                />
+                <Picker.Item label="Select garment type..." value="" />
                 {garmentTypes.map((item) => (
                   <Picker.Item label={item} value={item} key={item} />
                 ))}
@@ -190,6 +218,7 @@ export default function DryCleaningClothes() {
             )}
           </View>
 
+          {/* Clothing Brand */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Clothing Brand (Optional)</Text>
             <TextInput
@@ -201,6 +230,7 @@ export default function DryCleaningClothes() {
             />
           </View>
 
+          {/* Quantity */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Quantity *</Text>
             <TextInput
@@ -218,6 +248,7 @@ export default function DryCleaningClothes() {
             )}
           </View>
 
+          {/* Special Instructions */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Special Instructions (Optional)</Text>
             <TextInput
@@ -225,13 +256,52 @@ export default function DryCleaningClothes() {
               style={styles.textArea}
               placeholderTextColor="#94a3b8"
               multiline
-              numberOfLines={5}
               value={specialInstructions}
               onChangeText={setSpecialInstructions}
               textAlignVertical="top"
             />
           </View>
 
+          {/* Appointment Date & Time */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Preferred Appointment *</Text>
+            <TouchableOpacity
+              style={styles.dateTimeButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Ionicons name="calendar-outline" size={22} color="#94665B" />
+              <Text style={styles.dateTimeText}>
+                {appointmentDate
+                  ? appointmentDate.toLocaleString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })
+                  : "Tap to select date & time"}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={appointmentDate || new Date()}
+                mode="date"
+                minimumDate={new Date()}
+                onChange={onDateChange}
+              />
+            )}
+            {showTimePicker && Platform.OS === "android" && (
+              <DateTimePicker
+                value={appointmentDate || new Date()}
+                mode="time"
+                onChange={onTimeChange}
+              />
+            )}
+          </View>
+
+          {/* Buttons */}
           <View style={styles.buttonRow}>
             <TouchableOpacity
               style={[styles.button, styles.cancelBtn]}
@@ -250,24 +320,43 @@ export default function DryCleaningClothes() {
         </View>
       </ScrollView>
 
+      {/* Bottom Nav */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity onPress={() => router.replace("/home")}>
-          <View style={styles.navItemWrap}>
-            <Ionicons name="home" size={20} color="#9CA3AF" />
-          </View>
-        </TouchableOpacity>
-        <View style={styles.navItemWrapActive}>
-          <Ionicons name="receipt-outline" size={20} color="#7A5A00" />
+        <View style={styles.navItemWrap}>
+          <TouchableOpacity onPress={() => router.replace("/home")}>
+            <View style={styles.navItemWrap}>
+              <Ionicons name="home" size={22} color="#9CA3AF" />
+              <Text style={styles.navLabel}>Home</Text>
+            </View>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
-          <View style={styles.navItemWrap}>
-            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
-          </View>
+
+        <TouchableOpacity
+          onPress={() =>
+            router.push("/(tabs)/appointment/appointmentSelection")
+          }
+          style={styles.navItemWrapActive}
+        >
+          <Ionicons name="calendar-outline" size={22} color="#78350F" />
+          <Text style={styles.navLabelActive}>Book</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push("../UserProfile/profile")}>
-          <View style={styles.navItemWrap}>
-            <Ionicons name="person-outline" size={20} color="#9CA3AF" />
+
+        <TouchableOpacity
+          onPress={() => router.push("/(tabs)/cart/Cart")}
+          style={styles.navItemWrap}
+        >
+          <View style={styles.cartBadgeContainer}>
+            <Ionicons name="cart-outline" size={22} color="#64748B" />
           </View>
+          <Text style={styles.navLabel}>Cart</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => router.push("../UserProfile/profile")}
+          style={styles.navItemWrap}
+        >
+          <Ionicons name="person-outline" size={22} color="#64748B" />
+          <Text style={styles.navLabel}>Profile</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -285,11 +374,7 @@ const styles = StyleSheet.create({
     paddingTop: height * 0.07,
     paddingBottom: height * 0.03,
   },
-  logo: {
-    width: width * 0.12,
-    height: width * 0.12,
-    borderRadius: 14,
-  },
+  logo: { width: width * 0.12, height: width * 0.12, borderRadius: 14 },
   headerTitle: {
     fontSize: 17,
     fontWeight: "800",
@@ -297,6 +382,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
   },
+
   card: {
     marginHorizontal: width * 0.06,
     marginTop: height * 0.04,
@@ -320,16 +406,9 @@ const styles = StyleSheet.create({
     borderBottomColor: "#e2e8f0",
     marginBottom: 32,
   },
-  cardTitle: {
-    fontSize: width * 0.065,
-    fontWeight: "800",
-    color: "#1e293b",
-  },
-  cardSubtitle: {
-    fontSize: width * 0.04,
-    color: "#64748b",
-    marginTop: 8,
-  },
+  cardTitle: { fontSize: width * 0.065, fontWeight: "800", color: "#1e293b" },
+  cardSubtitle: { fontSize: width * 0.04, color: "#64748b", marginTop: 8 },
+
   uploadBox: {
     height: 200,
     borderRadius: 24,
@@ -352,20 +431,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  uploadText: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#475569",
-  },
+  uploadText: { fontSize: 17, fontWeight: "700", color: "#475569" },
   uploadSubtext: {
     fontSize: 13.5,
     color: "#94a3b8",
     marginTop: 6,
     textAlign: "center",
   },
-  fieldContainer: {
-    marginBottom: 28,
-  },
+
+  fieldContainer: { marginBottom: 28 },
   label: {
     fontSize: width * 0.042,
     fontWeight: "700",
@@ -380,10 +454,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     overflow: "hidden",
   },
-  picker: {
-    height: 54,
-    color: "#1e293b",
-  },
+  picker: { height: 54, color: "#1e293b" },
+
   input: {
     borderWidth: 2,
     borderColor: "#cbd5e1",
@@ -393,6 +465,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     color: "#1e293b",
   },
+  textArea: {
+    borderWidth: 2,
+    borderColor: "#cbd5e1",
+    borderRadius: 18,
+    padding: 18,
+    fontSize: 15.5,
+    backgroundColor: "#ffffff",
+    minHeight: 130,
+    color: "#1e293b",
+  },
+
   priceIndicator: {
     marginTop: 8,
     fontSize: 14,
@@ -407,20 +490,29 @@ const styles = StyleSheet.create({
     color: "#10b981",
     marginLeft: 4,
   },
-  textArea: {
+
+  dateTimeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
     borderWidth: 2,
     borderColor: "#cbd5e1",
     borderRadius: 18,
     padding: 18,
-    fontSize: 15.5,
-    backgroundColor: "#ffffff",
-    minHeight: 130,
-    color: "#1e293b",
   },
+  dateTimeText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: "#1e293b",
+    fontWeight: "500",
+  },
+
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 20,
+    marginTop: 40,
   },
   button: {
     flex: 1,
@@ -436,55 +528,74 @@ const styles = StyleSheet.create({
     borderColor: "#fca5a5",
   },
   submitBtn: {
-    backgroundColor: "#3b82f6",
-    shadowColor: "#3b82f6",
-    shadowOpacity: 0.35,
+    backgroundColor: "#94665B",
+    shadowColor: "#94665B",
+    shadowOpacity: 0.4,
     shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 10,
+    elevation: 12,
   },
-  cancelText: {
-    color: "#dc2626",
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  submitText: {
-    color: "#ffffff",
-    fontWeight: "700",
-    fontSize: 15,
-  },
+  cancelText: { color: "#dc2626", fontWeight: "700", fontSize: 16 },
+  submitText: { color: "#ffffff", fontWeight: "700", fontSize: 16 },
+
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    paddingVertical: 12,
+    paddingVertical: 16,
+    paddingBottom: Platform.OS === "ios" ? 28 : 16,
     borderTopWidth: 1,
-    borderTopColor: "#EEE",
+    borderTopColor: "#F1F5F9",
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    elevation: 10,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 20,
   },
   navItemWrap: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#F3F4F6",
     alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: 12,
+    gap: 4,
   },
   navItemWrapActive: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#FDE68A",
     alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 20,
+    gap: 4,
+  },
+  navLabel: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "600",
+  },
+  navLabelActive: {
+    fontSize: 11,
+    color: "#78350F",
+    fontWeight: "700",
+  },
+  cartBadgeContainer: {
+    position: "relative",
+  },
+  cartBadge: {
+    position: "absolute",
+    top: -4,
+    right: -8,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#DC2626",
     justifyContent: "center",
+    alignItems: "center",
+  },
+  cartBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "700",
   },
 });

@@ -1,4 +1,3 @@
-// Save this as: app/utils/cartStore.ts
 
 export interface CartItem {
   id: string;
@@ -13,6 +12,7 @@ export interface CartItem {
   specialInstructions?: string;
   clothingBrand?: string;
   image?: string;
+  appointmentDate?: string;
 }
 
 // Simple global cart storage

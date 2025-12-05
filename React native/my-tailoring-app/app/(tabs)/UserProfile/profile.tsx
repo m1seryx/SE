@@ -110,21 +110,20 @@ export default function ProfileScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.push("../home")}>
-            <Ionicons name="arrow-back" size={24} color="#000" />
-          </TouchableOpacity>
           <Text style={styles.headerTitle}>My Profile</Text>
           <View style={{ width: 24 }} />
         </View>
 
         {/* Profile Card */}
         <View style={styles.profileCard}>
+          <View style={styles.profileCardBg} />
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
-              <Ionicons name="person" size={50} color="#94665B" />
+              <View style={styles.avatarGlow} />
+              <Ionicons name="person" size={54} color="#94665B" />
             </View>
-            <TouchableOpacity style={styles.editAvatarBtn}>
-              <Ionicons name="camera" size={16} color="#fff" />
+            <TouchableOpacity style={styles.editAvatarBtn} activeOpacity={0.8}>
+              <Ionicons name="camera" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
 
@@ -143,20 +142,21 @@ export default function ProfileScreen() {
         {/* Contact Information */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Contact Information</Text>
-
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
-              <Ionicons name="call-outline" size={20} color="#94665B" />
+              <View style={styles.iconWrapper}>
+                <Ionicons name="call-outline" size={22} color="#94665B" />
+              </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Phone</Text>
+                <Text style={styles.infoLabel}>Phone Number</Text>
                 <Text style={styles.infoValue}>{user.phone}</Text>
               </View>
             </View>
-
             <View style={styles.divider} />
-
             <View style={styles.infoRow}>
-              <Ionicons name="location-outline" size={20} color="#94665B" />
+              <View style={styles.iconWrapper}>
+                <Ionicons name="location-outline" size={22} color="#94665B" />
+              </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Address</Text>
                 <Text style={styles.infoValue}>{user.address}</Text>
@@ -248,7 +248,7 @@ export default function ProfileScreen() {
       {/* Edit Profile Modal */}
       <Modal
         visible={editModalVisible}
-        transparent={true}
+        transparent
         animationType="slide"
         onRequestClose={closeEditModal}
       >
@@ -257,29 +257,23 @@ export default function ProfileScreen() {
           activeOpacity={1}
           onPress={closeEditModal}
         >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={styles.modalContainer}
-            onPress={(e) => e.stopPropagation()}
-          >
+          <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
-              {/* Modal Header */}
               <View style={styles.modalHeader}>
                 <TouchableOpacity onPress={closeEditModal}>
-                  <Ionicons name="close" size={28} color="#1F2937" />
+                  <View style={styles.closeButton}>
+                    <Ionicons name="close" size={24} color="#1F2937" />
+                  </View>
                 </TouchableOpacity>
                 <Text style={styles.modalTitle}>Edit Profile</Text>
-                <View style={{ width: 28 }} />
+                <View style={{ width: 40 }} />
               </View>
 
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 20 }}
-              >
-                {/* Avatar Section */}
+              <ScrollView showsVerticalScrollIndicator={false}>
                 <View style={styles.modalAvatarSection}>
                   <View style={styles.modalAvatar}>
-                    <Ionicons name="person" size={50} color="#94665B" />
+                    <View style={styles.avatarGlow} />
+                    <Ionicons name="person" size={54} color="#94665B" />
                   </View>
                   <TouchableOpacity style={styles.changePhotoBtn}>
                     <Ionicons name="camera" size={18} color="#94665B" />
@@ -287,12 +281,10 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                 </View>
 
-                {/* Personal Information */}
                 <View style={styles.formSection}>
                   <Text style={styles.formSectionTitle}>
                     Personal Information
                   </Text>
-
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Full Name *</Text>
                     <View style={styles.inputContainer}>
@@ -304,15 +296,14 @@ export default function ProfileScreen() {
                       <TextInput
                         style={styles.input}
                         value={editedUser.name}
-                        onChangeText={(text) =>
-                          setEditedUser({ ...editedUser, name: text })
+                        onChangeText={(t) =>
+                          setEditedUser({ ...editedUser, name: t })
                         }
                         placeholder="Enter your full name"
                         placeholderTextColor="#9CA3AF"
                       />
                     </View>
                   </View>
-
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Email Address *</Text>
                     <View style={styles.inputContainer}>
@@ -320,8 +311,8 @@ export default function ProfileScreen() {
                       <TextInput
                         style={styles.input}
                         value={editedUser.email}
-                        onChangeText={(text) =>
-                          setEditedUser({ ...editedUser, email: text })
+                        onChangeText={(t) =>
+                          setEditedUser({ ...editedUser, email: t })
                         }
                         placeholder="Enter your email"
                         placeholderTextColor="#9CA3AF"
@@ -332,12 +323,10 @@ export default function ProfileScreen() {
                   </View>
                 </View>
 
-                {/* Contact Information */}
                 <View style={styles.formSection}>
                   <Text style={styles.formSectionTitle}>
                     Contact Information
                   </Text>
-
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Phone Number *</Text>
                     <View style={styles.inputContainer}>
@@ -345,16 +334,15 @@ export default function ProfileScreen() {
                       <TextInput
                         style={styles.input}
                         value={editedUser.phone}
-                        onChangeText={(text) =>
-                          setEditedUser({ ...editedUser, phone: text })
+                        onChangeText={(t) =>
+                          setEditedUser({ ...editedUser, phone: t })
                         }
                         placeholder="Enter your phone number"
-                        placeholderTextColor="#9CA3AF"
                         keyboardType="phone-pad"
+                        placeholderTextColor="#9CA3AF"
                       />
                     </View>
                   </View>
-
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Address *</Text>
                     <View
@@ -369,20 +357,19 @@ export default function ProfileScreen() {
                       <TextInput
                         style={[styles.input, styles.textArea]}
                         value={editedUser.address}
-                        onChangeText={(text) =>
-                          setEditedUser({ ...editedUser, address: text })
+                        onChangeText={(t) =>
+                          setEditedUser({ ...editedUser, address: t })
                         }
                         placeholder="Enter your complete address"
-                        placeholderTextColor="#9CA3AF"
                         multiline
                         numberOfLines={3}
                         textAlignVertical="top"
+                        placeholderTextColor="#9CA3AF"
                       />
                     </View>
                   </View>
                 </View>
 
-                {/* Action Buttons */}
                 <View style={styles.modalButtons}>
                   <TouchableOpacity
                     style={styles.cancelButton}
@@ -399,37 +386,48 @@ export default function ProfileScreen() {
                 </View>
               </ScrollView>
             </View>
-          </TouchableOpacity>
+          </View>
         </TouchableOpacity>
       </Modal>
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity onPress={() => router.push("/home")}>
-          <View style={styles.navItemWrap}>
-            <Ionicons name="home-outline" size={20} color="#9CA3AF" />
-          </View>
-        </TouchableOpacity>
+        <View style={styles.navItemWrap}>
+          <TouchableOpacity onPress={() => router.replace("/home")}>
+            <View style={styles.navItemWrap}>
+              <Ionicons name="home" size={22} color="#9CA3AF" />
+              <Text style={styles.navLabel}>Home</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           onPress={() =>
             router.push("/(tabs)/appointment/appointmentSelection")
           }
+          style={styles.navItemWrap}
         >
-          <View style={styles.navItemWrap}>
-            <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
-          </View>
+          <Ionicons name="calendar-outline" size={22} color="#64748B" />
+          <Text style={styles.navLabel}>Book</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
-          <View style={styles.navItemWrap}>
-            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
+        <TouchableOpacity
+          onPress={() => router.push("/(tabs)/cart/Cart")}
+          style={styles.navItemWrap}
+        >
+          <View style={styles.cartBadgeContainer}>
+            <Ionicons name="cart-outline" size={22} color="#64748B" />
           </View>
+          <Text style={styles.navLabel}>Cart</Text>
         </TouchableOpacity>
 
-        <View style={styles.navItemWrapActive}>
-          <Ionicons name="person" size={20} color="#7A5A00" />
-        </View>
+        <TouchableOpacity
+          onPress={() => router.push("../UserProfile/profile")}
+          style={styles.navItemWrapActive}
+        >
+          <Ionicons name="person-outline" size={22} color="#78350F" />
+          <Text style={styles.navLabelActive}>Profile</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -443,7 +441,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: width * 0.04,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     marginBottom: 20,
   },
   headerTitle: {
@@ -453,128 +451,159 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
   },
-
   profileCard: {
     backgroundColor: "#fff",
-    marginHorizontal: width * 0.04,
-    borderRadius: 20,
-    padding: 24,
+    marginHorizontal: width * 0.05,
+    borderRadius: 24,
+    padding: 28,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-    marginBottom: 20,
-  },
-  avatarContainer: {
+    shadowColor: "#94665B",
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+    marginBottom: 24,
+    overflow: "hidden",
     position: "relative",
-    marginBottom: 16,
   },
+  profileCardBg: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+    backgroundColor: "#FEF3C7",
+    opacity: 0.3,
+  },
+  avatarContainer: { position: "relative", marginBottom: 20 },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#F5ECE3",
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: "#FEF3C7",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 4,
+    borderColor: "#fff",
+    shadowColor: "#94665B",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  avatarGlow: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#F5ECE3",
+    borderRadius: 55,
+    opacity: 0.5,
   },
   editAvatarBtn: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
+    bottom: 2,
+    right: 2,
     backgroundColor: "#94665B",
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
     borderColor: "#fff",
   },
   userName: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 26,
+    fontWeight: "800",
     color: "#1F2937",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   userEmail: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#6B7280",
-    marginBottom: 16,
+    marginBottom: 20,
+    fontWeight: "500",
   },
   editProfileBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: "#F5ECE3",
-    borderRadius: 20,
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 24,
   },
-  editProfileText: {
-    color: "#94665B",
-    fontWeight: "600",
-    fontSize: 14,
-  },
+  editProfileText: { color: "#94665B", fontWeight: "700", fontSize: 15 },
 
-  section: {
-    marginHorizontal: width * 0.04,
-    marginBottom: 20,
-  },
+  section: { marginHorizontal: width * 0.05, marginBottom: 24 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 12,
+  sectionTitle: { fontSize: 20, fontWeight: "800", color: "#1F2937" },
+  viewAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 16,
   },
-  viewAllText: {
-    fontSize: 14,
-    color: "#94665B",
-    fontWeight: "600",
-  },
+  viewAllText: { fontSize: 14, color: "#94665B", fontWeight: "700" },
 
   infoCard: {
     backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: "#94665B",
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
   },
   infoRow: {
     flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 16,
+    paddingVertical: 4,
+  },
+  iconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#FEF3C7",
     alignItems: "center",
-    gap: 12,
-    paddingVertical: 8,
+    justifyContent: "center",
   },
-  infoContent: {
-    flex: 1,
-  },
+  infoContent: { flex: 1, paddingTop: 4 },
   infoLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#9CA3AF",
-    marginBottom: 2,
+    marginBottom: 4,
+    fontWeight: "600",
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#1F2937",
-    fontWeight: "500",
+    fontWeight: "600",
+    lineHeight: 22,
   },
-  divider: {
-    height: 1,
-    backgroundColor: "#F3F4F6",
-    marginVertical: 8,
+  modalAvatar: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: "#FEF3C7",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    borderWidth: 4,
+    borderColor: "#fff",
+    shadowColor: "#94665B",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
   },
-
+  closeButton: {},
+  divider: { height: 1, backgroundColor: "#F3F4F6", marginVertical: 16 },
   emptyOrders: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -702,70 +731,68 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-end",
   },
+
   modalContainer: {
-    flex: 1,
-    justifyContent: "flex-end",
+    backgroundColor: "transparent",
   },
+
   modalContent: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    maxHeight: height * 0.9,
-    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    maxHeight: height * 0.92,
+    paddingBottom: 20,
   },
+
   modalHeader: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingTop: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: "#F1F5F9",
   },
+
   modalTitle: {
     fontSize: 20,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#1F2937",
   },
 
   modalAvatarSection: {
     alignItems: "center",
-    paddingVertical: 24,
+    paddingVertical: 28,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: "#F1F5F9",
   },
-  modalAvatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#F5ECE3",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
+
   changePhotoBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: "#F5ECE3",
-    borderRadius: 16,
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 20,
+    marginTop: 8,
   },
+
   changePhotoText: {
     color: "#94665B",
-    fontWeight: "600",
-    fontSize: 14,
+    fontWeight: "700",
+    fontSize: 15,
   },
 
   formSection: {
     paddingHorizontal: 24,
     paddingTop: 24,
   },
+
   formSectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 17,
+    fontWeight: "800",
     color: "#1F2937",
     marginBottom: 16,
   },
@@ -773,109 +800,142 @@ const styles = StyleSheet.create({
   inputGroup: {
     marginBottom: 20,
   },
+
   inputLabel: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#374151",
     marginBottom: 8,
   },
+
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#F9FAFB",
-    borderRadius: 12,
+    borderRadius: 16,
     paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
     gap: 12,
   },
+
   input: {
     flex: 1,
-    paddingVertical: 14,
     fontSize: 16,
     color: "#1F2937",
+    paddingVertical: 14,
   },
+
   textAreaContainer: {
     alignItems: "flex-start",
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
+
   textAreaIcon: {
-    marginTop: 4,
+    marginTop: 8,
   },
+
   textArea: {
-    minHeight: 80,
-    paddingTop: 4,
+    height: 100,
+    textAlignVertical: "top",
   },
 
   modalButtons: {
     flexDirection: "row",
-    gap: 12,
     paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 20,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: "#F3F4F6",
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  cancelButtonText: {
-    color: "#6B7280",
-    fontWeight: "600",
-    fontSize: 16,
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: "#94665B",
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    shadowColor: "#94665B",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  saveButtonText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 16,
+    paddingTop: 16,
+    gap: 12,
   },
 
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 16,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 16,
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+  },
+
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#64748B",
+  },
+
+  saveButton: {
+    flex: 1,
+    paddingVertical: 16,
+    backgroundColor: "#94665B",
+    borderRadius: 16,
+    alignItems: "center",
+  },
+
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    paddingVertical: 12,
+    paddingVertical: 16,
+    paddingBottom: Platform.OS === "ios" ? 28 : 16,
     borderTopWidth: 1,
-    borderTopColor: "#EEE",
+    borderTopColor: "#F1F5F9",
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    elevation: 10,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 20,
   },
   navItemWrap: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#F3F4F6",
     alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: 12,
+    gap: 4,
   },
   navItemWrapActive: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#FDE68A",
     alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 20,
+    gap: 4,
+  },
+  navLabel: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "600",
+  },
+  navLabelActive: {
+    fontSize: 11,
+    color: "#78350F",
+    fontWeight: "700",
+  },
+  cartBadgeContainer: {
+    position: "relative",
+  },
+  cartBadge: {
+    position: "absolute",
+    top: -4,
+    right: -8,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#DC2626",
     justifyContent: "center",
+    alignItems: "center",
+  },
+  cartBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "700",
   },
 });

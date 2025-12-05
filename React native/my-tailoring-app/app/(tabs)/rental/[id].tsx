@@ -9,12 +9,14 @@ import {
   Modal,
   Platform,
   Alert,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { Text } from "react-native-paper";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Calendar } from "react-native-calendars";
 import { cartStore } from "../../utils/cartStore";
+import { LinearGradient } from "expo-linear-gradient";
 
 // Rental items data - matches home.tsx
 const rentalItems = [
@@ -110,6 +112,7 @@ export default function RentalDetail() {
   const [tempEndDate, setTempEndDate] = useState<Date | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false); // ← NEW: Full image modal
 
   if (!item) {
     return (
@@ -227,214 +230,266 @@ export default function RentalDetail() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <TouchableOpacity
-        style={styles.backBtn}
-        onPress={() => router.push("/rental")}
-      >
-        <Ionicons name="arrow-back" size={24} color="#1F2937" />
-      </TouchableOpacity>
-
-      <Image source={item.image} style={styles.image} resizeMode="cover" />
-
-      <View style={styles.sheet}>
-        <View style={styles.titlePill}>
-          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
-            {item.title}
-          </Text>
-        </View>
-
-        <View style={styles.priceSection}>
-          <Text style={styles.priceLabel}>Rental Price</Text>
-          <Text style={styles.priceValue}>₱{item.price}/day</Text>
-        </View>
-
-        {/* Details Grid */}
-        <View style={styles.detailsGrid}>
-          {["size", "fabric", "color", "length"].map((key) => (
-            <View key={key} style={styles.detailItem}>
-              <Ionicons
-                name={
-                  key === "size"
-                    ? "resize-outline"
-                    : key === "fabric"
-                    ? "shirt-outline"
-                    : key === "color"
-                    ? "color-palette-outline"
-                    : "swap-vertical-outline"
-                }
-                size={20}
-                color="#94665B"
-              />
-              <Text style={styles.detailLabel}>
-                {key.charAt(0).toUpperCase() + key.slice(1)}
-              </Text>
-              <Text style={styles.detailValue}>{(item as any)[key]}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Description</Text>
-          <Text style={styles.desc}>{item.description}</Text>
-        </View>
-
-        {/* Calendar Picker */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Rental Period</Text>
-
-          <TouchableOpacity
-            style={styles.calendarBtn}
-            onPress={() => {
-              setTempStartDate(startDate);
-              setTempEndDate(endDate);
-              setShowCalendar(true);
-            }}
-          >
-            <Ionicons name="calendar-outline" size={22} color="#94665B" />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              {startDate && endDate ? (
-                <>
-                  <Text style={styles.dateText}>
-                    {formatDate(startDate)} → {formatDate(endDate)}
-                  </Text>
-                  <Text style={styles.daysText}>
-                    {getRentalDays()} day{getRentalDays() > 1 ? "s" : ""}{" "}
-                    selected
-                  </Text>
-                </>
-              ) : (
-                <Text style={styles.placeholderText}>Tap to select dates</Text>
-              )}
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-
-          {startDate && endDate && (
-            <View style={styles.totalSection}>
-              <Text style={styles.totalLabel}>Total Cost</Text>
-              <Text style={styles.totalValue}>
-                ₱{calculateTotal().toLocaleString()}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        <TouchableOpacity style={styles.rentBtn} onPress={handleAddToCart}>
-          <Ionicons name="cart-outline" size={20} color="#fff" />
-          <Text style={styles.rentBtnText}>ADD TO CART</Text>
+    <>
+      <ScrollView style={styles.container}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => router.replace("/home")}
+        >
+          <Ionicons name="arrow-back" size={26} color="#fff" />
         </TouchableOpacity>
 
-        <View style={styles.additionalInfo}>
-          <Text style={styles.infoTitle}>Rental Info</Text>
-          <Text style={styles.infoText}>• Min: 1 day | Max: 30 days</Text>
-          <Text style={styles.infoText}>• Late fee: ₱100/day</Text>
-          <Text style={styles.infoText}>• Deposit: ₱500 (refundable)</Text>
-        </View>
-      </View>
+        {/* Clickable Hero Image */}
+        <TouchableOpacity
+          activeOpacity={0.95}
+          onPress={() => setShowImageModal(true)}
+          style={styles.imageContainer}
+        >
+          <Image source={item.image} style={styles.image} resizeMode="cover" />
+          <View style={styles.imageOverlay}>
+            <Ionicons name="expand-outline" size={28} color="#fff" />
+            <Text style={styles.tapToZoom}>Tap to zoom</Text>
+          </View>
+        </TouchableOpacity>
 
-      {/* Calendar Modal */}
-      <Modal visible={showCalendar} animationType="slide">
-        <View style={styles.calendarModal}>
-          <View style={styles.calendarHeader}>
-            <TouchableOpacity onPress={() => setShowCalendar(false)}>
-              <Ionicons name="close" size={28} color="#1F2937" />
-            </TouchableOpacity>
-            <Text style={styles.calendarTitle}>Select Dates</Text>
-            <TouchableOpacity
-              onPress={applyDates}
-              disabled={!tempStartDate || !tempEndDate}
-            >
-              <Text
-                style={[
-                  styles.doneText,
-                  (!tempStartDate || !tempEndDate) && { color: "#ccc" },
-                ]}
-              >
-                Done
-              </Text>
-            </TouchableOpacity>
+        <View style={styles.sheet}>
+          <LinearGradient
+            colors={["#78350F", "#92400E"]}
+            style={styles.titleBadge}
+          >
+            <Text style={styles.titleText}>{item.title}</Text>
+          </LinearGradient>
+
+          <View style={styles.priceSection}>
+            <Text style={styles.priceLabel}>Rental Price</Text>
+            <Text style={styles.priceValue}>₱{item.price}/day</Text>
           </View>
 
-          <Calendar
-            minDate={today.toISOString().split("T")[0]}
-            onDayPress={handleDayPress}
-            markedDates={getMarkedDates()}
-            markingType="period"
-            theme={{
-              selectedDayBackgroundColor: "#94665B",
-              todayTextColor: "#94665B",
-              arrowColor: "#94665B",
-              monthTextColor: "#1F2937",
-              textDayFontWeight: "600",
-            }}
-          />
+          {/* Details Grid */}
+          <View style={styles.detailsGrid}>
+            {["size", "fabric", "color", "length"].map((key) => (
+              <View key={key} style={styles.detailItem}>
+                <Ionicons
+                  name={
+                    key === "size"
+                      ? "resize-outline"
+                      : key === "fabric"
+                      ? "shirt-outline"
+                      : key === "color"
+                      ? "color-palette-outline"
+                      : "swap-vertical-outline"
+                  }
+                  size={20}
+                  color="#94665B"
+                />
+                <Text style={styles.detailLabel}>
+                  {key.charAt(0).toUpperCase() + key.slice(1)}
+                </Text>
+                <Text style={styles.detailValue}>{(item as any)[key]}</Text>
+              </View>
+            ))}
+          </View>
 
-          {tempStartDate && tempEndDate && (
-            <View style={styles.selectionSummary}>
-              <Text style={styles.summaryText}>
-                {formatDate(tempStartDate)} → {formatDate(tempEndDate)}
-              </Text>
-              <Text style={styles.summaryDays}>
-                {(() => {
-                  const diff = tempEndDate.getTime() - tempStartDate.getTime();
-                  return Math.ceil(diff / 86400000) + 1;
-                })()}{" "}
-                day
-                {(() => {
-                  const diff = tempEndDate.getTime() - tempStartDate.getTime();
-                  const days = Math.ceil(diff / 86400000) + 1;
-                  return days > 1 ? "s" : "";
-                })()}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>About this garment</Text>
+            <Text style={styles.description}>{item.description}</Text>
+          </View>
+
+          {/* Calendar Picker */}
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Rental Period</Text>
+
+            <TouchableOpacity
+              style={styles.calendarBtn}
+              onPress={() => {
+                setTempStartDate(startDate);
+                setTempEndDate(endDate);
+                setShowCalendar(true);
+              }}
+            >
+              <Ionicons name="calendar-outline" size={22} color="#94665B" />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                {startDate && endDate ? (
+                  <>
+                    <Text style={styles.dateText}>
+                      {formatDate(startDate)} → {formatDate(endDate)}
+                    </Text>
+                    <Text style={styles.daysText}>
+                      {getRentalDays()} day{getRentalDays() > 1 ? "s" : ""}{" "}
+                      selected
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={styles.placeholderText}>
+                    Tap to select dates
+                  </Text>
+                )}
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {startDate && endDate && (
+              <View style={styles.totalSection}>
+                <Text style={styles.totalLabel}>Total Cost</Text>
+                <Text style={styles.totalValue}>
+                  ₱{calculateTotal().toLocaleString()}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <TouchableOpacity style={styles.addBtn} onPress={handleAddToCart}>
+            <LinearGradient
+              colors={["#78350F", "#92400E"]}
+              style={StyleSheet.absoluteFillObject}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            />
+            <Ionicons name="cart" size={24} color="#fff" />
+            <Text style={styles.addBtnText}>ADD TO CART</Text>
+          </TouchableOpacity>
+
+          <View style={styles.policyCard}>
+            <Text style={styles.policyTitle}>Rental Policy</Text>
+            <View style={styles.policyRow}>
+              <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+              <Text style={styles.policyText}>
+                Minimum 1 day • Maximum 30 days
               </Text>
             </View>
-          )}
+            <View style={styles.policyRow}>
+              <Ionicons name="alert-circle" size={20} color="#F59E0B" />
+              <Text style={styles.policyText}>Late return: ₱100 per day</Text>
+            </View>
+            <View style={styles.policyRow}>
+              <Ionicons name="shield-checkmark" size={20} color="#3B82F6" />
+              <Text style={styles.policyText}>Refundable deposit: ₱500</Text>
+            </View>
+          </View>
         </View>
-      </Modal>
 
-      {/* Confirm Modal */}
-      <Modal visible={showConfirmModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalIcon}>
-              <Ionicons
-                name="calendar-check-outline"
-                size={48}
-                color="#94665B"
+        {/* Calendar Modal */}
+        <Modal visible={showCalendar} animationType="slide">
+          <View style={styles.calendarModal}>
+            <View style={styles.calendarHeader}>
+              <TouchableOpacity onPress={() => setShowCalendar(false)}>
+                <Ionicons name="close" size={28} color="#1F2937" />
+              </TouchableOpacity>
+              <Text style={styles.calendarTitle}>Select Dates</Text>
+              <TouchableOpacity
+                onPress={applyDates}
+                disabled={!tempStartDate || !tempEndDate}
+              >
+                <Text
+                  style={[
+                    styles.doneText,
+                    (!tempStartDate || !tempEndDate) && { color: "#ccc" },
+                  ]}
+                >
+                  Done
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Calendar
+              minDate={today.toISOString().split("T")[0]}
+              onDayPress={handleDayPress}
+              markedDates={getMarkedDates()}
+              markingType="period"
+              theme={{
+                selectedDayBackgroundColor: "#94665B",
+                todayTextColor: "#94665B",
+                arrowColor: "#94665B",
+                monthTextColor: "#1F2937",
+                textDayFontWeight: "600",
+              }}
+            />
+
+            {tempStartDate && tempEndDate && (
+              <View style={styles.selectionSummary}>
+                <Text style={styles.summaryText}>
+                  {formatDate(tempStartDate)} → {formatDate(tempEndDate)}
+                </Text>
+                <Text style={styles.summaryDays}>
+                  {(() => {
+                    const diff =
+                      tempEndDate.getTime() - tempStartDate.getTime();
+                    return Math.ceil(diff / 86400000) + 1;
+                  })()}{" "}
+                  day
+                  {(() => {
+                    const diff =
+                      tempEndDate.getTime() - tempStartDate.getTime();
+                    const days = Math.ceil(diff / 86400000) + 1;
+                    return days > 1 ? "s" : "";
+                  })()}
+                </Text>
+              </View>
+            )}
+          </View>
+        </Modal>
+
+        {/* Confirm Modal */}
+        <Modal visible={showConfirmModal} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalIcon}>
+                <Ionicons name="calendar" size={48} color="#94665B" />
+              </View>
+              <Text style={styles.modalTitle}>Confirm Rental</Text>
+              <Text style={styles.modalValue}>{item.title}</Text>
+              <Text style={styles.modalValue}>
+                {formatDate(startDate)} → {formatDate(endDate)}
+              </Text>
+              <Text style={styles.modalValue}>
+                {getRentalDays()} day{getRentalDays() > 1 ? "s" : ""}
+              </Text>
+              <View style={styles.modalTotal}>
+                <Text style={styles.modalTotalLabel}>Total</Text>
+                <Text style={styles.modalTotalValue}>
+                  ₱{calculateTotal().toLocaleString()}
+                </Text>
+              </View>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={styles.modalCancelButton}
+                  onPress={() => setShowConfirmModal(false)}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalConfirmButton}
+                  onPress={confirmAddToCart}
+                >
+                  <Text style={styles.modalConfirmText}>Add to Cart</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Full-Screen Image Modal */}
+        <Modal visible={showImageModal} transparent={true} animationType="fade">
+          <TouchableWithoutFeedback onPress={() => setShowImageModal(false)}>
+            <View style={styles.fullImageOverlay}>
+              <View style={styles.fullImageHeader}>
+                <TouchableOpacity
+                  style={styles.closeImageBtn}
+                  onPress={() => setShowImageModal(false)}
+                >
+                  <Ionicons name="close" size={30} color="#fff" />
+                </TouchableOpacity>
+              </View>
+              <Image
+                source={item.image}
+                style={styles.fullImage}
+                resizeMode="contain"
               />
             </View>
-            <Text style={styles.modalTitle}>Confirm Rental</Text>
-            <Text style={styles.modalValue}>{item.title}</Text>
-            <Text style={styles.modalValue}>
-              {formatDate(startDate)} → {formatDate(endDate)}
-            </Text>
-            <Text style={styles.modalValue}>
-              {getRentalDays()} day{getRentalDays() > 1 ? "s" : ""}
-            </Text>
-            <View style={styles.modalTotal}>
-              <Text style={styles.modalTotalLabel}>Total</Text>
-              <Text style={styles.modalTotalValue}>
-                ₱{calculateTotal().toLocaleString()}
-              </Text>
-            </View>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => setShowConfirmModal(false)}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalConfirmButton}
-                onPress={confirmAddToCart}
-              >
-                <Text style={styles.modalConfirmText}>Add to Cart</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    </ScrollView>
+          </TouchableWithoutFeedback>
+        </Modal>
+      </ScrollView>
+    </>
   );
 }
 
@@ -443,339 +498,311 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
+  titleBadge: {
+    alignSelf: "center",
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 30,
+    shadowColor: "#78350F",
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  titleText: { color: "#fff", fontSize: 18, fontWeight: "800" },
   backBtn: {
     position: "absolute",
-    top: 40,
+    top: Platform.OS === "ios" ? 60 : 40,
     left: 16,
-    zIndex: 10,
-    backgroundColor: "#fff",
-    padding: 10,
-    borderRadius: 20,
+    zIndex: 20,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    padding: 12,
+    borderRadius: 30,
     shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 5,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  imageContainer: {
+    position: "relative",
   },
   image: {
     width: "100%",
-    height: 300,
+    height: 380,
+  },
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 0,
+  },
+  tapToZoom: {
+    color: "#fff",
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: "600",
+    textShadowColor: "rgba(0,0,0,0.7)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   sheet: {
-    flex: 1,
-    marginTop: -24,
+    marginTop: -30,
     backgroundColor: "#fff",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 30,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 40,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 10,
   },
   titlePill: {
     alignSelf: "center",
     backgroundColor: "#94665B",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 20,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 30,
     shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
   },
   priceSection: {
-    marginTop: 20,
+    marginTop: 24,
     alignItems: "center",
-    paddingVertical: 16,
-    backgroundColor: "#F5ECE3",
-    borderRadius: 16,
+    paddingVertical: 20,
+    backgroundColor: "#FDF4F0",
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: "#F5ECE3",
   },
   priceLabel: {
-    fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 4,
+    fontSize: 15,
+    color: "#78716C",
+    marginBottom: 6,
+    fontWeight: "600",
+  },
+  sectionLabel: {
+    fontSize: 19,
+    fontWeight: "800",
+    color: "#0F172A",
+    letterSpacing: 0.3,
+    marginBottom: 16,
+    // Premium touch: subtle amber accent line underneath
+    paddingBottom: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: "#FDE68A",
+    alignSelf: "flex-start",
   },
   priceValue: {
-    fontSize: 28,
-    fontWeight: "800",
+    fontSize: 32,
+    fontWeight: "900",
     color: "#94665B",
+    letterSpacing: 0.5,
   },
   detailsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    marginTop: 20,
+    marginTop: 28,
+    gap: 12,
   },
   detailItem: {
     width: "48%",
-    backgroundColor: "#F9FAFB",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: "#FAFAFA",
+    padding: 18,
+    borderRadius: 16,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
   },
   detailLabel: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginTop: 8,
+    fontSize: 12.5,
+    color: "#78716C",
+    marginTop: 10,
   },
   detailValue: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1F2937",
-    marginTop: 4,
-  },
-  section: {
-    marginTop: 20,
-  },
-  sectionLabel: {
+    fontSize: 15,
     fontWeight: "700",
     color: "#1F2937",
-    marginBottom: 12,
-    fontSize: 16,
+    marginTop: 6,
   },
-  desc: {
-    color: "#6B7280",
-    lineHeight: 22,
-    fontSize: 14,
+  section: { marginTop: 36 },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginBottom: 16,
   },
-  datePickerBtn: {
+  description: { fontSize: 15.5, color: "#52525B", lineHeight: 24 },
+  calendarBtn: {
+    backgroundColor: "#FAFAFA",
+    padding: 18,
+    borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9FAFB",
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: "#E5E7EB",
     marginBottom: 16,
   },
-  datePickerText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 15,
-    color: "#1F2937",
-    fontWeight: "500",
-  },
-  daysInputContainer: {
-    marginBottom: 16,
-  },
-  daysLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1F2937",
-    marginBottom: 12,
-  },
-  daysControls: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F9FAFB",
-    borderRadius: 12,
-    padding: 12,
-  },
-  controlBtn: {
-    backgroundColor: "#fff",
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  daysValue: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginHorizontal: 32,
-  },
+  dateText: { fontSize: 16, fontWeight: "700", color: "#1F2937" },
+  daysText: { fontSize: 14, color: "#94665B", marginTop: 6, fontWeight: "600" },
+  placeholderText: { fontSize: 15.5, color: "#9CA3AF", fontWeight: "500" },
   totalSection: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "#FDF4F0",
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: "#F5ECE3",
   },
   totalLabel: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 17,
+    fontWeight: "700",
     color: "#1F2937",
   },
   totalValue: {
-    fontSize: 24,
-    fontWeight: "800",
+    fontSize: 28,
+    fontWeight: "900",
     color: "#94665B",
   },
-  rentBtn: {
-    marginTop: 24,
+  addBtn: {
+    marginTop: 36,
+    height: 62,
     flexDirection: "row",
-    alignSelf: "center",
-    backgroundColor: "#94665B",
-    paddingVertical: 16,
-    paddingHorizontal: 48,
-    borderRadius: 25,
-    shadowColor: "#94665B",
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 8,
     alignItems: "center",
-    gap: 10,
+    justifyContent: "center",
+    borderRadius: 31,
+    gap: 12,
+    shadowColor: "#78350F",
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 16,
   },
-  rentBtnText: {
+  addBtnText: {
     color: "#fff",
+    fontSize: 18,
     fontWeight: "800",
-    letterSpacing: 1,
-    fontSize: 16,
+    letterSpacing: 0.5,
   },
   additionalInfo: {
-    marginTop: 24,
-    padding: 20,
-    backgroundColor: "#F9FAFB",
-    borderRadius: 16,
-    borderWidth: 1,
+    marginTop: 32,
+    padding: 24,
+    backgroundColor: "#FAFAFA",
+    borderRadius: 20,
+    borderWidth: 1.5,
     borderColor: "#E5E7EB",
   },
   infoTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 17,
+    fontWeight: "800",
     color: "#1F2937",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   infoText: {
-    fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
-  },
-  errorText: {
-    fontSize: 20,
-    color: "#EF4444",
-    fontWeight: "600",
-    marginTop: 16,
-    marginBottom: 24,
-  },
-  backButton: {
-    backgroundColor: "#94665B",
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 20,
+    fontSize: 15,
+    color: "#52525B",
+    marginBottom: 10,
+    lineHeight: 23,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "rgba(0,0,0,0.7)",
     justifyContent: "center",
     alignItems: "center",
   },
   modalContent: {
     backgroundColor: "#fff",
-    borderRadius: 24,
-    padding: 32,
-    width: "90%",
-    maxWidth: 400,
+    borderRadius: 28,
+    padding: 36,
+    width: "92%",
+    maxWidth: 420,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
   },
   modalIcon: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: "#FDF4F0",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1F2937",
     marginBottom: 24,
   },
-  modalDetails: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    marginBottom: 12,
-  },
-  modalLabel: {
-    fontSize: 15,
-    color: "#6B7280",
+  modalTitle: {
+    fontSize: 26,
+    fontWeight: "900",
+    color: "#1F2937",
+    marginBottom: 28,
   },
   modalValue: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "600",
     color: "#1F2937",
+    marginBottom: 8,
+    textAlign: "center",
   },
   modalTotal: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
-    backgroundColor: "#F9FAFB",
-    padding: 20,
-    borderRadius: 16,
-    marginTop: 20,
-    marginBottom: 24,
+    backgroundColor: "#FAFAFA",
+    padding: 24,
+    borderRadius: 20,
+    marginTop: 24,
+    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
   modalTotalLabel: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 19,
+    fontWeight: "700",
     color: "#1F2937",
   },
   modalTotalValue: {
-    fontSize: 28,
-    fontWeight: "800",
+    fontSize: 32,
+    fontWeight: "900",
     color: "#94665B",
   },
   modalButtons: {
     flexDirection: "row",
-    gap: 12,
+    gap: 16,
     width: "100%",
   },
+
   modalCancelButton: {
     flex: 1,
     backgroundColor: "#F3F4F6",
-    paddingVertical: 16,
-    borderRadius: 16,
+    paddingVertical: 18,
+    borderRadius: 20,
     alignItems: "center",
   },
   modalCancelText: {
     color: "#6B7280",
-    fontWeight: "600",
+    fontWeight: "700",
     fontSize: 16,
   },
   modalConfirmButton: {
     flex: 1,
     backgroundColor: "#94665B",
-    paddingVertical: 16,
-    borderRadius: 16,
+    paddingVertical: 18,
+    borderRadius: 20,
     alignItems: "center",
   },
   modalConfirmText: {
     color: "#fff",
-    fontWeight: "700",
+    fontWeight: "800",
     fontSize: 16,
   },
-  calendarBtn: {
-    backgroundColor: "#F9FAFB",
-    padding: 16,
-    borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    marginBottom: 16,
-  },
-  dateText: { fontSize: 15, fontWeight: "600", color: "#1F2937" },
-  daysText: { fontSize: 13, color: "#94665B", marginTop: 4 },
-  placeholderText: { fontSize: 15, color: "#9CA3AF" },
   calendarModal: {
     flex: 1,
     backgroundColor: "#fff",
@@ -789,18 +816,63 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
   },
-  calendarTitle: { fontSize: 18, fontWeight: "700", color: "#1F2937" },
-  doneText: { fontSize: 16, fontWeight: "600", color: "#94665B" },
+  calendarTitle: { fontSize: 19, fontWeight: "800", color: "#1F2937" },
+  doneText: { fontSize: 17, fontWeight: "700", color: "#94665B" },
   selectionSummary: {
-    padding: 20,
+    padding: 24,
     backgroundColor: "#FDF4F0",
     alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#F5ECE3",
   },
-  summaryText: { fontSize: 16, fontWeight: "600", color: "#94665B" },
+  summaryText: { fontSize: 17, fontWeight: "700", color: "#94665B" },
   summaryDays: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#1F2937",
+    marginTop: 10,
+  },
+  // Full-screen image modal styles
+  fullImageOverlay: {
+    flex: 1,
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fullImageHeader: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 60 : 30,
+    left: 20,
+    zIndex: 10,
+  },
+  closeImageBtn: {
+    backgroundColor: "rgba(0,0,0,0.5)",
+    padding: 12,
+    borderRadius: 30,
+  },
+  fullImage: {
+    width: "100%",
+    height: "100%",
+  },
+  policyTitle: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#1F2937",
-    marginTop: 8,
+    color: "#0F172A",
+    marginBottom: 16,
+  },
+  policyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  policyText: { fontSize: 15, color: "#52525B", flex: 1 },
+  policyCard: {
+    marginTop: 36,
+    backgroundColor: "#FAFAFA",
+    padding: 24,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
   },
 });
