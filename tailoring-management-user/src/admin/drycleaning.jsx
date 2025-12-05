@@ -1,10 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../adminStyle/dryclean.css';
 import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
 import { getAllDryCleaningOrders, updateDryCleaningOrderItem } from '../api/DryCleaningOrderApi';
+import { getUserRole } from '../api/AuthApi';
+
+// Helper to check if user is authenticated
+const isAuthenticated = () => {
+  return !!localStorage.getItem('token');
+};
+
 
 const DryCleaning = () => {
+  const navigate = useNavigate();
   const [allItems, setAllItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -19,6 +28,51 @@ const DryCleaning = () => {
     approvalStatus: '',
     adminNotes: ''
   });
+ 
+  // Confirmation modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [confirmMessage, setConfirmMessage] = useState('');
+ 
+  // Toast notification state
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
+
+
+  const openConfirmModal = (message, action) => {
+    setConfirmMessage(message);
+    setConfirmAction(() => action);
+    setShowConfirmModal(true);
+  };
+
+
+  const handleConfirm = () => {
+    if (confirmAction) confirmAction();
+    setShowConfirmModal(false);
+    setConfirmAction(null);
+  };
+
+
+  // Check authentication on mount
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      setError('Please log in to access this page');
+      navigate('/login');
+      return;
+    }
+    const role = getUserRole();
+    if (role !== 'admin') {
+      setError('Admin access required');
+      navigate('/');
+      return;
+    }
+  }, [navigate]);
+
 
   // Helper function for status styling
   const getStatusClass = (status) => {
@@ -36,6 +90,7 @@ const DryCleaning = () => {
     return statusMap[status] || 'pending';
   };
 
+
   // Helper function for status display text
   const getStatusText = (status) => {
     const statusTextMap = {
@@ -52,10 +107,14 @@ const DryCleaning = () => {
     return statusTextMap[status] || 'Pending';
   };
 
+
   // Load dry cleaning orders on component mount
   useEffect(() => {
-    loadDryCleaningOrders();
+    if (isAuthenticated() && getUserRole() === 'admin') {
+      loadDryCleaningOrders();
+    }
   }, []);
+
 
   const loadDryCleaningOrders = async () => {
     setLoading(true);
@@ -75,6 +134,7 @@ const DryCleaning = () => {
     }
   };
 
+
   const pendingAppointments = allItems.filter(item =>
     item.approval_status === 'pending_review' ||
     item.approval_status === 'pending' ||
@@ -82,6 +142,7 @@ const DryCleaning = () => {
     item.approval_status === undefined ||
     item.approval_status === ''
   );
+
 
   const stats = {
     pending: pendingAppointments.length,
@@ -92,8 +153,10 @@ const DryCleaning = () => {
     rejected: allItems.filter(o => o.approval_status === 'cancelled').length
   };
 
+
   const getFilteredItems = () => {
     let items = [];
+
 
     if (viewFilter === "pending") {
       items = pendingAppointments;
@@ -113,6 +176,7 @@ const DryCleaning = () => {
       items = allItems;
     }
 
+
     // Apply search filter
     items = items.filter(item =>
       !searchTerm ||
@@ -122,13 +186,16 @@ const DryCleaning = () => {
       item.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+
     // Apply status filter only for "all" tab
     if (statusFilter && viewFilter === 'all') {
       items = items.filter(item => item.approval_status === statusFilter);
     }
 
+
     return items;
   };
+
 
   const handleAccept = async (itemId) => {
     try {
@@ -137,33 +204,36 @@ const DryCleaning = () => {
       });
       if (result.success) {
         await loadDryCleaningOrders();
-        alert("Dry cleaning request accepted!");
+        showToast("Dry cleaning request accepted!", "success");
       } else {
-        alert(result.message || "Failed to accept request");
+        showToast(result.message || "Failed to accept request", "error");
       }
     } catch (err) {
       console.error("Accept error:", err);
-      alert("Failed to accept request");
+      showToast("Failed to accept request", "error");
     }
   };
 
-  const handleDecline = async (itemId) => {
-    if (window.confirm("Decline this dry cleaning request?")) {
+
+  const handleDecline = (itemId) => {
+    openConfirmModal("Are you sure you want to decline this dry cleaning request?", async () => {
       try {
         const result = await updateDryCleaningOrderItem(itemId, {
           approvalStatus: 'cancelled'
         });
         if (result.success) {
           loadDryCleaningOrders();
+          showToast("Request declined", "success");
         } else {
-          alert(result.message || "Failed to decline request");
+          showToast(result.message || "Failed to decline request", "error");
         }
       } catch (err) {
         console.error("Decline error:", err);
-        alert("Failed to decline request");
+        showToast("Failed to decline request", "error");
       }
-    }
+    });
   };
+
 
   const updateStatus = async (itemId, status) => {
     try {
@@ -172,6 +242,7 @@ const DryCleaning = () => {
       });
       if (result.success) {
         await loadDryCleaningOrders();
+
 
         // Automatically switch to the correct tab based on the new status
         if (status === 'accepted') {
@@ -186,22 +257,25 @@ const DryCleaning = () => {
           setViewFilter('rejected');
         }
 
+
         const item = allItems.find(o => o.item_id === itemId);
         if (item) {
-          alert(`Order #${item.order_id} status updated!`);
+          showToast(`Order #${item.order_id} status updated!`, "success");
         }
       } else {
-        alert(result.message || "Failed to update status");
+        showToast(result.message || "Failed to update status", "error");
       }
     } catch (err) {
-      alert("Failed to update status");
+      showToast("Failed to update status", "error");
     }
   };
+
 
   const handleViewDetails = (item) => {
     setSelectedOrder(item);
     setShowDetailModal(true);
   };
+
 
   const handleEditOrder = (item) => {
     setSelectedOrder(item);
@@ -213,29 +287,34 @@ const DryCleaning = () => {
     setShowEditModal(true);
   };
 
+
   const handleSaveEdit = async () => {
     if (!selectedOrder) return;
+
 
     try {
       const result = await updateDryCleaningOrderItem(selectedOrder.item_id, editForm);
 
+
       if (result.success) {
         setShowEditModal(false);
         loadDryCleaningOrders();
-        alert('Dry cleaning order updated successfully!');
+        showToast('Order updated successfully!', 'success');
       } else {
-        alert(result.message || 'Failed to update order');
+        showToast(result.message || 'Failed to update order', 'error');
       }
     } catch (err) {
       console.error("Update error:", err);
-      alert('Failed to update order');
+      showToast('Failed to update order', 'error');
     }
   };
+
 
   return (
     <div className="dry-cleaning-management">
       <Sidebar />
       <AdminHeader />
+
 
       <div className="content">
         <div className="dashboard-title">
@@ -245,6 +324,7 @@ const DryCleaning = () => {
           </div>
           {error && <div className="error-message" style={{ color: 'red', marginBottom: '20px' }}>{error}</div>}
         </div>
+
 
         {/* Stats */}
         <div className="stats-grid">
@@ -285,33 +365,10 @@ const DryCleaning = () => {
           </div>
         </div>
 
+
         {/* Tabs */}
-        <div className="view-tabs">
-          <button className={viewFilter === 'all' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('all')}>
-            All ({allItems.length})
-          </button>
-          <button className={viewFilter === 'pending' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('pending')}>
-            Pending ({pendingAppointments.length})
-          </button>
-          <button className={viewFilter === 'accepted' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('accepted')}>
-            Accepted ({allItems.filter(o => o.approval_status === 'accepted').length})
-          </button>
-          <button className={viewFilter === 'price-confirmation' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('price-confirmation')}>
-            Price Confirmation ({allItems.filter(o => o.approval_status === 'price_confirmation').length})
-          </button>
-          <button className={viewFilter === 'in-progress' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('in-progress')}>
-            In Progress ({allItems.filter(o => o.approval_status === 'confirmed').length})
-          </button>
-          <button className={viewFilter === 'to-pickup' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('to-pickup')}>
-            To Pick up ({allItems.filter(o => o.approval_status === 'ready_for_pickup').length})
-          </button>
-          <button className={viewFilter === 'completed' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('completed')}>
-            Completed ({allItems.filter(o => o.approval_status === 'completed').length})
-          </button>
-          <button className={viewFilter === 'rejected' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('rejected')}>
-            Rejected ({allItems.filter(o => o.approval_status === 'cancelled').length})
-          </button>
-        </div>
+        
+
 
         <div className="search-container">
           <input
@@ -331,6 +388,7 @@ const DryCleaning = () => {
             <option value="cancelled">Rejected</option>
           </select>
         </div>
+
 
         {/* Table */}
         <div className="table-container">
@@ -354,14 +412,14 @@ const DryCleaning = () => {
                 <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>No dry cleaning orders found</td></tr>
               ) : (
                 getFilteredItems().map(item => (
-                  <tr key={item.item_id}>
+                  <tr key={item.item_id} className="clickable-row" onClick={() => handleViewDetails(item)}>
                     <td><strong>#{item.order_id}</strong></td>
                     <td>{item.first_name} {item.last_name}</td>
                     <td>{item.specific_data?.garmentType || 'N/A'}</td>
                     <td><span style={{ fontSize: '0.9em', color: '#d32f2f' }}>{item.specific_data?.serviceName || 'N/A'}</span></td>
                     <td>{new Date(item.order_date).toLocaleDateString()}</td>
                     <td>₱{parseFloat(item.final_price || 0).toLocaleString()}</td>
-                    <td>
+                    <td onClick={(e) => e.stopPropagation()}>
                       {item.approval_status === 'pending_review' || item.approval_status === null || item.approval_status === undefined || item.approval_status === '' ? (
                         <span className={`status-badge ${getStatusClass('pending')}`}>
                           {getStatusText('pending')}
@@ -382,94 +440,35 @@ const DryCleaning = () => {
                         </select>
                       )}
                     </td>
-                    <td>
+                    <td onClick={(e) => e.stopPropagation()}>
                       {item.approval_status === 'pending_review' || item.approval_status === 'pending' || item.approval_status === null || item.approval_status === undefined || item.approval_status === '' ? (
-                        <div className="buttons">
-                          <button className="accept-btn" onClick={() => handleAccept(item.item_id)}
-                            style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#27AE60',
-                              color: 'white',
-                              marginRight: '5px'
-                            }}>Accept</button>
-                          <button className="edit-btn" onClick={() => handleEditOrder(item)}
-                            style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#ff9800',
-                              color: 'white',
-                              marginRight: '5px'
-                            }}>Edit Price</button>
-                          <button className="decline-btn" onClick={() => handleDecline(item.item_id)}
-                            style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#E74C3C',
-                              color: 'white',
-                              marginRight: '5px'
-                            }}>Decline</button>
-                          <button className="action-btn view-btn" onClick={() => handleViewDetails(item)}
-                            style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#2196f3',
-                              color: 'white',
-                              marginRight: '5px'
-                            }}>View</button>
-                          <button className="action-btn edit-btn" onClick={() => handleEditOrder(item)}
-                            style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#ff9800',
-                              color: 'white'
-                            }}>Edit</button>
+                        <div className="action-buttons">
+                          <button className="icon-btn accept" onClick={() => handleAccept(item.item_id)} title="Accept">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                          </button>
+                          <button className="icon-btn decline" onClick={() => handleDecline(item.item_id)} title="Decline">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                          </button>
+                          <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </button>
                         </div>
                       ) : (
-                        <div className="buttons">
-                          <button className="action-btn view-btn" onClick={() => handleViewDetails(item)}
-                            style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#2196f3',
-                              color: 'white',
-                              marginRight: '5px'
-                            }}>View</button>
-                          <button className="action-btn edit-btn" onClick={() => handleEditOrder(item)}
-                            style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#ff9800',
-                              color: 'white'
-                            }}>Edit</button>
+                        <div className="action-buttons">
+                          <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </button>
                         </div>
                       )}
                     </td>
@@ -481,18 +480,20 @@ const DryCleaning = () => {
         </div>
       </div>
 
+
       {/* Edit Order Modal */}
       {showEditModal && selectedOrder && (
         <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowEditModal(false)}>
           <div className="modal-content">
             <div className="modal-header">
-              <h2>Edit Dry Cleaning Order</h2>
+              <h2>Update Dry Cleaning Order</h2>
               <span className="close-modal" onClick={() => setShowEditModal(false)}>×</span>
             </div>
             <div className="modal-body">
               <div className="detail-row"><strong>Order ID:</strong> #{selectedOrder.order_id}</div>
               <div className="detail-row"><strong>Garment:</strong> {selectedOrder.specific_data?.garmentType || 'N/A'}</div>
               <div className="detail-row"><strong>Service:</strong> {selectedOrder.specific_data?.serviceName || 'N/A'}</div>
+
 
               <div className="form-group" style={{ marginTop: '20px' }}>
                 <label>Final Price (₱)</label>
@@ -504,6 +505,7 @@ const DryCleaning = () => {
                   style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                 />
               </div>
+
 
               <div className="form-group">
                 <label>Status</label>
@@ -521,6 +523,7 @@ const DryCleaning = () => {
                   <option value="cancelled">Rejected</option>
                 </select>
               </div>
+
 
               <div className="form-group">
                 <label>Admin Notes</label>
@@ -540,6 +543,7 @@ const DryCleaning = () => {
           </div>
         </div>
       )}
+
 
       {/* View Details Modal */}
       {showDetailModal && selectedOrder && (
@@ -561,6 +565,7 @@ const DryCleaning = () => {
                 </span>
               </div>
 
+
               {selectedOrder.pricing_factors?.adminNotes && (
                 <div className="detail-row"><strong>Admin Notes:</strong> {selectedOrder.pricing_factors.adminNotes}</div>
               )}
@@ -571,8 +576,51 @@ const DryCleaning = () => {
           </div>
         </div>
       )}
+
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowConfirmModal(false)}>
+          <div className="confirm-modal">
+            <div className="confirm-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E74C3C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+            <h3>Confirm Action</h3>
+            <p>{confirmMessage}</p>
+            <div className="confirm-buttons">
+              <button className="confirm-btn cancel" onClick={() => setShowConfirmModal(false)}>Cancel</button>
+              <button className="confirm-btn confirm" onClick={handleConfirm}>Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`toast ${toast.type}`}>
+          {toast.type === 'success' ? (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+          )}
+          <span>{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 };
+
 
 export default DryCleaning;

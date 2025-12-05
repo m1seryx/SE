@@ -281,7 +281,7 @@ thead th {
 
 tbody tr {
   border-bottom: 1px solid #F1F3F5;
-  transition: background-color 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 tbody tr:hover {
@@ -292,6 +292,21 @@ tbody tr:last-child {
   border-bottom: none;
 }
 
+tbody tr.clickable-row {
+  cursor: pointer;
+}
+
+tbody tr.clickable-row:hover {
+  background-color: #f0f4f8;
+  transform: scale(1.005);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+tbody tr.clickable-row:active {
+  transform: scale(1);
+  background-color: #e8ecf0;
+}
+
 tbody td {
   padding: 20px 24px;
   font-size: 15px;
@@ -300,6 +315,130 @@ tbody td {
 
 /* ============ BUTTONS ============ */
 
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.icon-btn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border: none;
+  outline: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+  box-shadow: none;
+}
+
+.icon-btn:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+}
+
+.icon-btn:hover {
+  transform: scale(1.15);
+}
+
+.icon-btn.accept {
+  color: #27AE60;
+}
+
+.icon-btn.accept:hover {
+  color: #1e8449;
+}
+
+.icon-btn.price {
+  color: #ff9800;
+}
+
+.icon-btn.price:hover {
+  color: #e65100;
+}
+
+.icon-btn.decline {
+  color: #E74C3C;
+}
+
+.icon-btn.decline:hover {
+  color: #c0392b;
+}
+
+.icon-btn.view {
+  color: #2196f3;
+}
+
+.icon-btn.view:hover {
+  color: #1565c0;
+}
+
+.icon-btn.edit {
+  color: #9b59b6;
+}
+
+.icon-btn.edit:hover {
+  color: #7d3c98;
+}
+
+/* Tooltip styles */
+.icon-btn[title] {
+  position: relative;
+}
+
+.icon-btn[title]::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 10px;
+  background: #2D3436;
+  color: white;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  margin-bottom: 6px;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.icon-btn[title]::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #2D3436;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  margin-bottom: -4px;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.icon-btn[title]:hover::after,
+.icon-btn[title]:hover::before {
+  opacity: 1;
+  visibility: visible;
+}
 
 .action-btn {
   padding: 6px 10px;
@@ -577,6 +716,107 @@ tbody td {
 .close-btn:hover {
   background: #5a6268;
   transform: translateY(-2px);
+}
+
+/* ============ CONFIRMATION MODAL ============ */
+.confirm-modal {
+  background: white;
+  padding: 32px;
+  border-radius: 16px;
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+  animation: slideUp 0.3s ease;
+}
+
+.confirm-icon {
+  margin-bottom: 16px;
+}
+
+.confirm-modal h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #2D3436;
+  margin: 0 0 12px 0;
+}
+
+.confirm-modal p {
+  font-size: 15px;
+  color: #636E72;
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.confirm-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.confirm-btn {
+  padding: 12px 28px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.confirm-btn.cancel {
+  background: #f0f0f0;
+  color: #636E72;
+}
+
+.confirm-btn.cancel:hover {
+  background: #e0e0e0;
+}
+
+.confirm-btn.confirm {
+  background: #E74C3C;
+  color: white;
+}
+
+.confirm-btn.confirm:hover {
+  background: #c0392b;
+}
+
+/* ============ TOAST NOTIFICATION ============ */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 16px 24px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 2000;
+  animation: slideInRight 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.toast.success {
+  background: #27AE60;
+  color: white;
+}
+
+.toast.error {
+  background: #E74C3C;
+  color: white;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* Animations */

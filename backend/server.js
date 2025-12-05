@@ -11,9 +11,14 @@ app.use(cors({
     'http://localhost:5173', 
     'http://localhost:5174', 
     'http://localhost:3000',
+    'http://localhost:8081', // Expo web
+    'http://localhost:8082', // Expo web alternative
+    'http://127.0.0.1:8081',
+    'http://127.0.0.1:8082',
     'http://localhost:19006', // Expo React Native
     'http://127.0.0.1:19006', // Expo alternative
     'exp://192.168.1.100:19000', // Physical device (replace with your IP)
+    'exp://192.168.254.103:8082', // Your current setup
     '*' // Development only - remove in production
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
