@@ -76,18 +76,17 @@ table {
 }
 
 thead {
-  background: #F8F9FA;
+  background: linear-gradient(135deg, #6A3C3E 0%, #8B5456 100%);
 }
 
 thead th {
   padding: 20px 24px;
   text-align: left;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: #636E72;
+  color: #FFFFFF;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 2px solid #E8E9ED;
 }
 
 tbody tr {
@@ -789,4 +788,90 @@ tbody {
     width: 100%;
     text-align: center;
   }
+}
+
+/* ============ CLICKABLE ROW ============ */
+tbody tr.clickable-row {
+  cursor: pointer;
+}
+
+tbody tr.clickable-row:hover {
+  background-color: #f0f7ff;
+  box-shadow: inset 0 0 0 1px rgba(33, 150, 243, 0.2);
+}
+
+tbody tr.clickable-row:active {
+  background-color: #e3f2fd;
+}
+
+/* ============ ICON BUTTONS ============ */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  background: #f5f5f5;
+  color: #666;
+}
+
+.icon-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(106, 60, 62, 0.3);
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+}
+
+.icon-btn:hover {
+  transform: translateY(-2px);
+}
+
+.icon-btn.accept {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.icon-btn.accept:hover {
+  background: #c8e6c9;
+}
+
+.icon-btn.decline {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.icon-btn.decline:hover {
+  background: #ffcdd2;
+}
+
+.icon-btn.view {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.icon-btn.view:hover {
+  background: #bbdefb;
+}
+
+.icon-btn.edit {
+  background: #fff3e0;
+  color: #ef6c00;
+}
+
+.icon-btn.edit:hover {
+  background: #ffe0b2;
 }

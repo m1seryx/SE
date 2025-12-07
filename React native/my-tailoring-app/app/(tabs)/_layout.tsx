@@ -1,66 +1,25 @@
-// import { Tabs } from "expo-router";
-// import React from "react";
-// import { HapticTab } from "@/components/haptic-tab";
-// import { IconSymbol } from "@/components/ui/icon-symbol";
-// import { Colors } from "@/constants/theme";
-// import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Stack } from "expo-router";
+import React from "react";
 
-// export default function TabLayout() {
-//   const colorScheme = useColorScheme();
-
-//   return (
-//     <Tabs
-//       screenOptions={{
-//         tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-//         headerShown: false,
-//         tabBarButton: HapticTab,
-//       }}
-//     >
+export default function TabLayout() {
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      {/* Landing/Auth screens */}
+      <Stack.Screen name="index" />
+      <Stack.Screen name="login" />
+      <Stack.Screen name="signup" />
       
-//       <Tabs.Screen
-//         name="index"
-//         options={{
-//           title: "Welcome",
-//           tabBarStyle: { display: "none" }, 
-//           tabBarIcon: ({ color }) => (
-//             <IconSymbol size={28} name="house.fill" color={color} />
-//           ),
-//         }}
-//       />
-
+      {/* Main app screens */}
+      <Stack.Screen name="home" />
+      <Stack.Screen name="explore" />
+      <Stack.Screen name="notifications" />
       
-//       <Tabs.Screen
-//         name="login"
-//         options={{
-//           title: "Login",
-//           tabBarStyle: { display: "none" },
-//           tabBarIcon: ({ color }) => (
-//             <IconSymbol size={28} name="person.fill" color={color} />
-//           ),
-//         }}
-//       />
-//       <Tabs.Screen
-//         name="signup"
-//         options={{
-//           title: "Sign Up",
-//           tabBarStyle: { display: "none" },
-//           tabBarIcon: ({ color }) => (
-//             <IconSymbol size={28} name="person.badge.plus" color={color} />
-//           ),
-//         }}
-//       />
-
-      
-//       <Tabs.Screen
-//         name="home"
-//         options={{
-//           title: "Home",
-//           tabBarStyle: { display: "none" },
-//           tabBarIcon: ({ color }) => (
-//             <IconSymbol size={28} name="house.fill" color={color} />
-//           ),
-//         }}
-//       />
-//     </Tabs>
-//   );
-// }
+      {/* Nested folders */}
+      <Stack.Screen name="appointment" />
+      <Stack.Screen name="cart" />
+      <Stack.Screen name="orders" />
+      <Stack.Screen name="rental" />
+      <Stack.Screen name="UserProfile" />
+    </Stack>
+  );
+}

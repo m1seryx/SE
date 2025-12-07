@@ -1,4 +1,4 @@
-// app/(tabs)/appointment/DryCleaning.tsx
+﻿// app/(tabs)/appointment/DryCleaning.tsx
 import React, { useState } from "react";
 import {
   View,
@@ -11,11 +11,13 @@ import {
   Dimensions,
   SafeAreaView,
   Alert,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
+import DateTimePickerModal from "../../../components/DateTimePickerModal";
 import { cartService } from "../../../utils/apiService";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -28,6 +30,8 @@ export default function DryCleaningClothes() {
   const [quantity, setQuantity] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [clothingBrand, setClothingBrand] = useState("");
+  const [pickupDate, setPickupDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -37,6 +41,16 @@ export default function DryCleaningClothes() {
     if (!result.canceled) {
       setImage(result.assets[0].uri);
     }
+  };
+
+  // Date Handler - only date, no time
+  const handleDateConfirm = (selectedDate: Date) => {
+    setPickupDate(selectedDate);
+    setShowDatePicker(false);
+  };
+
+  const handlePickerCancel = () => {
+    setShowDatePicker(false);
   };
 
   const garmentTypes = [
@@ -104,7 +118,7 @@ export default function DryCleaningClothes() {
           } as any);
 
           const token = await AsyncStorage.getItem('userToken');
-          const uploadResponse = await fetch('http://192.168.1.202:5000/api/dry-cleaning/upload-image', {
+          const uploadResponse = await fetch('http://192.168.254.102:5000/api/dry-cleaning/upload-image', {
             method: 'POST',
             headers: {
               'Authorization': token ? `Bearer ${token}` : '',
@@ -139,7 +153,8 @@ export default function DryCleaningClothes() {
           clothingBrand: clothingBrand,
           specialInstructions: specialInstructions,
           quantity: qty,
-          imageUrl: imageUrl || 'no-image'
+          imageUrl: imageUrl || 'no-image',
+          pickupDate: pickupDate.toISOString()
         }
       };
 
@@ -159,6 +174,7 @@ export default function DryCleaningClothes() {
               setSpecialInstructions("");
               setClothingBrand("");
               setImage(null);
+              setPickupDate(new Date());
             },
           },
         ]);
@@ -178,7 +194,7 @@ export default function DryCleaningClothes() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={{ paddingBottom: height * 0.18 }}
+        contentContainerStyle={{ paddingBottom: height * 0.25 }}
       >
         <View style={styles.header}>
           <Image
@@ -192,7 +208,7 @@ export default function DryCleaningClothes() {
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Dry Cleaning Service</Text>
             <Text style={styles.cardSubtitle}>
-              We'll make it fresh and clean
+              We will make it fresh and clean
             </Text>
           </View>
 
@@ -235,7 +251,7 @@ export default function DryCleaningClothes() {
             </View>
             {selectedItem && (
               <Text style={styles.priceIndicator}>
-                Price per item: ₱{getPriceForGarment(selectedItem)}
+                Price per item: P{getPriceForGarment(selectedItem)}
               </Text>
             )}
           </View>
@@ -263,7 +279,7 @@ export default function DryCleaningClothes() {
             />
             {selectedItem && quantity && parseInt(quantity) > 0 && (
               <Text style={styles.totalIndicator}>
-                Total: ₱{getPriceForGarment(selectedItem) * parseInt(quantity)}
+                Total: P{getPriceForGarment(selectedItem) * parseInt(quantity)}
               </Text>
             )}
           </View>
@@ -279,6 +295,36 @@ export default function DryCleaningClothes() {
               value={specialInstructions}
               onChangeText={setSpecialInstructions}
               textAlignVertical="top"
+            />
+          </View>
+
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Preferred Pickup Date *</Text>
+            <TouchableOpacity
+              style={styles.dateTimeButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Ionicons name="calendar-outline" size={22} color="#3b82f6" />
+              <Text style={styles.dateTimeText}>
+                {pickupDate
+                  ? pickupDate.toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "Tap to select date"}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            <DateTimePickerModal
+              visible={showDatePicker}
+              mode="date"
+              value={pickupDate}
+              minimumDate={new Date()}
+              onConfirm={handleDateConfirm}
+              onCancel={handlePickerCancel}
             />
           </View>
 
@@ -466,6 +512,23 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     minHeight: 130,
     color: "#1e293b",
+  },
+  dateTimeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: "#cbd5e1",
+    borderRadius: 18,
+    padding: 18,
+  },
+  dateTimeText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: "#1e293b",
+    fontWeight: "500",
   },
   buttonRow: {
     flexDirection: "row",

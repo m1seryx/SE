@@ -18,6 +18,7 @@ import RentalClothes from './components/RentalClothes';
 import Cart from './components/Cart';
 import RepairFormModal from './components/RepairFormModal';
 import DryCleaningFormModal from './components/DryCleaningFormModal';
+import CustomizationFormModal from './components/CustomizationFormModal';
 import OrderDetailsModal from './OrderDetailsModal';
 
 const UserHomePage = ({ userName, setIsLoggedIn }) => {
@@ -29,6 +30,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [repairFormModalOpen, setRepairFormModalOpen] = useState(false);
   const [dryCleaningFormModalOpen, setDryCleaningFormModalOpen] = useState(false);
+  const [customizationFormModalOpen, setCustomizationFormModalOpen] = useState(false);
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointments, setAppointments] = useState(() => {
     try {
@@ -157,6 +159,13 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
       setRepairFormModalOpen(true);
       return;
     }
+
+    if (type === 'Customize') {
+     
+      setServiceModalOpen(false);
+      setCustomizationFormModalOpen(true);
+      return;
+    }
     
     if (type === 'Dry Cleaning') {
    
@@ -242,26 +251,18 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
           <a href="#Repair">Repair</a>
           <a href="#DryCleaning">Dry Cleaning</a>
         </nav>
-        <a href="#About">About</a>
-        <button className="notif-button" onClick={() => setNotificationsOpen(true)} aria-label="Notifications">
+        <button className="notif-button icon-button" onClick={() => setNotificationsOpen(true)} aria-label="Notifications">
           <svg width="24" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3a6 6 0 0 1 6 6v4l2 2H4l2-2V9a6 6 0 0 1 6-6z" stroke="#8B4513" strokeWidth="2" fill="none"/><circle cx="12" cy="20" r="2" fill="#8B4513"/></svg>
           {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
         </button>
-        <button className="cart-button" onClick={() => setCartOpen(true)} aria-label="Cart">
+        <button className="cart-button icon-button" onClick={() => setCartOpen(true)} aria-label="Cart">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 6h14l-2 9H8L6 6z" stroke="#8B4513" strokeWidth="2" fill="none"/><circle cx="9" cy="20" r="2" fill="#8B4513"/><circle cx="17" cy="20" r="2" fill="#8B4513"/></svg>
           {cartItems.length > 0 && <span className="cart-badge">{cartItems.length}</span>}
         </button>
-        <div className="user-info">
-          <span className="welcome-text">Welcome back,</span>
-          <span className="user-name">{user.name}</span>
-        </div>
+        <button className="profile-button icon-button" onClick={() => setProfileDropdownOpen(!profileDropdownOpen)} aria-label="Profile">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="#8B4513" strokeWidth="2" fill="none"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6" stroke="#8B4513" strokeWidth="2" fill="none"/></svg>
+        </button>
         <div className="profile-dropdown">
-          <img
-            src={user.avatar}
-            alt="User"
-            className="profile-img clickable"
-            onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-          />
           {profileDropdownOpen && (
             <div className="dropdown-menu">
               <button className="dropdown-item" onClick={() => {
@@ -334,7 +335,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
           <p>Premium fabrics • Perfect fit • Your vision</p>
         </div>
         <div className="custom-image" style={{ backgroundImage: `url('/src/assets/background11.jpg'), url(${customizeBg})` }}>
-          <button className="btn-customize">Start Customizing</button>
+          <button className="btn-customize" onClick={() => setCustomizationFormModalOpen(true)}>Start Customizing</button>
         </div>
       </section>
 
@@ -345,7 +346,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
           <div className="repair-content">
             <h3>Bring your garments back to life</h3>
             <p>Expert alterations • Invisible mending • Fast service</p>
-            <button className="btn-book">Book Repair</button>
+            <button className="btn-book" onClick={() => setRepairFormModalOpen(true)}>Book Repair</button>
           </div>
         </div>
       </section>
@@ -596,6 +597,13 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
       <DryCleaningFormModal 
         isOpen={dryCleaningFormModalOpen} 
         onClose={() => setDryCleaningFormModalOpen(false)}
+        onCartUpdate={handleCartUpdate}
+      />
+
+      {/* Customization Form Modal Component */}
+      <CustomizationFormModal 
+        isOpen={customizationFormModalOpen} 
+        onClose={() => setCustomizationFormModalOpen(false)}
         onCartUpdate={handleCartUpdate}
       />
 

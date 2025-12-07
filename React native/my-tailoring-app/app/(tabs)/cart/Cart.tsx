@@ -48,23 +48,55 @@ export default function CartScreen() {
           console.log('Processing cart item:', item);
           console.log('Specific data:', item.specific_data);
           console.log('Image URL from backend:', item.specific_data?.imageUrl);
-          return ({
-          id: item.cart_id,
-          service: item.service_type,
-          item: item.specific_data?.serviceName || item.service_type || 'Service',
-          description: item.specific_data?.damageDescription || item.specific_data?.specialInstructions || '',
-          price: parseFloat(item.final_price) || 0,
-          icon: "construct-outline",
-          garmentType: item.specific_data?.garmentType || '',
-          damageType: item.specific_data?.damageLevel || item.specific_data?.damageType || '',
-          specialInstructions: item.specific_data?.specialInstructions || '',
-          image: item.specific_data?.imageUrl && item.specific_data?.imageUrl !== 'no-image' ? 
-            (item.specific_data?.imageUrl.startsWith('http') ? 
-              item.specific_data?.imageUrl : 
-              `http://192.168.1.202:5000${item.specific_data?.imageUrl}`) : 
-            '',
-          appointmentDate: item.specific_data?.pickupDate || item.appointment_date || ''
-        })});
+          
+          const API_BASE = 'http://192.168.254.102:5000';
+          const imageUrl = item.specific_data?.imageUrl;
+          let processedImage = '';
+          if (imageUrl && imageUrl !== 'no-image') {
+            processedImage = imageUrl.startsWith('http') ? imageUrl : `${API_BASE}${imageUrl}`;
+          }
+          
+          // Format the date nicely
+          const rawDate = item.specific_data?.pickupDate || item.specific_data?.preferredDate || item.appointment_date;
+          let formattedDate = '';
+          if (rawDate) {
+            try {
+              const date = new Date(rawDate);
+              formattedDate = date.toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+              });
+            } catch (e) {
+              formattedDate = rawDate;
+            }
+          }
+          
+          return {
+            id: item.cart_id,
+            service: item.service_type,
+            item: item.specific_data?.serviceName || item.service_type || 'Service',
+            description: item.specific_data?.damageDescription || item.specific_data?.specialInstructions || '',
+            price: parseFloat(item.final_price) || 0,
+            icon: getServiceIcon(item.service_type),
+            garmentType: item.specific_data?.garmentType || '',
+            damageType: item.specific_data?.damageLevel || item.specific_data?.damageType || '',
+            specialInstructions: item.specific_data?.specialInstructions || '',
+            image: processedImage,
+            appointmentDate: formattedDate,
+            // Additional fields for detailed view
+            clothingBrand: item.specific_data?.clothingBrand || '',
+            quantity: item.specific_data?.quantity || 1,
+            fabricType: item.specific_data?.fabricType || '',
+            style: item.specific_data?.style || '',
+            buttonStyle: item.specific_data?.buttonStyle || '',
+            sizeMeasurement: item.specific_data?.sizeMeasurement || '',
+            basePrice: parseFloat(item.base_price) || 0,
+          };
+        });
         console.log('Transformed cart items:', transformedItems);
         setCartItems(transformedItems);
       }
@@ -73,6 +105,21 @@ export default function CartScreen() {
       Alert.alert("Error", "Failed to load cart items");
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const getServiceIcon = (serviceType: string): string => {
+    switch (serviceType?.toLowerCase()) {
+      case 'dry_cleaning':
+        return 'water-outline';
+      case 'customize':
+        return 'color-palette-outline';
+      case 'repair':
+        return 'construct-outline';
+      case 'rental':
+        return 'shirt-outline';
+      default:
+        return 'shirt-outline';
     }
   };
 
@@ -251,9 +298,16 @@ export default function CartScreen() {
                   <View style={styles.itemDetails}>
                     <Text style={styles.serviceType}>{item.service}</Text>
                     <Text style={styles.itemName}>{item.item}</Text>
-                    <Text style={styles.itemDescription} numberOfLines={2}>
-                      {item.description}
-                    </Text>
+                    {item.garmentType && (
+                      <Text style={styles.itemGarment}>
+                        {item.quantity > 1 ? `${item.quantity}x ` : ''}{item.garmentType}
+                      </Text>
+                    )}
+                    {item.description && (
+                      <Text style={styles.itemDescription} numberOfLines={2}>
+                        {item.description}
+                      </Text>
+                    )}
 
                     {/* Appointment Tag */}
                     {item.appointmentDate && (
@@ -283,9 +337,16 @@ export default function CartScreen() {
                       />
                     </TouchableOpacity>
 
-                    <Text style={styles.itemPrice}>
-                      ₱{item.price.toLocaleString()}
-                    </Text>
+                    {/* Only show price for rental, or if admin confirmed price */}
+                    {item.service?.toLowerCase() === 'rental' ? (
+                      <Text style={styles.itemPrice}>
+                        ₱{item.price.toLocaleString()}
+                      </Text>
+                    ) : (
+                      <Text style={styles.itemPricePending}>
+                        Price: To be confirmed
+                      </Text>
+                    )}
                   </View>
 
                   {/* Remove Button */}
@@ -385,6 +446,60 @@ export default function CartScreen() {
                     </View>
                   )}
 
+                  {selectedItemDetails.quantity > 1 && (
+                    <View style={styles.detailsSection}>
+                      <Text style={styles.detailsLabel}>Quantity</Text>
+                      <Text style={styles.detailsValue}>
+                        {selectedItemDetails.quantity}
+                      </Text>
+                    </View>
+                  )}
+
+                  {selectedItemDetails.clothingBrand && (
+                    <View style={styles.detailsSection}>
+                      <Text style={styles.detailsLabel}>Clothing Brand</Text>
+                      <Text style={styles.detailsValue}>
+                        {selectedItemDetails.clothingBrand}
+                      </Text>
+                    </View>
+                  )}
+
+                  {selectedItemDetails.fabricType && (
+                    <View style={styles.detailsSection}>
+                      <Text style={styles.detailsLabel}>Fabric Type</Text>
+                      <Text style={styles.detailsValue}>
+                        {selectedItemDetails.fabricType}
+                      </Text>
+                    </View>
+                  )}
+
+                  {selectedItemDetails.style && (
+                    <View style={styles.detailsSection}>
+                      <Text style={styles.detailsLabel}>Style</Text>
+                      <Text style={styles.detailsValue}>
+                        {selectedItemDetails.style}
+                      </Text>
+                    </View>
+                  )}
+
+                  {selectedItemDetails.buttonStyle && (
+                    <View style={styles.detailsSection}>
+                      <Text style={styles.detailsLabel}>Button Style</Text>
+                      <Text style={styles.detailsValue}>
+                        {selectedItemDetails.buttonStyle}
+                      </Text>
+                    </View>
+                  )}
+
+                  {selectedItemDetails.sizeMeasurement && (
+                    <View style={styles.detailsSection}>
+                      <Text style={styles.detailsLabel}>Size Measurement</Text>
+                      <Text style={styles.detailsValue}>
+                        {selectedItemDetails.sizeMeasurement}
+                      </Text>
+                    </View>
+                  )}
+
                   {selectedItemDetails.damageType && (
                     <View style={styles.detailsSection}>
                       <Text style={styles.detailsLabel}>Type of Damage</Text>
@@ -396,7 +511,7 @@ export default function CartScreen() {
 
                   {selectedItemDetails.appointmentDate && (
                     <View style={styles.detailsSection}>
-                      <Text style={styles.detailsLabel}>Appointment Date</Text>
+                      <Text style={styles.detailsLabel}>Preferred Date & Time</Text>
                       <Text style={styles.detailsValue}>
                         {selectedItemDetails.appointmentDate}
                       </Text>
@@ -618,6 +733,12 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     marginBottom: 6,
   },
+  itemGarment: {
+    fontSize: 14,
+    color: "#94665B",
+    fontWeight: "500",
+    marginBottom: 4,
+  },
   itemDescription: {
     fontSize: 14,
     color: "#6B7280",
@@ -652,6 +773,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   itemPrice: { fontSize: 20, fontWeight: "800", color: "#94665B" },
+  itemPricePending: { fontSize: 14, fontWeight: "600", color: "#F59E0B", fontStyle: "italic" },
   removeButton: { padding: 10 },
 
   summarySection: {

@@ -3,6 +3,7 @@ import '../adminStyle/dryclean.css'; // Reuse same styles
 import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
 import { getAllRepairOrders, getRepairOrdersByStatus, updateRepairOrderItem } from '../api/RepairOrderApi';
+import ImagePreviewModal from '../components/ImagePreviewModal';
 
 const Repair = () => {
   const [allItems, setAllItems] = useState([]);
@@ -20,6 +21,23 @@ const Repair = () => {
     approvalStatus: '',
     adminNotes: ''
   });
+
+  // Image preview modal state
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState('');
+  const [previewImageAlt, setPreviewImageAlt] = useState('');
+
+  const openImagePreview = (url, alt) => {
+    setPreviewImageUrl(url);
+    setPreviewImageAlt(alt);
+    setImagePreviewOpen(true);
+  };
+
+  const closeImagePreview = () => {
+    setImagePreviewOpen(false);
+    setPreviewImageUrl('');
+    setPreviewImageAlt('');
+  };
 
   // Helper function for status styling
   const getStatusClass = (status) => {
@@ -313,32 +331,7 @@ const Repair = () => {
         </div>
 
         {/* Tabs */}
-        <div className="view-tabs">
-          <button className={viewFilter === 'all' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('all')}>
-            All ({allItems.length})
-          </button>
-          <button className={viewFilter === 'pending' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('pending')}>
-            Pending ({pendingAppointments.length})
-          </button>
-          <button className={viewFilter === 'accepted' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('accepted')}>
-            Accepted ({allItems.filter(o => o.approval_status === 'accepted').length})
-          </button>
-          <button className={viewFilter === 'price-confirmation' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('price-confirmation')}>
-            Price Confirmation ({allItems.filter(o => o.approval_status === 'price_confirmation').length})
-          </button>
-          <button className={viewFilter === 'in-progress' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('in-progress')}>
-            In Progress ({allItems.filter(o => o.approval_status === 'confirmed').length})
-          </button>
-          <button className={viewFilter === 'to-pickup' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('to-pickup')}>
-            To Pick up ({allItems.filter(o => o.approval_status === 'ready_for_pickup').length})
-          </button>
-          <button className={viewFilter === 'completed' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('completed')}>
-            Completed ({allItems.filter(o => o.approval_status === 'completed').length})
-          </button>
-          <button className={viewFilter === 'rejected' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('rejected')}>
-            Rejected ({allItems.filter(o => o.approval_status === 'cancelled').length})
-          </button>
-        </div>
+      
 
         <div className="search-container">
           <input
@@ -382,7 +375,7 @@ const Repair = () => {
                 <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px' }}>No repair orders found</td></tr>
               ) : (
                 getFilteredItems().map(item => (
-                  <tr key={item.item_id}>
+                  <tr key={item.item_id} className="clickable-row" onClick={() => handleViewDetails(item)}>
                     <td><strong>#{item.order_id}</strong></td>
                     <td>{item.first_name} {item.last_name}</td>
                     <td>{item.specific_data?.garmentType || 'N/A'}</td>
@@ -390,7 +383,7 @@ const Repair = () => {
                     <td><span style={{ fontSize: '0.8em' }}>{item.specific_data?.damageDescription?.substring(0, 50) || 'N/A'}...</span></td>
                     <td>{new Date(item.order_date).toLocaleDateString()}</td>
                     <td>₱{parseFloat(item.final_price || 0).toLocaleString()}</td>
-                    <td>
+                    <td onClick={(e) => e.stopPropagation()}>
                       {item.approval_status === 'pending_review' || item.approval_status === null || item.approval_status === undefined || item.approval_status === '' ? (
                         <span className={`status-badge ${getStatusClass('pending')}`}>
                           {getStatusText('pending')}
@@ -411,94 +404,35 @@ const Repair = () => {
                         </select>
                       )}
                     </td>
-                    <td>
+                    <td onClick={(e) => e.stopPropagation()}>
                       {item.approval_status === 'pending_review' || item.approval_status === 'pending' || item.approval_status === null || item.approval_status === undefined || item.approval_status === '' ? (
-                        <div className="buttons">
-                          <button className="accept-btn" onClick={() => handleAccept(item.item_id)}
-                             style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#27AE60',
-                              color: 'white',
-                              marginRight: '5px'
-                            }}>Accept</button>
-                          <button className="edit-btn" onClick={() => handleEditOrder(item)}
-                             style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#ff9800',
-                              color: 'white',
-                              marginRight: '5px'
-                            }}>Edit Price</button>
-                          <button className="decline-btn" onClick={() => handleDecline(item.item_id)}
-                          style={{
-                            padding: '10px 10px',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontWeight: '600',
-                            fontSize: '10px',
-                            background: '#E74C3C',
-                            color: 'white',
-                            marginRight: '5px'
-                          }}>Decline</button>
-                          <button className="action-btn view-btn" onClick={() => handleViewDetails(item)}
-                             style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#2196f3',
-                              color: 'white',
-                              marginRight: '5px'
-                            }}>View</button>
-                          <button className="action-btn edit-btn" onClick={() => handleEditOrder(item)}
-                             style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#ff9800',
-                              color: 'white'
-                            }}>Edit</button>
+                        <div className="action-buttons">
+                          <button className="icon-btn accept" onClick={() => handleAccept(item.item_id)} title="Accept">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                          </button>
+                          <button className="icon-btn decline" onClick={() => handleDecline(item.item_id)} title="Decline">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                          </button>
+                          <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Edit">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </button>
                         </div>
                       ) : (
-                        <div className="buttons">
-                          <button className="action-btn view-btn" onClick={() => handleViewDetails(item)}
-                             style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#2196f3',
-                              color: 'white',
-                              marginRight: '5px'
-                            }}>View</button>
-                          <button className="action-btn edit-btn" onClick={() => handleEditOrder(item)}
-                             style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#ff9800',
-                              color: 'white'
-                            }}>Edit</button>
+                        <div className="action-buttons">
+                          <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Edit">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </button>
                         </div>
                       )}
                     </td>
@@ -526,11 +460,18 @@ const Repair = () => {
               {selectedOrder.specific_data?.imageUrl && (
                 <div className="detail-row">
                   <strong>Damage Image:</strong><br/>
-                  <img 
-                    src={`http://localhost:5000${selectedOrder.specific_data.imageUrl}`} 
-                    alt="Damage" 
-                    style={{ maxWidth: '200px', maxHeight: '200px', border: '1px solid #ddd', borderRadius: '4px' }}
-                  />
+                  <div 
+                    className="clickable-image" 
+                    style={{ cursor: 'pointer', display: 'inline-block', marginTop: '8px' }}
+                    onClick={() => openImagePreview(`http://localhost:5000${selectedOrder.specific_data.imageUrl}`, 'Damage Image')}
+                  >
+                    <img 
+                      src={`http://localhost:5000${selectedOrder.specific_data.imageUrl}`} 
+                      alt="Damage" 
+                      style={{ maxWidth: '200px', maxHeight: '200px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <small className="click-hint" style={{ display: 'block', fontSize: '11px', color: '#888', marginTop: '4px' }}>Click to expand</small>
+                  </div>
                 </div>
               )}
               
@@ -600,11 +541,18 @@ const Repair = () => {
               {selectedOrder.specific_data?.imageUrl && (
                 <div className="detail-row">
                   <strong>Damage Image:</strong><br/>
-                  <img 
-                    src={`http://localhost:5000${selectedOrder.specific_data.imageUrl}`} 
-                    alt="Damage" 
-                    style={{ maxWidth: '300px', maxHeight: '300px', border: '1px solid #ddd', borderRadius: '4px' }}
-                  />
+                  <div 
+                    className="clickable-image" 
+                    style={{ cursor: 'pointer', display: 'inline-block', marginTop: '8px' }}
+                    onClick={() => openImagePreview(`http://localhost:5000${selectedOrder.specific_data.imageUrl}`, 'Damage Image')}
+                  >
+                    <img 
+                      src={`http://localhost:5000${selectedOrder.specific_data.imageUrl}`} 
+                      alt="Damage" 
+                      style={{ maxWidth: '300px', maxHeight: '300px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <small className="click-hint" style={{ display: 'block', fontSize: '11px', color: '#888', marginTop: '4px' }}>Click to expand</small>
+                  </div>
                 </div>
               )}
               
@@ -628,6 +576,14 @@ const Repair = () => {
           </div>
         </div>
       )}
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        isOpen={imagePreviewOpen}
+        imageUrl={previewImageUrl}
+        altText={previewImageAlt}
+        onClose={closeImagePreview}
+      />
     </div>
   );
 };

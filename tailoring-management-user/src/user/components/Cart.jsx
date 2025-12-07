@@ -9,6 +9,7 @@ import {
   submitCart,
   getCartSummary
 } from '../../api/CartApi';
+import ImagePreviewModal from '../../components/ImagePreviewModal';
 
 const Cart = ({ isOpen, onClose, onCartUpdate }) => {
   const [cartItems, setCartItems] = useState([]);
@@ -18,6 +19,25 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
   const [summary, setSummary] = useState({ itemCount: 0, totalAmount: 0 });
   const [submitting, setSubmitting] = useState(false);
   const [orderNotes, setOrderNotes] = useState('');
+  
+  // Image preview modal state
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState('');
+  const [previewImageAlt, setPreviewImageAlt] = useState('');
+
+  // Function to open image preview
+  const openImagePreview = (imageUrl, altText) => {
+    setPreviewImageUrl(imageUrl);
+    setPreviewImageAlt(altText || 'Cart Item Image');
+    setImagePreviewOpen(true);
+  };
+
+  // Function to close image preview
+  const closeImagePreview = () => {
+    setImagePreviewOpen(false);
+    setPreviewImageUrl('');
+    setPreviewImageAlt('');
+  };
 
   // Load cart when component opens
   useEffect(() => {
@@ -221,13 +241,15 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                     <div className="cart-item-info">
                       <h4>{getServiceTypeDisplay(item.service_type)}</h4>
                       <p>Service ID: {item.service_id}</p>
-                      <p>Base Price: {formatPrice(item.base_price)}</p>
                       
-                      {/* Show estimated price for repair and dry cleaning, final price for others */}
-                      {(item.service_type === 'repair' || item.service_type === 'dry_cleaning') ? (
-                        <p>Estimated Price: {formatPrice(item.final_price)}</p>
+                      {/* Show different pricing based on service type */}
+                      {item.service_type === 'rental' ? (
+                        <>
+                          <p>Rental Price: {formatPrice(item.final_price)}</p>
+                          <p>Deposit: {formatPrice(item.specific_data?.deposit || item.base_price * 0.5)}</p>
+                        </>
                       ) : (
-                        <p>Final Price: {formatPrice(item.final_price)}</p>
+                        <p>Estimated Price: {formatPrice(item.final_price)}</p>
                       )}
                       
                       {/* Show repair details */}
@@ -244,7 +266,9 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                               <img 
                                 src={`http://localhost:5000${item.specific_data.imageUrl}`} 
                                 alt="Damage preview" 
-                                className="cart-damage-photo"
+                                className="cart-damage-photo clickable-image"
+                                onClick={() => openImagePreview(`http://localhost:5000${item.specific_data.imageUrl}`, 'Damage Photo')}
+                                title="Click to enlarge"
                                 onError={(e) => {
                                   e.target.style.display = 'none';
                                 }}
@@ -269,12 +293,43 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                               <img 
                                 src={`http://localhost:5000${item.specific_data.imageUrl}`} 
                                 alt="Clothing preview" 
-                                className="cart-damage-photo"
+                                className="cart-damage-photo clickable-image"
+                                onClick={() => openImagePreview(`http://localhost:5000${item.specific_data.imageUrl}`, 'Clothing Photo')}
+                                title="Click to enlarge"
                                 onError={(e) => {
                                   e.target.style.display = 'none';
                                 }}
                               />
                               <small>Clothing photo uploaded</small>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Show customization details */}
+                      {item.service_type === 'customization' && item.specific_data && (
+                        <div className="customization-details">
+                          <p>Garment Type: {item.specific_data.garmentType || 'N/A'}</p>
+                          <p>Fabric Type: {item.specific_data.fabricType || 'N/A'}</p>
+                          <p>Preferred Date: {item.specific_data.preferredDate || 'N/A'}</p>
+                          {item.specific_data.notes && (
+                            <p>Notes: {item.specific_data.notes}</p>
+                          )}
+                          
+                          {/* Show design preview if available */}
+                          {item.specific_data.imageUrl && item.specific_data.imageUrl !== 'no-image' && (
+                            <div className="cart-item-image">
+                              <img 
+                                src={`http://localhost:5000${item.specific_data.imageUrl}`} 
+                                alt="Design preview" 
+                                className="cart-damage-photo clickable-image"
+                                onClick={() => openImagePreview(`http://localhost:5000${item.specific_data.imageUrl}`, 'Design Preview')}
+                                title="Click to enlarge"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                              <small>Design preview uploaded</small>
                             </div>
                           )}
                         </div>
@@ -285,9 +340,9 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                       )}
                       
                       {item.rental_start_date && item.rental_end_date && (
-                        <p>
-                          Rental: {new Date(item.rental_start_date).toLocaleDateString()} - {' '}
-                          {new Date(item.rental_end_date).toLocaleDateString()}
+                        <p style={{ color: '#000' }}>
+                          Rental: <span style={{ color: '#000', fontWeight: '600' }}>{new Date(item.rental_start_date).toLocaleDateString()}</span> - {' '}
+                          <span style={{ color: '#000', fontWeight: '600' }}>{new Date(item.rental_end_date).toLocaleDateString()}</span>
                         </p>
                       )}
                     </div>
@@ -295,13 +350,7 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                     <div className="cart-item-actions">
                       <div className="cart-quantity">
                         <label>Qty:</label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={item.quantity || 1}
-                          onChange={(e) => handleUpdateQuantity(item.cart_id, parseInt(e.target.value))}
-                          disabled={loading}
-                        />
+                        <span className="quantity-display">{item.quantity || 1}</span>
                       </div>
 
                       
@@ -355,6 +404,14 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
           )}
         </div>
       </div>
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        isOpen={imagePreviewOpen}
+        imageUrl={previewImageUrl}
+        altText={previewImageAlt}
+        onClose={closeImagePreview}
+      />
     </div>
   );
 };

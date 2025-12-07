@@ -68,10 +68,11 @@ exports.getDashboardOverview = async (req, res) => {
 
   try {
     // Add better error handling for each query
+    // Note: appointments table uses 'created_at' column, not 'appointment_date'
     const todayAppointmentsQuery = query(
       `SELECT COUNT(*) AS count 
        FROM appointments 
-       WHERE DATE(appointment_date) = CURDATE()`
+       WHERE DATE(created_at) = CURDATE()`
     ).catch(err => {
       console.error('Error in todayAppointmentsQuery:', err);
       return [{ count: 0 }];
@@ -80,7 +81,7 @@ exports.getDashboardOverview = async (req, res) => {
     const yesterdayAppointmentsQuery = query(
       `SELECT COUNT(*) AS count 
        FROM appointments 
-       WHERE DATE(appointment_date) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)`
+       WHERE DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)`
     ).catch(err => {
       console.error('Error in yesterdayAppointmentsQuery:', err);
       return [{ count: 0 }];

@@ -160,21 +160,29 @@ export default function OrderDetails() {
           <View style={styles.divider} />
 
           {/* Image */}
-          {((order.specific_data?.imageUrl && order.specific_data?.imageUrl !== 'no-image') || 
-            (order.specific_data?.image_url && order.specific_data?.image_url !== 'no-image')) && (
-            <Image
-              source={{ 
-                uri: (() => {
-                  const imageUrl = order.specific_data?.imageUrl || order.specific_data?.image_url;
-                  if (!imageUrl || imageUrl === 'no-image') return '';
-                  if (imageUrl.startsWith('http')) return imageUrl;
-                  return `http://192.168.1.202:5000${imageUrl}`;
-                })() 
-              }}
-              style={styles.image}
-              resizeMode="cover"
-            />
-          )}
+          {(() => {
+            const imageUrl = order.specific_data?.imageUrl || order.specific_data?.image_url;
+            const hasValidImage = imageUrl && imageUrl !== 'no-image' && imageUrl.trim() !== '';
+            
+            if (hasValidImage) {
+              const fullImageUrl = imageUrl.startsWith('http') 
+                ? imageUrl 
+                : `http://192.168.1.202:5000${imageUrl}`;
+              
+              console.log('Order tracking image URL:', fullImageUrl);
+              
+              return (
+                <Image
+                  source={{ uri: fullImageUrl }}
+                  style={styles.image}
+                  resizeMode="cover"
+                  onError={(e) => console.log('Image load error:', e.nativeEvent.error, 'URL:', fullImageUrl)}
+                  onLoad={() => console.log('Image loaded successfully:', fullImageUrl)}
+                />
+              );
+            }
+            return null;
+          })()}
 
           {/* Service Details Section */}
           {order.specific_data && (
@@ -317,12 +325,18 @@ export default function OrderDetails() {
             </View>
           )}
 
-          {/* Total Price */}
+          {/* Total Price - Only show confirmed price for rental or if admin confirmed */}
           <View style={styles.priceSection}>
             <Text style={styles.totalLabel}>Total Amount</Text>
-            <Text style={styles.totalPrice}>
-              ₱{parseFloat(order.final_price).toLocaleString()}
-            </Text>
+            {order.service_type === 'rental' || order.price_confirmed ? (
+              <Text style={styles.totalPrice}>
+                ₱{parseFloat(order.final_price).toLocaleString()}
+              </Text>
+            ) : (
+              <Text style={styles.pricePending}>
+                To be confirmed by admin
+              </Text>
+            )}
           </View>
         </View>
 
@@ -424,6 +438,7 @@ const styles = StyleSheet.create({
   },
   totalLabel: { fontSize: 18, color: "#6B7280", marginBottom: 6 },
   totalPrice: { fontSize: 32, fontWeight: "800", color: "#94665B" },
+  pricePending: { fontSize: 18, fontWeight: "600", color: "#F59E0B", fontStyle: "italic" },
   notFound: {
     flex: 1,
     textAlign: "center",

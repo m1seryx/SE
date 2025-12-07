@@ -19,6 +19,7 @@ import Post from "./admin/PostRent";
 import Inventory from "./admin/Inventory";
 import Customize from "./admin/Customize";
 import Billing from "./admin/Billing";
+import Customizer3DPage from "./pages/Customizer3DPage";
 
 const App = () => {
   return (
@@ -31,6 +32,7 @@ const App = () => {
         <Route path="/profile" element={<Profile />} />
         <Route path="/rentals" element={<RentalPage />} />
         <Route path="/orders/:orderItemId" element={<OrderDetails />} />
+        <Route path="/3d-customizer" element={<Customizer3DPage />} />
 
         {/* ===== ADMIN ROUTES ===== */}
         <Route path="/admin" element={<AdminPage />} />

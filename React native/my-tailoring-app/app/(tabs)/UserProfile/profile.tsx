@@ -271,6 +271,22 @@ export default function ProfileScreen() {
     return currentIndex >= stepIndex ? 'completed' : '';
   };
 
+  // Helper function to check if a timeline step should show date (only for completed steps)
+  const shouldShowTimelineDate = (currentStatus: string, stepStatus: string, serviceType: string | null = null) => {
+    const rentalFlow = ['pending', 'ready_to_pickup', 'ready_for_pickup', 'rented', 'returned', 'completed'];
+    const defaultFlow = ['pending', 'price_confirmation', 'accepted', 'in_progress', 'ready_to_pickup', 'completed'];
+    const statusFlow = serviceType === 'rental' ? rentalFlow : defaultFlow;
+
+    const normalizedCurrent = currentStatus === 'ready_for_pickup' ? 'ready_to_pickup' : currentStatus;
+    const normalizedStep = stepStatus === 'ready_for_pickup' ? 'ready_to_pickup' : stepStatus;
+
+    const currentIndex = statusFlow.indexOf(normalizedCurrent);
+    const stepIndex = statusFlow.indexOf(normalizedStep);
+
+    // Only show date if this step has been reached or completed
+    return currentIndex >= stepIndex;
+  };
+
   // Helper function to get estimated price from specific_data
   const getEstimatedPrice = (specificData: any, serviceType: string) => {
     if (serviceType === 'repair') {
@@ -634,7 +650,7 @@ export default function ProfileScreen() {
                                 <View style={[styles.timelineDot, getStatusDotClass(item.status, 'ready_to_pickup', 'rental') === 'completed' ? styles.timelineDotCompleted : styles.timelineDotPending]} />
                                 <View style={styles.timelineContent}>
                                   <Text style={styles.timelineTitle}>Ready to Pick Up</Text>
-                                  <Text style={styles.timelineDate}>{formatDate(item.status_updated_at)}</Text>
+                                  <Text style={styles.timelineDate}>{shouldShowTimelineDate(item.status, 'ready_to_pickup', 'rental') ? formatDate(item.status_updated_at) : 'Pending'}</Text>
                                 </View>
                               </View>
 
@@ -642,7 +658,7 @@ export default function ProfileScreen() {
                                 <View style={[styles.timelineDot, getStatusDotClass(item.status, 'rented', 'rental') === 'completed' ? styles.timelineDotCompleted : styles.timelineDotPending]} />
                                 <View style={styles.timelineContent}>
                                   <Text style={styles.timelineTitle}>Rented</Text>
-                                  <Text style={styles.timelineDate}>{formatDate(item.status_updated_at)}</Text>
+                                  <Text style={styles.timelineDate}>{shouldShowTimelineDate(item.status, 'rented', 'rental') ? formatDate(item.status_updated_at) : 'Pending'}</Text>
                                 </View>
                               </View>
 
@@ -650,7 +666,7 @@ export default function ProfileScreen() {
                                 <View style={[styles.timelineDot, getStatusDotClass(item.status, 'returned', 'rental') === 'completed' ? styles.timelineDotCompleted : styles.timelineDotPending]} />
                                 <View style={styles.timelineContent}>
                                   <Text style={styles.timelineTitle}>Returned</Text>
-                                  <Text style={styles.timelineDate}>{formatDate(item.status_updated_at)}</Text>
+                                  <Text style={styles.timelineDate}>{shouldShowTimelineDate(item.status, 'returned', 'rental') ? formatDate(item.status_updated_at) : 'Pending'}</Text>
                                 </View>
                               </View>
 
@@ -658,7 +674,7 @@ export default function ProfileScreen() {
                                 <View style={[styles.timelineDot, getStatusDotClass(item.status, 'completed', 'rental') === 'completed' ? styles.timelineDotCompleted : styles.timelineDotPending]} />
                                 <View style={styles.timelineContent}>
                                   <Text style={styles.timelineTitle}>Completed</Text>
-                                  <Text style={styles.timelineDate}>{formatDate(item.status_updated_at)}</Text>
+                                  <Text style={styles.timelineDate}>{shouldShowTimelineDate(item.status, 'completed', 'rental') ? formatDate(item.status_updated_at) : 'Pending'}</Text>
                                 </View>
                               </View>
                             </>
@@ -679,7 +695,7 @@ export default function ProfileScreen() {
                                   <View style={[styles.timelineDot, getStatusDotClass(item.status, 'price_confirmation') === 'completed' ? styles.timelineDotCompleted : styles.timelineDotPending]} />
                                   <View style={styles.timelineContent}>
                                     <Text style={styles.timelineTitle}>Price Confirmation</Text>
-                                    <Text style={styles.timelineDate}>{formatDate(item.status_updated_at)}</Text>
+                                    <Text style={styles.timelineDate}>{shouldShowTimelineDate(item.status, 'price_confirmation') ? formatDate(item.status_updated_at) : 'Pending'}</Text>
                                   </View>
                                 </View>
                               )}
@@ -690,7 +706,7 @@ export default function ProfileScreen() {
                                   <View style={[styles.timelineDot, getStatusDotClass(item.status, 'accepted') === 'completed' ? styles.timelineDotCompleted : styles.timelineDotPending]} />
                                   <View style={styles.timelineContent}>
                                     <Text style={styles.timelineTitle}>Accepted</Text>
-                                    <Text style={styles.timelineDate}>{formatDate(item.status_updated_at)}</Text>
+                                    <Text style={styles.timelineDate}>{shouldShowTimelineDate(item.status, 'accepted') ? formatDate(item.status_updated_at) : 'Pending'}</Text>
                                   </View>
                                 </View>
                               )}
@@ -699,7 +715,7 @@ export default function ProfileScreen() {
                                 <View style={[styles.timelineDot, getStatusDotClass(item.status, 'in_progress') === 'completed' ? styles.timelineDotCompleted : styles.timelineDotPending]} />
                                 <View style={styles.timelineContent}>
                                   <Text style={styles.timelineTitle}>In Progress</Text>
-                                  <Text style={styles.timelineDate}>{formatDate(item.status_updated_at)}</Text>
+                                  <Text style={styles.timelineDate}>{shouldShowTimelineDate(item.status, 'in_progress') ? formatDate(item.status_updated_at) : 'Pending'}</Text>
                                 </View>
                               </View>
 
@@ -707,7 +723,7 @@ export default function ProfileScreen() {
                                 <View style={[styles.timelineDot, getStatusDotClass(item.status, 'ready_to_pickup') === 'completed' ? styles.timelineDotCompleted : styles.timelineDotPending]} />
                                 <View style={styles.timelineContent}>
                                   <Text style={styles.timelineTitle}>Ready to Pick Up</Text>
-                                  <Text style={styles.timelineDate}>{formatDate(item.status_updated_at)}</Text>
+                                  <Text style={styles.timelineDate}>{shouldShowTimelineDate(item.status, 'ready_to_pickup') ? formatDate(item.status_updated_at) : 'Pending'}</Text>
                                 </View>
                               </View>
 
@@ -715,7 +731,7 @@ export default function ProfileScreen() {
                                 <View style={[styles.timelineDot, getStatusDotClass(item.status, 'completed') === 'completed' ? styles.timelineDotCompleted : styles.timelineDotPending]} />
                                 <View style={styles.timelineContent}>
                                   <Text style={styles.timelineTitle}>Completed</Text>
-                                  <Text style={styles.timelineDate}>{formatDate(item.status_updated_at)}</Text>
+                                  <Text style={styles.timelineDate}>{shouldShowTimelineDate(item.status, 'completed') ? formatDate(item.status_updated_at) : 'Pending'}</Text>
                                 </View>
                               </View>
                             </>

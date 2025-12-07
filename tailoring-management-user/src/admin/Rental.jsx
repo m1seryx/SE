@@ -260,25 +260,6 @@ function Rental() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="view-tabs">
-          <button className={viewFilter === 'all' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('all')}>
-            All ({rentals.length})
-          </button>
-          <button className={viewFilter === 'pending' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('pending')}>
-            Pending ({stats.pending})
-          </button>
-          <button className={viewFilter === 'ready-to-pickup' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('ready-to-pickup')}>
-            Ready to Pick Up ({stats.ready_to_pickup})
-          </button>
-          <button className={viewFilter === 'rented' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('rented')}>
-            Rented ({stats.rented})
-          </button>
-          <button className={viewFilter === 'returned' ? 'tab-btn active' : 'tab-btn'} onClick={() => setViewFilter('returned')}>
-            Returned ({stats.returned})
-          </button>
-        </div>
-
         <div className="search-container">
           <input
             type="text"
@@ -328,7 +309,7 @@ function Rental() {
                     const depositAmount = rental.pricing_factors?.deposit_amount || rental.specific_data?.deposit_amount || 0;
 
                     return (
-                      <tr key={rental.item_id}>
+                      <tr key={rental.item_id} className="clickable-row" onClick={() => handleViewDetails(rental)}>
                         <td><strong>ORD-{rental.order_id}</strong></td>
                         <td>{rental.first_name} {rental.last_name}</td>
                         <td>{rental.specific_data?.item_name || 'N/A'}</td>
@@ -339,7 +320,7 @@ function Rental() {
                         </td>
                         <td>₱{parseFloat(rental.final_price || 0).toLocaleString()}</td>
                         <td>₱{parseFloat(depositAmount).toLocaleString()}</td>
-                        <td>
+                        <td onClick={(e) => e.stopPropagation()}>
                           {isPending ? (
                             <span className={`status-badge ${getStatusClass(rental.approval_status)}`}>
                               {getStatusLabel(rental.approval_status)}
@@ -359,96 +340,37 @@ function Rental() {
                             </select>
                           )}
                         </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '5px' }}>
-                            {isPending ? (
-                              <>
-                                <button
-                                  className="action-btn accept"
-                                  onClick={() => handleAccept(rental)}
-                                  style={{
-                                    padding: '5px 10px',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontWeight: '600',
-                                    fontSize: '12px',
-                                    background: '#4CAF50',
-                                    color: 'white'
-                                  }}
-                                >
-                                  Accept
-                                </button>
-                                <button
-                                  className="action-btn decline"
-                                  onClick={() => handleDecline(rental)}
-                                  style={{
-                                    padding: '5px 10px',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontWeight: '600',
-                                    fontSize: '12px',
-                                    background: '#E74C3C',
-                                    color: 'white'
-                                  }}
-                                >
-                                  Decline
-                                </button>
-                                <button
-                                  className="action-btn"
-                                  onClick={() => handleViewDetails(rental)}
-                                  style={{
-                                    padding: '5px 10px',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontWeight: '600',
-                                    fontSize: '12px',
-                                    background: '#2196f3',
-                                    color: 'white'
-                                  }}
-                                >
-                                  View
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button
-                                  className="action-btn edit"
-                                  onClick={() => handleEditClick(rental)}
-                                  style={{
-                                    padding: '5px 10px',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontWeight: '600',
-                                    fontSize: '12px',
-                                    background: '#ff9800',
-                                    color: 'white'
-                                  }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  className="action-btn"
-                                  onClick={() => handleViewDetails(rental)}
-                                  style={{
-                                    padding: '5px 10px',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontWeight: '600',
-                                    fontSize: '12px',
-                                    background: '#2196f3',
-                                    color: 'white'
-                                  }}
-                                >
-                                  View
-                                </button>
-                              </>
-                            )}
-                          </div>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          {isPending ? (
+                            <div className="action-buttons">
+                              <button className="icon-btn accept" onClick={() => handleAccept(rental)} title="Accept">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                              </button>
+                              <button className="icon-btn decline" onClick={() => handleDecline(rental)} title="Decline">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                              </button>
+                              <button className="icon-btn edit" onClick={() => handleEditClick(rental)} title="Edit">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="action-buttons">
+                              <button className="icon-btn edit" onClick={() => handleEditClick(rental)} title="Edit">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );

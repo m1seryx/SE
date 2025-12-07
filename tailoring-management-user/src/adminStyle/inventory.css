@@ -1,94 +1,123 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 .inventory-management {
-  padding: 20px;
-  background-color: #f5f5f5;
+  font-family: 'Poppins', sans-serif;
+  background-color: #F5F6FA;
+  color: #2D3436;
   min-height: 100vh;
 }
 
+/* ============ MAIN CONTENT ============ */
 .inventory-management .content {
-  margin-left: 250px;
-  padding: 20px;
+  margin-left: 270px;
+  margin-top: 70px;
+  padding: 40px;
+  min-height: calc(100vh - 70px);
 }
 
 .inventory-management .dashboard-title {
+  margin-bottom: 30px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 20px;
 }
 
 .inventory-management .dashboard-title h2 {
-  font-size: 28px;
-  font-weight: 600;
-  color: #333;
+  font-size: 32px;
+  font-weight: 700;
+  color: #2D3436;
+  margin-bottom: 8px;
 }
 
 .inventory-management .dashboard-title p {
-  color: #666;
-  margin-top: 5px;
+  font-size: 15px;
+  color: #636E72;
+  font-weight: 400;
 }
 
+/* ============ STATS GRID ============ */
 .inventory-management .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 25px;
+  margin-bottom: 40px;
+  width: 100%;
 }
 
 .inventory-management .stat-card {
-  background: white;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  background: #FFFFFF;
+  padding: 28px;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.inventory-management .stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
 }
 
 .inventory-management .stat-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 16px;
 }
 
 .inventory-management .stat-header span {
   font-size: 14px;
-  color: #666;
+  color: #636E72;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .inventory-management .stat-icon {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .inventory-management .stat-number {
-  font-size: 24px;
+  font-size: 36px;
   font-weight: 700;
-  color: #333;
+  color: #2D3436;
+  line-height: 1;
 }
 
+/* ============ SEARCH CONTAINER ============ */
 .inventory-management .search-container {
   display: flex;
   gap: 15px;
-  margin-bottom: 20px;
+  margin-bottom: 25px;
   flex-wrap: wrap;
 }
 
-.inventory-management .search-container input,
-.inventory-management .search-container select {
-  padding: 12px 15px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+.inventory-management .search-container select,
+.inventory-management .search-container input {
+  padding: 12px 20px;
+  border: 1px solid #DFE6E9;
+  border-radius: 10px;
+  background-color: #FFFFFF;
+  color: #2D3436;
   font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
   outline: none;
-  transition: border-color 0.3s;
-}
-
-.inventory-management .search-container input:focus,
-.inventory-management .search-container select:focus {
-  border-color: #4CAF50;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .inventory-management .search-container input {
@@ -100,10 +129,23 @@
   min-width: 150px;
 }
 
+.inventory-management .search-container select:hover,
+.inventory-management .search-container input:hover {
+  border-color: #6A3C3E;
+  box-shadow: 0 4px 12px rgba(106, 60, 62, 0.15);
+}
+
+.inventory-management .search-container select:focus,
+.inventory-management .search-container input:focus {
+  border-color: #6A3C3E;
+  box-shadow: 0 0 0 3px rgba(106, 60, 62, 0.1);
+}
+
+/* ============ TABLE CONTAINER ============ */
 .inventory-management .table-container {
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
   overflow: hidden;
 }
 
@@ -112,79 +154,164 @@
   border-collapse: collapse;
 }
 
-.inventory-management th,
-.inventory-management td {
-  padding: 15px;
+.inventory-management thead {
+  background: linear-gradient(135deg, #6A3C3E 0%, #8B5456 100%);
+}
+
+.inventory-management thead th {
+  padding: 20px 24px;
   text-align: left;
-  border-bottom: 1px solid #eee;
+  font-size: 14px;
+  font-weight: 600;
+  color: #FFFFFF;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .inventory-management th {
-  background-color: #f8f9fa;
-  font-weight: 600;
-  color: #555;
-}
-
-.inventory-management tr:hover {
-  background-color: #f8f9fa;
-}
-
-.inventory-management .action-btn {
-  padding: 8px 15px;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
+  padding: 20px 24px;
+  text-align: left;
   font-size: 14px;
-  transition: background-color 0.3s;
+  font-weight: 600;
+  color: #FFFFFF;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.inventory-management tbody tr {
+  border-bottom: 1px solid #F1F3F5;
+  transition: background-color 0.3s ease;
+}
+
+.inventory-management tbody tr:hover,
+.inventory-management tr:hover {
+  background-color: #F8F9FA;
+}
+
+.inventory-management tbody tr:last-child {
+  border-bottom: none;
+}
+
+.inventory-management tbody td,
+.inventory-management td {
+  padding: 20px 24px;
+  font-size: 15px;
+  color: #2D3436;
+  border-bottom: 1px solid #F1F3F5;
+}
+
+/* ============ ACTION BUTTONS ============ */
+.inventory-management .action-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  color: #FFFFFF;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #6A3C3E 0%, #8B5456 100%);
+  box-shadow: 0 4px 12px rgba(106, 60, 62, 0.3);
 }
 
 .inventory-management .action-btn:hover {
-  background-color: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(106, 60, 62, 0.4);
 }
 
-
+/* ============ SERVICE TYPE BADGES ============ */
+.inventory-management .service-type-badge {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+  transition: all 0.3s ease;
+}
 
 .inventory-management .service-type-badge:hover {
-  transform: scale(1.05) !important;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .service-type-badge[data-service-type="customization"] {
-   background-color: #e8f5e9;
-   color: #9c27b0 !important;
+  background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
+  color: #FFFFFF !important;
 }
 
 .service-type-badge[data-service-type="dry_cleaning"] {
-  background-color: #2196f3 !important; 
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  color: #FFFFFF !important;
 }
 
 .service-type-badge[data-service-type="repair"] {
-   background-color: #fff3e0;
-  color: #f57c00;
+  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+  color: #FFFFFF !important;
 }
 
 .service-type-badge[data-service-type="rental"] {
-  background-color: #4caf50 !important; 
+  background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+  color: #FFFFFF !important;
 }
 
-
-
-
-/* Status badge styles */
+/* ============ STATUS BADGES ============ */
 .inventory-management .status-badge {
-  padding: 6px 12px;
+  display: inline-block;
+  padding: 8px 16px;
   border-radius: 20px;
   font-size: 13px;
   font-weight: 600;
 }
 
-/* Responsive design */
+.inventory-management .status-badge.completed {
+  background: linear-gradient(135deg, #27AE60 0%, #229954 100%);
+  color: #FFFFFF;
+}
+
+.inventory-management .status-badge.ready {
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  color: #FFFFFF;
+}
+
+/* ============ EMPTY STATE ============ */
+.inventory-management .empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #636E72;
+}
+
+.inventory-management .empty-state svg {
+  margin-bottom: 20px;
+  color: #DFE6E9;
+}
+
+.inventory-management .empty-state p {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* ============ RESPONSIVE DESIGN ============ */
+@media (max-width: 1200px) {
+  .inventory-management .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 992px) {
+  .inventory-management .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .inventory-management .content {
     margin-left: 0;
-    padding: 10px;
+    padding: 20px;
+  }
+  
+  .inventory-management .stats-grid {
+    grid-template-columns: 1fr;
   }
   
   .inventory-management .search-container {
@@ -196,9 +323,15 @@
     width: 100%;
   }
   
+  .inventory-management thead th,
+  .inventory-management tbody td,
   .inventory-management th,
   .inventory-management td {
-    padding: 10px 8px;
+    padding: 12px 16px;
     font-size: 14px;
+  }
+  
+  .inventory-management .table-container {
+    overflow-x: auto;
   }
 }

@@ -1,0 +1,523 @@
+import { useEffect, useMemo, useState } from 'react';
+import styles from './CustomizationPanel.module.css';
+
+export default function CustomizationPanel({ garment, setGarment, size, setSize, fit, setFit, modelSize, setModelSize, colors, setColors, fabric, setFabric, patterns, pattern, setPattern, fabrics, designImage, setDesignImage, notes, setNotes, buttons, setButtons, accessories, setAccessories, pantsType, setPantsType, onReview }) {
+  const [selectedButtonModel, setSelectedButtonModel] = useState('/orange button 3d model.glb');
+  const [selectedAccessoryModel, setSelectedAccessoryModel] = useState('/accessories/gold lion pendant 3d model.glb');
+  const [selectedButtonId, setSelectedButtonId] = useState(null);
+  const [selectedAccessoryId, setSelectedAccessoryId] = useState(null);
+
+  // Collapsible sections state for mobile
+  const [expandedSections, setExpandedSections] = useState({
+    garmentType: true,
+    colors: true,
+    fabric: true,
+    buttons: false,
+    accessories: false,
+    position: true,
+    details: false
+  });
+
+  const availableButtonModels = [
+    { name: 'Orange Button', path: '/orange button 3d model.glb' },
+    { name: 'Four Hole Button', path: '/four hole button 3d model (1).glb' },
+  ];
+
+  const availableAccessoryModels = [
+    { name: 'Pendant', path: '/accessories/gold lion pendant 3d model.glb' },
+    { name: 'Brooch', path: '/accessories/flower brooch 3d model.glb' },
+    { name: 'Flower', path: '/accessories/fabric rose 3d model.glb' },
+  ];
+
+  const addButton = () => {
+    const newButton = {
+      id: Date.now(),
+      modelPath: selectedButtonModel,
+      position: [0, 1.2, 0.5],
+      color: colors.button,
+      scale: 0.15,
+    };
+    setButtons([...buttons, newButton]);
+  };
+
+  const deleteButton = (id) => {
+    setButtons(buttons.filter(btn => btn.id !== id));
+  };
+
+  const updateButtonColor = (id, color) => {
+    setButtons(buttons.map(btn => btn.id === id ? { ...btn, color } : btn));
+  };
+
+  const updateButtonScale = (id, scale) => {
+    setButtons(buttons.map(btn => btn.id === id ? { ...btn, scale } : btn));
+  };
+
+  const addAccessory = () => {
+    const newAccessory = {
+      id: Date.now(),
+      modelPath: selectedAccessoryModel,
+      position: [0, 1.3, 0.5],
+      color: colors.fabric,
+      scale: 0.2,
+    };
+    setAccessories([...accessories, newAccessory]);
+  };
+
+  const deleteAccessory = (id) => {
+    setAccessories(accessories.filter(acc => acc.id !== id));
+  };
+
+  const updateAccessoryColor = (id, color) => {
+    setAccessories(accessories.map(acc => acc.id === id ? { ...acc, color } : acc));
+  };
+
+  const updateAccessoryScale = (id, scale) => {
+    setAccessories(accessories.map(acc => acc.id === id ? { ...acc, scale } : acc));
+  };
+
+  // Position controller functions
+  const moveStep = 0.05; // Movement increment
+
+  const moveSelectedItem = (axis, direction) => {
+    const delta = direction * moveStep;
+
+    if (selectedButtonId) {
+      setButtons(buttons.map(btn => {
+        if (btn.id === selectedButtonId) {
+          const newPosition = [...btn.position];
+          if (axis === 'x') newPosition[0] += delta;
+          if (axis === 'y') newPosition[1] += delta;
+          if (axis === 'z') newPosition[2] += delta;
+          return { ...btn, position: newPosition };
+        }
+        return btn;
+      }));
+    }
+
+    if (selectedAccessoryId) {
+      setAccessories(accessories.map(acc => {
+        if (acc.id === selectedAccessoryId) {
+          const newPosition = [...acc.position];
+          if (axis === 'x') newPosition[0] += delta;
+          if (axis === 'y') newPosition[1] += delta;
+          if (axis === 'z') newPosition[2] += delta;
+          return { ...acc, position: newPosition };
+        }
+        return acc;
+      }));
+    }
+  };
+
+  // Get name of selected item
+  const getSelectedItemName = () => {
+    if (selectedButtonId) {
+      const btn = buttons.find(b => b.id === selectedButtonId);
+      if (btn) {
+        const index = buttons.indexOf(btn);
+        return `Button ${index + 1}`;
+      }
+    }
+    if (selectedAccessoryId) {
+      const acc = accessories.find(a => a.id === selectedAccessoryId);
+      if (acc) {
+        const index = accessories.indexOf(acc);
+        return `Accessory ${index + 1}`;
+      }
+    }
+    return null;
+  };
+
+  // Toggle section
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  // Preset color options - Tailoring fabric colors
+  const presetColors = [
+    { name: 'Classic Black', value: '#1a1a1a' },
+    { name: 'Navy Blue', value: '#1e3a5f' },
+    { name: 'Burgundy', value: '#6b1e3d' },
+    { name: 'Forest Green', value: '#2d5a3d' },
+    { name: 'Charcoal Gray', value: '#4a4a4a' },
+    { name: 'Camel Tan', value: '#c9a66b' },
+    { name: 'Cream White', value: '#f5e6d3' },
+    { name: 'Chocolate Brown', value: '#5D4037' },
+    { name: 'Royal Blue', value: '#2a4d8f' },
+    { name: 'Wine Red', value: '#722F37' },
+  ];
+
+  return (
+    <div className="group">
+      {(garment.startsWith('coat-')) && (
+        <>
+          <h3 onClick={() => toggleSection('garmentType')} className={styles.collapsibleHeader}>
+            <span>Coat Type</span>
+            <span className={styles.toggleIcon}>{expandedSections.garmentType ? '−' : '+'}</span>
+          </h3>
+          {expandedSections.garmentType && (
+            <div className={styles.sectionContent}>
+              <div className="row">
+                <label>Select Type
+                  <select value={garment} onChange={e => setGarment(e.target.value)}>
+                    <option value="coat-men">Blazer (Men)</option>
+                    <option value="coat-men-plain">Blazer Coat (Men) Plain</option>
+                    <option value="coat-women">Blazer (Women)</option>
+                    <option value="coat-women-plain">Blazer Coat (Women) Plain</option>
+                    <option value="coat-teal">Teal Long Coat</option>
+                  </select>
+                </label>
+              </div>
+              <div className="row">
+                <label>Model Size
+                  <select value={modelSize} onChange={e => setModelSize(e.target.value)}>
+                    <option value="full">Full Size</option>
+                    <option value="short">Short Model</option>
+                  </select>
+                </label>
+              </div>
+              <div className="row">
+                <label>Size
+                  <select value={size} onChange={e => setSize(e.target.value)}>
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                  </select>
+                </label>
+              </div>
+              <div className="row">
+                <label>Fit
+                  <select value={fit} onChange={e => setFit(e.target.value)}>
+                    <option value="regular">Regular</option>
+                    <option value="loose">Loose</option>
+                    <option value="fitted">Fitted</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {(garment === 'suit-1' || garment === 'suit-2') && (
+        <>
+          <h3 onClick={() => toggleSection('garmentType')} className={styles.collapsibleHeader}>
+            <span>Suit Type</span>
+            <span className={styles.toggleIcon}>{expandedSections.garmentType ? '−' : '+'}</span>
+          </h3>
+          {expandedSections.garmentType && (
+            <div className={styles.sectionContent}>
+              <div className="row">
+                <label>Select Type
+                  <select value={garment} onChange={e => setGarment(e.target.value)}>
+                    <option value="suit-1">Business Suit Style 1</option>
+                    <option value="suit-2">Business Suit Style 2</option>
+                  </select>
+                </label>
+              </div>
+              <div className="row">
+                <label>Fit
+                  <select value={fit} onChange={e => setFit(e.target.value)}>
+                    <option value="regular">Regular</option>
+                    <option value="loose">Loose</option>
+                    <option value="fitted">Fitted</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {garment === 'barong' && (
+        <>
+          <h3 onClick={() => toggleSection('garmentType')} className={styles.collapsibleHeader}>
+            <span>Barong Settings</span>
+            <span className={styles.toggleIcon}>{expandedSections.garmentType ? '−' : '+'}</span>
+          </h3>
+          {expandedSections.garmentType && (
+            <div className={styles.sectionContent}>
+              <div className="row">
+                <label>Fit
+                  <select value={fit} onChange={e => setFit(e.target.value)}>
+                    <option value="regular">Regular</option>
+                    <option value="loose">Loose</option>
+                    <option value="fitted">Fitted</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {garment === 'pants' && (
+        <>
+          <h3 onClick={() => toggleSection('garmentType')} className={styles.collapsibleHeader}>
+            <span>Pants Type</span>
+            <span className={styles.toggleIcon}>{expandedSections.garmentType ? '−' : '+'}</span>
+          </h3>
+          {expandedSections.garmentType && (
+            <div className={styles.sectionContent}>
+              <div className="row">
+                <label>Select Type
+                  <select value={pantsType} onChange={e => setPantsType(e.target.value)}>
+                    <option value="casual-men">Pants (Men Casual)</option>
+                    <option value="formal-men">Pants (Men Formal)</option>
+                    <option value="formal-women">Pants (Women Formal)</option>
+                  </select>
+                </label>
+              </div>
+              <div className="row">
+                <label>Fit
+                  <select value={fit} onChange={e => setFit(e.target.value)}>
+                    <option value="regular">Regular</option>
+                    <option value="loose">Loose</option>
+                    <option value="fitted">Fitted</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      <h3 onClick={() => toggleSection('colors')} className={styles.collapsibleHeader}>
+        <span>Colors</span>
+        <span className={styles.toggleIcon}>{expandedSections.colors ? '−' : '+'}</span>
+      </h3>
+      {expandedSections.colors && (
+        <div className={styles.sectionContent}>
+          <div className="row">
+            <label>Fabric color<input className="color-input" type="color" value={colors.fabric} onChange={e => setColors({ ...colors, fabric: e.target.value })} /></label>
+          </div>
+          <div className={styles.presetColorsContainer}>
+            <label className={styles.presetColorsLabel}>Preset Fabric Colors</label>
+            <div className={styles.presetColorsGrid}>
+              {presetColors.map((color) => (
+                <div key={color.value} className={styles.presetColorWrapper}>
+                  <button
+                    onClick={() => setColors({ ...colors, fabric: color.value })}
+                    className={`${styles.presetColorButton} ${colors.fabric === color.value ? styles.selected : styles.unselected}`}
+                    style={{ backgroundColor: color.value }}
+                    title={color.name}
+                  />
+                  <span className={styles.presetColorName}>{color.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <h3 onClick={() => toggleSection('fabric')} className={styles.collapsibleHeader}>
+        <span>Fabric & Pattern</span>
+        <span className={styles.toggleIcon}>{expandedSections.fabric ? '−' : '+'}</span>
+      </h3>
+      {expandedSections.fabric && (
+        <div className={styles.sectionContent}>
+          <div className="row">
+            <label>Fabric<select value={fabric} onChange={e => setFabric(e.target.value)}>{fabrics.map(f => <option key={f} value={f}>{f}</option>)}</select></label>
+            <label>Pattern<select value={pattern} onChange={e => setPattern(e.target.value)}>{patterns.map(p => <option key={p} value={p}>{p}</option>)}</select></label>
+          </div>
+        </div>
+      )}
+
+      <h3 onClick={() => toggleSection('buttons')} className={styles.collapsibleHeader}>
+        <span>3D Buttons {buttons.length > 0 && `(${buttons.length})`}</span>
+        <span className={styles.toggleIcon}>{expandedSections.buttons ? '−' : '+'}</span>
+      </h3>
+      {expandedSections.buttons && (
+        <div className={styles.sectionContent}>
+          <div className="row">
+            <label>Button Model
+              <select value={selectedButtonModel} onChange={e => setSelectedButtonModel(e.target.value)}>
+                {availableButtonModels.map(model => (
+                  <option key={model.path} value={model.path}>{model.name}</option>
+                ))}
+              </select>
+            </label>
+            <button onClick={addButton} className={styles.premiumButton} style={{ marginLeft: 8 }}>Add Button</button>
+          </div>
+
+          {buttons && buttons.length > 0 && (
+            <div className={styles.itemsList}>
+              <label className={styles.itemsLabel}>Current Buttons ({buttons.length})</label>
+              {buttons.map((btn, index) => (
+                <div key={btn.id} className={styles.itemCard}>
+                  <div className={styles.itemCardHeader}>
+                    <span className={styles.itemCardTitle}>Button {index + 1}</span>
+                    <div className={styles.itemCardActions}>
+                      <button
+                        onClick={() => setSelectedButtonId(btn.id === selectedButtonId ? null : btn.id)}
+                        className={`${styles.selectButton} ${selectedButtonId === btn.id ? styles.selected : styles.unselected}`}
+                      >
+                        {selectedButtonId === btn.id ? '✓ Selected' : 'Select'}
+                      </button>
+                      <button onClick={() => deleteButton(btn.id)} className={styles.deleteButton}>Delete</button>
+                    </div>
+                  </div>
+                  <div className={styles.rangeContainer}>
+                    <label className={styles.rangeLabel}>Size:</label>
+                    <input
+                      type="range"
+                      min="0.05"
+                      max="0.3"
+                      step="0.01"
+                      value={btn.scale || 0.15}
+                      onChange={(e) => updateButtonScale(btn.id, parseFloat(e.target.value))}
+                      className={styles.rangeSlider}
+                    />
+                    <span className={styles.rangeValue}>{((btn.scale || 0.15) * 100).toFixed(0)}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <h3 onClick={() => toggleSection('accessories')} className={styles.collapsibleHeader}>
+        <span>Accessories {accessories.length > 0 && `(${accessories.length})`}</span>
+        <span className={styles.toggleIcon}>{expandedSections.accessories ? '−' : '+'}</span>
+      </h3>
+      {expandedSections.accessories && (
+        <div className={styles.sectionContent}>
+          <div className="row">
+            <label>Accessory Type
+              <select value={selectedAccessoryModel} onChange={e => setSelectedAccessoryModel(e.target.value)}>
+                {availableAccessoryModels.map(model => (
+                  <option key={model.path} value={model.path}>{model.name}</option>
+                ))}
+              </select>
+            </label>
+            <button onClick={addAccessory} className={styles.premiumButton} style={{ marginLeft: 8 }}>Add Accessory</button>
+          </div>
+
+          {accessories && accessories.length > 0 && (
+            <div className={styles.itemsList}>
+              <label className={styles.itemsLabel}>Current Accessories ({accessories.length})</label>
+              {accessories.map((acc, index) => (
+                <div key={acc.id} className={styles.itemCard}>
+                  <div className={styles.itemCardHeader}>
+                    <span className={styles.itemCardTitle}>Accessory {index + 1}</span>
+                    <div className={styles.itemCardActions}>
+                      <button
+                        onClick={() => setSelectedAccessoryId(acc.id === selectedAccessoryId ? null : acc.id)}
+                        className={`${styles.selectButton} ${selectedAccessoryId === acc.id ? styles.selected : styles.unselected}`}
+                      >
+                        {selectedAccessoryId === acc.id ? '✓ Selected' : 'Select'}
+                      </button>
+                      <button onClick={() => deleteAccessory(acc.id)} className={styles.deleteButton}>Delete</button>
+                    </div>
+                  </div>
+                  <div className={styles.rangeContainer}>
+                    <label className={styles.rangeLabel}>Size:</label>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="0.5"
+                      step="0.01"
+                      value={acc.scale || 0.2}
+                      onChange={(e) => updateAccessoryScale(acc.id, parseFloat(e.target.value))}
+                      className={styles.rangeSlider}
+                    />
+                    <span className={styles.rangeValue}>{((acc.scale || 0.2) * 100).toFixed(0)}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {(selectedButtonId || selectedAccessoryId) && (
+        <div className={styles.positionController}>
+          <div className={styles.controllerTitle}>
+            Controlling: {getSelectedItemName()}
+          </div>
+
+          <div className={styles.controllerSection}>
+            <label className={styles.controllerSectionLabel}>Vertical (Up/Down)</label>
+            <div className={styles.controllerButtons}>
+              <button
+                onClick={() => moveSelectedItem('y', 1)}
+                className={`${styles.controlButton} ${styles.controlButtonVertical}`}
+              >
+                ↑ Up
+              </button>
+              <button
+                onClick={() => moveSelectedItem('y', -1)}
+                className={`${styles.controlButton} ${styles.controlButtonVertical}`}
+              >
+                ↓ Down
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.controllerSection}>
+            <label className={styles.controllerSectionLabel}>Horizontal (Left/Right)</label>
+            <div className={styles.controllerButtons}>
+              <button
+                onClick={() => moveSelectedItem('x', -1)}
+                className={`${styles.controlButton} ${styles.controlButtonHorizontal}`}
+              >
+                ← Left
+              </button>
+              <button
+                onClick={() => moveSelectedItem('x', 1)}
+                className={`${styles.controlButton} ${styles.controlButtonHorizontal}`}
+              >
+                → Right
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.controllerSection}>
+            <label className={styles.controllerSectionLabel}>Depth (Forward/Backward)</label>
+            <div className={styles.controllerButtons}>
+              <button
+                onClick={() => moveSelectedItem('z', 1)}
+                className={`${styles.controlButton} ${styles.controlButtonDepth}`}
+              >
+                ⬆ Forward
+              </button>
+              <button
+                onClick={() => moveSelectedItem('z', -1)}
+                className={`${styles.controlButton} ${styles.controlButtonDepth}`}
+              >
+                ⬇ Backward
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <h3 onClick={() => toggleSection('details')} className={styles.collapsibleHeader}>
+        <span>Additional Details</span>
+        <span className={styles.toggleIcon}>{expandedSections.details ? '−' : '+'}</span>
+      </h3>
+      {expandedSections.details && (
+        <div className={styles.sectionContent}>
+          <div className="row">
+            <label>Design Image (Optional)
+              <input type="file" accept="image/*" onChange={e => {
+                if (e.target.files && e.target.files[0]) {
+                  setDesignImage(URL.createObjectURL(e.target.files[0]));
+                }
+              }} />
+            </label>
+            {designImage && <img src={designImage} alt="Design Preview" style={{ width: '100%', maxHeight: 150, objectFit: 'contain', marginTop: 8 }} />}
+            <label>Notes for Admin
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} style={{ width: '100%', marginTop: 4 }} placeholder="Enter any specific instructions..." />
+            </label>
+          </div>
+        </div>
+      )}
+
+
+    </div>
+  );
+}

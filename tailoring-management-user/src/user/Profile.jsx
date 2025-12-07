@@ -6,6 +6,7 @@ import logo from "../assets/logo.png";
 import dp from "../assets/dp.png";
 import { getUser } from '../api/AuthApi';
 import { getUserOrderTracking, getStatusBadgeClass, getStatusLabel } from '../api/OrderTrackingApi';
+import ImagePreviewModal from '../components/ImagePreviewModal';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -16,6 +17,18 @@ const Profile = () => {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [serviceFilter, setServiceFilter] = useState('all');
+  
+  // Image preview modal state
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState('');
+  const [previewImageAlt, setPreviewImageAlt] = useState('');
+
+  // Function to open image preview
+  const openImagePreview = (imageUrl, altText) => {
+    setPreviewImageUrl(imageUrl);
+    setPreviewImageAlt(altText || 'Order Image');
+    setImagePreviewOpen(true);
+  };
 
   const user = getUser() || {
     name: 'Guest',
@@ -286,7 +299,9 @@ const Profile = () => {
                   <img
                     src={`http://localhost:5000${specific_data.imageUrl}`}
                     alt="Damage"
-                    className="damage-photo"
+                    className="damage-photo clickable-image"
+                    onClick={() => openImagePreview(`http://localhost:5000${specific_data.imageUrl}`, 'Damage Photo')}
+                    title="Click to enlarge"
                     onError={(e) => {
                       e.target.style.display = 'none';
                       console.log('Image failed to load:', specific_data.imageUrl);
@@ -327,29 +342,55 @@ const Profile = () => {
         );
 
       case 'customize':
+      case 'customization':
         return (
           <div className="service-details customize-details">
             <h4>Customization Details</h4>
-            <div className="detail-row">
-              <span className="detail-label">Service Name:</span>
-              <span className="detail-value">{specific_data.serviceName || 'N/A'}</span>
-            </div>
+            
+            {/* Show design preview if available */}
+            {specific_data.imageUrl && specific_data.imageUrl !== 'no-image' && (
+              <div className="detail-row">
+                <span className="detail-label">Design Preview:</span>
+                <div className="detail-value">
+                  <img
+                    src={`http://localhost:5000${specific_data.imageUrl}`}
+                    alt="Design preview"
+                    className="damage-photo clickable-image"
+                    onClick={() => openImagePreview(`http://localhost:5000${specific_data.imageUrl}`, 'Design Preview')}
+                    title="Click to enlarge"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      console.log('Design preview image failed to load:', specific_data.imageUrl);
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+            
             <div className="detail-row">
               <span className="detail-label">Garment Type:</span>
               <span className="detail-value">{specific_data.garmentType || 'N/A'}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">Size:</span>
-              <span className="detail-value">{specific_data.size || 'N/A'}</span>
+              <span className="detail-label">Fabric Type:</span>
+              <span className="detail-value">{specific_data.fabricType || 'N/A'}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">Description:</span>
-              <span className="detail-value">{specific_data.description || 'N/A'}</span>
+              <span className="detail-label">Preferred Date:</span>
+              <span className="detail-value">{specific_data.preferredDate || 'N/A'}</span>
             </div>
-            <div className="detail-row">
-              <span className="detail-label">Appointment Date:</span>
-              <span className="detail-value">{specific_data.appointmentDate || 'N/A'}</span>
-            </div>
+            {specific_data.notes && (
+              <div className="detail-row">
+                <span className="detail-label">Notes:</span>
+                <span className="detail-value">{specific_data.notes}</span>
+              </div>
+            )}
+            {specific_data.measurements && (
+              <div className="detail-row">
+                <span className="detail-label">Measurements:</span>
+                <span className="detail-value">{specific_data.measurements}</span>
+              </div>
+            )}
           </div>
         );
 
@@ -409,7 +450,9 @@ const Profile = () => {
                   <img
                     src={`http://localhost:5000${specific_data.imageUrl}`}
                     alt="Clothing"
-                    className="damage-photo"
+                    className="damage-photo clickable-image"
+                    onClick={() => openImagePreview(`http://localhost:5000${specific_data.imageUrl}`, 'Clothing Photo')}
+                    title="Click to enlarge"
                     onError={(e) => {
                       e.target.style.display = 'none';
                     }}
@@ -670,10 +713,34 @@ const Profile = () => {
             final_price: item.final_price,
             order_date: order.order_date,
             status_updated_at: item.status_updated_at,
-            specific_data: item.specific_data
+            specific_data: item.specific_data,
+            pricing_factors: item.pricing_factors
           });
         }
       });
+    });
+
+    // Sort: pending orders first, then by order date (newest first)
+    allItems.sort((a, b) => {
+      // Priority order for statuses (lower number = higher priority)
+      const statusPriority = {
+        'pending': 0,
+        'price_confirmation': 1,
+        'in_progress': 2,
+        'ready_to_pickup': 3,
+        'completed': 4,
+        'cancelled': 5
+      };
+      
+      const priorityA = statusPriority[a.status] ?? 99;
+      const priorityB = statusPriority[b.status] ?? 99;
+      
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+      
+      // If same status, sort by date (newest first)
+      return new Date(b.order_date) - new Date(a.order_date);
     });
 
     return allItems;
@@ -740,10 +807,13 @@ const Profile = () => {
       {/* 🔹 Back Button ABOVE the header */}
       <div className="top-btn-wrapper">
         <button
-          className="btn-secondary"
+          className="back-to-home-btn"
           onClick={() => navigate('/user-home')}
         >
-          Back to Home
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span>Back to Home</span>
         </button>
       </div>
 
@@ -774,86 +844,61 @@ const Profile = () => {
 
         <h2 className="section-title">Order Tracking</h2>
 
-        {/* Service Filters */}
-        <div className="status-filters service-filters" style={{ marginBottom: '15px' }}>
-          <span className="filter-label" style={{ marginRight: '10px', fontWeight: 'bold' }}>Service:</span>
-          <button
-            className={`filter-btn ${serviceFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setServiceFilter('all')}
-          >
-            All ({getServiceCounts().all})
-          </button>
-          <button
-            className={`filter-btn ${serviceFilter === 'repair' ? 'active' : ''}`}
-            onClick={() => setServiceFilter('repair')}
-          >
-            Repair ({getServiceCounts().repair})
-          </button>
-          <button
-            className={`filter-btn ${serviceFilter === 'customize' ? 'active' : ''}`}
-            onClick={() => setServiceFilter('customize')}
-          >
-            Customize ({getServiceCounts().customize})
-          </button>
-          <button
-            className={`filter-btn ${serviceFilter === 'dry_cleaning' ? 'active' : ''}`}
-            onClick={() => setServiceFilter('dry_cleaning')}
-          >
-            Dry Cleaning ({getServiceCounts().dry_cleaning})
-          </button>
-          <button
-            className={`filter-btn ${serviceFilter === 'rental' ? 'active' : ''}`}
-            onClick={() => setServiceFilter('rental')}
-          >
-            Rental ({getServiceCounts().rental})
-          </button>
-        </div>
+        {/* Filters Row with Dropdowns */}
+        <div className="filters-row" style={{ display: 'flex', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          {/* Service Filter Dropdown */}
+          <div className="filter-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <label htmlFor="service-filter" style={{ fontWeight: 'bold', color: '#333' }}>Service:</label>
+            <select
+              id="service-filter"
+              value={serviceFilter}
+              onChange={(e) => setServiceFilter(e.target.value)}
+              className="filter-dropdown"
+              style={{
+                padding: '10px 15px',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+                backgroundColor: '#fff',
+                fontSize: '14px',
+                cursor: 'pointer',
+                minWidth: '180px'
+              }}
+            >
+              <option value="all">All Services ({getServiceCounts().all})</option>
+              <option value="repair">Repair ({getServiceCounts().repair})</option>
+              <option value="customize">Customize ({getServiceCounts().customize})</option>
+              <option value="dry_cleaning">Dry Cleaning ({getServiceCounts().dry_cleaning})</option>
+              <option value="rental">Rental ({getServiceCounts().rental})</option>
+            </select>
+          </div>
 
-        {/* Status Filters */}
-        <div className="status-filters">
-          <span className="filter-label" style={{ marginRight: '10px', fontWeight: 'bold' }}>Status:</span>
-          <button
-            className={`filter-btn ${statusFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('all')}
-          >
-            All ({getStatusCounts().all})
-          </button>
-          <button
-            className={`filter-btn ${statusFilter === 'pending' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('pending')}
-          >
-            Pending ({getStatusCounts().pending})
-          </button>
-          <button
-            className={`filter-btn ${statusFilter === 'price_confirmation' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('price_confirmation')}
-          >
-            Price Confirmation ({getStatusCounts().price_confirmation})
-          </button>
-          <button
-            className={`filter-btn ${statusFilter === 'in_progress' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('in_progress')}
-          >
-            In Progress ({getStatusCounts().in_progress})
-          </button>
-          <button
-            className={`filter-btn ${statusFilter === 'ready_to_pickup' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('ready_to_pickup')}
-          >
-            Ready to Pickup ({getStatusCounts().ready_to_pickup})
-          </button>
-          <button
-            className={`filter-btn ${statusFilter === 'completed' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('completed')}
-          >
-            Completed ({getStatusCounts().completed})
-          </button>
-          <button
-            className={`filter-btn ${statusFilter === 'cancelled' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('cancelled')}
-          >
-            Cancelled ({getStatusCounts().cancelled})
-          </button>
+          {/* Status Filter Dropdown */}
+          <div className="filter-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <label htmlFor="status-filter" style={{ fontWeight: 'bold', color: '#333' }}>Status:</label>
+            <select
+              id="status-filter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="filter-dropdown"
+              style={{
+                padding: '10px 15px',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+                backgroundColor: '#fff',
+                fontSize: '14px',
+                cursor: 'pointer',
+                minWidth: '200px'
+              }}
+            >
+              <option value="all">All Status ({getStatusCounts().all})</option>
+              <option value="pending">Pending ({getStatusCounts().pending})</option>
+              <option value="price_confirmation">Price Confirmation ({getStatusCounts().price_confirmation})</option>
+              <option value="in_progress">In Progress ({getStatusCounts().in_progress})</option>
+              <option value="ready_to_pickup">Ready to Pickup ({getStatusCounts().ready_to_pickup})</option>
+              <option value="completed">Completed ({getStatusCounts().completed})</option>
+              <option value="cancelled">Cancelled ({getStatusCounts().cancelled})</option>
+            </select>
+          </div>
         </div>
 
         <div className="order-section">
@@ -1152,6 +1197,14 @@ const Profile = () => {
           </div>
         )
       }
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        isOpen={imagePreviewOpen}
+        imageUrl={previewImageUrl}
+        altText={previewImageAlt}
+        onClose={() => setImagePreviewOpen(false)}
+      />
     </div >
   );
 };

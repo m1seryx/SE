@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState } from "react";
 import {
   View,
   StyleSheet,
@@ -13,11 +14,13 @@ import { Text } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import CustomizationModal from "./CustomizationModal";
 
 const { width, height } = Dimensions.get("window");
 
 export default function AppointmentSelection() {
   const router = useRouter();
+  const [showCustomizationModal, setShowCustomizationModal] = useState(false);
 
   const services = [
     {
@@ -79,7 +82,7 @@ export default function AppointmentSelection() {
               activeOpacity={0.92}
               onPress={() => {
                 if (service.id === "custom")
-                  router.push("../appointment/CustomizeClothes");
+                  setShowCustomizationModal(true);
                 else if (service.id === "repair")
                   router.push("../appointment/RepairClothes");
                 else if (service.id === "drycleaning")
@@ -157,6 +160,12 @@ export default function AppointmentSelection() {
           <Text style={styles.navLabel}>Profile</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Customization Modal */}
+      <CustomizationModal
+        visible={showCustomizationModal}
+        onClose={() => setShowCustomizationModal(false)}
+      />
     </SafeAreaView>
   );
 }

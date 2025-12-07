@@ -126,6 +126,26 @@
   background: none;
 }
 
+/* Date and datetime inputs styling */
+.form-group input[type="date"],
+.form-group input[type="datetime-local"] {
+  color: #333;
+  background: white;
+  cursor: pointer;
+}
+
+.form-group input[type="date"]::-webkit-calendar-picker-indicator,
+.form-group input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.5);
+  padding: 5px;
+}
+
+.form-group input[type="date"]::-webkit-inner-spin-button,
+.form-group input[type="datetime-local"]::-webkit-inner-spin-button {
+  display: none;
+}
+
 .file-info {
   margin-top: 8px;
   padding: 8px 12px;

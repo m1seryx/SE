@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DateTimePickerModal from "../../../components/DateTimePickerModal";
 import { addRepairToCart, uploadRepairImage } from "../../../utils/repairService";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -107,28 +107,28 @@ export default function RepairClothes() {
   };
 
   // Date & Time Handlers
-  const onDateChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || appointmentDate;
-    setShowDatePicker(Platform.OS === "ios");
-
-    if (currentDate) {
-      setAppointmentDate(currentDate);
-      if (Platform.OS === "android") {
-        setShowDatePicker(false);
-        setShowTimePicker(true); // Open time picker right after
-      }
-    }
+  const handleDateConfirm = (selectedDate: Date) => {
+    setAppointmentDate(selectedDate);
+    setShowDatePicker(false);
+    // Show time picker after date is selected
+    setTimeout(() => setShowTimePicker(true), 300);
   };
 
-  const onTimeChange = (event: any, selectedTime?: Date) => {
-    setShowTimePicker(Platform.OS === "ios");
-
-    if (selectedTime && appointmentDate) {
+  const handleTimeConfirm = (selectedTime: Date) => {
+    if (appointmentDate) {
       const updatedDate = new Date(appointmentDate);
       updatedDate.setHours(selectedTime.getHours());
       updatedDate.setMinutes(selectedTime.getMinutes());
       setAppointmentDate(updatedDate);
+    } else {
+      setAppointmentDate(selectedTime);
     }
+    setShowTimePicker(false);
+  };
+
+  const handlePickerCancel = () => {
+    setShowDatePicker(false);
+    setShowTimePicker(false);
   };
 
   const uploadImageIfNeeded = async () => {
@@ -392,25 +392,24 @@ export default function RepairClothes() {
               <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
             </TouchableOpacity>
 
-            {/* Date Picker */}
-            {showDatePicker && (
-              <DateTimePicker
-                value={appointmentDate || new Date()}
-                mode="date"
-                minimumDate={new Date()}
-                onChange={onDateChange}
-              />
-            )}
+            {/* Date Picker Modal */}
+            <DateTimePickerModal
+              visible={showDatePicker}
+              mode="date"
+              value={appointmentDate || new Date()}
+              minimumDate={new Date()}
+              onConfirm={handleDateConfirm}
+              onCancel={handlePickerCancel}
+            />
 
-            {/* Time Picker (Android only after date) */}
-            {showTimePicker && Platform.OS === "android" && (
-              <DateTimePicker
-                value={appointmentDate || new Date()}
-                mode="time"
-                is24Hour={false}
-                onChange={onTimeChange}
-              />
-            )}
+            {/* Time Picker Modal */}
+            <DateTimePickerModal
+              visible={showTimePicker}
+              mode="time"
+              value={appointmentDate || new Date()}
+              onConfirm={handleTimeConfirm}
+              onCancel={handlePickerCancel}
+            />
           </View>
 
           {/* Price Estimate */}

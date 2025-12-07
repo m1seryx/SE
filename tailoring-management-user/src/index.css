@@ -14,7 +14,9 @@ body {
   min-height: 100vh;
   background-color: var(--bg-lighter);
   color: var(--text-primary);
-  font-family: 'Poppins', 'Segoe UI', 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
@@ -29,10 +31,11 @@ a:hover {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: "Playfair Display", "Times New Roman", serif;
-  font-weight: 600;
+  font-family: 'Montserrat', 'Poppins', sans-serif;
+  font-weight: 700;
   color: var(--text-primary);
   line-height: 1.3;
+  letter-spacing: -0.02em;
 }
 
 h1 {

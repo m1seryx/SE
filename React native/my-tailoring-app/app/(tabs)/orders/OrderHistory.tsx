@@ -10,93 +10,175 @@ import {
   Dimensions,
   SafeAreaView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { orderStore, Order } from "../../../utils/orderStore";
+import { orderTrackingService } from "../../../utils/apiService";
 
 const { width } = Dimensions.get("window");
+
+interface OrderItem {
+  order_item_id: number;
+  service_type: string;
+  status: string;
+  base_price: string;
+  final_price: string;
+  specific_data: any;
+}
+
+interface OrderData {
+  order_id: number;
+  order_date: string;
+  items: OrderItem[];
+}
 
 export default function OrderHistoryScreen() {
   const router = useRouter();
   const [selectedFilter, setSelectedFilter] = useState<string>("All");
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setOrders(orderStore.getOrders());
-    const unsubscribe = orderStore.subscribe(() => {
-      setOrders(orderStore.getOrders());
-    });
-    return () => unsubscribe();
-    unsubscribe();
+    fetchOrders();
   }, []);
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const result = await orderTrackingService.getUserOrderTracking();
+      if (result.success && result.data) {
+        // Flatten all order items from all orders
+        const allItems: OrderItem[] = [];
+        result.data.forEach((order: OrderData) => {
+          order.items.forEach((item: OrderItem) => {
+            allItems.push({
+              ...item,
+              order_date: order.order_date,
+              order_id: order.order_id
+            } as any);
+          });
+        });
+        setOrders(allItems);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filters = [
     "All",
     "Pending",
     "In Progress",
-    "To Pick up",
+    "Ready",
     "Completed",
     "Cancelled",
   ];
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "In Progress":
+    const statusLower = status?.toLowerCase();
+    switch (statusLower) {
+      case "in_progress":
+      case "processing":
         return "#3B82F6";
-      case "Completed":
+      case "completed":
         return "#10B981";
-      case "To Pick up":
+      case "ready_to_pickup":
+      case "ready":
         return "#F59E0B";
-      case "Cancelled":
+      case "cancelled":
         return "#EF4444";
-      case "Pending":
+      case "pending":
         return "#8B5CF6";
+      case "price_confirmation":
+        return "#F97316";
       default:
         return "#6B7280";
     }
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "In Progress":
+    const statusLower = status?.toLowerCase();
+    switch (statusLower) {
+      case "in_progress":
+      case "processing":
         return "time-outline";
-      case "Completed":
+      case "completed":
         return "checkmark-circle-outline";
-      case "To Pick up":
+      case "ready_to_pickup":
+      case "ready":
         return "basket-outline";
-      case "Cancelled":
+      case "cancelled":
         return "close-circle-outline";
-      case "Pending":
+      case "pending":
         return "hourglass-outline";
+      case "price_confirmation":
+        return "pricetag-outline";
       default:
         return "ellipse-outline";
     }
   };
 
-  const filteredOrders = orders.filter((order) =>
-    selectedFilter === "All" ? true : order.status === selectedFilter
+  const getStatusLabel = (status: string) => {
+    const statusLower = status?.toLowerCase();
+    switch (statusLower) {
+      case "pending": return "Pending";
+      case "in_progress": return "In Progress";
+      case "processing": return "Processing";
+      case "ready_to_pickup": return "Ready to Pick Up";
+      case "ready": return "Ready";
+      case "completed": return "Completed";
+      case "cancelled": return "Cancelled";
+      case "price_confirmation": return "Price Confirmation";
+      default: return status;
+    }
+  };
+
+  const matchesFilter = (status: string, filter: string) => {
+    if (filter === "All") return true;
+    const statusLower = status?.toLowerCase();
+    const filterLower = filter.toLowerCase().replace(/ /g, '_');
+    
+    if (filter === "In Progress") {
+      return statusLower === "in_progress" || statusLower === "processing";
+    }
+    if (filter === "Ready") {
+      return statusLower === "ready_to_pickup" || statusLower === "ready";
+    }
+    return statusLower === filterLower;
+  };
+
+  const filteredOrders = orders.filter((order: any) =>
+    matchesFilter(order.status, selectedFilter)
   );
 
   const stats = {
     total: orders.length,
     active: orders.filter(
-      (o) => o.status === "Pending" || o.status === "In Progress"
+      (o: any) => o.status?.toLowerCase() === "pending" || o.status?.toLowerCase() === "in_progress"
     ).length,
-    completed: orders.filter((o) => o.status === "Completed").length,
-    toPickup: orders.filter((o) => o.status === "To Pick up").length,
+    completed: orders.filter((o: any) => o.status?.toLowerCase() === "completed").length,
+    toPickup: orders.filter((o: any) => o.status?.toLowerCase() === "ready_to_pickup" || o.status?.toLowerCase() === "ready").length,
   };
 
-  const renderOrder = ({ item }: { item: Order }) => (
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  const renderOrder = ({ item }: { item: any }) => (
     <TouchableOpacity
       style={styles.orderCard}
-      onPress={() => router.push(`/orders/${item.id}`)}
+      onPress={() => router.push(`/orders/${item.order_item_id}`)}
       activeOpacity={0.8}
     >
       <View style={styles.orderHeader}>
         <View>
-          <Text style={styles.orderNo}>{item.orderNo}</Text>
-          <Text style={styles.orderDate}>{item.date}</Text>
+          <Text style={styles.orderNo}>ORD-{item.order_id}</Text>
+          <Text style={styles.orderDate}>{formatDate(item.order_date)}</Text>
         </View>
         <View
           style={[
@@ -112,7 +194,7 @@ export default function OrderHistoryScreen() {
           <Text
             style={[styles.statusText, { color: getStatusColor(item.status) }]}
           >
-            {item.status}
+            {getStatusLabel(item.status)}
           </Text>
         </View>
       </View>
@@ -121,11 +203,11 @@ export default function OrderHistoryScreen() {
         <View style={styles.serviceIconContainer}>
           <Ionicons
             name={
-              item.service === "Customization"
+              item.service_type === "customize"
                 ? "shirt-outline"
-                : item.service === "Rental"
+                : item.service_type === "rental"
                 ? "business-outline"
-                : item.service === "Repair Service"
+                : item.service_type === "repair"
                 ? "construct-outline"
                 : "water-outline"
             }
@@ -135,24 +217,28 @@ export default function OrderHistoryScreen() {
         </View>
 
         <View style={styles.orderDetails}>
-          <Text style={styles.orderService}>{item.service}</Text>
-          <Text style={styles.orderItem}>{item.item}</Text>
-          {item.description && (
+          <Text style={styles.orderService}>
+            {item.service_type?.charAt(0).toUpperCase() + item.service_type?.slice(1).replace('_', ' ')} Service
+          </Text>
+          <Text style={styles.orderItem}>
+            {item.specific_data?.serviceName || item.specific_data?.garmentType || 'Service Item'}
+          </Text>
+          {item.specific_data?.specialInstructions && (
             <Text style={styles.orderDescription} numberOfLines={2}>
-              {item.description}
+              {item.specific_data.specialInstructions}
             </Text>
           )}
-          {item.estimatedCompletion && item.status !== "Completed" && (
+          {item.specific_data?.pickupDate && item.status?.toLowerCase() !== "completed" && (
             <View style={styles.estimated}>
               <Ionicons name="calendar-outline" size={14} color="#6B7280" />
               <Text style={styles.estimatedText}>
-                Est: {item.estimatedCompletion}
+                Pickup: {formatDate(item.specific_data.pickupDate)}
               </Text>
             </View>
           )}
         </View>
 
-        <Text style={styles.orderPrice}>₱{item.price}</Text>
+        <Text style={styles.orderPrice}>₱{parseFloat(item.final_price || item.base_price || '0').toLocaleString()}</Text>
       </View>
 
       <View style={styles.orderActions}>
@@ -163,6 +249,25 @@ export default function OrderHistoryScreen() {
       </View>
     </TouchableOpacity>
   );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.replace("../UserProfile/profile")}
+          >
+            <Ionicons name="arrow-back" size={26} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Order History</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#94665B" />
+          <Text style={styles.loadingText}>Loading orders...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -214,7 +319,7 @@ export default function OrderHistoryScreen() {
           const count =
             f === "All"
               ? orders.length
-              : orders.filter((o) => o.status === f).length;
+              : orders.filter((o: any) => matchesFilter(o.status, f)).length;
           const isActive = selectedFilter === f;
           return (
             <TouchableOpacity
@@ -245,7 +350,7 @@ export default function OrderHistoryScreen() {
       {/* Orders List - Now FlatList (NO ScrollView!) */}
       <FlatList
         data={filteredOrders}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item: any) => `order-${item.order_item_id || item.id}`}
         renderItem={renderOrder}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
@@ -463,6 +568,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: "center",
     paddingHorizontal: 40,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#6B7280",
   },
 
   bottomNav: {

@@ -1,295 +1,359 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../adminStyle/customize.css';
 import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
+import { getAllCustomizationOrders, updateCustomizationOrderItem } from '../api/CustomizationApi';
+import { getUserRole } from '../api/AuthApi';
+import ImagePreviewModal from '../components/ImagePreviewModal';
+
+// Helper to check if user is authenticated
+const isAuthenticated = () => {
+  return !!localStorage.getItem('token');
+};
+
 
 const Customize = () => {
-  // Initial pending appointments (from customer requests)
-  const initialAppointments = [
-    {
-      id: 1,
-      uniqueNo: "C223111",
-      name: "Juan Dela Cruz",
-      garment: "Suit",
-      date: "2024-11-25",
-      price: 1200,
-      isPending: true,
-      measurements: {
-        chest: "",
-        waist: "",
-        hips: "",
-        shoulders: "",
-        sleeves: "",
-        length: ""
-      }
-    },
-    {
-      id: 2,
-      uniqueNo: "C223112",
-      name: "Ana Garcia",
-      garment: "Wedding Dress",
-      date: "2024-11-26",
-      price: 2500,
-      isPending: true,
-      measurements: {
-        chest: "",
-        waist: "",
-        hips: "",
-        shoulders: "",
-        sleeves: "",
-        length: ""
-      }
-    }
-  ];
-
-  // Initial accepted orders
-  const initialOrders = [
-    {
-      id: 3,
-      uniqueNo: "C223111",
-      name: "Maria Santos",
-      garment: "Barong",
-      date: "2024-11-20",
-      price: 900,
-      status: "In Progress",
-      isPending: false,
-      measurements: {
-        chest: "38",
-        waist: "32",
-        hips: "40",
-        shoulders: "16",
-        sleeves: "24",
-        length: "30"
-      }
-    },
-    {
-      id: 4,
-      uniqueNo: "C244222",
-      name: "Ben Santos",
-      garment: "Wedding Gown",
-      date: "2024-11-18",
-      price: 1800,
-      status: "To Pick up",
-      isPending: false,
-      measurements: {
-        chest: "36",
-        waist: "28",
-        hips: "38",
-        shoulders: "15",
-        sleeves: "22",
-        length: "58"
-      }
-    },
-    {
-      id: 5,
-      uniqueNo: "C244333",
-      name: "Sofia Santos",
-      garment: "Dress",
-      date: "2024-11-15",
-      price: 800,
-      status: "Completed",
-      isPending: false,
-      measurements: {
-        chest: "34",
-        waist: "26",
-        hips: "36",
-        shoulders: "14",
-        sleeves: "20",
-        length: "40"
-      }
-    },
-    {
-      id: 6,
-      uniqueNo: "C244444",
-      name: "Carlos Santos",
-      garment: "Barong",
-      date: "2024-11-10",
-      price: 1200,
-      status: "Overdue",
-      isPending: false,
-      measurements: {
-        chest: "40",
-        waist: "34",
-        hips: "42",
-        shoulders: "17",
-        sleeves: "25",
-        length: "32"
-      }
-    }
-  ];
-
-  const [allItems, setAllItems] = useState([...initialAppointments, ...initialOrders]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const navigate = useNavigate();
+  const [allItems, setAllItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [viewFilter, setViewFilter] = useState("all");
-  const [detailModal, setDetailModal] = useState({ open: false, order: null });
-  const [editMode, setEditMode] = useState(false);
-  const [editedOrder, setEditedOrder] = useState(null);
-  const [messageModal, setMessageModal] = useState({ open: false, orderId: null, message: "" });
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [editForm, setEditForm] = useState({
+    finalPrice: '',
+    approvalStatus: '',
+    adminNotes: ''
+  });
 
-  // Get pending appointments
-  const pendingAppointments = allItems.filter(item => item.isPending);
-  
-  // Get accepted orders
-  const acceptedOrders = allItems.filter(item => !item.isPending);
+  // Confirmation modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [confirmMessage, setConfirmMessage] = useState('');
+
+  // Toast notification state
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  // Image preview modal state
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState('');
+  const [previewImageAlt, setPreviewImageAlt] = useState('');
+
+  const openImagePreview = (url, alt) => {
+    setPreviewImageUrl(url);
+    setPreviewImageAlt(alt);
+    setImagePreviewOpen(true);
+  };
+
+  const closeImagePreview = () => {
+    setImagePreviewOpen(false);
+    setPreviewImageUrl('');
+    setPreviewImageAlt('');
+  };
+
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
+
+
+  const openConfirmModal = (message, action) => {
+    setConfirmMessage(message);
+    setConfirmAction(() => action);
+    setShowConfirmModal(true);
+  };
+
+
+  const handleConfirm = () => {
+    if (confirmAction) confirmAction();
+    setShowConfirmModal(false);
+    setConfirmAction(null);
+  };
+
+
+  // Check authentication on mount
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      setError('Please log in to access this page');
+      navigate('/login');
+      return;
+    }
+    const role = getUserRole();
+    if (role !== 'admin') {
+      setError('Admin access required');
+      navigate('/');
+      return;
+    }
+  }, [navigate]);
+
+
+  // Helper function for status styling
+  const getStatusClass = (status) => {
+    const statusMap = {
+      'pending_review': 'pending',
+      'pending': 'pending',
+      'accepted': 'accepted',
+      'price_confirmation': 'price-confirmation',
+      'confirmed': 'in-progress',
+      'ready_for_pickup': 'to-pickup',
+      'completed': 'completed',
+      'cancelled': 'rejected',
+      'auto_confirmed': 'in-progress'
+    };
+    return statusMap[status] || 'pending';
+  };
+
+
+  // Helper function for status display text
+  const getStatusText = (status) => {
+    const statusTextMap = {
+      'pending_review': 'Pending',
+      'pending': 'Pending',
+      'accepted': 'Accepted',
+      'price_confirmation': 'Price Confirmation',
+      'confirmed': 'In Progress',
+      'ready_for_pickup': 'To Pick up',
+      'completed': 'Completed',
+      'cancelled': 'Rejected',
+      'auto_confirmed': 'In Progress'
+    };
+    return statusTextMap[status] || 'Pending';
+  };
+
+
+  // Load customization orders on component mount
+  useEffect(() => {
+    if (isAuthenticated() && getUserRole() === 'admin') {
+      loadCustomizationOrders();
+    }
+  }, []);
+
+
+  const loadCustomizationOrders = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await getAllCustomizationOrders();
+      if (result.success) {
+        setAllItems(result.orders);
+      } else {
+        setError(result.message || 'Failed to load customization orders');
+      }
+    } catch (err) {
+      console.error("Load error:", err);
+      setError('Failed to load customization orders');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const pendingAppointments = allItems.filter(item =>
+    item.approval_status === 'pending_review' ||
+    item.approval_status === 'pending' ||
+    item.approval_status === null ||
+    item.approval_status === undefined ||
+    item.approval_status === ''
+  );
+
 
   const stats = {
     pending: pendingAppointments.length,
-    inProgress: acceptedOrders.filter(o => o.status === 'In Progress').length,
-    toPickup: acceptedOrders.filter(o => o.status === 'To Pick up').length,
-    completed: acceptedOrders.filter(o => o.status === 'Completed').length,
-    overdue: acceptedOrders.filter(o => o.status === 'Overdue').length
+    accepted: allItems.filter(o => o.approval_status === 'accepted').length,
+    inProgress: allItems.filter(o => o.approval_status === 'confirmed').length,
+    toPickup: allItems.filter(o => o.approval_status === 'ready_for_pickup').length,
+    completed: allItems.filter(o => o.approval_status === 'completed').length,
+    rejected: allItems.filter(o => o.approval_status === 'cancelled').length
   };
 
-  // Filter logic
+
   const getFilteredItems = () => {
     let items = [];
-    
+
+
     if (viewFilter === "pending") {
       items = pendingAppointments;
     } else if (viewFilter === "accepted") {
-      items = acceptedOrders;
+      items = allItems.filter(item => item.approval_status === 'accepted');
+    } else if (viewFilter === "price-confirmation") {
+      items = allItems.filter(item => item.approval_status === 'price_confirmation');
+    } else if (viewFilter === "in-progress") {
+      items = allItems.filter(item => item.approval_status === 'confirmed');
+    } else if (viewFilter === "to-pickup") {
+      items = allItems.filter(item => item.approval_status === 'ready_for_pickup');
+    } else if (viewFilter === "completed") {
+      items = allItems.filter(item => item.approval_status === 'completed');
+    } else if (viewFilter === "rejected") {
+      items = allItems.filter(item => item.approval_status === 'cancelled');
     } else {
       items = allItems;
     }
 
-    items = items.filter(item => {
-      const matchesSearch = searchTerm === "" || 
-        item.uniqueNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.name.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      return matchesSearch;
-    });
 
-    if (statusFilter && !items[0]?.isPending) {
-      items = items.filter(item => item.status === statusFilter);
+    // Apply search filter
+    items = items.filter(item =>
+      !searchTerm ||
+      item.order_id?.toString().includes(searchTerm.toLowerCase()) ||
+      `${item.first_name} ${item.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.specific_data?.garmentType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.specific_data?.fabricType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+
+    // Apply status filter only for "all" tab
+    if (statusFilter && viewFilter === 'all') {
+      items = items.filter(item => item.approval_status === statusFilter);
     }
+
 
     return items;
   };
 
-  const filteredItems = getFilteredItems();
 
-  // Accept appointment
-  const handleAccept = (id) => {
-    setAllItems(allItems.map(item => 
-      item.id === id 
-        ? { ...item, isPending: false, status: "In Progress", uniqueNo: item.uniqueNo.replace('A', 'C') }
-        : item
-    ));
-    alert(`Appointment accepted and converted to order!`);
-  };
-
-  // Decline appointment
-  const handleDecline = (id) => {
-    if (window.confirm("Are you sure you want to decline this appointment?")) {
-      setAllItems(allItems.filter(item => item.id !== id));
-      alert("Appointment declined and removed.");
+  const handleAccept = async (itemId) => {
+    try {
+      const result = await updateCustomizationOrderItem(itemId, {
+        approvalStatus: 'accepted'
+      });
+      if (result.success) {
+        await loadCustomizationOrders();
+        showToast("Customization request accepted!", "success");
+      } else {
+        showToast(result.message || "Failed to accept request", "error");
+      }
+    } catch (err) {
+      console.error("Accept error:", err);
+      showToast("Failed to accept request", "error");
     }
   };
 
-  // Update status for accepted orders
-  const updateStatus = (orderId, newStatus) => {
-    setAllItems(allItems.map(item => 
-      item.id === orderId ? { ...item, status: newStatus } : item
-    ));
-    const item = allItems.find(o => o.id === orderId);
-    if (item) {
-      alert(`Order ${item.uniqueNo} status updated to ${newStatus}!`);
-    }
-  };
 
-  const viewDetails = (id) => {
-    const item = allItems.find(o => o.id === id);
-    if (item) {
-      setDetailModal({ open: true, order: item });
-      setEditedOrder(JSON.parse(JSON.stringify(item))); // Deep copy
-      setEditMode(false);
-    }
-  };
-
-  const handleEditToggle = () => {
-    setEditMode(!editMode);
-  };
-
-  const handleMeasurementChange = (field, value) => {
-    setEditedOrder({
-      ...editedOrder,
-      measurements: {
-        ...editedOrder.measurements,
-        [field]: value
+  const handleDecline = (itemId) => {
+    openConfirmModal("Are you sure you want to decline this customization request?", async () => {
+      try {
+        const result = await updateCustomizationOrderItem(itemId, {
+          approvalStatus: 'cancelled'
+        });
+        if (result.success) {
+          loadCustomizationOrders();
+          showToast("Request declined", "success");
+        } else {
+          showToast(result.message || "Failed to decline request", "error");
+        }
+      } catch (err) {
+        console.error("Decline error:", err);
+        showToast("Failed to decline request", "error");
       }
     });
   };
 
-  const handleSaveEdit = () => {
-    setAllItems(allItems.map(item => 
-      item.id === editedOrder.id ? editedOrder : item
-    ));
-    setDetailModal({ open: true, order: editedOrder });
-    setEditMode(false);
-    alert("Measurements updated successfully!");
-  };
 
-  const handleCancelEdit = () => {
-    setEditedOrder(JSON.parse(JSON.stringify(detailModal.order)));
-    setEditMode(false);
-  };
+  const updateStatus = async (itemId, status) => {
+    try {
+      const result = await updateCustomizationOrderItem(itemId, {
+        approvalStatus: status
+      });
+      if (result.success) {
+        await loadCustomizationOrders();
 
-  const openMessageModal = (orderId) => {
-    setMessageModal({ open: true, orderId, message: "" });
-  };
 
-  const handleSendMessage = () => {
-    if (messageModal.message.trim() === "") {
-      alert("Please enter a message.");
-      return;
+        // Automatically switch to the correct tab based on the new status
+        if (status === 'accepted') {
+          setViewFilter('accepted');
+        } else if (status === 'confirmed') {
+          setViewFilter('in-progress');
+        } else if (status === 'ready_for_pickup') {
+          setViewFilter('to-pickup');
+        } else if (status === 'completed') {
+          setViewFilter('completed');
+        } else if (status === 'cancelled') {
+          setViewFilter('rejected');
+        }
+
+
+        const item = allItems.find(o => o.item_id === itemId);
+        if (item) {
+          showToast(`Order #${item.order_id} status updated!`, "success");
+        }
+      } else {
+        showToast(result.message || "Failed to update status", "error");
+      }
+    } catch (err) {
+      showToast("Failed to update status", "error");
     }
-    
-    const order = allItems.find(o => o.id === messageModal.orderId);
-    alert(`Message sent to ${order.name}:\n\n"${messageModal.message}"`);
-    setMessageModal({ open: false, orderId: null, message: "" });
   };
 
-  const getStatusClass = (status) => {
-    return status?.toLowerCase().replace(' ', '-') || '';
+
+  const handleViewDetails = (item) => {
+    setSelectedOrder(item);
+    setShowDetailModal(true);
   };
 
-  const getStatusBadgeClass = (status) => {
-    const classes = {
-      'In Progress': 'in-progress',
-      'To Pick up': 'to-pickup',
-      'Completed': 'completed',
-      'Overdue': 'overdue'
-    };
-    return classes[status] || '';
+
+  const handleEditOrder = (item) => {
+    setSelectedOrder(item);
+    setEditForm({
+      finalPrice: item.final_price || '',
+      approvalStatus: item.approval_status || '',
+      adminNotes: item.pricing_factors?.adminNotes || ''
+    });
+    setShowEditModal(true);
   };
+
+
+  const handleSaveEdit = async () => {
+    if (!selectedOrder) return;
+
+
+    try {
+      const result = await updateCustomizationOrderItem(selectedOrder.item_id, editForm);
+
+
+      if (result.success) {
+        setShowEditModal(false);
+        loadCustomizationOrders();
+        showToast('Order updated successfully!', 'success');
+      } else {
+        showToast(result.message || 'Failed to update order', 'error');
+      }
+    } catch (err) {
+      console.error("Update error:", err);
+      showToast('Failed to update order', 'error');
+    }
+  };
+
 
   return (
-    <div>
+    <div className="customization-management">
       <Sidebar />
       <AdminHeader />
-         
-      {/* Main Content */}
+
+
       <div className="content">
         <div className="dashboard-title">
           <div>
             <h2>Customization Management</h2>
-            <p>Track personalized clothes and appointments</p>
+            <p>Track and manage all customization orders</p>
           </div>
-          <div className="add-rep">Add Customize +</div>
+          {error && <div className="error-message" style={{ color: 'red', marginBottom: '20px' }}>{error}</div>}
         </div>
 
-        {/* Stats Grid */}
+
+        {/* Stats */}
         <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-header">
-              <span>Pending Appointments</span>
-              <div className="stat-icon" style={{ background: '#fff3e0', color: '#ff9800' }}>⏳</div>
+              <span>Pending</span>
+              <div className="stat-icon" style={{ background: '#fff3e0', color: '#f57c00' }}>⏳</div>
             </div>
             <div className="stat-number">{stats.pending}</div>
           </div>
-
           <div className="stat-card">
             <div className="stat-header">
               <span>In Progress</span>
@@ -297,15 +361,13 @@ const Customize = () => {
             </div>
             <div className="stat-number">{stats.inProgress}</div>
           </div>
-
           <div className="stat-card">
             <div className="stat-header">
               <span>To Pick up</span>
-              <div className="stat-icon" style={{ background: '#e8f5e9', color: '#4caf50' }}>📦</div>
+              <div className="stat-icon" style={{ background: '#fff3e0', color: '#ff9800' }}>📦</div>
             </div>
             <div className="stat-number">{stats.toPickup}</div>
           </div>
-
           <div className="stat-card">
             <div className="stat-header">
               <span>Completed</span>
@@ -313,93 +375,45 @@ const Customize = () => {
             </div>
             <div className="stat-number">{stats.completed}</div>
           </div>
+          <div className="stat-card">
+            <div className="stat-header">
+              <span>Rejected</span>
+              <div className="stat-icon" style={{ background: '#ffebee', color: '#f44336' }}>✕</div>
+            </div>
+            <div className="stat-number">{stats.rejected}</div>
+          </div>
         </div>
 
-        {/* View Filter Tabs */}
-        <div className="view-tabs" style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-          <button 
-            className={`tab-btn ${viewFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setViewFilter('all')}
-            style={{
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: '600',
-              background: viewFilter === 'all' ? '#6A3C3E' : '#f0f0f0',
-              color: viewFilter === 'all' ? 'white' : '#333',
-              transition: 'all 0.3s'
-            }}
-          >
-            All ({allItems.length})
-          </button>
-          <button 
-            className={`tab-btn ${viewFilter === 'pending' ? 'active' : ''}`}
-            onClick={() => setViewFilter('pending')}
-            style={{
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: '600',
-              background: viewFilter === 'pending' ? '#6A3C3E' : '#f0f0f0',
-              color: viewFilter === 'pending' ? 'white' : '#333',
-              transition: 'all 0.3s'
-            }}
-          >
-            Pending Appointments ({pendingAppointments.length})
-          </button>
-          <button 
-            className={`tab-btn ${viewFilter === 'accepted' ? 'active' : ''}`}
-            onClick={() => setViewFilter('accepted')}
-            style={{
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: '600',
-              background: viewFilter === 'accepted' ? '#6A3C3E' : '#f0f0f0',
-              color: viewFilter === 'accepted' ? 'white' : '#333',
-              transition: 'all 0.3s'
-            }}
-          >
-            Accepted Orders ({acceptedOrders.length})
-          </button>
-        </div>
 
-        {/* Search Container */}
         <div className="search-container">
           <input
             type="text"
-            placeholder="Search Unique Number or Name"
+            placeholder="Search by Order ID, Name, Garment, or Fabric"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-
-          {viewFilter !== 'pending' && (
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="">All Status</option>
-              <option value="In Progress">In Progress</option>
-              <option value="To Pick up">To Pick up</option>
-              <option value="Completed">Completed</option>
-              <option value="Overdue">Overdue</option>
-            </select>
-          )}
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="accepted">Accepted</option>
+            <option value="price_confirmation">Price Confirmation</option>
+            <option value="confirmed">In Progress</option>
+            <option value="ready_for_pickup">To Pick up</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Rejected</option>
+          </select>
         </div>
-      </div>
 
-      {/* Table Container */}
-      <div className="container">
+
+        {/* Table */}
         <div className="table-container">
           <table>
             <thead>
               <tr>
-                <th>Unique No.</th>
-                <th>Name</th>
+                <th>Order ID</th>
+                <th>Customer</th>
                 <th>Garment</th>
+                <th>Fabric</th>
                 <th>Date</th>
                 <th>Price</th>
                 <th>Status</th>
@@ -407,104 +421,70 @@ const Customize = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredItems.length === 0 ? (
-                <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>
-                    No items found
-                  </td>
-                </tr>
+              {loading ? (
+                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>Loading customization orders...</td></tr>
+              ) : getFilteredItems().length === 0 ? (
+                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>No customization orders found</td></tr>
               ) : (
-                filteredItems.map(item => (
-                  <tr key={item.id}>
-                    <td><strong>{item.uniqueNo}</strong></td>
-                    <td>{item.name}</td>
-                    <td>{item.garment}</td>
-                    <td>{item.date}</td>
-                    <td>₱{item.price.toLocaleString()}</td>
-                    <td>
-                      {item.isPending ? (
-                        <span className="status-badge" style={{ 
-                          background: '#fff3e0', 
-                          color: '#f57c00',
-                          padding: '6px 14px',
-                          borderRadius: '20px',
-                          fontWeight: '600',
-                          fontSize: '0.9rem'
-                        }}>
-                          Pending
+                getFilteredItems().map(item => (
+                  <tr key={item.item_id} className="clickable-row" onClick={() => handleViewDetails(item)}>
+                    <td><strong>#{item.order_id}</strong></td>
+                    <td>{item.first_name} {item.last_name}</td>
+                    <td>{item.specific_data?.garmentType || 'N/A'}</td>
+                    <td><span style={{ fontSize: '0.9em', color: '#5D4037' }}>{item.specific_data?.fabricType || 'N/A'}</span></td>
+                    <td>{new Date(item.order_date).toLocaleDateString()}</td>
+                    <td>₱{parseFloat(item.final_price || 0).toLocaleString()}</td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      {item.approval_status === 'pending_review' || item.approval_status === null || item.approval_status === undefined || item.approval_status === '' ? (
+                        <span className={`status-badge ${getStatusClass('pending')}`}>
+                          {getStatusText('pending')}
                         </span>
                       ) : (
                         <select
-                          className={`status-select ${getStatusClass(item.status)}`}
-                          value={item.status}
-                          onChange={(e) => updateStatus(item.id, e.target.value)}
+                          className={`status-select ${getStatusClass(item.approval_status)}`}
+                          value={item.approval_status || 'pending'}
+                          onChange={(e) => updateStatus(item.item_id, e.target.value)}
                         >
-                          <option value="In Progress">In Progress</option>
-                          <option value="To Pick up">To Pick up</option>
-                          <option value="Completed">Completed</option>
-                          <option value="Overdue">Overdue</option>
+                          <option value="pending">Pending</option>
+                          <option value="accepted">Accepted</option>
+                          <option value="price_confirmation">Price Confirmation</option>
+                          <option value="confirmed">In Progress</option>
+                          <option value="ready_for_pickup">To Pick up</option>
+                          <option value="completed">Completed</option>
+                          <option value="cancelled">Rejected</option>
                         </select>
                       )}
                     </td>
-                    <td>
-                      {item.isPending ? (
-                        <div className="buttons" style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            className="accept-btn"
-                            onClick={() => handleAccept(item.id)}
-                            style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#27AE60',
-                              color: 'white'
-                            }}
-                          >
-                            Accept
+                    <td onClick={(e) => e.stopPropagation()}>
+                      {item.approval_status === 'pending_review' || item.approval_status === 'pending' || item.approval_status === null || item.approval_status === undefined || item.approval_status === '' ? (
+                        <div className="action-buttons">
+                          <button className="icon-btn accept" onClick={() => handleAccept(item.item_id)} title="Accept">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
                           </button>
-                          <button
-                            className="decline-btn"
-                            onClick={() => handleDecline(item.id)}
-                            style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#E74C3C',
-                              color: 'white'
-                            }}
-                          >
-                            Decline
+                          <button className="icon-btn decline" onClick={() => handleDecline(item.item_id)} title="Decline">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
                           </button>
-                          <button
-                            className="action-btn view-btn"
-                            onClick={() => viewDetails(item.id)}
-                            style={{
-                              padding: '10px 10px',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              background: '#2196f3',
-                              color: 'white'
-                            }}
-                          >
-                            View
+                          <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
                           </button>
                         </div>
                       ) : (
-                        <button
-                          className="action-btn view-btn"
-                          onClick={() => viewDetails(item.id)}
-                        >
-                          View
-                        </button>
+                        <div className="action-buttons">
+                          <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -515,293 +495,183 @@ const Customize = () => {
         </div>
       </div>
 
-      {/* Order Details Modal */}
-      {detailModal.open && editedOrder && (
-        <div
-          className="modal-overlay"
-          style={{ display: 'flex' }}
-          onClick={() => {
-            setDetailModal({ open: false, order: null });
-            setEditMode(false);
-          }}
-        >
-          <div
-            className="modal-content"
-            style={{ maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}
-            onClick={(e) => e.stopPropagation()}
-          >
+
+      {/* Edit Order Modal */}
+      {showEditModal && selectedOrder && (
+        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowEditModal(false)}>
+          <div className="modal-content">
             <div className="modal-header">
-              <h2>{detailModal.order?.isPending ? 'Appointment' : 'Order'} Details</h2>
-              <span
-                className="close-modal"
-                onClick={() => {
-                  setDetailModal({ open: false, order: null });
-                  setEditMode(false);
-                }}
-              >
-                ×
-              </span>
+              <h2>Update Customization Order</h2>
+              <span className="close-modal" onClick={() => setShowEditModal(false)}>×</span>
             </div>
             <div className="modal-body">
-              <div className="detail-row">
-                <strong>Item Photo:</strong>
-                <img
-                  src="https://via.placeholder.com/120"
-                  alt="Item"
-                  className="item-image"
+              <div className="detail-row"><strong>Order ID:</strong> #{selectedOrder.order_id}</div>
+              <div className="detail-row"><strong>Garment:</strong> {selectedOrder.specific_data?.garmentType || 'N/A'}</div>
+              <div className="detail-row"><strong>Fabric:</strong> {selectedOrder.specific_data?.fabricType || 'N/A'}</div>
+
+
+              <div className="form-group" style={{ marginTop: '20px' }}>
+                <label>Final Price (₱)</label>
+                <input
+                  type="number"
+                  value={editForm.finalPrice}
+                  onChange={(e) => setEditForm({ ...editForm, finalPrice: e.target.value })}
+                  placeholder="Enter final price"
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                 />
               </div>
-              <div className="detail-row">
-                <strong>Unique No:</strong>
-                <span>{editedOrder.uniqueNo}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Customer Name:</strong>
-                <span>{editedOrder.name}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Customization Details:</strong>
-                <span>{editedOrder.garment}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Date:</strong>
-                <span>{editedOrder.date}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Status:</strong>
-                {editedOrder.isPending ? (
-                  <span className="status-badge" style={{ background: '#fff3e0', color: '#f57c00' }}>
-                    Pending Appointment
-                  </span>
-                ) : (
-                  <span className={`status-badge ${getStatusBadgeClass(editedOrder.status)}`}>
-                    {editedOrder.status}
-                  </span>
-                )}
+
+
+              <div className="form-group">
+                <label>Status</label>
+                <select
+                  value={editForm.approvalStatus}
+                  onChange={(e) => setEditForm({ ...editForm, approvalStatus: e.target.value })}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                >
+                  <option value="pending">Pending</option>
+                  <option value="accepted">Accepted</option>
+                  <option value="price_confirmation">Price Confirmation</option>
+                  <option value="confirmed">In Progress</option>
+                  <option value="ready_for_pickup">Ready for Pickup</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Rejected</option>
+                </select>
               </div>
 
-              {/* Measurements Section */}
-              {!editedOrder.isPending && (
-                <div style={{ marginTop: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <strong style={{ fontSize: '1.1rem' }}>Measurements (inches)</strong>
-                    {!editMode && (
-                      <button
-                        onClick={handleEditToggle}
-                        style={{
-                          padding: '6px 12px',
-                          background: '#6A3C3E',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '0.9rem',
-                          fontWeight: '600'
-                        }}
-                      >
-                        ✏️ Edit
-                      </button>
-                    )}
-                  </div>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    {Object.entries(editedOrder.measurements).map(([key, value]) => (
-                      <div key={key} style={{ display: 'flex', flexDirection: 'column' }}>
-                        <label style={{ fontSize: '0.9rem', fontWeight: '600', marginBottom: '5px', textTransform: 'capitalize' }}>
-                          {key}:
-                        </label>
-                        {editMode ? (
-                          <input
-                            type="text"
-                            value={value}
-                            onChange={(e) => handleMeasurementChange(key, e.target.value)}
-                            style={{
-                              padding: '8px',
-                              border: '2px solid #ddd',
-                              borderRadius: '6px',
-                              fontSize: '0.95rem'
-                            }}
-                          />
-                        ) : (
-                          <span style={{ padding: '8px', background: 'white', borderRadius: '6px', fontSize: '0.95rem' }}>
-                            {value || 'N/A'}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
 
-                  {editMode && (
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '15px', justifyContent: 'flex-end' }}>
-                      <button
-                        onClick={handleCancelEdit}
-                        style={{
-                          padding: '8px 16px',
-                          background: '#6c757d',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontWeight: '600'
-                        }}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleSaveEdit}
-                        style={{
-                          padding: '8px 16px',
-                          background: '#27AE60',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontWeight: '600'
-                        }}
-                      >
-                        Save Changes
-                      </button>
-                    </div>
-                  )}
+              <div className="form-group">
+                <label>Admin Notes</label>
+                <textarea
+                  value={editForm.adminNotes}
+                  onChange={(e) => setEditForm({ ...editForm, adminNotes: e.target.value })}
+                  placeholder="Add admin notes..."
+                  rows={3}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setShowEditModal(false)}>Cancel</button>
+              <button className="btn-save" onClick={handleSaveEdit}>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* View Details Modal */}
+      {showDetailModal && selectedOrder && (
+        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowDetailModal(false)}>
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>Order Details</h2>
+              <span className="close-modal" onClick={() => setShowDetailModal(false)}>×</span>
+            </div>
+            <div className="modal-body">
+              <div className="detail-row"><strong>Order ID:</strong> #{selectedOrder.order_id}</div>
+              <div className="detail-row"><strong>Customer:</strong> {selectedOrder.first_name} {selectedOrder.last_name}</div>
+              <div className="detail-row"><strong>Email:</strong> {selectedOrder.email}</div>
+              <div className="detail-row"><strong>Garment:</strong> {selectedOrder.specific_data?.garmentType || 'N/A'}</div>
+              <div className="detail-row"><strong>Fabric:</strong> {selectedOrder.specific_data?.fabricType || 'N/A'}</div>
+              <div className="detail-row"><strong>Preferred Date:</strong> {selectedOrder.specific_data?.preferredDate || 'N/A'}</div>
+              <div className="detail-row"><strong>Date Received:</strong> {new Date(selectedOrder.order_date).toLocaleDateString()}</div>
+              <div className="detail-row"><strong>Price:</strong> ₱{parseFloat(selectedOrder.final_price || 0).toLocaleString()}</div>
+              <div className="detail-row"><strong>Status:</strong>
+                <span className={`status-badge ${getStatusClass(selectedOrder.approval_status || 'pending')}`}>
+                  {getStatusText(selectedOrder.approval_status || 'pending')}
+                </span>
+              </div>
+
+              {selectedOrder.specific_data?.notes && (
+                <div className="detail-row"><strong>Customer Notes:</strong> {selectedOrder.specific_data.notes}</div>
+              )}
+
+              {selectedOrder.pricing_factors?.adminNotes && (
+                <div className="detail-row"><strong>Admin Notes:</strong> {selectedOrder.pricing_factors.adminNotes}</div>
+              )}
+
+              {/* Show design preview image */}
+              {selectedOrder.specific_data?.imageUrl && selectedOrder.specific_data.imageUrl !== 'no-image' && (
+                <div className="detail-row">
+                  <strong>Design Preview:</strong>
+                  <div 
+                    className="clickable-image"
+                    style={{ marginTop: '10px', cursor: 'pointer' }}
+                    onClick={() => openImagePreview(`http://localhost:5000${selectedOrder.specific_data.imageUrl}`, 'Design preview')}
+                  >
+                    <img
+                      src={`http://localhost:5000${selectedOrder.specific_data.imageUrl}`}
+                      alt="Design preview"
+                      style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', border: '1px solid #ddd' }}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                    <small className="click-hint" style={{ display: 'block', fontSize: '11px', color: '#888', marginTop: '4px' }}>Click to expand</small>
+                  </div>
                 </div>
               )}
             </div>
-            
-            <div className="modal-footer" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              {editedOrder.isPending ? (
-                <>
-                  <button
-                    className="btn-save"
-                    onClick={() => {
-                      handleAccept(editedOrder.id);
-                      setDetailModal({ open: false, order: null });
-                      setEditMode(false);
-                    }}
-                  >
-                    Accept
-                  </button>
-                  <button
-                    className="close-btn"
-                    style={{ background: '#E74C3C' }}
-                    onClick={() => {
-                      handleDecline(editedOrder.id);
-                      setDetailModal({ open: false, order: null });
-                      setEditMode(false);
-                    }}
-                  >
-                    Decline
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => {
-                      openMessageModal(editedOrder.id);
-                    }}
-                    style={{
-                      padding: '10px 20px',
-                      background: '#2196f3',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontWeight: '600'
-                    }}
-                  >
-                    💬 Send Message
-                  </button>
-                  <button
-                    className="close-btn"
-                    onClick={() => {
-                      setDetailModal({ open: false, order: null });
-                      setEditMode(false);
-                    }}
-                  >
-                    Close
-                  </button>
-                </>
-              )}
+            <div className="modal-footer">
+              <button className="close-btn" onClick={() => setShowDetailModal(false)}>Close</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Message Modal */}
-      {messageModal.open && (
-        <div
-          className="modal-overlay"
-          style={{ display: 'flex' }}
-          onClick={() => setMessageModal({ open: false, orderId: null, message: "" })}
-        >
-          <div
-            className="modal-content"
-            style={{ maxWidth: '500px' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-header">
-              <h2>Send Message to Customer</h2>
-              <span
-                className="close-modal"
-                onClick={() => setMessageModal({ open: false, orderId: null, message: "" })}
-              >
-                ×
-              </span>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowConfirmModal(false)}>
+          <div className="confirm-modal">
+            <div className="confirm-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E74C3C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
             </div>
-            <div className="modal-body">
-              <p style={{ marginBottom: '15px', color: '#666' }}>
-                Notify the customer about material availability or other important information.
-              </p>
-              <textarea
-                value={messageModal.message}
-                onChange={(e) => setMessageModal({ ...messageModal, message: e.target.value })}
-                placeholder="Type your message here... (e.g., 'The fabric you requested is currently unavailable. Would you like to choose an alternative?')"
-                style={{
-                  width: '100%',
-                  minHeight: '150px',
-                  padding: '12px',
-                  border: '2px solid #ddd',
-                  borderRadius: '8px',
-                  fontSize: '1rem',
-                  fontFamily: 'inherit',
-                  resize: 'vertical'
-                }}
-              />
-            </div>
-            <div className="modal-footer" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setMessageModal({ open: false, orderId: null, message: "" })}
-                style={{
-                  padding: '10px 20px',
-                  background: '#6c757d',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSendMessage}
-                style={{
-                  padding: '10px 20px',
-                  background: '#27AE60',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                📤 Send Message
-              </button>
+            <h3>Confirm Action</h3>
+            <p>{confirmMessage}</p>
+            <div className="confirm-buttons">
+              <button className="confirm-btn cancel" onClick={() => setShowConfirmModal(false)}>Cancel</button>
+              <button className="confirm-btn confirm" onClick={handleConfirm}>Confirm</button>
             </div>
           </div>
         </div>
       )}
+
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`toast ${toast.type}`}>
+          {toast.type === 'success' ? (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+          )}
+          <span>{toast.message}</span>
+        </div>
+      )}
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        isOpen={imagePreviewOpen}
+        imageUrl={previewImageUrl}
+        altText={previewImageAlt}
+        onClose={closeImagePreview}
+      />
     </div>
   );
 };
+
 
 export default Customize;

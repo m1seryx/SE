@@ -2,10 +2,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.254.103:5000/api';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.1.202:5000/api';
 const REQUEST_TIMEOUT = parseInt(process.env.EXPO_PUBLIC_REQUEST_TIMEOUT || '10000', 10);
 
-// Helper function to decode JWT token
+
 const decodeToken = (token: string) => {
   try {
     const base64Url = token.split('.')[1];
@@ -23,7 +23,7 @@ const decodeToken = (token: string) => {
   }
 };
 
-// Helper function to get auth headers
+
 const getAuthHeaders = async () => {
   const token = await AsyncStorage.getItem('userToken');
   return {
@@ -32,7 +32,7 @@ const getAuthHeaders = async () => {
   };
 };
 
-// Generic API call function
+
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   try {
     const url = `${API_BASE_URL}${endpoint}`;
@@ -48,7 +48,7 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
 
     console.log('API Call:', url, config);
     
-    // Create abort controller for timeout
+ 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
     
