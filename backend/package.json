@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "devStart": "nodemon server.js"
+    "devStart": "nodemon server.js",
+    "migrate:user-fields": "node database/add_user_fields.js",
+    "migrate:appointment-slots": "node database/appointment_slots.js"
   },
   "keywords": [],
   "author": "",

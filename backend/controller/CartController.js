@@ -1,8 +1,53 @@
 const Cart = require('../model/CartModel');
 const Order = require('../model/OrderModel');
+const AppointmentSlot = require('../model/AppointmentSlotModel');
+const db = require('../config/db');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+
+// Helper function to link appointment slot to cart item
+function linkAppointmentSlotToCart(userId, serviceType, specificData, cartItemId) {
+  // Only for appointment-based services
+  if (!['dry_cleaning', 'repair', 'customization'].includes(serviceType)) {
+    return;
+  }
+
+  // Extract date and time from specificData
+  const appointmentDate = specificData?.pickupDate || specificData?.preferredDate || specificData?.datetime;
+  if (!appointmentDate) return;
+
+  let date, time;
+  if (appointmentDate.includes('T')) {
+    const [datePart, timePart] = appointmentDate.split('T');
+    date = datePart;
+    // Format time to HH:MM:SS
+    const timeMatch = timePart.match(/(\d{2}):(\d{2})/);
+    if (timeMatch) {
+      time = `${timeMatch[1]}:${timeMatch[2]}:00`;
+    }
+  }
+
+  if (date && time) {
+    // Find and update the slot
+    const sql = `
+      UPDATE appointment_slots 
+      SET cart_item_id = ? 
+      WHERE user_id = ? 
+      AND service_type = ? 
+      AND appointment_date = ? 
+      AND appointment_time = ? 
+      AND cart_item_id IS NULL 
+      AND status = 'booked'
+      LIMIT 1
+    `;
+    db.query(sql, [cartItemId, userId, serviceType, date, time], (err) => {
+      if (err) {
+        console.error('Error linking appointment slot to cart item:', err);
+      }
+    });
+  }
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -123,10 +168,15 @@ exports.addToCart = (req, res) => {
             });
           }
 
+          const cartItemId = result.insertId;
+
+          // Link appointment slot to cart item
+          linkAppointmentSlotToCart(userId, serviceType, specificData, cartItemId);
+
           res.json({
             success: true,
             message: "Item added to cart successfully",
-            cartId: result.insertId,
+            cartId: cartItemId,
             serviceId: finalServiceId
           });
         }
@@ -153,10 +203,15 @@ exports.addToCart = (req, res) => {
           });
         }
 
+        const cartItemId = result.insertId;
+
+        // Link appointment slot to cart item
+        linkAppointmentSlotToCart(userId, serviceType, specificData, cartItemId);
+
         res.json({
           success: true,
           message: "Item added to cart successfully",
-          cartId: result.insertId
+          cartId: cartItemId
         });
       }
     );
@@ -223,6 +278,18 @@ exports.removeFromCart = (req, res) => {
         message: "Cart item not found" 
       });
     }
+
+    // Cancel appointment slot if linked to this cart item
+    const cancelSlotSql = `
+      UPDATE appointment_slots 
+      SET status = 'cancelled' 
+      WHERE cart_item_id = ? AND status = 'booked'
+    `;
+    db.query(cancelSlotSql, [cartItemId], (slotErr) => {
+      if (slotErr) {
+        console.error('Error cancelling appointment slot:', slotErr);
+      }
+    });
 
     Cart.removeFromCart(cartItemId, userId, (err, result) => {
       if (err) {

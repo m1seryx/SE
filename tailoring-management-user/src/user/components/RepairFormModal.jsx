@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { addRepairToCart, uploadRepairImage } from '../../api/RepairApi';
+import { getAvailableSlots, bookSlot } from '../../api/AppointmentSlotApi';
 import '../../styles/RepairFormModal.css';
 
 const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
@@ -7,8 +8,11 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     damageLevel: '',
     garmentType: '',
     notes: '',
-    datetime: ''
+    date: '',
+    time: ''
   });
+  const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,6 +38,34 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       calculateEstimatedPrice();
     }
   }, [formData.damageLevel, formData.garmentType]);
+
+  // Load available time slots when date changes
+  useEffect(() => {
+    if (formData.date) {
+      loadAvailableSlots(formData.date);
+    } else {
+      setAvailableTimeSlots([]);
+      setFormData(prev => ({ ...prev, time: '' }));
+    }
+  }, [formData.date]);
+
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setFormData({
+        damageLevel: '',
+        garmentType: '',
+        notes: '',
+        date: '',
+        time: ''
+      });
+      setAvailableTimeSlots([]);
+      setImageFile(null);
+      setImagePreview('');
+      setEstimatedPrice(0);
+      setMessage('');
+    }
+  }, [isOpen]);
 
   const calculateEstimatedPrice = async () => {
     if (!formData.damageLevel) {
@@ -83,6 +115,67 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     }));
   };
 
+  const loadAvailableSlots = async (date) => {
+    if (!date) return;
+    
+    // Check if date is Monday-Saturday
+    const selectedDate = new Date(date);
+    const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    
+    if (dayOfWeek === 0) {
+      setMessage('Appointments are only available Monday to Saturday');
+      setAvailableTimeSlots([]);
+      return;
+    }
+
+    setLoadingSlots(true);
+    try {
+      const result = await getAvailableSlots('repair', date);
+      if (result.success) {
+        setAvailableTimeSlots(result.slots || []);
+        setMessage('');
+      } else {
+        setMessage(result.message || 'Error loading available time slots');
+        setAvailableTimeSlots([]);
+      }
+    } catch (error) {
+      console.error('Error loading available slots:', error);
+      setMessage('Error loading available time slots');
+      setAvailableTimeSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  // Get minimum date (today) and filter out Sundays
+  const getMinDate = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    // If today is Sunday, start from Monday
+    if (dayOfWeek === 0) {
+      today.setDate(today.getDate() + 1);
+    }
+    return today.toISOString().split('T')[0];
+  };
+
+  // Filter out Sundays from date input
+  const handleDateChange = (e) => {
+    const selectedDate = e.target.value;
+    if (selectedDate) {
+      const date = new Date(selectedDate);
+      const dayOfWeek = date.getDay();
+      
+      if (dayOfWeek === 0) {
+        setMessage('Appointments are only available Monday to Saturday. Please select another date.');
+        setFormData(prev => ({ ...prev, date: '', time: '' }));
+        return;
+      }
+    }
+    
+    setFormData(prev => ({ ...prev, date: selectedDate, time: '' }));
+    setMessage('');
+  };
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     setImageFile(file);
@@ -102,8 +195,8 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.damageLevel || !formData.garmentType || !formData.notes || !formData.datetime) {
-      setMessage('Please fill in all required fields');
+    if (!formData.damageLevel || !formData.garmentType || !formData.notes || !formData.date || !formData.time) {
+      setMessage('Please fill in all required fields including date and time');
       return;
     }
 
@@ -111,6 +204,26 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     setMessage('');
 
     try {
+      // First, book the appointment slot
+      let slotResult = null;
+      try {
+        slotResult = await bookSlot('repair', formData.date, formData.time);
+        if (!slotResult || !slotResult.success) {
+          const errorMsg = slotResult?.message || 'Failed to book appointment slot. This time may already be taken.';
+          console.error('Slot booking failed:', slotResult);
+          setMessage(errorMsg);
+          setLoading(false);
+          return;
+        }
+        console.log('Slot booked successfully:', slotResult);
+      } catch (slotError) {
+        console.error('Slot booking error:', slotError);
+        const errorMsg = slotError.response?.data?.message || slotError.message || 'Failed to book appointment slot. Please try again.';
+        setMessage(errorMsg);
+        setLoading(false);
+        return;
+      }
+
       let imageUrl = '';
       
       // Upload image if provided
@@ -136,6 +249,9 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
         console.log('No image file provided');
       }
 
+      // Combine date and time for pickupDate
+      const pickupDateTime = `${formData.date}T${formData.time}`;
+
       const repairData = {
         serviceId: 1,
         serviceName: `${formData.damageLevel} Repair`,
@@ -145,22 +261,25 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
         damageDescription: formData.notes,
         damageLocation: formData.garmentType,
         garmentType: formData.garmentType,
-        pickupDate: formData.datetime,
+        pickupDate: pickupDateTime,
         imageUrl: imageUrl || 'no-image'
       };
 
       console.log('Repair data to send:', repairData);
 
       const result = await addRepairToCart(repairData);
+      console.log('Add to cart result:', result);
       
       if (result.success) {
+        // Slot is already booked and will be linked to cart item in the backend
         setMessage(`✅ Repair service added to cart! Estimated price: ₱${estimatedPrice}${imageUrl ? ' (Image uploaded)' : ''}`);
         setTimeout(() => {
           onClose();
           if (onCartUpdate) onCartUpdate();
         }, 1500);
       } else {
-        setMessage(`❌ Error: ${result.message}`);
+        console.error('Cart addition failed:', result);
+        setMessage(`❌ Error: ${result.message || 'Failed to add to cart. Please try again.'}`);
       }
     } catch (error) {
       console.error('Submit error:', error);
@@ -309,26 +428,56 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
             <small>Photos help us provide accurate pricing and better service</small>
           </div>
 
-          {/* Date & Time */}
+          {/* Date */}
           <div className="form-group">
-            <label htmlFor="datetime">Drop off date & time *</label>
+            <label htmlFor="date">Drop off date *</label>
             <input
-              type="datetime-local"
-              id="datetime"
-              name="datetime"
-              value={formData.datetime}
-              onChange={handleInputChange}
-              min={new Date().toISOString().slice(0, 16)}
+              type="date"
+              id="date"
+              name="date"
+              value={formData.date}
+              onChange={handleDateChange}
+              min={getMinDate()}
               required
             />
+            <small>Available Monday to Saturday only</small>
           </div>
+
+          {/* Time Slot */}
+          {formData.date && (
+            <div className="form-group">
+              <label htmlFor="time">Available Time Slots *</label>
+              {loadingSlots ? (
+                <div>Loading available time slots...</div>
+              ) : availableTimeSlots.length > 0 ? (
+                <select
+                  id="time"
+                  name="time"
+                  value={formData.time}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <option value="">-- Select Time Slot --</option>
+                  {availableTimeSlots.map(slot => (
+                    <option key={slot.value} value={slot.value}>
+                      {slot.display}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div style={{ color: '#d32f2f' }}>
+                  No available time slots for this date. Please select another date.
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Price Estimate */}
           {estimatedPrice > 0 && (
             <div className="price-estimate">
               <h4>Estimated Price: ₱{estimatedPrice}</h4>
               <p>Based on damage level: {formData.damageLevel} • Garment type: {formData.garmentType}</p>
-              <p className="estimated-pickup">Drop off item date: {formatDropOffDate(formData.datetime)}</p>
+              <p className="estimated-pickup">Drop off item date: {formData.date && formData.time ? formatDropOffDate(`${formData.date}T${formData.time}`) : 'Not set'}</p>
               <p>Final price will be confirmed after admin review</p>
             </div>
           )}

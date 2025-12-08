@@ -51,6 +51,8 @@ const billingRoutes = require('./routes/BillingRoutes');
 const inventoryRoutes = require('./routes/InventoryRoutes');
 const adminDashboardRoutes = require('./routes/AdminDashboardRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const customerRoutes = require('./routes/CustomerRoutes');
+const appointmentSlotRoutes = require('./routes/AppointmentSlotRoutes');
 
 app.use('/api', authRoutes);
 app.use('/api/rentals', rentalRoutes);
@@ -65,6 +67,8 @@ app.use('/api/billing', billingRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/admin', adminDashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/appointments', appointmentSlotRoutes);
 
 
 const PORT = process.env.PORT || 5000;

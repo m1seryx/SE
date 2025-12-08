@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { addDryCleaningToCart, uploadDryCleaningImage } from '../../api/DryCleaningApi';
+import { getAvailableSlots, bookSlot } from '../../api/AppointmentSlotApi';
 import '../../styles/DryCleaningFormModal.css';
 
 const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
@@ -15,11 +16,14 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     serviceName: '',
     brand: '',
     notes: '',
-    datetime: '',
+    date: '',
+    time: '',
     quantity: 1,
     garmentType: '',
     customGarmentType: ''
   });
+  const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,8 +37,30 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   useEffect(() => {
     if (isOpen) {
       loadDryCleaningServices();
+      // Reset form when modal opens
+      setFormData({
+        serviceName: '',
+        brand: '',
+        notes: '',
+        date: '',
+        time: '',
+        quantity: 1,
+        garmentType: '',
+        customGarmentType: ''
+      });
+      setAvailableTimeSlots([]);
     }
   }, [isOpen]);
+
+  // Load available time slots when date changes
+  useEffect(() => {
+    if (formData.date) {
+      loadAvailableSlots(formData.date);
+    } else {
+      setAvailableTimeSlots([]);
+      setFormData(prev => ({ ...prev, time: '' }));
+    }
+  }, [formData.date]);
 
   const loadDryCleaningServices = async () => {
     try {
@@ -47,6 +73,67 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     } catch (error) {
       console.error('Error loading dry cleaning services:', error);
     }
+  };
+
+  const loadAvailableSlots = async (date) => {
+    if (!date) return;
+    
+    // Check if date is Monday-Saturday
+    const selectedDate = new Date(date);
+    const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    
+    if (dayOfWeek === 0) {
+      setMessage('Appointments are only available Monday to Saturday');
+      setAvailableTimeSlots([]);
+      return;
+    }
+
+    setLoadingSlots(true);
+    try {
+      const result = await getAvailableSlots('dry_cleaning', date);
+      if (result.success) {
+        setAvailableTimeSlots(result.slots || []);
+        setMessage('');
+      } else {
+        setMessage(result.message || 'Error loading available time slots');
+        setAvailableTimeSlots([]);
+      }
+    } catch (error) {
+      console.error('Error loading available slots:', error);
+      setMessage('Error loading available time slots');
+      setAvailableTimeSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  // Get minimum date (today) and filter out Sundays
+  const getMinDate = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    // If today is Sunday, start from Monday
+    if (dayOfWeek === 0) {
+      today.setDate(today.getDate() + 1);
+    }
+    return today.toISOString().split('T')[0];
+  };
+
+  // Filter out Sundays from date input
+  const handleDateChange = (e) => {
+    const selectedDate = e.target.value;
+    if (selectedDate) {
+      const date = new Date(selectedDate);
+      const dayOfWeek = date.getDay();
+      
+      if (dayOfWeek === 0) {
+        setMessage('Appointments are only available Monday to Saturday. Please select another date.');
+        setFormData(prev => ({ ...prev, date: '', time: '' }));
+        return;
+      }
+    }
+    
+    setFormData(prev => ({ ...prev, date: selectedDate, time: '' }));
+    setMessage('');
   };
 
   // Calculate price when quantity or garment type changes
@@ -110,8 +197,8 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.brand || !formData.datetime || !formData.garmentType) {
-      setMessage('Please fill in all required fields');
+    if (!formData.brand || !formData.date || !formData.time || !formData.garmentType) {
+      setMessage('Please fill in all required fields including date and time');
       return;
     }
 
@@ -124,6 +211,26 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     setMessage('');
 
     try {
+      // First, book the appointment slot
+      let slotResult = null;
+      try {
+        slotResult = await bookSlot('dry_cleaning', formData.date, formData.time);
+        if (!slotResult || !slotResult.success) {
+          const errorMsg = slotResult?.message || 'Failed to book appointment slot. This time may already be taken.';
+          console.error('Slot booking failed:', slotResult);
+          setMessage(errorMsg);
+          setLoading(false);
+          return;
+        }
+        console.log('Slot booked successfully:', slotResult);
+      } catch (slotError) {
+        console.error('Slot booking error:', slotError);
+        const errorMsg = slotError.response?.data?.message || slotError.message || 'Failed to book appointment slot. Please try again.';
+        setMessage(errorMsg);
+        setLoading(false);
+        return;
+      }
+
       let imageUrl = '';
 
       // Upload image if provided
@@ -150,7 +257,9 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       }
 
       // Use a default service (Basic Dry Cleaning) since we're removing service selection
-      const defaultService = services.find(service => service.service_name === 'Basic Dry Cleaning') || services[0];
+      const defaultService = services && services.length > 0 
+        ? (services.find(service => service.service_name === 'Basic Dry Cleaning') || services[0])
+        : null;
       
       // Determine the actual garment type to store
       const actualGarmentType = formData.garmentType === 'others' 
@@ -162,6 +271,9 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
         ? 350 
         : (garmentTypes[formData.garmentType] || 200);
 
+      // Combine date and time for pickupDate
+      const pickupDateTime = `${formData.date}T${formData.time}`;
+
       const dryCleaningData = {
         serviceId: defaultService?.service_id || 1,
         serviceName: 'Basic Dry Cleaning',
@@ -170,7 +282,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
         quantity: formData.quantity,
         brand: formData.brand,
         notes: formData.notes,
-        pickupDate: formData.datetime,
+        pickupDate: pickupDateTime,
         imageUrl: imageUrl || 'no-image',
         pricePerItem: pricePerItem.toString(),
         garmentType: actualGarmentType,
@@ -178,10 +290,16 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       };
 
       console.log('Dry cleaning data to send:', dryCleaningData);
+      console.log('Estimated price:', estimatedPrice);
+      console.log('Form data:', formData);
 
       const result = await addDryCleaningToCart(dryCleaningData);
+      console.log('Add to cart result:', result);
+      console.log('Result success:', result?.success);
+      console.log('Result message:', result?.message);
 
-      if (result.success) {
+      if (result && result.success) {
+        // Slot is already booked and will be linked to cart item in the backend
         const priceLabel = isEstimatedPrice ? 'Estimated price' : 'Final price';
         setMessage(`✅ Dry cleaning service added to cart! ${priceLabel}: ₱${estimatedPrice}${imageUrl ? ' (Image uploaded)' : ''}`);
         setTimeout(() => {
@@ -189,23 +307,29 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
           if (onCartUpdate) onCartUpdate();
         }, 1500);
       } else {
-        setMessage(`❌ Error: ${result.message}`);
+        // If cart addition fails, we should cancel the booked slot
+        // But for now, the slot will remain booked - user can try again or admin can manage
+        console.error('Cart addition failed:', result);
+        const errorMessage = result?.message || result?.error || 'Failed to add to cart. Please check console for details.';
+        setMessage(`❌ Error: ${errorMessage}`);
+        setLoading(false);
       }
     } catch (error) {
       console.error('Submit error:', error);
-      setMessage('❌ Failed to add dry cleaning service');
-    } finally {
+      console.error('Error details:', error.response?.data);
+      setMessage(`❌ Failed to add dry cleaning service: ${error.message || 'Unknown error'}`);
       setLoading(false);
-      setTimeout(() => setMessage(''), 5000);
     }
   };
 
   const handleClose = () => {
     // Reset form
     setFormData({
+      serviceName: '',
       brand: '',
       notes: '',
-      datetime: '',
+      date: '',
+      time: '',
       quantity: 1,
       garmentType: '',
       customGarmentType: ''
@@ -215,6 +339,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     setEstimatedPrice(0);
     setIsEstimatedPrice(false);
     setMessage('');
+    setAvailableTimeSlots([]);
     onClose();
   };
 
@@ -306,16 +431,46 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
 
             {/* Date & Time */}
             <div className="form-group">
-              <label htmlFor="datetime">Drop off item date *</label>
+              <label htmlFor="date">Drop off item date *</label>
               <input
-                type="datetime-local"
-                id="datetime"
-                name="datetime"
-                value={formData.datetime}
-                onChange={handleInputChange}
+                type="date"
+                id="date"
+                name="date"
+                value={formData.date}
+                onChange={handleDateChange}
+                min={getMinDate()}
                 required
               />
+              <small>Available Monday to Saturday only</small>
             </div>
+
+            {formData.date && (
+              <div className="form-group">
+                <label htmlFor="time">Available Time Slots *</label>
+                {loadingSlots ? (
+                  <div>Loading available time slots...</div>
+                ) : availableTimeSlots.length > 0 ? (
+                  <select
+                    id="time"
+                    name="time"
+                    value={formData.time}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="">-- Select Time Slot --</option>
+                    {availableTimeSlots.map(slot => (
+                      <option key={slot.value} value={slot.value}>
+                        {slot.display}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div style={{ color: '#d32f2f' }}>
+                    No available time slots for this date. Please select another date.
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Image Upload */}
             <div className="form-group">
@@ -370,7 +525,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                     <p><strong>Total: ₱{estimatedPrice}</strong></p>
                   </>
                 )}
-                <p className="estimated-pickup">Drop off item date: {formData.datetime ? new Date(formData.datetime).toLocaleString() : 'Not set'}</p>
+                <p className="estimated-pickup">Drop off item date: {formData.date && formData.time ? `${formData.date} ${formData.time.substring(0, 5)}` : 'Not set'}</p>
               </div>
             )}
 
@@ -394,7 +549,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               <button
                 type="submit"
                 className="btn-submit"
-                disabled={loading || !formData.brand || !formData.datetime || !formData.garmentType || (formData.garmentType === 'others' && !formData.customGarmentType.trim())}
+                disabled={loading || !formData.brand || !formData.date || !formData.time || !formData.garmentType || (formData.garmentType === 'others' && !formData.customGarmentType.trim())}
               >
                 {loading ? 'Adding to Cart...' : 'Add to Cart'}
               </button>

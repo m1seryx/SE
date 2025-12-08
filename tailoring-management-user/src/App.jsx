@@ -19,6 +19,7 @@ import Post from "./admin/PostRent";
 import Inventory from "./admin/Inventory";
 import Customize from "./admin/Customize";
 import Billing from "./admin/Billing";
+import CustomerList from "./admin/CustomerList";
 import Customizer3DPage from "./pages/Customizer3DPage";
 
 const App = () => {
@@ -43,6 +44,7 @@ const App = () => {
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/customize" element={<Customize />} />
         <Route path="/billing" element={<Billing />} />
+        <Route path="/customers" element={<CustomerList />} />
 
       </Routes>
     </>

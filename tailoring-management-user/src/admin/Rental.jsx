@@ -41,6 +41,7 @@ function Rental() {
 
   const stats = {
     pending: rentals.filter(r => r.approval_status === 'pending' || r.approval_status === 'pending_review').length,
+    accepted: rentals.filter(r => r.approval_status === 'accepted').length,
     ready_to_pickup: rentals.filter(r => r.approval_status === 'ready_to_pickup' || r.approval_status === 'ready_for_pickup').length,
     rented: rentals.filter(r => r.approval_status === 'rented').length,
     returned: rentals.filter(r => r.approval_status === 'returned').length
@@ -51,6 +52,8 @@ function Rental() {
     switch (viewFilter) {
       case 'pending':
         return rentals.filter(r => r.approval_status === 'pending' || r.approval_status === 'pending_review');
+      case 'accepted':
+        return rentals.filter(r => r.approval_status === 'accepted');
       case 'ready-to-pickup':
         return rentals.filter(r => r.approval_status === 'ready_to_pickup' || r.approval_status === 'ready_for_pickup');
       case 'rented':
@@ -88,11 +91,11 @@ function Rental() {
 
     try {
       const result = await updateRentalOrderItem(rental.item_id, {
-        approvalStatus: 'ready_to_pickup'
+        approvalStatus: 'accepted'
       });
 
       if (result.success) {
-        alert('Rental accepted! Status changed to "Ready to Pick Up"');
+        alert('Rental accepted! Status changed to "Accepted"');
         await loadRentalOrders();
       } else {
         alert(result.message || 'Failed to accept rental');
@@ -190,6 +193,7 @@ function Rental() {
     const statusMap = {
       'pending': 'pending',
       'pending_review': 'pending',
+      'accepted': 'accepted',
       'ready_to_pickup': 'ready-to-pickup',
       'ready_for_pickup': 'ready-to-pickup',
       'picked_up': 'picked-up',
@@ -205,6 +209,7 @@ function Rental() {
     const labelMap = {
       'pending': 'Pending',
       'pending_review': 'Pending',
+      'accepted': 'Accepted',
       'ready_to_pickup': 'Ready to Pick Up',
       'ready_for_pickup': 'Ready to Pick Up',
       'picked_up': 'Picked Up',
@@ -219,14 +224,14 @@ function Rental() {
   // Get next status in workflow
   const getNextStatus = (currentStatus, serviceType = 'rental') => {
     if (!currentStatus || currentStatus === 'pending_review' || currentStatus === 'pending') {
-      return 'ready_for_pickup';
+      return 'accepted';
     }
     
     const statusFlow = {
       'repair': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed'],
       'customization': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed'],
       'dry_cleaning': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed'],
-      'rental': ['pending', 'ready_for_pickup', 'picked_up', 'rented', 'returned', 'completed']
+      'rental': ['pending', 'accepted', 'ready_for_pickup', 'picked_up', 'rented', 'returned', 'completed']
     };
     
     const flow = statusFlow[serviceType] || statusFlow['rental'];
@@ -279,6 +284,14 @@ function Rental() {
 
           <div className="stat-card">
             <div className="stat-header">
+              <span>Accepted</span>
+              <div className="stat-icon" style={{ background: '#e1f5fe', color: '#039be5' }}>✓</div>
+            </div>
+            <div className="stat-number">{stats.accepted}</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-header">
               <span>Ready to Pick Up</span>
               <div className="stat-icon" style={{ background: '#e3f2fd', color: '#2196f3' }}>📦</div>
             </div>
@@ -312,6 +325,7 @@ function Rental() {
           <select className="status-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="">All Status</option>
             <option value="pending">Pending</option>
+            <option value="accepted">Accepted</option>
             <option value="ready_to_pickup">Ready to Pick Up</option>
             <option value="rented">Rented</option>
             <option value="returned">Returned</option>
@@ -458,6 +472,7 @@ function Rental() {
                   onChange={(e) => setEditData({ ...editData, approvalStatus: e.target.value })}
                   className="form-control"
                 >
+                  <option value="accepted">Accepted</option>
                   <option value="ready_for_pickup">Ready to Pick Up</option>
                   <option value="picked_up">Picked Up</option>
                   <option value="rented">Rented</option>

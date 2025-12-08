@@ -6,6 +6,7 @@ import Sidebar from './Sidebar';
 import { getAllCustomizationOrders, updateCustomizationOrderItem } from '../api/CustomizationApi';
 import { getUserRole } from '../api/AuthApi';
 import ImagePreviewModal from '../components/ImagePreviewModal';
+import { getMeasurements, saveMeasurements } from '../api/CustomerApi';
 
 // Helper to check if user is authenticated
 const isAuthenticated = () => {
@@ -29,6 +30,13 @@ const Customize = () => {
     approvalStatus: '',
     adminNotes: ''
   });
+  const [showMeasurementsModal, setShowMeasurementsModal] = useState(false);
+  const [measurements, setMeasurements] = useState({
+    top: {},
+    bottom: {},
+    notes: ''
+  });
+  const [measurementsLoading, setMeasurementsLoading] = useState(false);
 
   // Confirmation modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -588,6 +596,38 @@ const Customize = () => {
                   style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                 />
               </div>
+
+              {/* Customer Measurements Section */}
+              <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '2px solid #eee' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', color: '#333' }}>Customer Measurements</h3>
+                  <button 
+                    className="btn-secondary" 
+                    onClick={async () => {
+                      setMeasurementsLoading(true);
+                      const result = await getMeasurements(selectedOrder.user_id);
+                      if (result.success && result.measurements) {
+                        setMeasurements({
+                          top: typeof result.measurements.top_measurements === 'string' 
+                            ? JSON.parse(result.measurements.top_measurements) 
+                            : result.measurements.top_measurements || {},
+                          bottom: typeof result.measurements.bottom_measurements === 'string'
+                            ? JSON.parse(result.measurements.bottom_measurements)
+                            : result.measurements.bottom_measurements || {},
+                          notes: result.measurements.notes || ''
+                        });
+                      } else {
+                        setMeasurements({ top: {}, bottom: {}, notes: '' });
+                      }
+                      setMeasurementsLoading(false);
+                      setShowMeasurementsModal(true);
+                    }}
+                    style={{ padding: '6px 12px', fontSize: '14px' }}
+                  >
+                    {measurementsLoading ? 'Loading...' : 'View/Edit Measurements'}
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="modal-footer">
               <button className="btn-cancel" onClick={() => setShowEditModal(false)}>Cancel</button>
@@ -628,6 +668,38 @@ const Customize = () => {
               {selectedOrder.pricing_factors?.adminNotes && (
                 <div className="detail-row"><strong>Admin Notes:</strong> {selectedOrder.pricing_factors.adminNotes}</div>
               )}
+
+              {/* Customer Measurements Section */}
+              <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', color: '#333' }}>Customer Measurements</h3>
+                  <button 
+                    className="btn-secondary" 
+                    onClick={async () => {
+                      setMeasurementsLoading(true);
+                      const result = await getMeasurements(selectedOrder.user_id);
+                      if (result.success && result.measurements) {
+                        setMeasurements({
+                          top: typeof result.measurements.top_measurements === 'string' 
+                            ? JSON.parse(result.measurements.top_measurements) 
+                            : result.measurements.top_measurements || {},
+                          bottom: typeof result.measurements.bottom_measurements === 'string'
+                            ? JSON.parse(result.measurements.bottom_measurements)
+                            : result.measurements.bottom_measurements || {},
+                          notes: result.measurements.notes || ''
+                        });
+                      } else {
+                        setMeasurements({ top: {}, bottom: {}, notes: '' });
+                      }
+                      setMeasurementsLoading(false);
+                      setShowMeasurementsModal(true);
+                    }}
+                    style={{ padding: '6px 12px', fontSize: '14px' }}
+                  >
+                    {measurementsLoading ? 'Loading...' : 'View/Edit Measurements'}
+                  </button>
+                </div>
+              </div>
 
               {/* Show design preview image */}
               {selectedOrder.specific_data?.imageUrl && selectedOrder.specific_data.imageUrl !== 'no-image' && (
@@ -680,6 +752,191 @@ const Customize = () => {
         </div>
       )}
 
+
+      {/* Measurements Modal */}
+      {showMeasurementsModal && selectedOrder && (
+        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowMeasurementsModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-header">
+              <h2>Customer Measurements</h2>
+              <span className="close-modal" onClick={() => setShowMeasurementsModal(false)}>×</span>
+            </div>
+            <div className="modal-body">
+              <div className="detail-row"><strong>Customer:</strong> {selectedOrder.first_name} {selectedOrder.last_name}</div>
+              
+              {/* Top Measurements */}
+              <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
+                <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#333' }}>Top Measurements</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div className="form-group">
+                    <label>Chest (inches)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={measurements.top.chest || ''}
+                      onChange={(e) => setMeasurements({ ...measurements, top: { ...measurements.top, chest: e.target.value } })}
+                      placeholder="Enter chest measurement"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Shoulders (inches)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={measurements.top.shoulders || ''}
+                      onChange={(e) => setMeasurements({ ...measurements, top: { ...measurements.top, shoulders: e.target.value } })}
+                      placeholder="Enter shoulder measurement"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Sleeve Length (inches)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={measurements.top.sleeve_length || ''}
+                      onChange={(e) => setMeasurements({ ...measurements, top: { ...measurements.top, sleeve_length: e.target.value } })}
+                      placeholder="Enter sleeve length"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Neck (inches)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={measurements.top.neck || ''}
+                      onChange={(e) => setMeasurements({ ...measurements, top: { ...measurements.top, neck: e.target.value } })}
+                      placeholder="Enter neck measurement"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Waist (inches)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={measurements.top.waist || ''}
+                      onChange={(e) => setMeasurements({ ...measurements, top: { ...measurements.top, waist: e.target.value } })}
+                      placeholder="Enter waist measurement"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Length (inches)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={measurements.top.length || ''}
+                      onChange={(e) => setMeasurements({ ...measurements, top: { ...measurements.top, length: e.target.value } })}
+                      placeholder="Enter length measurement"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Measurements */}
+              <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
+                <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#333' }}>Bottom Measurements</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div className="form-group">
+                    <label>Waist (inches)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={measurements.bottom.waist || ''}
+                      onChange={(e) => setMeasurements({ ...measurements, bottom: { ...measurements.bottom, waist: e.target.value } })}
+                      placeholder="Enter waist measurement"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Hips (inches)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={measurements.bottom.hips || ''}
+                      onChange={(e) => setMeasurements({ ...measurements, bottom: { ...measurements.bottom, hips: e.target.value } })}
+                      placeholder="Enter hip measurement"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Inseam (inches)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={measurements.bottom.inseam || ''}
+                      onChange={(e) => setMeasurements({ ...measurements, bottom: { ...measurements.bottom, inseam: e.target.value } })}
+                      placeholder="Enter inseam measurement"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Length (inches)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={measurements.bottom.length || ''}
+                      onChange={(e) => setMeasurements({ ...measurements, bottom: { ...measurements.bottom, length: e.target.value } })}
+                      placeholder="Enter length measurement"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Thigh (inches)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={measurements.bottom.thigh || ''}
+                      onChange={(e) => setMeasurements({ ...measurements, bottom: { ...measurements.bottom, thigh: e.target.value } })}
+                      placeholder="Enter thigh measurement"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Outseam (inches)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={measurements.bottom.outseam || ''}
+                      onChange={(e) => setMeasurements({ ...measurements, bottom: { ...measurements.bottom, outseam: e.target.value } })}
+                      placeholder="Enter outseam measurement"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="form-group" style={{ marginTop: '20px' }}>
+                <label>Notes</label>
+                <textarea
+                  value={measurements.notes}
+                  onChange={(e) => setMeasurements({ ...measurements, notes: e.target.value })}
+                  placeholder="Add any additional notes about measurements..."
+                  rows={3}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setShowMeasurementsModal(false)}>Cancel</button>
+              <button className="btn-save" onClick={async () => {
+                const result = await saveMeasurements(selectedOrder.user_id, measurements);
+                if (result.success) {
+                  alert('Measurements saved successfully!');
+                  setShowMeasurementsModal(false);
+                } else {
+                  alert(result.message || 'Failed to save measurements');
+                }
+              }}>Save Measurements</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast Notification */}
       {toast.show && (

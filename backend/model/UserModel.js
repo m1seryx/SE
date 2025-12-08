@@ -42,6 +42,56 @@ const User = {
       const sql = "UPDATE user SET first_name = ?, last_name = ?, email = ?, phone_number = ? WHERE user_id = ?";
       db.query(sql, [first_name, last_name, email, phone_number, user_id], callback);
     }
+  },
+
+  // Get all customers with order count
+  getAllCustomers: (callback) => {
+    const sql = `
+      SELECT 
+        u.user_id,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.phone_number,
+        COALESCE(u.status, 'active') as status,
+        COALESCE(u.created_at, NOW()) as created_at,
+        COUNT(DISTINCT o.order_id) as total_orders
+      FROM user u
+      LEFT JOIN orders o ON u.user_id = o.user_id
+      GROUP BY u.user_id, u.first_name, u.last_name, u.email, u.phone_number, u.status, u.created_at
+      ORDER BY u.created_at DESC
+    `;
+    db.query(sql, callback);
+  },
+
+  // Get customer by ID with details
+  getCustomerById: (userId, callback) => {
+    const sql = `
+      SELECT 
+        u.*,
+        COUNT(DISTINCT o.order_id) as total_orders
+      FROM user u
+      LEFT JOIN orders o ON u.user_id = o.user_id
+      WHERE u.user_id = ?
+      GROUP BY u.user_id
+    `;
+    db.query(sql, [userId], callback);
+  },
+
+  // Update customer status
+  updateStatus: (userId, status, callback) => {
+    const sql = "UPDATE user SET status = ? WHERE user_id = ?";
+    db.query(sql, [status, userId], callback);
+  },
+
+  // Update customer information
+  updateCustomer: (userId, first_name, last_name, email, phone_number, status, callback) => {
+    const sql = `
+      UPDATE user 
+      SET first_name = ?, last_name = ?, email = ?, phone_number = ?, status = ?
+      WHERE user_id = ?
+    `;
+    db.query(sql, [first_name, last_name, email, phone_number, status, userId], callback);
   }
 
 };
