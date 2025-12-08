@@ -62,13 +62,14 @@ export default function CartScreen() {
           if (rawDate) {
             try {
               const date = new Date(rawDate);
-              formattedDate = date.toLocaleDateString('en-US', {
+              formattedDate = date.toLocaleString('en-US', {
                 weekday: 'short',
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric',
                 hour: 'numeric',
-                minute: '2-digit'
+                minute: '2-digit',
+                hour12: true
               });
             } catch (e) {
               formattedDate = rawDate;
@@ -349,7 +350,7 @@ export default function CartScreen() {
                     )}
                   </View>
 
-                  {/* Remove Button */}
+                  {/* Cancel Button */}
                   <TouchableOpacity
                     style={styles.removeButton}
                     onPress={(e) => {
@@ -357,7 +358,7 @@ export default function CartScreen() {
                       handleRemoveItem(item.id);
                     }}
                   >
-                    <Ionicons name="trash-outline" size={24} color="#EF4444" />
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
                 </TouchableOpacity>
               ))}
@@ -775,6 +776,11 @@ const styles = StyleSheet.create({
   itemPrice: { fontSize: 20, fontWeight: "800", color: "#94665B" },
   itemPricePending: { fontSize: 14, fontWeight: "600", color: "#F59E0B", fontStyle: "italic" },
   removeButton: { padding: 10 },
+  cancelButtonText: { 
+    color: "#EF4444", 
+    fontSize: 14, 
+    fontWeight: "600" 
+  },
 
   summarySection: {
     marginHorizontal: 20,

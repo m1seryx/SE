@@ -68,7 +68,7 @@ export async function addDryCleaningToCart(dryCleaningData) {
   try {
     const cartItem = {
       serviceType: 'dry_cleaning',
-      serviceId: dryCleaningData.serviceId,
+      serviceId: null, // Backend will generate incremental ID
       quantity: dryCleaningData.quantity || 1,
       basePrice: dryCleaningData.basePrice,
       finalPrice: dryCleaningData.finalPrice,
@@ -85,6 +85,9 @@ export async function addDryCleaningToCart(dryCleaningData) {
         imageUrl: dryCleaningData.imageUrl,
         pickupDate: dryCleaningData.pickupDate,
         quantity: dryCleaningData.quantity,
+        garmentType: dryCleaningData.garmentType,
+        isEstimatedPrice: dryCleaningData.isEstimatedPrice || false,
+        pricePerItem: dryCleaningData.pricePerItem,
         uploadedAt: new Date().toISOString()
       }
     };

@@ -146,8 +146,7 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
         damageLocation: formData.garmentType,
         garmentType: formData.garmentType,
         pickupDate: formData.datetime,
-        imageUrl: imageUrl || 'no-image',
-        estimatedTime: getEstimatedTime(formData.damageLevel)
+        imageUrl: imageUrl || 'no-image'
       };
 
       console.log('Repair data to send:', repairData);
@@ -172,34 +171,22 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     }
   };
 
-  const getEstimatedTime = (damageLevel) => {
-    const times = {
-      'minor': '2-3 days',
-      'moderate': '3-5 days',
-      'major': '5-7 days',
-      'severe': '1-2 weeks'
-    };
-    return times[damageLevel] || '3-5 days';
-  };
-
-  const getEstimatedPickupDate = (damageLevel) => {
-    const days = {
-      'minor': 3,
-      'moderate': 5,
-      'major': 7,
-      'severe': 14
-    };
-    
-    const pickupDays = days[damageLevel] || 5;
-    const pickupDate = new Date();
-    pickupDate.setDate(pickupDate.getDate() + pickupDays);
-    
-    return pickupDate.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+  const formatDropOffDate = (dateString) => {
+    if (!dateString) return 'Not set';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (e) {
+      return dateString;
+    }
   };
 
   const handleClose = () => {
@@ -239,10 +226,18 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               <option value="">Select damage level</option>
               {damageLevels.map(level => (
                 <option key={level.value} value={level.value}>
-                  {level.label} - {level.description}
+                  {level.label}
                 </option>
               ))}
             </select>
+            {/* Show all damage level descriptions */}
+            <div style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
+              {damageLevels.map(level => (
+                <div key={level.value} style={{ marginBottom: '5px' }}>
+                  <strong>{level.label}:</strong> {level.description}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Garment Type */}
@@ -316,7 +311,7 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
 
           {/* Date & Time */}
           <div className="form-group">
-            <label htmlFor="datetime">Preferred Date & Time *</label>
+            <label htmlFor="datetime">Drop off date & time *</label>
             <input
               type="datetime-local"
               id="datetime"
@@ -333,8 +328,7 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
             <div className="price-estimate">
               <h4>Estimated Price: ₱{estimatedPrice}</h4>
               <p>Based on damage level: {formData.damageLevel} • Garment type: {formData.garmentType}</p>
-              <p className="estimated-time">⏱️ Estimated time: {getEstimatedTime(formData.damageLevel)}</p>
-              <p className="estimated-pickup">📅 Estimated pickup: {getEstimatedPickupDate(formData.damageLevel)}</p>
+              <p className="estimated-pickup">Drop off item date: {formatDropOffDate(formData.datetime)}</p>
               <p>Final price will be confirmed after admin review</p>
             </div>
           )}

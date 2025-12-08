@@ -171,7 +171,7 @@ export async function addRepairToCart(repairData) {
   try {
     const cartItem = {
       serviceType: 'repair',
-      serviceId: repairData.serviceId,
+      serviceId: null, // Backend will generate incremental ID
       quantity: 1,
       basePrice: repairData.basePrice,
       finalPrice: repairData.estimatedPrice,

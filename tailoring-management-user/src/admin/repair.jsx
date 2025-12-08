@@ -71,6 +71,48 @@ const Repair = () => {
     return statusTextMap[status] || 'Pending';
   };
 
+  // Get next status in workflow
+  const getNextStatus = (currentStatus, serviceType = 'repair') => {
+    if (!currentStatus || currentStatus === 'pending_review' || currentStatus === 'pending') {
+      return 'accepted';
+    }
+    
+    const statusFlow = {
+      'repair': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed'],
+      'customization': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed'],
+      'dry_cleaning': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed'],
+      'rental': ['pending', 'ready_for_pickup', 'picked_up', 'rented', 'returned', 'completed']
+    };
+    
+    const flow = statusFlow[serviceType] || statusFlow['repair'];
+    const currentIndex = flow.indexOf(currentStatus);
+    
+    if (currentIndex === -1 || currentIndex === flow.length - 1) {
+      return null; // Already at final status or unknown status
+    }
+    
+    return flow[currentIndex + 1];
+  };
+
+  // Get next status label for display
+  const getNextStatusLabel = (currentStatus, serviceType = 'repair') => {
+    const nextStatus = getNextStatus(currentStatus, serviceType);
+    if (!nextStatus) return null;
+    
+    const labelMap = {
+      'accepted': 'Accept',
+      'price_confirmation': 'Price Confirm',
+      'confirmed': 'Start Progress',
+      'ready_for_pickup': 'Ready for Pickup',
+      'completed': 'Complete',
+      'picked_up': 'Mark Picked Up',
+      'rented': 'Mark Rented',
+      'returned': 'Mark Returned'
+    };
+    
+    return labelMap[nextStatus] || getStatusText(nextStatus);
+  };
+
   // Load repair orders on component mount
   useEffect(() => {
     loadRepairOrders();
@@ -384,25 +426,9 @@ const Repair = () => {
                     <td>{new Date(item.order_date).toLocaleDateString()}</td>
                     <td>₱{parseFloat(item.final_price || 0).toLocaleString()}</td>
                     <td onClick={(e) => e.stopPropagation()}>
-                      {item.approval_status === 'pending_review' || item.approval_status === null || item.approval_status === undefined || item.approval_status === '' ? (
-                        <span className={`status-badge ${getStatusClass('pending')}`}>
-                          {getStatusText('pending')}
-                        </span>
-                      ) : (
-                        <select
-                          className={`status-select ${getStatusClass(item.approval_status)}`}
-                          value={item.approval_status || 'pending'}
-                          onChange={(e) => updateStatus(item.item_id, e.target.value)}
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="accepted">Accepted</option>
-                          <option value="price_confirmation">Price Confirmation</option>
-                          <option value="confirmed">In Progress</option>
-                          <option value="ready_for_pickup">To Pick up</option>
-                          <option value="completed">Completed</option>
-                          <option value="cancelled">Rejected</option>
-                        </select>
-                      )}
+                      <span className={`status-badge ${getStatusClass(item.approval_status || 'pending')}`}>
+                        {getStatusText(item.approval_status || 'pending')}
+                      </span>
                     </td>
                     <td onClick={(e) => e.stopPropagation()}>
                       {item.approval_status === 'pending_review' || item.approval_status === 'pending' || item.approval_status === null || item.approval_status === undefined || item.approval_status === '' ? (
@@ -427,6 +453,18 @@ const Repair = () => {
                         </div>
                       ) : (
                         <div className="action-buttons">
+                          {getNextStatus(item.approval_status, 'repair') && (
+                            <button 
+                              className="icon-btn next-status" 
+                              onClick={() => updateStatus(item.item_id, getNextStatus(item.approval_status, 'repair'))} 
+                              title={`Move to ${getNextStatusLabel(item.approval_status, 'repair')}`}
+                              style={{ backgroundColor: '#4CAF50', color: 'white' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                              </svg>
+                            </button>
+                          )}
                           <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Edit">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>

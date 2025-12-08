@@ -123,6 +123,95 @@ const Profile = () => {
     return statusMap[status] || status;
   };
 
+  // Helper functions for customization details
+  const getColorName = (hex) => {
+    if (!hex) return 'Not specified';
+    
+    // Handle if it's already a string name
+    if (typeof hex === 'string' && !hex.startsWith('#') && !hex.match(/^[0-9a-fA-F]{3,6}$/)) {
+      return hex.charAt(0).toUpperCase() + hex.slice(1);
+    }
+    
+    // Normalize hex
+    let normalizedHex = String(hex).toLowerCase().trim();
+    if (!normalizedHex.startsWith('#')) {
+      normalizedHex = `#${normalizedHex}`;
+    }
+    
+    // Color mappings
+    const colorMap = {
+      '#1a1a1a': 'Classic Black',
+      '#1e3a5f': 'Navy Blue',
+      '#6b1e3d': 'Burgundy',
+      '#2d5a3d': 'Forest Green',
+      '#4a4a4a': 'Charcoal Gray',
+      '#c9a66b': 'Camel Tan',
+      '#f5e6d3': 'Cream White',
+      '#5d4037': 'Chocolate Brown',
+      '#2a4d8f': 'Royal Blue',
+      '#722f37': 'Wine Red',
+      '#ffffff': 'White',
+      '#000000': 'Black',
+      '#ff0000': 'Red',
+      '#00ff00': 'Green',
+      '#0000ff': 'Blue',
+      '#ffff00': 'Yellow',
+      '#ff00ff': 'Magenta',
+      '#00ffff': 'Cyan',
+      '#808080': 'Gray',
+      '#800000': 'Maroon',
+      '#008000': 'Dark Green',
+      '#000080': 'Navy',
+      '#800080': 'Purple',
+      '#ffa500': 'Orange',
+      '#a52a2a': 'Brown',
+      '#ffc0cb': 'Pink',
+      '#ffd700': 'Gold',
+      '#c0c0c0': 'Silver',
+    };
+    
+    if (colorMap[normalizedHex]) {
+      return colorMap[normalizedHex];
+    }
+    
+    // Try to derive a name from RGB
+    try {
+      const r = parseInt(normalizedHex.slice(1, 3), 16);
+      const g = parseInt(normalizedHex.slice(3, 5), 16);
+      const b = parseInt(normalizedHex.slice(5, 7), 16);
+      
+      if (r > 200 && g > 200 && b > 200) return 'Light';
+      if (r < 50 && g < 50 && b < 50) return 'Dark';
+      if (r > g && r > b) return 'Reddish';
+      if (g > r && g > b) return 'Greenish';
+      if (b > r && b > g) return 'Bluish';
+      if (r === g && g === b) return 'Gray';
+    } catch (e) {
+      // Fall through to return hex
+    }
+    
+    return normalizedHex;
+  };
+
+  const getButtonType = (modelPath) => {
+    if (!modelPath) return '';
+    const buttonMap = {
+      '/orange button 3d model.glb': 'Orange Button',
+      '/four hole button 3d model (1).glb': 'Four Hole Button',
+    };
+    return buttonMap[modelPath] || modelPath.split('/').pop().replace('.glb', '').replace(/\d+/g, '').trim();
+  };
+
+  const getAccessoryName = (modelPath) => {
+    if (!modelPath) return '';
+    const accessoryMap = {
+      '/accessories/gold lion pendant 3d model.glb': 'Pendant',
+      '/accessories/flower brooch 3d model.glb': 'Brooch',
+      '/accessories/fabric rose 3d model.glb': 'Flower',
+    };
+    return accessoryMap[modelPath] || modelPath.split('/').pop().replace('.glb', '').replace(/\d+/g, '').trim();
+  };
+
   // Handle view details
   const handleViewDetails = (item) => {
     setSelectedItem(item);
@@ -391,6 +480,76 @@ const Profile = () => {
                 <span className="detail-value">{specific_data.measurements}</span>
               </div>
             )}
+            
+            {/* Display 3D customization choices if available */}
+            {specific_data.designData && (
+              <div className="detail-row" style={{ marginTop: '15px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                <div style={{ width: '100%' }}>
+                  <h5 style={{ margin: '0 0 15px 0', color: '#333', fontSize: '16px', fontWeight: '600' }}>
+                    🎨 3D Customization Choices
+                  </h5>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', fontSize: '14px' }}>
+                    {specific_data.designData.size && (
+                      <div className="detail-row">
+                        <span className="detail-label">Size:</span>
+                        <span className="detail-value">{specific_data.designData.size.charAt(0).toUpperCase() + specific_data.designData.size.slice(1)}</span>
+                      </div>
+                    )}
+                    {specific_data.designData.fit && (
+                      <div className="detail-row">
+                        <span className="detail-label">Fit:</span>
+                        <span className="detail-value">{specific_data.designData.fit.charAt(0).toUpperCase() + specific_data.designData.fit.slice(1)}</span>
+                      </div>
+                    )}
+                    {specific_data.designData.colors && specific_data.designData.colors.fabric && (
+                      <div className="detail-row">
+                        <span className="detail-label">Color:</span>
+                        <span className="detail-value">{getColorName(specific_data.designData.colors.fabric)}</span>
+                      </div>
+                    )}
+                    {specific_data.designData.pattern && specific_data.designData.pattern !== 'none' && (
+                      <div className="detail-row">
+                        <span className="detail-label">Pattern:</span>
+                        <span className="detail-value">{specific_data.designData.pattern.charAt(0).toUpperCase() + specific_data.designData.pattern.slice(1)}</span>
+                      </div>
+                    )}
+                    {specific_data.designData.personalization && specific_data.designData.personalization.initials && (
+                      <div className="detail-row" style={{ gridColumn: '1 / -1' }}>
+                        <span className="detail-label">Personalization:</span>
+                        <span className="detail-value">
+                          {specific_data.designData.personalization.initials}
+                          {specific_data.designData.personalization.font && ` (${specific_data.designData.personalization.font} font)`}
+                        </span>
+                      </div>
+                    )}
+                    {specific_data.designData.buttons && specific_data.designData.buttons.length > 0 && (
+                      <div className="detail-row" style={{ gridColumn: '1 / -1' }}>
+                        <span className="detail-label">Button Types:</span>
+                        <div style={{ marginLeft: '10px', marginTop: '5px', fontSize: '13px' }}>
+                          {specific_data.designData.buttons.map((btn, index) => (
+                            <div key={btn.id || index} style={{ margin: '5px 0' }}>
+                              Button {index + 1}: {getButtonType(btn.modelPath)}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {specific_data.designData.accessories && specific_data.designData.accessories.length > 0 && (
+                      <div className="detail-row" style={{ gridColumn: '1 / -1' }}>
+                        <span className="detail-label">Accessories:</span>
+                        <div style={{ marginLeft: '10px', marginTop: '5px', fontSize: '13px' }}>
+                          {specific_data.designData.accessories.map((acc, index) => (
+                            <div key={acc.id || index} style={{ margin: '5px 0' }}>
+                              {getAccessoryName(acc.modelPath)}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
 
@@ -514,7 +673,7 @@ const Profile = () => {
   const getStatusDotClass = (currentStatus, stepStatus, serviceType = null) => {
     // Define status flows for different service types
     const rentalFlow = ['pending', 'ready_to_pickup', 'ready_for_pickup', 'rented', 'returned', 'completed'];
-    // Updated default flow to handle both workflows
+    // Updated default flow to handle both workflows - always includes price_confirmation
     const defaultFlow = ['pending', 'price_confirmation', 'accepted', 'in_progress', 'ready_to_pickup', 'completed'];
 
     const statusFlow = serviceType === 'rental' ? rentalFlow : defaultFlow;
@@ -525,6 +684,13 @@ const Profile = () => {
 
     const currentIndex = statusFlow.indexOf(normalizedCurrent);
     const stepIndex = statusFlow.indexOf(normalizedStep);
+
+    // If current status is beyond price_confirmation step, mark price_confirmation as completed
+    // This handles cases where admin accepted directly without price confirmation
+    if (stepStatus === 'price_confirmation' && currentIndex > 0) {
+      // If we're past pending, price_confirmation is implicitly completed
+      return 'completed';
+    }
 
     if (currentIndex >= stepIndex) {
       return 'completed';
@@ -537,7 +703,7 @@ const Profile = () => {
   const getTimelineDate = (updatedAt, currentStatus, stepStatus, serviceType = null) => {
     // Define status flows for different service types
     const rentalFlow = ['pending', 'ready_to_pickup', 'ready_for_pickup', 'rented', 'returned', 'completed'];
-    // Updated default flow to handle both workflows
+    // Updated default flow to handle both workflows - always includes price_confirmation
     const defaultFlow = ['pending', 'price_confirmation', 'accepted', 'in_progress', 'ready_to_pickup', 'completed'];
 
     const statusFlow = serviceType === 'rental' ? rentalFlow : defaultFlow;
@@ -548,6 +714,12 @@ const Profile = () => {
 
     const currentIndex = statusFlow.indexOf(normalizedCurrent);
     const stepIndex = statusFlow.indexOf(normalizedStep);
+
+    // If price_confirmation was skipped (status went from pending to accepted), show the accepted date
+    if (stepStatus === 'price_confirmation' && currentIndex > 1 && currentIndex !== 1) {
+      // Price confirmation was implicitly passed, use the date when we moved to accepted or later
+      return formatDate(updatedAt);
+    }
 
     if (currentIndex >= stepIndex) {
       if (stepIndex === 0) {
@@ -566,7 +738,7 @@ const Profile = () => {
   const getTimelineItemClass = (currentStatus, stepStatus, serviceType = null) => {
     // Define status flows for different service types
     const rentalFlow = ['pending', 'ready_to_pickup', 'ready_for_pickup', 'rented', 'returned', 'completed'];
-    // Updated default flow to handle both workflows
+    // Updated default flow to handle both workflows - always includes price_confirmation
     const defaultFlow = ['pending', 'price_confirmation', 'accepted', 'in_progress', 'ready_to_pickup', 'completed'];
 
     const statusFlow = serviceType === 'rental' ? rentalFlow : defaultFlow;
@@ -577,6 +749,12 @@ const Profile = () => {
 
     const currentIndex = statusFlow.indexOf(normalizedCurrent);
     const stepIndex = statusFlow.indexOf(normalizedStep);
+
+    // If price_confirmation step and we're past pending, mark as completed
+    // This handles cases where admin accepted directly without price confirmation
+    if (stepStatus === 'price_confirmation' && currentIndex > 0) {
+      return 'completed';
+    }
 
     return currentIndex >= stepIndex ? 'completed' : '';
   };
@@ -626,26 +804,30 @@ const Profile = () => {
   };
 
   // Helper function to check if price changed
-  const hasPriceChanged = (specificData, finalPrice, serviceType) => {
+  const hasPriceChanged = (specificData, finalPrice, serviceType, pricingFactors = null) => {
     console.log('=== DEBUG hasPriceChanged ===');
     console.log('specificData:', specificData);
     console.log('finalPrice:', finalPrice);
     console.log('serviceType:', serviceType);
+    console.log('pricingFactors:', pricingFactors);
     
-    // Check if admin has explicitly marked the price as updated
-    if (specificData?.adminPriceUpdated === true) {
+    // Check if admin has explicitly marked the price as updated in pricing_factors
+    // adminPriceUpdated is stored in pricing_factors, not specific_data
+    if (pricingFactors?.adminPriceUpdated === true || specificData?.adminPriceUpdated === true) {
       console.log('Admin price updated flag is TRUE');
       return true;
     }
     
-    console.log('adminPriceUpdated flag:', specificData?.adminPriceUpdated);
+    console.log('adminPriceUpdated flag in pricing_factors:', pricingFactors?.adminPriceUpdated);
+    console.log('adminPriceUpdated flag in specific_data:', specificData?.adminPriceUpdated);
     
     // For backward compatibility, check if there's a significant difference
     // but only if there's an admin note indicating intentional change
     const estimatedPrice = getEstimatedPrice(specificData, serviceType);
     console.log('Estimated price:', estimatedPrice);
     
-    if (estimatedPrice > 0 && specificData?.adminNotes) {
+    const adminNotes = pricingFactors?.adminNotes || specificData?.adminNotes;
+    if (estimatedPrice > 0 && adminNotes) {
       const difference = Math.abs(finalPrice - estimatedPrice);
       console.log('Price difference:', difference);
       console.log('Difference > 0.01:', difference > 0.01);
@@ -668,7 +850,14 @@ const Profile = () => {
     const isPriceConfirmationStatus = item.status === 'price_confirmation';
     console.log('Is price confirmation status:', isPriceConfirmationStatus);
     
-    const priceChanged = hasPriceChanged(item.specific_data, parseFloat(item.final_price), item.service_type);
+    // For customization orders, show price confirmation if status is price_confirmation
+    // The status itself indicates admin has made changes
+    if ((item.service_type === 'customization' || item.service_type === 'customize') && isPriceConfirmationStatus) {
+      console.log('Customization order with price_confirmation status - showing buttons');
+      return true;
+    }
+    
+    const priceChanged = hasPriceChanged(item.specific_data, parseFloat(item.final_price), item.service_type, item.pricing_factors);
     console.log('Price changed result:', priceChanged);
     
     // Show price confirmation only if:
@@ -912,7 +1101,7 @@ const Profile = () => {
             <div className="order-cards">
               {getAllOrderItems().map((item) => {
                 const estimatedPrice = getEstimatedPrice(item.specific_data, item.service_type);
-                const priceChanged = hasPriceChanged(item.specific_data, item.final_price, item.service_type);
+                const priceChanged = hasPriceChanged(item.specific_data, item.final_price, item.service_type, item.pricing_factors);
 
                 return (
                   <div key={`${item.order_id}-${item.order_item_id}-${item.service_type}-${item.status_updated_at || Date.now()}`} className="order-card">
@@ -1048,27 +1237,23 @@ const Profile = () => {
                               </div>
                             </div>
 
-                            {/* Show Price Confirmation step only when status is price_confirmation */}
-                            {item.status === 'price_confirmation' && (
-                              <div className={`timeline-item ${getTimelineItemClass(item.status, 'price_confirmation')}`}>
-                                <div className={`timeline-dot ${getStatusDotClass(item.status, 'price_confirmation')}`}></div>
-                                <div className="timeline-content">
-                                  <div className="timeline-title">Price Confirmation</div>
-                                  <div className="timeline-date">{getTimelineDate(item.status_updated_at, item.status, 'price_confirmation')}</div>
-                                </div>
+                            {/* Always show Price Confirmation step for all orders */}
+                            <div className={`timeline-item ${getTimelineItemClass(item.status, 'price_confirmation', item.service_type)}`}>
+                              <div className={`timeline-dot ${getStatusDotClass(item.status, 'price_confirmation', item.service_type)}`}></div>
+                              <div className="timeline-content">
+                                <div className="timeline-title">Price Confirmation</div>
+                                <div className="timeline-date">{getTimelineDate(item.status_updated_at, item.status, 'price_confirmation', item.service_type)}</div>
                               </div>
-                            )}
+                            </div>
                             
-                            {/* Show Accepted step only when status is accepted */}
-                            {item.status === 'accepted' && (
-                              <div className={`timeline-item ${getTimelineItemClass(item.status, 'accepted')}`}>
-                                <div className={`timeline-dot ${getStatusDotClass(item.status, 'accepted')}`}></div>
-                                <div className="timeline-content">
-                                  <div className="timeline-title">Accepted</div>
-                                  <div className="timeline-date">{getTimelineDate(item.status_updated_at, item.status, 'accepted')}</div>
-                                </div>
+                            {/* Always show Accepted step */}
+                            <div className={`timeline-item ${getTimelineItemClass(item.status, 'accepted', item.service_type)}`}>
+                              <div className={`timeline-dot ${getStatusDotClass(item.status, 'accepted', item.service_type)}`}></div>
+                              <div className="timeline-content">
+                                <div className="timeline-title">Accepted</div>
+                                <div className="timeline-date">{getTimelineDate(item.status_updated_at, item.status, 'accepted', item.service_type)}</div>
                               </div>
-                            )}
+                            </div>
 
                             <div className={`timeline-item ${getTimelineItemClass(item.status, 'in_progress')}`}>
                               <div className={`timeline-dot ${getStatusDotClass(item.status, 'in_progress')}`}></div>
@@ -1107,7 +1292,7 @@ const Profile = () => {
                       console.log('Item status:', item.status);
                       console.log('Item specific_data:', item.specific_data);
                       console.log('Item final_price:', item.final_price);
-                      console.log('Has price changed result:', hasPriceChanged(item.specific_data, parseFloat(item.final_price), item.service_type));
+                      console.log('Has price changed result:', hasPriceChanged(item.specific_data, parseFloat(item.final_price), item.service_type, item.pricing_factors));
                       return showConfirmation ? (
                         <div className="price-confirmation-actions">
                           <div className="confirmation-message">
@@ -1189,6 +1374,29 @@ const Profile = () => {
               </div>
 
               <div className="details-modal-footer">
+                {/* Price Confirmation Actions in Modal */}
+                {shouldShowPriceConfirmation(selectedItem) && (
+                  <div className="price-confirmation-actions" style={{ marginBottom: '15px', padding: '15px', backgroundColor: '#fff3cd', borderRadius: '8px', border: '1px solid #ffc107' }}>
+                    <div className="confirmation-message">
+                      <strong>Price Update Required</strong>
+                      <p>Please review the updated pricing and confirm to proceed.</p>
+                    </div>
+                    <div className="action-buttons" style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                      <button className="btn-accept-price" onClick={() => {
+                        handleAcceptPrice(selectedItem);
+                        closeDetailsModal();
+                      }}>
+                        Accept Price - Continue
+                      </button>
+                      <button className="btn-decline-price" onClick={() => {
+                        handleDeclinePrice(selectedItem);
+                        closeDetailsModal();
+                      }}>
+                        Decline Price
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <button className="btn-secondary" onClick={closeDetailsModal}>
                   Close
                 </button>

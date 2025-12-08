@@ -145,7 +145,7 @@ export default function DryCleaningClothes() {
         serviceType: 'dry_cleaning',
         serviceId: 3,
         serviceName: `${selectedItem} Dry Cleaning`,
-        basePrice: unitPrice.toString(),
+        basePrice: '0', // No base price, price depends only on quantity and brand
         finalPrice: totalPrice.toString(),
         quantity: qty,
         specificData: {
@@ -299,7 +299,7 @@ export default function DryCleaningClothes() {
           </View>
 
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Preferred Pickup Date *</Text>
+            <Text style={styles.label}>Drop off item date *</Text>
             <TouchableOpacity
               style={styles.dateTimeButton}
               onPress={() => setShowDatePicker(true)}

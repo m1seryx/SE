@@ -138,6 +138,20 @@ const Cart = {
       WHERE user_id = ? AND (expires_at IS NULL OR expires_at > NOW())
     `;
     db.query(sql, [userId], callback);
+  },
+
+  // Mark selected cart items as processed
+  markSelectedCartItemsAsProcessed: (userId, cartIds, callback) => {
+    if (!cartIds || cartIds.length === 0) {
+      return callback(null, null);
+    }
+    const placeholders = cartIds.map(() => '?').join(',');
+    const sql = `
+      UPDATE cart 
+      SET expires_at = NOW() 
+      WHERE user_id = ? AND cart_id IN (${placeholders}) AND (expires_at IS NULL OR expires_at > NOW())
+    `;
+    db.query(sql, [userId, ...cartIds], callback);
   }
 };
 

@@ -3,18 +3,29 @@ import { addDryCleaningToCart, uploadDryCleaningImage } from '../../api/DryClean
 import '../../styles/DryCleaningFormModal.css';
 
 const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
+  // Garment types with their prices
+  const garmentTypes = {
+    'barong': 200,
+    'suits': 200,
+    'coat': 300,
+    'trousers': 200
+  };
+
   const [formData, setFormData] = useState({
     serviceName: '',
     brand: '',
     notes: '',
     datetime: '',
-    quantity: 1
+    quantity: 1,
+    garmentType: '',
+    customGarmentType: ''
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [estimatedPrice, setEstimatedPrice] = useState(0);
+  const [isEstimatedPrice, setIsEstimatedPrice] = useState(false);
   const [priceLoading, setPriceLoading] = useState(false);
   const [services, setServices] = useState([]);
 
@@ -38,59 +49,37 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     }
   };
 
-  // Calculate estimated price when quantity changes or services load
+  // Calculate price when quantity or garment type changes
   useEffect(() => {
-    if (formData.quantity) {
+    if (formData.quantity && formData.garmentType) {
       calculatePrice();
-    }
-  }, [formData.quantity, services]);
-
-  const calculatePrice = async () => {
-    console.log('Calculating price for quantity:', formData.quantity);
-    console.log('Available services:', services.length);
-
-    if (!formData.quantity) {
+    } else {
       setEstimatedPrice(0);
+      setIsEstimatedPrice(false);
+    }
+  }, [formData.quantity, formData.garmentType, formData.customGarmentType]);
+
+  const calculatePrice = () => {
+    if (!formData.quantity || !formData.garmentType) {
+      setEstimatedPrice(0);
+      setIsEstimatedPrice(false);
       return;
     }
 
-    setPriceLoading(true);
-    try {
-      // Use Basic Dry Cleaning as default service
-      const defaultService = services.find(service => service.service_name === 'Basic Dry Cleaning') || services[0];
-      console.log('Default service:', defaultService);
-
-      if (defaultService) {
-        const basePrice = parseFloat(defaultService.base_price) || 200;
-        const pricePerItem = parseFloat(defaultService.price_per_item) || 150;
-        const quantity = parseInt(formData.quantity);
-
-        console.log('Price calculation:', { basePrice, pricePerItem, quantity });
-
-        // Calculate total price: base price + (price per item * quantity)
-        const totalPrice = basePrice + (pricePerItem * quantity);
-        console.log('Calculated total price:', totalPrice);
-        setEstimatedPrice(totalPrice);
-      } else {
-        // Fallback to default pricing if no services loaded
-        const basePrice = 200;
-        const pricePerItem = 150;
-        const quantity = parseInt(formData.quantity);
-        const totalPrice = basePrice + (pricePerItem * quantity);
-        console.log('Using fallback pricing, total:', totalPrice);
-        setEstimatedPrice(totalPrice);
-      }
-    } catch (error) {
-      console.error('Price calculation error:', error);
-      // Fallback to default pricing on error
-      const basePrice = 200;
-      const pricePerItem = 150;
-      const quantity = parseInt(formData.quantity);
-      const totalPrice = basePrice + (pricePerItem * quantity);
-      console.log('Error fallback pricing, total:', totalPrice);
+    const quantity = parseInt(formData.quantity);
+    
+    if (formData.garmentType === 'others') {
+      // For "others", use estimated price: quantity × 350
+      const estimatedPricePerItem = 350;
+      const totalPrice = estimatedPricePerItem * quantity;
       setEstimatedPrice(totalPrice);
-    } finally {
-      setPriceLoading(false);
+      setIsEstimatedPrice(true);
+    } else {
+      // For dropdown choices, use final price: quantity × garment price
+      const pricePerItem = garmentTypes[formData.garmentType] || 200;
+      const totalPrice = pricePerItem * quantity;
+      setEstimatedPrice(totalPrice);
+      setIsEstimatedPrice(false);
     }
   };
 
@@ -121,8 +110,13 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.brand || !formData.datetime) {
+    if (!formData.brand || !formData.datetime || !formData.garmentType) {
       setMessage('Please fill in all required fields');
+      return;
+    }
+
+    if (formData.garmentType === 'others' && !formData.customGarmentType.trim()) {
+      setMessage('Please specify the garment type');
       return;
     }
 
@@ -157,22 +151,30 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
 
       // Use a default service (Basic Dry Cleaning) since we're removing service selection
       const defaultService = services.find(service => service.service_name === 'Basic Dry Cleaning') || services[0];
-      const fallbackBasePrice = 200;
-      const fallbackPricePerItem = 150;
-      const fallbackEstimatedTime = '2-3 days';
+      
+      // Determine the actual garment type to store
+      const actualGarmentType = formData.garmentType === 'others' 
+        ? formData.customGarmentType.trim() 
+        : formData.garmentType;
+      
+      // Get price per item based on garment type
+      const pricePerItem = formData.garmentType === 'others' 
+        ? 350 
+        : (garmentTypes[formData.garmentType] || 200);
 
       const dryCleaningData = {
         serviceId: defaultService?.service_id || 1,
         serviceName: 'Basic Dry Cleaning',
-        basePrice: (defaultService?.base_price || fallbackBasePrice.toString()),
+        basePrice: '0', // No base price, price depends only on quantity and garment type
         finalPrice: estimatedPrice.toString(),
         quantity: formData.quantity,
         brand: formData.brand,
         notes: formData.notes,
         pickupDate: formData.datetime,
         imageUrl: imageUrl || 'no-image',
-        estimatedTime: defaultService?.estimated_time || fallbackEstimatedTime,
-        pricePerItem: (defaultService?.price_per_item || fallbackPricePerItem.toString())
+        pricePerItem: pricePerItem.toString(),
+        garmentType: actualGarmentType,
+        isEstimatedPrice: isEstimatedPrice
       };
 
       console.log('Dry cleaning data to send:', dryCleaningData);
@@ -180,7 +182,8 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       const result = await addDryCleaningToCart(dryCleaningData);
 
       if (result.success) {
-        setMessage(`✅ Dry cleaning service added to cart! Estimated price: ₱${estimatedPrice}${imageUrl ? ' (Image uploaded)' : ''}`);
+        const priceLabel = isEstimatedPrice ? 'Estimated price' : 'Final price';
+        setMessage(`✅ Dry cleaning service added to cart! ${priceLabel}: ₱${estimatedPrice}${imageUrl ? ' (Image uploaded)' : ''}`);
         setTimeout(() => {
           onClose();
           if (onCartUpdate) onCartUpdate();
@@ -203,11 +206,14 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       brand: '',
       notes: '',
       datetime: '',
-      quantity: 1
+      quantity: 1,
+      garmentType: '',
+      customGarmentType: ''
     });
     setImageFile(null);
     setImagePreview('');
     setEstimatedPrice(0);
+    setIsEstimatedPrice(false);
     setMessage('');
     onClose();
   };
@@ -226,6 +232,36 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
 
         <div className="drycleaning-form-content">
           <form onSubmit={handleSubmit}>
+            {/* Garment Type */}
+            <div className="form-group">
+              <label htmlFor="garmentType">Garment Type *</label>
+              <select
+                id="garmentType"
+                name="garmentType"
+                value={formData.garmentType}
+                onChange={handleInputChange}
+                required
+              >
+                <option value="">Select garment type...</option>
+                <option value="barong">Barong - ₱200</option>
+                <option value="suits">Suits - ₱200</option>
+                <option value="coat">Coat - ₱300</option>
+                <option value="trousers">Trousers - ₱200</option>
+                <option value="others">Others</option>
+              </select>
+              {formData.garmentType === 'others' && (
+                <input
+                  type="text"
+                  name="customGarmentType"
+                  value={formData.customGarmentType}
+                  onChange={handleInputChange}
+                  placeholder="Specify garment type..."
+                  style={{ marginTop: '10px' }}
+                  required
+                />
+              )}
+            </div>
+
             <div className="form-group">
               <label htmlFor="brand">Clothing Brand *</label>
               <input
@@ -270,7 +306,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
 
             {/* Date & Time */}
             <div className="form-group">
-              <label htmlFor="datetime">Preferred Pickup Date & Time *</label>
+              <label htmlFor="datetime">Drop off item date *</label>
               <input
                 type="datetime-local"
                 id="datetime"
@@ -319,14 +355,22 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
             </div>
 
             {/* Price Estimate */}
-            {estimatedPrice > 0 && (
+            {estimatedPrice > 0 && formData.garmentType && (
               <div className="price-estimate">
-                <h4>Estimated Price</h4>
-                <p>Base Price: ₱{services.find(s => s.service_name === 'Basic Dry Cleaning')?.base_price || '200'}</p>
-                <p>Items: {formData.quantity} × ₱{services.find(s => s.service_name === 'Basic Dry Cleaning')?.price_per_item || '150'}</p>
-                <p><strong>Total: ₱{estimatedPrice}</strong></p>
-                <p className="estimated-time">Estimated Time: {services.find(s => s.service_name === 'Basic Dry Cleaning')?.estimated_time || '2-3 days'}</p>
-                <p className="estimated-pickup">Pickup: {formData.datetime ? new Date(formData.datetime).toLocaleString() : 'Not set'}</p>
+                <h4>{isEstimatedPrice ? 'Estimated Price' : 'Final Price'}</h4>
+                {formData.garmentType === 'others' ? (
+                  <>
+                    <p>Items: {formData.quantity} × ₱350 (estimated)</p>
+                    <p><strong>Total: ₱{estimatedPrice} (Estimated)</strong></p>
+                  </>
+                ) : (
+                  <>
+                    <p>Garment: {formData.garmentType.charAt(0).toUpperCase() + formData.garmentType.slice(1)}</p>
+                    <p>Items: {formData.quantity} × ₱{garmentTypes[formData.garmentType]}</p>
+                    <p><strong>Total: ₱{estimatedPrice}</strong></p>
+                  </>
+                )}
+                <p className="estimated-pickup">Drop off item date: {formData.datetime ? new Date(formData.datetime).toLocaleString() : 'Not set'}</p>
               </div>
             )}
 
@@ -350,7 +394,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               <button
                 type="submit"
                 className="btn-submit"
-                disabled={loading || !formData.brand || !formData.datetime}
+                disabled={loading || !formData.brand || !formData.datetime || !formData.garmentType || (formData.garmentType === 'others' && !formData.customGarmentType.trim())}
               >
                 {loading ? 'Adding to Cart...' : 'Add to Cart'}
               </button>

@@ -138,7 +138,7 @@ export async function addCustomizationToCart(customizationData) {
   try {
     const cartItem = {
       serviceType: 'customization',
-      serviceId: Date.now(), // Generate unique ID for the customization
+      serviceId: null, // Backend will generate incremental ID
       quantity: 1,
       basePrice: customizationData.estimatedPrice || 500,
       finalPrice: customizationData.estimatedPrice || 500,

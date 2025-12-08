@@ -357,9 +357,7 @@
   z-index: 1;
 }
 
-.timeline-item:not(:last-child).completed::after {
-  background: #4caf50;
-}
+/* Removed green line - color stays on status badge only */
 
 .timeline-dot {
   width: 12px;

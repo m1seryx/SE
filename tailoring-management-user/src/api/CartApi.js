@@ -96,9 +96,9 @@ export async function clearCart() {
 }
 
 // Submit cart as order
-export async function submitCart(notes = '') {
+export async function submitCart(notes = '', selectedCartIds = []) {
   try {
-    const response = await axios.post(`${BASE_URL}/cart/submit`, { notes }, {
+    const response = await axios.post(`${BASE_URL}/cart/submit`, { notes, selectedCartIds }, {
       headers: getAuthHeaders()
     });
     return response.data;

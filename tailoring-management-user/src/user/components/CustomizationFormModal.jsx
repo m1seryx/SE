@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../../styles/CustomizationFormModal.css';
 import { uploadCustomizationImage, addCustomizationToCart } from '../../api/CustomizationApi';
@@ -16,8 +16,269 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState({});
+  const [estimatedPrice, setEstimatedPrice] = useState(0);
+  const [designDetails, setDesignDetails] = useState(null);
 
-  const garmentOptions = ['Blazer', 'Suits', 'Barong', 'Pants'];
+  // Fabric types with prices
+  const fabricTypes = {
+    'Cotton': 200,
+    'Silk': 300,
+    'Linen': 400,
+    'Wool': 200
+  };
+
+  // Garment types with prices
+  const garmentTypes = {
+    'Suits': 500,
+    'Coat': 400,
+    'barong': 400,
+    'Pants': 200
+  };
+
+  // Preset colors from 3D customizer - must match exactly
+  const presetColors = [
+    { name: 'Classic Black', value: '#1a1a1a' },
+    { name: 'Navy Blue', value: '#1e3a5f' },
+    { name: 'Burgundy', value: '#6b1e3d' },
+    { name: 'Forest Green', value: '#2d5a3d' },
+    { name: 'Charcoal Gray', value: '#4a4a4a' },
+    { name: 'Camel Tan', value: '#c9a66b' },
+    { name: 'Cream White', value: '#f5e6d3' },
+    { name: 'Chocolate Brown', value: '#5D4037' },
+    { name: 'Royal Blue', value: '#2a4d8f' },
+    { name: 'Wine Red', value: '#722F37' },
+  ];
+
+  // Helper function to convert hex color to color name - matches 3D customizer preset colors
+  const getColorName = (hex) => {
+    if (!hex) return 'Not specified';
+    
+    // Handle if it's already a string name
+    if (typeof hex === 'string' && !hex.startsWith('#') && !hex.match(/^[0-9a-fA-F]{3,6}$/)) {
+      return hex.charAt(0).toUpperCase() + hex.slice(1);
+    }
+    
+    // Normalize hex (remove # if present, convert to lowercase)
+    let normalizedHex = String(hex).toLowerCase().trim();
+    if (!normalizedHex.startsWith('#')) {
+      normalizedHex = `#${normalizedHex}`;
+    }
+    
+    // First, check exact match with preset colors from 3D customizer
+    const presetMatch = presetColors.find(color => color.value.toLowerCase() === normalizedHex);
+    if (presetMatch) {
+      return presetMatch.name;
+    }
+    
+    // Additional common color mappings
+    const additionalColorMap = {
+      '#ffffff': 'White',
+      '#000000': 'Black',
+      '#ff0000': 'Red',
+      '#00ff00': 'Green',
+      '#0000ff': 'Blue',
+      '#ffff00': 'Yellow',
+      '#ff00ff': 'Magenta',
+      '#00ffff': 'Cyan',
+      '#808080': 'Gray',
+      '#800000': 'Maroon',
+      '#008000': 'Dark Green',
+      '#000080': 'Navy',
+      '#800080': 'Purple',
+      '#ffa500': 'Orange',
+      '#a52a2a': 'Brown',
+      '#ffc0cb': 'Pink',
+      '#ffd700': 'Gold',
+      '#c0c0c0': 'Silver',
+    };
+    
+    // Check additional color map
+    if (additionalColorMap[normalizedHex]) {
+      return additionalColorMap[normalizedHex];
+    }
+    
+    // If it's a valid hex but not in map, find closest preset color
+    if (normalizedHex.match(/^#[0-9a-f]{6}$/)) {
+      // Extract RGB values
+      const r = parseInt(normalizedHex.slice(1, 3), 16);
+      const g = parseInt(normalizedHex.slice(3, 5), 16);
+      const b = parseInt(normalizedHex.slice(5, 7), 16);
+      
+      // Find closest preset color by calculating color distance
+      let closestColor = presetColors[0];
+      let minDistance = Infinity;
+      
+      presetColors.forEach(preset => {
+        const presetR = parseInt(preset.value.slice(1, 3), 16);
+        const presetG = parseInt(preset.value.slice(3, 5), 16);
+        const presetB = parseInt(preset.value.slice(5, 7), 16);
+        
+        // Calculate Euclidean distance in RGB space
+        const distance = Math.sqrt(
+          Math.pow(r - presetR, 2) + 
+          Math.pow(g - presetG, 2) + 
+          Math.pow(b - presetB, 2)
+        );
+        
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestColor = preset;
+        }
+      });
+      
+      // If very close (within threshold), return the preset name
+      if (minDistance < 30) {
+        return closestColor.name;
+      }
+      
+      // Otherwise, provide descriptive name based on RGB
+      if (r > 200 && g > 200 && b > 200) return 'Light Color';
+      if (r < 50 && g < 50 && b < 50) return 'Dark Color';
+      if (r > g && r > b) return 'Reddish';
+      if (g > r && g > b) return 'Greenish';
+      if (b > r && b > g) return 'Bluish';
+      if (r === g && g === b) return 'Gray';
+      
+      return 'Custom Color';
+    }
+    
+    // Fallback: return a generic name
+    return 'Custom Color';
+  };
+
+  // Helper function to get button type from model path
+  const getButtonType = (modelPath) => {
+    if (!modelPath) return '';
+    const buttonMap = {
+      '/orange button 3d model.glb': 'Orange Button',
+      '/four hole button 3d model (1).glb': 'Four Hole Button',
+    };
+    return buttonMap[modelPath] || modelPath.split('/').pop().replace('.glb', '').replace(/\d+/g, '').trim();
+  };
+
+  // Helper function to get accessory name from model path
+  const getAccessoryName = (modelPath) => {
+    if (!modelPath) return '';
+    const accessoryMap = {
+      '/accessories/gold lion pendant 3d model.glb': 'Pendant',
+      '/accessories/flower brooch 3d model.glb': 'Brooch',
+      '/accessories/fabric rose 3d model.glb': 'Flower',
+    };
+    return accessoryMap[modelPath] || modelPath.split('/').pop().replace('.glb', '').replace(/\d+/g, '').trim();
+  };
+
+  // Load 3D customization data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const finalDesignData = sessionStorage.getItem('finalDesignData');
+      if (finalDesignData) {
+        try {
+          const design = JSON.parse(finalDesignData);
+          console.log('Loading 3D customization data:', design);
+          
+          // Get design image from design object
+          // Check multiple possible locations for the image
+          let designImage = design.design?.designImage || design.designImage || null;
+          
+          if (designImage) {
+            // Handle base64 image (with or without data URL prefix)
+            let imageData = designImage;
+            if (designImage.startsWith('data:image')) {
+              setImagePreview(designImage);
+              imageData = designImage.split(',')[1];
+            } else {
+              // Assume it's base64 without prefix
+              setImagePreview(`data:image/png;base64,${designImage}`);
+            }
+            
+            // Convert base64 to blob for file upload
+            try {
+              const byteCharacters = atob(imageData);
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+              }
+              const byteArray = new Uint8Array(byteNumbers);
+              const blob = new Blob([byteArray], { type: 'image/png' });
+              const file = new File([blob], '3d-design.png', { type: 'image/png' });
+              setFormData(prev => ({
+                ...prev,
+                uploadedImage: file
+              }));
+            } catch (err) {
+              console.error('Error converting image:', err);
+            }
+          }
+          
+          // Prefill fabric and garment type
+          if (design.design?.fabric) {
+            // Map fabric names (3D customizer uses lowercase, dropdown uses capitalized)
+            const fabricMap = {
+              'wool': 'Wool',
+              'cotton': 'Cotton',
+              'silk': 'Silk',
+              'linen': 'Linen'
+            };
+            const fabricName = fabricMap[design.design.fabric.toLowerCase()] || 
+                              (design.design.fabric.charAt(0).toUpperCase() + design.design.fabric.slice(1));
+            setFormData(prev => ({
+              ...prev,
+              fabricType: fabricName in fabricTypes ? fabricName : fabricName
+            }));
+          }
+          
+          if (design.design?.garmentType) {
+            const garmentName = design.design.garmentType;
+            // Map garment names to match our options
+            let mappedGarment = garmentName;
+            if (garmentName.includes('Suit') || garmentName.includes('suit')) {
+              mappedGarment = 'Suits';
+            } else if (garmentName.includes('Coat') || garmentName.includes('Blazer')) {
+              mappedGarment = 'Coat';
+            } else if (garmentName.includes('Barong') || garmentName.includes('barong')) {
+              mappedGarment = 'barong';
+            } else if (garmentName.includes('Pants') || garmentName.includes('Pants')) {
+              mappedGarment = 'Pants';
+            }
+            
+            setFormData(prev => ({
+              ...prev,
+              garmentType: mappedGarment
+            }));
+          }
+          
+          if (design.notes || design.design?.notes) {
+            setFormData(prev => ({
+              ...prev,
+              notes: design.notes || design.design?.notes || ''
+            }));
+          }
+          
+          // Store design details for display
+          if (design.design) {
+            setDesignDetails(design.design);
+          }
+          
+          // Clear the sessionStorage after loading
+          sessionStorage.removeItem('finalDesignData');
+        } catch (error) {
+          console.error('Error loading 3D customization data:', error);
+        }
+      }
+    }
+  }, [isOpen]);
+
+  // Calculate estimated price when fabric or garment changes
+  useEffect(() => {
+    if (formData.fabricType && formData.garmentType) {
+      const fabricPrice = fabricTypes[formData.fabricType] || 0;
+      const garmentPrice = garmentTypes[formData.garmentType] || 0;
+      const total = fabricPrice + garmentPrice;
+      setEstimatedPrice(total);
+    } else {
+      setEstimatedPrice(0);
+    }
+  }, [formData.fabricType, formData.garmentType]);
 
   // Handle image upload
   const handleImageUpload = (e) => {
@@ -62,11 +323,11 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.uploadedImage) {
+    if (!formData.uploadedImage && !imagePreview) {
       newErrors.image = 'Please upload a reference image';
     }
-    if (!formData.fabricType.trim()) {
-      newErrors.fabricType = 'Please enter fabric type';
+    if (!formData.fabricType) {
+      newErrors.fabricType = 'Please select a fabric type';
     }
     if (!formData.garmentType) {
       newErrors.garmentType = 'Please select a garment type';
@@ -101,6 +362,24 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
         }
       }
 
+      // Prepare designData without the base64 image (to avoid payload size issues)
+      // The image is already uploaded separately and stored in imageUrl
+      let cleanDesignData = null;
+      if (designDetails) {
+        // Create a deep copy and remove any base64 image data
+        cleanDesignData = JSON.parse(JSON.stringify(designDetails));
+        
+        // Remove the base64 image from designData to reduce payload size
+        // The image is already uploaded and we have the imageUrl
+        if (cleanDesignData.designImage) {
+          delete cleanDesignData.designImage;
+        }
+        // Also check nested design object if it exists
+        if (cleanDesignData.design && cleanDesignData.design.designImage) {
+          delete cleanDesignData.design.designImage;
+        }
+      }
+
       // Add to cart with backend API
       const cartResult = await addCustomizationToCart({
         fabricType: formData.fabricType,
@@ -108,7 +387,8 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
         preferredDate: formData.preferredDate,
         notes: formData.notes,
         imageUrl: imageUrl,
-        estimatedPrice: 500, // Base price for customization
+        estimatedPrice: estimatedPrice || 500,
+        designData: cleanDesignData || {}, // Pass 3D design details without base64 image
       });
 
       if (cartResult.success) {
@@ -136,7 +416,7 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     }
   };
 
-  // Handle 3D Customization - Open in new window
+  // Handle 3D Customization - Navigate to 3D customizer page
   const handleOpen3DCustomizer = () => {
     // Store form data in sessionStorage for 3D customizer (image is optional)
     sessionStorage.setItem('customizationFormData', JSON.stringify({
@@ -147,8 +427,12 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       imagePreview: imagePreview,
     }));
 
-    // Open 3D customizer in new window/tab
-    window.open('/3d-customizer', '_blank', 'width=1400,height=900');
+    // Store flag to reopen modal when returning
+    sessionStorage.setItem('reopenCustomizationModal', 'true');
+
+    // Close modal and navigate to 3D customizer
+    onClose();
+    navigate('/3d-customizer');
   };
 
   // Reset form
@@ -162,6 +446,8 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     });
     setImagePreview('');
     setErrors({});
+    setEstimatedPrice(0);
+    setDesignDetails(null);
   };
 
   // Handle modal close
@@ -236,22 +522,27 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
             )}
           </div>
 
-          {/* 2. Fabric Type Input */}
+          {/* 2. Fabric Type Dropdown */}
           <div className="form-group">
             <label htmlFor="fabricType" className="form-label">
               🧵 Fabric Type
               <span className="required">*</span>
             </label>
-            <input
-              type="text"
+            <select
               id="fabricType"
               name="fabricType"
               value={formData.fabricType}
               onChange={handleInputChange}
-              placeholder="e.g., Cotton, Silk, Wool, Linen"
               className={`form-input ${errors.fabricType ? 'error' : ''}`}
               disabled={loading}
-            />
+            >
+              <option value="">-- Select Fabric Type --</option>
+              {Object.keys(fabricTypes).map(fabric => (
+                <option key={fabric} value={fabric}>
+                  {fabric} - ₱{fabricTypes[fabric]}
+                </option>
+              ))}
+            </select>
             {errors.fabricType && (
               <span className="error-message">{errors.fabricType}</span>
             )}
@@ -272,9 +563,9 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               disabled={loading}
             >
               <option value="">-- Select Garment Type --</option>
-              {garmentOptions.map(option => (
-                <option key={option} value={option}>
-                  {option}
+              {Object.keys(garmentTypes).map(garment => (
+                <option key={garment} value={garment}>
+                  {garment} - ₱{garmentTypes[garment]}
                 </option>
               ))}
             </select>
@@ -304,7 +595,68 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
             )}
           </div>
 
-          {/* 5. Notes */}
+          {/* 5. 3D Customization Choices Display */}
+          {designDetails && (
+            <div className="form-group" style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #e0e0e0', marginTop: '10px' }}>
+              <h4 style={{ margin: '0 0 15px 0', color: '#333', fontSize: '16px', fontWeight: '600' }}>
+                🎨 3D Customization Choices
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', fontSize: '14px' }}>
+                {designDetails.size && (
+                  <div>
+                    <strong>Size:</strong> {designDetails.size.charAt(0).toUpperCase() + designDetails.size.slice(1)}
+                  </div>
+                )}
+                {designDetails.fit && (
+                  <div>
+                    <strong>Fit:</strong> {designDetails.fit.charAt(0).toUpperCase() + designDetails.fit.slice(1)}
+                  </div>
+                )}
+                {designDetails.colors && designDetails.colors.fabric && (
+                  <div>
+                    <strong>Color:</strong> {getColorName(designDetails.colors.fabric)}
+                  </div>
+                )}
+                {designDetails.pattern && designDetails.pattern !== 'none' && (
+                  <div>
+                    <strong>Pattern:</strong> {designDetails.pattern.charAt(0).toUpperCase() + designDetails.pattern.slice(1)}
+                  </div>
+                )}
+                {designDetails.personalization && designDetails.personalization.initials && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <strong>Personalization:</strong> {designDetails.personalization.initials} 
+                    {designDetails.personalization.font && ` (${designDetails.personalization.font} font)`}
+                  </div>
+                )}
+                {designDetails.buttons && designDetails.buttons.length > 0 && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <strong>Button Type:</strong>
+                    <div style={{ marginLeft: '10px', marginTop: '5px', fontSize: '13px' }}>
+                      {designDetails.buttons.map((btn, index) => (
+                        <div key={btn.id || index}>
+                          Button {index + 1}: {getButtonType(btn.modelPath)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {designDetails.accessories && designDetails.accessories.length > 0 && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <strong>Accessories:</strong>
+                    <div style={{ marginLeft: '10px', marginTop: '5px', fontSize: '13px' }}>
+                      {designDetails.accessories.map((acc, index) => (
+                        <div key={acc.id || index}>
+                          {getAccessoryName(acc.modelPath)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 6. Notes */}
           <div className="form-group">
             <label htmlFor="notes" className="form-label">
               📝 Additional Notes
@@ -320,6 +672,20 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               disabled={loading}
             />
           </div>
+
+          {/* 7. Estimated Price */}
+          {estimatedPrice > 0 && formData.fabricType && formData.garmentType && (
+            <div className="form-group" style={{ backgroundColor: '#f0f0f0', padding: '15px', borderRadius: '5px', marginTop: '10px' }}>
+              <h4 style={{ margin: '0 0 10px 0', color: '#333' }}>Estimated Price: ₱{estimatedPrice}</h4>
+              <p style={{ margin: '5px 0', fontSize: '14px', color: '#666' }}>
+                Fabric: {formData.fabricType} (₱{fabricTypes[formData.fabricType]}) + 
+                Garment: {formData.garmentType} (₱{garmentTypes[formData.garmentType]})
+              </p>
+              <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#888', fontStyle: 'italic' }}>
+                Note: Estimated price is based on the selected garment and fabric type. Final price may vary depending on sizes and other accessories.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Modal Footer - Actions */}

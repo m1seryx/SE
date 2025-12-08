@@ -104,48 +104,222 @@ const Customization = {
   updateOrderItem: (itemId, updateData, callback) => {
     const { finalPrice, approvalStatus, adminNotes, pricingFactors } = updateData;
     
-    // First get current pricing_factors to merge with admin notes
-    Customization.getOrderItemById(itemId, (err, currentItem) => {
-      if (err) return callback(err, null);
-      if (!currentItem) return callback(new Error('Order item not found'), null);
+    console.log("Customization Model - Updating item:", itemId, updateData);
+    
+    // Build dynamic SQL based on what fields are provided (same pattern as repair)
+    let updates = [];
+    let values = [];
+    
+    if (finalPrice !== undefined) {
+      updates.push('final_price = ?');
+      values.push(finalPrice);
+      console.log("Adding final_price update:", finalPrice);
+    }
+    
+    if (approvalStatus !== undefined) {
+      updates.push('approval_status = ?');
+      values.push(approvalStatus);
+      console.log("Adding approval_status update:", approvalStatus);
+    }
+    
+    if (adminNotes !== undefined) {
+      updates.push('pricing_factors = JSON_SET(COALESCE(pricing_factors, \'{}\'), \'$.adminNotes\', ?)');
+      values.push(adminNotes || '');
+      console.log("Adding adminNotes update:", adminNotes);
+    }
+    
+    // If final price is being updated, set adminPriceUpdated flag (same as repair)
+    if (finalPrice !== undefined) {
+      updates.push('pricing_factors = JSON_SET(COALESCE(pricing_factors, \'{}\'), \'$.adminPriceUpdated\', true)');
+      console.log("Setting adminPriceUpdated flag");
+    }
+    
+    if (pricingFactors) {
+      // Merge additional pricing factors
+      Object.keys(pricingFactors).forEach(key => {
+        updates.push(`pricing_factors = JSON_SET(COALESCE(pricing_factors, '{}'), '$.${key}', ?)`);
+        values.push(pricingFactors[key]);
+      });
+    }
+    
+    if (updates.length === 0) {
+      return callback(new Error('No fields to update'));
+    }
+    
+    values.push(itemId);
+    
+    const sql = `UPDATE order_items SET ${updates.join(', ')} WHERE item_id = ?`;
+    console.log("Customization Model - SQL:", sql);
+    console.log("Customization Model - Values:", values);
+    
+    db.query(sql, values, (err, result) => {
+      console.log("Customization Model - Query result:", err, result);
       
-      // Merge pricing factors with admin notes
-      const currentPricingFactors = currentItem.pricing_factors || {};
-      if (adminNotes !== undefined) {
-        currentPricingFactors.adminNotes = adminNotes;
+      if (err) {
+        return callback(err, null);
       }
-      if (pricingFactors) {
-        Object.assign(currentPricingFactors, pricingFactors);
+      
+      // Get order item details to find user_id for notification
+      const getOrderSql = `
+        SELECT oi.*, o.user_id 
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.order_id
+        WHERE oi.item_id = ?
+      `;
+      
+      db.query(getOrderSql, [itemId], (orderErr, orderResults) => {
+        if (!orderErr && orderResults && orderResults.length > 0) {
+          const orderItem = orderResults[0];
+          const userId = orderItem.user_id;
+          const Notification = require('./NotificationModel');
+          
+          // Create notification when price is updated and status is price_confirmation
+          if (finalPrice !== undefined && approvalStatus === 'price_confirmation') {
+            Notification.createPriceConfirmationNotification(userId, itemId, finalPrice, (notifErr) => {
+              if (notifErr) console.error('Failed to create price confirmation notification:', notifErr);
+            });
+          }
+          
+          // Create notification when order is accepted
+          if (approvalStatus === 'accepted') {
+            Notification.createAcceptedNotification(userId, itemId, orderItem.service_type, (notifErr) => {
+              if (notifErr) console.error('Failed to create accepted notification:', notifErr);
+            });
+          }
+        }
+        
+        // Continue with tracking logic
+        continueWithTracking();
+      });
+      
+      function continueWithTracking() {
+        // If approval status was updated, also update the order_tracking table
+        if (approvalStatus !== undefined) {
+          console.log("Approval status was updated, syncing to tracking table...");
+          const OrderTracking = require('./OrderTrackingModel');
+          
+          // Map approval_status to tracking status (same as repair)
+          const statusMap = {
+            'pending_review': 'pending',
+            'pending': 'pending',
+            'accepted': 'accepted',
+            'price_confirmation': 'price_confirmation',
+            'confirmed': 'in_progress',
+            'in_progress': 'in_progress',
+            'ready_for_pickup': 'ready_to_pickup',
+            'ready_to_pickup': 'ready_to_pickup',
+            'completed': 'completed',
+            'cancelled': 'cancelled',
+            'price_declined': 'price_declined'
+          };
+          
+          const trackingStatus = statusMap[approvalStatus] || 'pending';
+          
+          // Get notes for tracking
+          let notes = 'Order status updated';
+          if (approvalStatus === 'price_confirmation' && finalPrice !== undefined) {
+            const priceValue = typeof finalPrice === 'number' ? finalPrice : parseFloat(finalPrice) || 0;
+            notes = `Price updated to ₱${priceValue.toFixed(2)}. Awaiting customer confirmation.`;
+          } else if (adminNotes) {
+            notes = adminNotes;
+          }
+          
+          console.log("Syncing to tracking table:", itemId, "from", approvalStatus, "to", trackingStatus);
+          
+          // Check if tracking entry exists
+          OrderTracking.getByOrderItemId(itemId, (trackErr, existingTracking) => {
+            if (trackErr) {
+              console.error("Error checking existing tracking:", trackErr);
+              return callback(null, result);
+            }
+            
+            console.log("Existing tracking:", existingTracking);
+            
+            if (existingTracking && existingTracking.length > 0) {
+              // Update existing tracking entry
+              console.log("Updating existing tracking entry...");
+              OrderTracking.updateStatus(itemId, trackingStatus, notes, null, (updateErr) => {
+                if (updateErr) {
+                  console.error("Failed to update tracking table:", updateErr);
+                } else {
+                  console.log("Successfully updated tracking table");
+                }
+                callback(null, result);
+              });
+            } else {
+              // Create new tracking entry
+              console.log("Creating new tracking entry...");
+              OrderTracking.addTracking(itemId, trackingStatus, notes, null, (addErr) => {
+                if (addErr) {
+                  console.error("Failed to create tracking entry:", addErr);
+                } else {
+                  console.log("Successfully created tracking entry");
+                }
+                callback(null, result);
+              });
+            }
+          });
+        } else {
+          // No status update needed, return main result
+          callback(null, result);
+        }
       }
-      
-      const updates = [];
-      const values = [];
-      
-      if (finalPrice !== undefined) {
-        updates.push('final_price = ?');
-        values.push(finalPrice);
-      }
-      
-      if (approvalStatus !== undefined) {
-        updates.push('approval_status = ?');
-        values.push(approvalStatus);
-      }
-      
-      updates.push('pricing_factors = ?');
-      values.push(JSON.stringify(currentPricingFactors));
-      
-      values.push(itemId);
-      
-      const sql = `UPDATE order_items SET ${updates.join(', ')} WHERE item_id = ?`;
-      
-      db.query(sql, values, callback);
     });
   },
 
   // Update approval status only
   updateApprovalStatus: (itemId, status, callback) => {
     const sql = `UPDATE order_items SET approval_status = ? WHERE item_id = ?`;
-    db.query(sql, [status, itemId], callback);
+    db.query(sql, [status, itemId], (err, result) => {
+      if (err) {
+        return callback(err, null);
+      }
+      
+      // Also update the order_tracking table
+      const OrderTracking = require('./OrderTrackingModel');
+      
+      // Map approval_status to tracking status
+      const trackingStatus = status === 'price_confirmation' ? 'price_confirmation' :
+                             status === 'accepted' ? 'accepted' :
+                             status === 'in_progress' ? 'in_progress' :
+                             status === 'ready_to_pickup' ? 'ready_to_pickup' :
+                             status === 'completed' ? 'completed' :
+                             status === 'cancelled' ? 'cancelled' :
+                             status === 'price_declined' ? 'price_declined' :
+                             status;
+      
+      const notes = `Order status updated to ${status}`;
+      
+      // Check if tracking entry exists
+      OrderTracking.getByOrderItemId(itemId, (trackErr, existingTracking) => {
+        if (trackErr) {
+          console.error('Error checking existing tracking:', trackErr);
+          return callback(null, result);
+        }
+        
+        if (existingTracking && existingTracking.length > 0) {
+          // Update existing tracking entry
+          OrderTracking.updateStatus(itemId, trackingStatus, notes, null, (updateErr) => {
+            if (updateErr) {
+              console.error('Failed to update tracking table:', updateErr);
+            } else {
+              console.log('Successfully updated tracking table');
+            }
+            callback(null, result);
+          });
+        } else {
+          // Create new tracking entry
+          OrderTracking.addTracking(itemId, trackingStatus, notes, null, (addErr) => {
+            if (addErr) {
+              console.error('Failed to create tracking entry:', addErr);
+            } else {
+              console.log('Successfully created tracking entry');
+            }
+            callback(null, result);
+          });
+        }
+      });
+    });
   },
 
   // Get order statistics for admin dashboard

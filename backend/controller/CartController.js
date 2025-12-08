@@ -77,39 +77,90 @@ exports.addToCart = (req, res) => {
     rentalDates 
   } = req.body;
 
-  if (!serviceType || !serviceId) {
+  if (!serviceType) {
     return res.status(400).json({ 
       success: false, 
-      message: "Service type and service ID are required" 
+      message: "Service type is required" 
     });
   }
 
-  Cart.addToCart(
-    userId, 
-    serviceType, 
-    serviceId, 
-    quantity, 
-    basePrice, 
-    finalPrice, 
-    pricingFactors, 
-    specificData, 
-    rentalDates,
-    (err, result) => {
+  // Import ServiceIdGenerator
+  const ServiceIdGenerator = require('../model/ServiceIdGenerator');
+  
+  // Generate incremental service ID for dry_cleaning, repair, and customization
+  const needsIncrementalId = ['dry_cleaning', 'repair', 'customization'].includes(serviceType);
+  
+  if (needsIncrementalId && (!serviceId || serviceId === 1 || serviceId === '1' || (typeof serviceId === 'number' && serviceId > 1000000000))) {
+    // Generate incremental service ID
+    ServiceIdGenerator.getNextServiceIdFromOrders(serviceType, (err, nextId) => {
       if (err) {
         return res.status(500).json({ 
           success: false, 
-          message: "Error adding item to cart", 
+          message: "Error generating service ID", 
           error: err 
         });
       }
+      
+      // Use the generated service ID
+      const finalServiceId = nextId;
+      
+      Cart.addToCart(
+        userId, 
+        serviceType, 
+        finalServiceId, 
+        quantity, 
+        basePrice, 
+        finalPrice, 
+        pricingFactors, 
+        specificData, 
+        rentalDates,
+        (err, result) => {
+          if (err) {
+            return res.status(500).json({ 
+              success: false, 
+              message: "Error adding item to cart", 
+              error: err 
+            });
+          }
 
-      res.json({
-        success: true,
-        message: "Item added to cart successfully",
-        cartId: result.insertId
-      });
-    }
-  );
+          res.json({
+            success: true,
+            message: "Item added to cart successfully",
+            cartId: result.insertId,
+            serviceId: finalServiceId
+          });
+        }
+      );
+    });
+  } else {
+    // Use provided service ID (for rental or if valid ID provided)
+    Cart.addToCart(
+      userId, 
+      serviceType, 
+      serviceId || 1, 
+      quantity, 
+      basePrice, 
+      finalPrice, 
+      pricingFactors, 
+      specificData, 
+      rentalDates,
+      (err, result) => {
+        if (err) {
+          return res.status(500).json({ 
+            success: false, 
+            message: "Error adding item to cart", 
+            error: err 
+          });
+        }
+
+        res.json({
+          success: true,
+          message: "Item added to cart successfully",
+          cartId: result.insertId
+        });
+      }
+    );
+  }
 };
 
 // Update cart item
@@ -237,9 +288,9 @@ exports.getCartSummary = (req, res) => {
 // Submit cart as order
 exports.submitCart = (req, res) => {
   const userId = req.user.id;
-  const { notes } = req.body;
+  const { notes, selectedCartIds } = req.body;
 
-  // Get cart items
+  // Get cart items - filter by selectedCartIds if provided
   Cart.getCartItemsForOrder(userId, (err, cartItems) => {
     if (err) {
       return res.status(500).json({ 
@@ -249,20 +300,26 @@ exports.submitCart = (req, res) => {
       });
     }
 
-    if (cartItems.length === 0) {
+    // Filter by selectedCartIds if provided
+    let filteredItems = cartItems;
+    if (selectedCartIds && Array.isArray(selectedCartIds) && selectedCartIds.length > 0) {
+      filteredItems = cartItems.filter(item => selectedCartIds.includes(item.cart_id));
+    }
+
+    if (filteredItems.length === 0) {
       return res.status(400).json({ 
         success: false, 
-        message: "Cart is empty" 
+        message: "No items selected or cart is empty" 
       });
     }
 
     // Calculate total price
-    const totalPrice = cartItems.reduce((total, item) => {
+    const totalPrice = filteredItems.reduce((total, item) => {
       return total + (parseFloat(item.final_price) * (item.quantity || 1));
     }, 0);
 
     // Create order from cart
-    Order.createFromCart(userId, cartItems, totalPrice.toString(), notes, (err, orderResult) => {
+    Order.createFromCart(userId, filteredItems, totalPrice.toString(), notes, (err, orderResult) => {
       if (err) {
         return res.status(500).json({ 
           success: false, 
@@ -271,12 +328,21 @@ exports.submitCart = (req, res) => {
         });
       }
 
-      // Mark cart items as processed
-      Cart.markCartItemsAsProcessed(userId, (markErr) => {
-        if (markErr) {
-          console.error('Error marking cart items as processed:', markErr);
-        }
-      });
+      // Mark selected cart items as processed (set expires_at)
+      if (selectedCartIds && Array.isArray(selectedCartIds) && selectedCartIds.length > 0) {
+        Cart.markSelectedCartItemsAsProcessed(userId, selectedCartIds, (markErr) => {
+          if (markErr) {
+            console.error('Error marking cart items as processed:', markErr);
+          }
+        });
+      } else {
+        // Mark all cart items as processed
+        Cart.markCartItemsAsProcessed(userId, (markErr) => {
+          if (markErr) {
+            console.error('Error marking cart items as processed:', markErr);
+          }
+        });
+      }
 
       res.json({
         success: true,

@@ -314,6 +314,9 @@ const Customizer3DPage = () => {
     };
     const estimatedPrice = priceMap[garmentTypeName] || 2000;
 
+    // Capture the canvas image
+    const designImage = captureCanvasImage();
+
     const finalDesign = {
       ...customizationData,
       design: {
@@ -330,14 +333,13 @@ const Customizer3DPage = () => {
         buttons,
         accessories,
         pantsType,
+        designImage: designImage, // Include the captured image
       },
       timestamp: new Date().toISOString(),
     };
     
     // If in React Native WebView, send data back to app
     if (isRNWebView) {
-      const designImage = captureCanvasImage();
-      
       sendToReactNative({
         type: 'CUSTOMIZATION_COMPLETE',
         garmentType: garmentTypeName,
@@ -354,13 +356,11 @@ const Customizer3DPage = () => {
       return;
     }
     
-    // Web behavior
+    // Web behavior - save to sessionStorage
     sessionStorage.setItem('finalDesignData', JSON.stringify(finalDesign));
-    alert('✓ Design applied! Returning to customization...');
     
-    setTimeout(() => {
-      navigate('/user-home');
-    }, 500);
+    // Navigate back to user home (modal will reopen automatically)
+    navigate('/user-home');
   };
 
   const handleBackToCustomization = () => {
@@ -372,27 +372,8 @@ const Customizer3DPage = () => {
       return;
     }
 
-    // Save current design state to sessionStorage before going back
-    const currentDesign = {
-      garment,
-      size,
-      fit,
-      modelSize,
-      colors,
-      fabric,
-      pattern,
-      measurements,
-      personalization,
-      designImage,
-      notes,
-      buttons,
-      accessories,
-      pantsType,
-    };
-    sessionStorage.setItem('currentDesign', JSON.stringify(currentDesign));
-    
-    // Close the current window/tab
-    window.close();
+    // Navigate back to user home (modal will reopen if flag is set)
+    navigate('/user-home');
   };
 
   return (

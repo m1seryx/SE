@@ -57,6 +57,18 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [profileDropdownOpen]);
 
+  // Check if we should reopen customization modal after returning from 3D customizer
+  useEffect(() => {
+    const shouldReopen = sessionStorage.getItem('reopenCustomizationModal');
+    if (shouldReopen === 'true') {
+      sessionStorage.removeItem('reopenCustomizationModal');
+      // Small delay to ensure page is fully loaded
+      setTimeout(() => {
+        setCustomizationFormModalOpen(true);
+      }, 100);
+    }
+  }, []);
+
   // Fetch notifications and unread count on mount
   useEffect(() => {
     fetchNotifications();
