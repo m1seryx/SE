@@ -104,7 +104,8 @@ const App = ({ setIsLoggedIn }) => {
         }
       }
     } catch (error) {
-      setAuthError('An unexpected error occurred. Please try again.');
+      console.error('Login error:', error);
+      setAuthError(error.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }

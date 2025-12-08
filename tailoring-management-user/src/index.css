@@ -1,7 +1,34 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap');
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+:root {
+  /* Brand Colors - Using #8B4513 as primary */
+  --primary: #8B4513;
+  --primary-light: #A0522D;
+  --primary-dark: #654321;
+  
+  /* Background Colors */
+  --bg-lighter: #FFFEF9;
+  --bg-light: #FFF8F0;
+  --bg: #F9F5F2;
+  
+  /* Text Colors */
+  --text-primary: #2D2A26;
+  --text-secondary: #5D4E37;
+  --text-light: #8B8178;
+  
+  /* Accent Colors */
+  --accent: #8B4513;
+  
+  /* Shadows */
+  --shadow-sm: 0 2px 4px rgba(139, 69, 19, 0.1);
+  --shadow-md: 0 4px 12px rgba(139, 69, 19, 0.15);
+  --shadow-lg: 0 8px 24px rgba(139, 69, 19, 0.2);
 }
 
 html {
@@ -48,6 +75,7 @@ h2 {
 
 h3 {
   font-size: 1.8em;
+  color: white !important;
 }
 
 button {
