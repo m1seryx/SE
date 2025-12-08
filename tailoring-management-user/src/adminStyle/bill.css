@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap');
 
 * {
   margin: 0;
@@ -7,9 +7,19 @@
 }
 
 body {
-  font-family: 'Poppins', sans-serif;
-  background-color: #F5F6FA;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: linear-gradient(135deg, #F8F9FA 0%, #F5F6FA 100%);
   color: #2D3436;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Montserrat', 'Poppins', sans-serif;
+  font-weight: 700;
+  color: #2D3436;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
 }
 
 /* ============ MAIN CONTENT ============ */
@@ -30,10 +40,12 @@ body {
 }
 
 .dashboard-title h2 {
+  font-family: 'Montserrat', 'Poppins', sans-serif;
   font-size: 32px;
   font-weight: 700;
   color: #2D3436;
   margin-bottom: 8px;
+  letter-spacing: -0.02em;
 }
 
 .dashboard-title p {
@@ -52,11 +64,35 @@ body {
 }
 
 .stat-card {
-  background: #FFFFFF;
+  background: linear-gradient(135deg, #FFFFFF 0%, #FAFAFA 100%);
   padding: 28px;
-  border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(139, 69, 19, 0.08), 0 2px 10px rgba(0, 0, 0, 0.04);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(139, 69, 19, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #8B4513 0%, #A0522D 100%);
+  transform: scaleX(0);
+  transition: transform 0.4s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(139, 69, 19, 0.15), 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card:hover::before {
+  transform: scaleX(1);
 }
 
 .stat-card:hover {
@@ -136,12 +172,13 @@ body {
 
 /* ============ TABLE ============ */
 .table-container {
-  background: #FFFFFF;
-  border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+  background: linear-gradient(135deg, #FFFFFF 0%, #FAFAFA 100%);
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(139, 69, 19, 0.08), 0 2px 10px rgba(0, 0, 0, 0.04);
   overflow: hidden;
   margin-top: 30px;
   margin-bottom: 40px;
+  border: 1px solid rgba(139, 69, 19, 0.08);
 }
 
 table {
@@ -150,7 +187,7 @@ table {
 }
 
 thead {
-  background: linear-gradient(135deg, #6A3C3E 0%, #8B5456 100%);
+  background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
 }
 
 thead th {
@@ -169,7 +206,9 @@ tbody tr {
 }
 
 tbody tr:hover {
-  background-color: #F8F9FA;
+  background: linear-gradient(90deg, rgba(139, 69, 19, 0.05) 0%, rgba(139, 69, 19, 0.02) 100%);
+  transform: scale(1.01);
+  transition: all 0.2s ease;
 }
 
 tbody tr:last-child {
@@ -209,8 +248,9 @@ tbody td {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(5px);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -224,52 +264,59 @@ tbody td {
 }
 
 .modal-content {
-  background: white;
+  background: linear-gradient(135deg, #FFFFFF 0%, #FAFAFA 100%);
   width: 100%;
   max-width: 500px;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(139, 69, 19, 0.3), 0 8px 25px rgba(0, 0, 0, 0.2);
   overflow: hidden;
-  animation: slideUp 0.4s ease;
+  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(139, 69, 19, 0.1);
 }
 
 .modal-header {
-  background: linear-gradient(135deg, #6A3C3E 0%, #8B5456 100%);
+  background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
   color: white;
-  padding: 20px;
+  padding: 20px 28px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  box-shadow: 0 4px 15px rgba(139, 69, 19, 0.2);
 }
 
 .modal-header h2 {
   margin: 0;
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 700;
+  font-family: 'Montserrat', 'Poppins', sans-serif;
+  letter-spacing: -0.02em;
 }
 
 .close-modal {
   font-size: 28px;
   cursor: pointer;
   font-weight: bold;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  transition: background 0.2s;
+  transition: all 0.3s ease;
   line-height: 1;
+  color: white;
 }
 
 .close-modal:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
+  transform: rotate(90deg) scale(1.1);
 }
 
 .modal-body {
-  padding: 24px;
+  padding: 28px;
   max-height: 60vh;
   overflow-y: auto;
+  background: #FFFFFF;
 }
 
 .detail-row {
@@ -368,7 +415,7 @@ tbody td {
 }
 
 .service-type-badge[data-service-type="customization"] {
-  background-color: #9c27b0 !important;
+  background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%) !important;
 }
 
 .service-type-badge[data-service-type="dry_cleaning"] {
