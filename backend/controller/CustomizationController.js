@@ -165,8 +165,15 @@ exports.updateCustomizationOrderItem = (req, res) => {
         });
       }
       
-      // Log the action
+      // Log the action - ALWAYS log status updates
       const ActionLog = require('../model/ActionLogModel');
+      // Get admin user_id - use userId from params if available, otherwise get from order
+      const adminUserId = userId || item.user_id || null;
+      
+      if (!adminUserId) {
+        console.error('Cannot log action: user_id is missing. userId:', userId, 'item.user_id:', item.user_id);
+      }
+      
       let actionNotes = [];
       
       if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
@@ -179,20 +186,39 @@ exports.updateCustomizationOrderItem = (req, res) => {
         actionNotes.push(`Admin notes: ${updateData.adminNotes}`);
       }
 
-      ActionLog.create({
-        order_item_id: itemId,
-        user_id: userId,
-        action_type: 'status_update',
-        action_by: 'admin',
-        previous_status: previousStatus,
-        new_status: updateData.approvalStatus || previousStatus,
-        reason: null,
-        notes: `Admin updated customization order: ${actionNotes.join(', ')}`
-      }, (logErr) => {
-        if (logErr) {
-          console.error('Error logging action:', logErr);
-        }
-      });
+      // Always log, even if status didn't change (for tracking)
+      const newStatus = updateData.approvalStatus || previousStatus;
+
+      // Only log if we have a valid user_id
+      if (adminUserId) {
+        ActionLog.create({
+          order_item_id: itemId,
+          user_id: adminUserId,
+          action_type: 'status_update',
+          action_by: 'admin',
+          previous_status: previousStatus,
+          new_status: newStatus,
+          reason: null,
+          notes: actionNotes.length > 0 
+            ? `Admin updated customization order: ${actionNotes.join(', ')}`
+            : `Admin updated customization order (status: ${newStatus})`
+        }, (logErr, logResult) => {
+          if (logErr) {
+            console.error('Error logging customization order action:', logErr);
+            console.error('Log data:', {
+              order_item_id: itemId,
+              user_id: adminUserId,
+              action_type: 'status_update',
+              previous_status: previousStatus,
+              new_status: newStatus
+            });
+          } else {
+            console.log('Successfully logged customization order action:', logResult?.insertId);
+          }
+        });
+      } else {
+        console.error('Skipping action log: user_id is null or undefined');
+      }
       
       res.json({
         success: true,
@@ -237,22 +263,43 @@ exports.updateApprovalStatus = (req, res) => {
         });
       }
       
-      // Log the action
+      // Log the action - ALWAYS log status updates
       const ActionLog = require('../model/ActionLogModel');
-      ActionLog.create({
-        order_item_id: itemId,
-        user_id: userId,
-        action_type: 'status_update',
-        action_by: 'admin',
-        previous_status: previousStatus,
-        new_status: status,
-        reason: null,
-        notes: `Admin updated customization approval status from ${previousStatus} to ${status}`
-      }, (logErr) => {
-        if (logErr) {
-          console.error('Error logging action:', logErr);
-        }
-      });
+      // Get admin user_id - use userId from params if available, otherwise get from order
+      const adminUserId = userId || item.user_id || null;
+      
+      if (!adminUserId) {
+        console.error('Cannot log action: user_id is missing. userId:', userId, 'item.user_id:', item.user_id);
+      }
+
+      // Only log if we have a valid user_id
+      if (adminUserId) {
+        ActionLog.create({
+          order_item_id: itemId,
+          user_id: adminUserId,
+          action_type: 'status_update',
+          action_by: 'admin',
+          previous_status: previousStatus,
+          new_status: status,
+          reason: null,
+          notes: `Admin updated customization approval status from ${previousStatus} to ${status}`
+        }, (logErr, logResult) => {
+          if (logErr) {
+            console.error('Error logging customization approval status update:', logErr);
+            console.error('Log data:', {
+              order_item_id: itemId,
+              user_id: adminUserId,
+              action_type: 'status_update',
+              previous_status: previousStatus,
+              new_status: status
+            });
+          } else {
+            console.log('Successfully logged customization approval status update:', logResult?.insertId);
+          }
+        });
+      } else {
+        console.error('Skipping action log: user_id is null or undefined');
+      }
       
       res.json({
         success: true,

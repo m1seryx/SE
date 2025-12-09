@@ -131,6 +131,8 @@ const Profile = () => {
   const getStatusLabel = (status) => {
     const statusMap = {
       'pending': 'Pending',
+      'price_confirmation': 'Price Confirmation',
+      'accepted': 'Accepted',
       'in_progress': 'In Progress',
       'ready_to_pickup': 'Ready to Pickup',
       'picked_up': 'Picked Up',
@@ -139,6 +141,24 @@ const Profile = () => {
       'completed': 'Completed'
     };
     return statusMap[status] || status;
+  };
+
+  // Format service type (replace underscores with spaces and capitalize)
+  const formatServiceType = (serviceType) => {
+    if (!serviceType) return '';
+    return serviceType
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
+  // Format service name (remove leading dashes and capitalize)
+  const formatServiceName = (serviceName) => {
+    if (!serviceName) return '';
+    // Remove leading dashes, hyphens, and spaces
+    let formatted = serviceName.replace(/^[\s\-–—]+/, '');
+    // Capitalize first letter
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   };
 
   // Helper functions for customization details
@@ -419,11 +439,11 @@ const Profile = () => {
             )}
             <div className="detail-row">
               <span className="detail-label">Service Name:</span>
-              <span className="detail-value">{specific_data.serviceName || 'N/A'}</span>
+              <span className="detail-value">{formatServiceName(specific_data.serviceName) || 'N/A'}</span>
             </div>
             <div className="detail-row">
               <span className="detail-label">Damage Level:</span>
-              <span className="detail-value">{damageLevel}</span>
+              <span className="detail-value">{damageLevel ? damageLevel.charAt(0).toUpperCase() + damageLevel.slice(1) : 'N/A'}</span>
             </div>
             <div className="detail-row">
               <span className="detail-label">Garment Type:</span>
@@ -640,7 +660,7 @@ const Profile = () => {
 
             <div className="detail-row">
               <span className="detail-label">Service Name:</span>
-              <span className="detail-value">{cleaningServiceName}</span>
+              <span className="detail-value">{formatServiceName(cleaningServiceName)}</span>
             </div>
             <div className="detail-row">
               <span className="detail-label">Brand:</span>
@@ -676,7 +696,7 @@ const Profile = () => {
             <h4>Service Details</h4>
             <div className="detail-row">
               <span className="detail-label">Service Type:</span>
-              <span className="detail-value">{service_type}</span>
+              <span className="detail-value">{formatServiceType(service_type)}</span>
             </div>
             <div className="detail-row">
               <span className="detail-label">Details:</span>
@@ -1156,10 +1176,10 @@ const Profile = () => {
                       <div className="order-info">
                         <h3 className="order-id">ORD-{item.order_id}</h3>
                         <span className="service-type">
-                          {item.service_type.charAt(0).toUpperCase() + item.service_type.slice(1)}
+                          {formatServiceType(item.service_type)}
                           {item.specific_data?.serviceName && (
                             <span className="service-name">
-                              {" - " + item.specific_data.serviceName}
+                              {" " + formatServiceName(item.specific_data.serviceName)}
                             </span>
                           )}
                         </span>

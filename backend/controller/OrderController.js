@@ -328,22 +328,43 @@ exports.updateItemApprovalStatus = (req, res) => {
         });
       }
 
-      // Log the action
+      // Log the action - ALWAYS log status updates
       const ActionLog = require('../model/ActionLogModel');
-      ActionLog.create({
-        order_item_id: itemId,
-        user_id: userId,
-        action_type: 'status_update',
-        action_by: 'admin',
-        previous_status: previousStatus,
-        new_status: status,
-        reason: null,
-        notes: `Admin updated order item status from ${previousStatus} to ${status}`
-      }, (logErr) => {
-        if (logErr) {
-          console.error('Error logging action:', logErr);
-        }
-      });
+      // Get admin user_id - use req.user.id if available, otherwise get from order
+      const adminUserId = req.user?.id || item.user_id || null;
+      
+      if (!adminUserId) {
+        console.error('Cannot log action: user_id is missing. req.user:', req.user, 'item.user_id:', item.user_id);
+      }
+
+      // Only log if we have a valid user_id
+      if (adminUserId) {
+        ActionLog.create({
+          order_item_id: itemId,
+          user_id: adminUserId,
+          action_type: 'status_update',
+          action_by: 'admin',
+          previous_status: previousStatus,
+          new_status: status,
+          reason: null,
+          notes: `Admin updated order item status from ${previousStatus} to ${status}`
+        }, (logErr, logResult) => {
+          if (logErr) {
+            console.error('Error logging order item status update:', logErr);
+            console.error('Log data:', {
+              order_item_id: itemId,
+              user_id: adminUserId,
+              action_type: 'status_update',
+              previous_status: previousStatus,
+              new_status: status
+            });
+          } else {
+            console.log('Successfully logged order item status update:', logResult?.insertId);
+          }
+        });
+      } else {
+        console.error('Skipping action log: user_id is null or undefined');
+      }
 
       res.json({
         success: true,
@@ -553,9 +574,15 @@ exports.updateRepairOrderItem = (req, res) => {
         });
       }
 
-      // Log the action
+      // Log the action - ALWAYS log status updates
       const ActionLog = require('../model/ActionLogModel');
-      const userId = req.user.id;
+      // Get admin user_id - use req.user.id if available, otherwise get from order
+      const userId = req.user?.id || item.user_id || null;
+      
+      if (!userId) {
+        console.error('Cannot log action: user_id is missing. req.user:', req.user, 'item.user_id:', item.user_id);
+      }
+      
       let actionNotes = [];
       
       if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
@@ -568,20 +595,39 @@ exports.updateRepairOrderItem = (req, res) => {
         actionNotes.push(`Admin notes: ${updateData.adminNotes}`);
       }
 
-      ActionLog.create({
-        order_item_id: itemId,
-        user_id: userId,
-        action_type: 'status_update',
-        action_by: 'admin',
-        previous_status: previousStatus,
-        new_status: updateData.approvalStatus || previousStatus,
-        reason: null,
-        notes: `Admin updated repair order: ${actionNotes.join(', ')}`
-      }, (logErr) => {
-        if (logErr) {
-          console.error('Error logging action:', logErr);
-        }
-      });
+      // Always log, even if status didn't change (for tracking)
+      const newStatus = updateData.approvalStatus || previousStatus;
+
+      // Only log if we have a valid user_id
+      if (userId) {
+        ActionLog.create({
+          order_item_id: itemId,
+          user_id: userId,
+          action_type: 'status_update',
+          action_by: 'admin',
+          previous_status: previousStatus,
+          new_status: newStatus,
+          reason: null,
+          notes: actionNotes.length > 0 
+            ? `Admin updated repair order: ${actionNotes.join(', ')}`
+            : `Admin updated repair order (status: ${newStatus})`
+        }, (logErr, logResult) => {
+          if (logErr) {
+            console.error('Error logging repair order action:', logErr);
+            console.error('Log data:', {
+              order_item_id: itemId,
+              user_id: userId,
+              action_type: 'status_update',
+              previous_status: previousStatus,
+              new_status: newStatus
+            });
+          } else {
+            console.log('Successfully logged repair order action:', logResult?.insertId);
+          }
+        });
+      } else {
+        console.error('Skipping action log: user_id is null or undefined');
+      }
 
       console.log("Controller - Update successful, affected rows:", result?.affectedRows);
       res.json({
@@ -724,9 +770,15 @@ exports.updateDryCleaningOrderItem = (req, res) => {
         });
       }
 
-      // Log the action
+      // Log the action - ALWAYS log status updates
       const ActionLog = require('../model/ActionLogModel');
-      const userId = req.user.id;
+      // Get admin user_id - use req.user.id if available, otherwise get from order
+      const userId = req.user?.id || item.user_id || null;
+      
+      if (!userId) {
+        console.error('Cannot log action: user_id is missing. req.user:', req.user, 'item.user_id:', item.user_id);
+      }
+      
       let actionNotes = [];
       
       if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
@@ -739,20 +791,39 @@ exports.updateDryCleaningOrderItem = (req, res) => {
         actionNotes.push(`Admin notes: ${updateData.adminNotes}`);
       }
 
-      ActionLog.create({
-        order_item_id: itemId,
-        user_id: userId,
-        action_type: 'status_update',
-        action_by: 'admin',
-        previous_status: previousStatus,
-        new_status: updateData.approvalStatus || previousStatus,
-        reason: null,
-        notes: `Admin updated dry cleaning order: ${actionNotes.join(', ')}`
-      }, (logErr) => {
-        if (logErr) {
-          console.error('Error logging action:', logErr);
-        }
-      });
+      // Always log, even if status didn't change (for tracking)
+      const newStatus = updateData.approvalStatus || previousStatus;
+
+      // Only log if we have a valid user_id
+      if (userId) {
+        ActionLog.create({
+          order_item_id: itemId,
+          user_id: userId,
+          action_type: 'status_update',
+          action_by: 'admin',
+          previous_status: previousStatus,
+          new_status: newStatus,
+          reason: null,
+          notes: actionNotes.length > 0 
+            ? `Admin updated dry cleaning order: ${actionNotes.join(', ')}`
+            : `Admin updated dry cleaning order (status: ${newStatus})`
+        }, (logErr, logResult) => {
+          if (logErr) {
+            console.error('Error logging dry cleaning order action:', logErr);
+            console.error('Log data:', {
+              order_item_id: itemId,
+              user_id: userId,
+              action_type: 'status_update',
+              previous_status: previousStatus,
+              new_status: newStatus
+            });
+          } else {
+            console.log('Successfully logged dry cleaning order action:', logResult?.insertId);
+          }
+        });
+      } else {
+        console.error('Skipping action log: user_id is null or undefined');
+      }
 
       res.json({
         success: true,
@@ -898,9 +969,15 @@ exports.updateRentalOrderItem = (req, res) => {
         });
       }
 
-      // Log the action
+      // Log the action - ALWAYS log status updates
       const ActionLog = require('../model/ActionLogModel');
-      const userId = req.user.id;
+      // Get admin user_id - use req.user.id if available, otherwise get from order
+      const userId = req.user?.id || item.user_id || null;
+      
+      if (!userId) {
+        console.error('Cannot log action: user_id is missing. req.user:', req.user, 'item.user_id:', item.user_id);
+      }
+      
       let actionNotes = [];
       
       if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
@@ -910,20 +987,39 @@ exports.updateRentalOrderItem = (req, res) => {
         actionNotes.push(`Admin notes: ${updateData.adminNotes}`);
       }
 
-      ActionLog.create({
-        order_item_id: itemId,
-        user_id: userId,
-        action_type: 'status_update',
-        action_by: 'admin',
-        previous_status: previousStatus,
-        new_status: updateData.approvalStatus || previousStatus,
-        reason: null,
-        notes: `Admin updated rental order: ${actionNotes.join(', ')}`
-      }, (logErr) => {
-        if (logErr) {
-          console.error('Error logging action:', logErr);
-        }
-      });
+      // Always log, even if status didn't change (for tracking)
+      const newStatus = updateData.approvalStatus || previousStatus;
+
+      // Only log if we have a valid user_id
+      if (userId) {
+        ActionLog.create({
+          order_item_id: itemId,
+          user_id: userId,
+          action_type: 'status_update',
+          action_by: 'admin',
+          previous_status: previousStatus,
+          new_status: newStatus,
+          reason: null,
+          notes: actionNotes.length > 0 
+            ? `Admin updated rental order: ${actionNotes.join(', ')}`
+            : `Admin updated rental order (status: ${newStatus})`
+        }, (logErr, logResult) => {
+          if (logErr) {
+            console.error('Error logging rental order action:', logErr);
+            console.error('Log data:', {
+              order_item_id: itemId,
+              user_id: userId,
+              action_type: 'status_update',
+              previous_status: previousStatus,
+              new_status: newStatus
+            });
+          } else {
+            console.log('Successfully logged rental order action:', logResult?.insertId);
+          }
+        });
+      } else {
+        console.error('Skipping action log: user_id is null or undefined');
+      }
 
       res.json({
         success: true,

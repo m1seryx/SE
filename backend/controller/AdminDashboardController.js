@@ -71,11 +71,11 @@ exports.getDashboardOverview = async (req, res) => {
 
   try {
     // Add better error handling for each query
-    // Note: appointments table uses 'created_at' column, not 'appointment_date'
+    // Note: appointments table uses 'scheduled_date' column
     const todayAppointmentsQuery = query(
       `SELECT COUNT(*) AS count 
        FROM appointments 
-       WHERE DATE(created_at) = CURDATE()`
+       WHERE DATE(scheduled_date) = CURDATE()`
     ).catch(err => {
       console.error('Error in todayAppointmentsQuery:', err);
       return [{ count: 0 }];
@@ -84,19 +84,44 @@ exports.getDashboardOverview = async (req, res) => {
     const yesterdayAppointmentsQuery = query(
       `SELECT COUNT(*) AS count 
        FROM appointments 
-       WHERE DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)`
+       WHERE DATE(scheduled_date) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)`
     ).catch(err => {
       console.error('Error in yesterdayAppointmentsQuery:', err);
       return [{ count: 0 }];
     });
 
+    // Get pending orders from order_items (where approval_status is pending)
     const pendingOrdersQuery = query(
       `SELECT COUNT(*) AS count 
-       FROM orders 
-       WHERE status = 'pending'`
+       FROM order_items 
+       WHERE approval_status = 'pending'`
     ).catch(err => {
       console.error('Error in pendingOrdersQuery:', err);
       return [{ count: 0 }];
+    });
+
+    // Get total orders count
+    const totalOrdersQuery = query(
+      `SELECT COUNT(DISTINCT o.order_id) AS count 
+       FROM orders o
+       JOIN order_items oi ON o.order_id = oi.order_id
+       WHERE oi.approval_status NOT IN ('cancelled', 'rejected')`
+    ).catch(err => {
+      console.error('Error in totalOrdersQuery:', err);
+      return [{ count: 0 }];
+    });
+
+    // Get orders by service type
+    const ordersByServiceQuery = query(
+      `SELECT 
+         service_type,
+         COUNT(*) AS count
+       FROM order_items
+       WHERE approval_status NOT IN ('cancelled', 'rejected')
+       GROUP BY service_type`
+    ).catch(err => {
+      console.error('Error in ordersByServiceQuery:', err);
+      return [];
     });
 
     const todayRevenueQuery = query(
@@ -243,6 +268,8 @@ exports.getDashboardOverview = async (req, res) => {
       todayAppointmentsRows,
       yesterdayAppointmentsRows,
       pendingOrdersRows,
+      totalOrdersRows,
+      ordersByServiceRows,
       todayRevenueRows,
       yesterdayRevenueRows,
       currentMonthRevenueRows,
@@ -252,6 +279,8 @@ exports.getDashboardOverview = async (req, res) => {
       todayAppointmentsQuery,
       yesterdayAppointmentsQuery,
       pendingOrdersQuery,
+      totalOrdersQuery,
+      ordersByServiceQuery,
       todayRevenueQuery,
       yesterdayRevenueQuery,
       currentMonthRevenueQuery,
@@ -270,6 +299,15 @@ exports.getDashboardOverview = async (req, res) => {
     const pendingOrders = pendingOrdersRows[0]?.count || 0;
     const pendingInfo =
       pendingOrders === 0 ? '' : `${pendingOrders} awaiting processing`;
+
+    const totalOrders = totalOrdersRows[0]?.count || 0;
+    
+    // Process service type counts
+    const serviceCounts = {};
+    ordersByServiceRows.forEach(row => {
+      const serviceType = row.service_type || 'unknown';
+      serviceCounts[serviceType] = row.count || 0;
+    });
 
     const todayRevenue = Number(todayRevenueRows[0]?.total || 0);
     const yesterdayRevenue = Number(yesterdayRevenueRows[0]?.total || 0);
@@ -298,6 +336,11 @@ exports.getDashboardOverview = async (req, res) => {
         info: pendingInfo
       },
       {
+        title: 'Total Orders',
+        number: String(totalOrders),
+        info: 'All active orders'
+      },
+      {
         title: 'Daily Revenue',
         number: `₱${todayRevenue.toFixed(2)}`,
         info: revenueInfo
@@ -306,8 +349,43 @@ exports.getDashboardOverview = async (req, res) => {
         title: 'Monthly Growth',
         number: `${growthPercent.toFixed(0)}%`,
         info: 'Compared to last month'
+      },
+      {
+        title: 'Monthly Revenue',
+        number: `₱${currentMonthRevenue.toFixed(2)}`,
+        info: 'Current month total'
       }
     ];
+
+    // Add service type stats
+    if (serviceCounts.repair) {
+      stats.push({
+        title: 'Repair Orders',
+        number: String(serviceCounts.repair),
+        info: 'Active repair orders'
+      });
+    }
+    if (serviceCounts.dry_cleaning) {
+      stats.push({
+        title: 'Dry Cleaning',
+        number: String(serviceCounts.dry_cleaning),
+        info: 'Active dry cleaning orders'
+      });
+    }
+    if (serviceCounts.customization || serviceCounts.customize) {
+      stats.push({
+        title: 'Customization',
+        number: String(serviceCounts.customization || serviceCounts.customize || 0),
+        info: 'Active customization orders'
+      });
+    }
+    if (serviceCounts.rental) {
+      stats.push({
+        title: 'Rental Orders',
+        number: String(serviceCounts.rental),
+        info: 'Active rental orders'
+      });
+    }
 
     const recentActivities = recentActivityRows.map(row => {
       const mappedStatus = mapStatus(row.approval_status, row.order_status);
