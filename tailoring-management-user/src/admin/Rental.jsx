@@ -3,8 +3,10 @@ import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
 import '../adminStyle/rent.css';
 import { getAllRentalOrders, getRentalOrdersByStatus, updateRentalOrderItem } from '../api/RentalOrderApi';
+import { useAlert } from '../context/AlertContext';
 
 function Rental() {
+  const { alert, confirm, prompt } = useAlert();
   const [rentals, setRentals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -87,7 +89,8 @@ function Rental() {
 
   // Handle Accept rental
   const handleAccept = async (rental) => {
-    if (!confirm(`Accept rental order ORD-${rental.order_id}?`)) return;
+    const confirmed = await confirm(`Accept rental order ORD-${rental.order_id}?`, 'Accept Rental', 'warning');
+    if (!confirmed) return;
 
     try {
       const result = await updateRentalOrderItem(rental.item_id, {
@@ -95,21 +98,21 @@ function Rental() {
       });
 
       if (result.success) {
-        alert('Rental accepted! Status changed to "Accepted"');
+        await alert('Rental accepted! Status changed to "Accepted"', 'Success', 'success');
         await loadRentalOrders();
       } else {
-        alert(result.message || 'Failed to accept rental');
+        await alert(result.message || 'Failed to accept rental', 'Error', 'error');
       }
     } catch (error) {
       console.error('Error accepting rental:', error);
-      alert('Error accepting rental');
+      await alert('Error accepting rental', 'Error', 'error');
     }
   };
 
   // Handle Decline rental
   const handleDecline = async (rental) => {
-    const reason = prompt('Please enter reason for declining this rental:');
-    if (reason === null) return; // User cancelled
+    const reason = await prompt('Please enter reason for declining this rental:', 'Decline Rental', 'Enter reason...');
+    if (reason === null || !reason) return; // User cancelled or empty
 
     try {
       const result = await updateRentalOrderItem(rental.item_id, {
@@ -118,14 +121,14 @@ function Rental() {
       });
 
       if (result.success) {
-        alert('Rental declined and cancelled');
+        await alert('Rental declined and cancelled', 'Success', 'success');
         await loadRentalOrders();
       } else {
-        alert(result.message || 'Failed to decline rental');
+        await alert(result.message || 'Failed to decline rental', 'Error', 'error');
       }
     } catch (error) {
       console.error('Error declining rental:', error);
-      alert('Error declining rental');
+      await alert('Error declining rental', 'Error', 'error');
     }
   };
 
@@ -153,22 +156,23 @@ function Rental() {
       });
 
       if (result.success) {
-        alert(`Rental status updated to "${getStatusLabel(editData.approvalStatus)}"`);
+        await alert(`Rental status updated to "${getStatusLabel(editData.approvalStatus)}"`, 'Success', 'success');
         setShowEditModal(false);
         await loadRentalOrders();
       } else {
-        alert(result.message || 'Failed to update rental');
+        await alert(result.message || 'Failed to update rental', 'Error', 'error');
       }
     } catch (error) {
       console.error('Error updating rental:', error);
-      alert('Error updating rental');
+      await alert('Error updating rental', 'Error', 'error');
     }
   };
 
   const handleStatusUpdate = async (itemId, newStatus) => {
     console.log("Frontend - Updating rental status:", itemId, "to", newStatus);
 
-    if (!confirm(`Update status to "${getStatusLabel(newStatus)}"?`)) return;
+    const confirmed = await confirm(`Update status to "${getStatusLabel(newStatus)}"?`, 'Update Status', 'warning');
+    if (!confirmed) return;
 
     try {
       const result = await updateRentalOrderItem(itemId, {
@@ -178,14 +182,14 @@ function Rental() {
       console.log("Frontend - Update result:", result);
 
       if (result.success) {
-        alert(`Status updated to "${getStatusLabel(newStatus)}"`);
+        await alert(`Status updated to "${getStatusLabel(newStatus)}"`, 'Success', 'success');
         await loadRentalOrders();
       } else {
-        alert(result.message || 'Failed to update status');
+        await alert(result.message || 'Failed to update status', 'Error', 'error');
       }
     } catch (error) {
       console.error("Error updating status:", error);
-      alert('Error updating status');
+      await alert('Error updating status', 'Error', 'error');
     }
   };
 

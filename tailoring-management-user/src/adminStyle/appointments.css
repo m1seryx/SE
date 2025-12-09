@@ -5,7 +5,9 @@
   padding: 0;
   box-sizing: border-box;
 }
-
+.profile h3{
+  color: black;
+}
 body {
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
   background: linear-gradient(135deg, #F8F9FA 0%, #F5F6FA 100%);
@@ -47,7 +49,7 @@ html {
 }
 
 .logo {
-  color: #FFFFFF;
+  color: #000000;
   font-weight: 500;
   font-size: 16px;
   letter-spacing: 0.3px;
@@ -85,8 +87,11 @@ html {
 .profile h3 {
   font-size: 15px;
   font-weight: 600;
-  color: #2D3436;
+  color: #FFFFFF;
   line-height: 1.3;
+}
+.text-black{
+  color: black;
 }
 
 .sidebar a {

@@ -206,6 +206,34 @@ const Order = {
     db.query(sql, [status, itemId], callback);
   },
 
+  // Cancel order item (individual item, not entire order)
+  cancelOrderItem: (itemId, reason, callback) => {
+    // First get current status
+    Order.getOrderItemById(itemId, (err, item) => {
+      if (err) {
+        return callback(err, null);
+      }
+      if (!item) {
+        return callback(new Error('Order item not found'), null);
+      }
+
+      const previousStatus = item.approval_status || item.status || 'pending';
+      
+      // Update order item status to cancelled
+      const sql = `
+        UPDATE order_items 
+        SET approval_status = 'cancelled'
+        WHERE item_id = ?
+      `;
+      db.query(sql, [itemId], (updateErr, updateResult) => {
+        if (updateErr) {
+          return callback(updateErr, null);
+        }
+        callback(null, { previousStatus, updateResult });
+      });
+    });
+  },
+
   // Get orders by status
   getByStatus: (status, callback) => {
     const sql = `

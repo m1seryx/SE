@@ -127,3 +127,21 @@ export function getServiceStatusFlow(serviceType) {
   };
   return flows[serviceType] || flows['repair'];
 }
+
+// Cancel order item
+export async function cancelOrderItem(orderItemId, reason) {
+  try {
+    const response = await axios.post(
+      `${BASE_URL}/orders/items/${orderItemId}/cancel`,
+      { reason },
+      { headers: getAuthHeaders() }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Cancel order item error:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Error cancelling order item"
+    };
+  }
+}

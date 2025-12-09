@@ -170,6 +170,10 @@ body {
   height: 290px;
 }
 
+.service-footer{
+  color: "black";
+}
+
 
 .service-card:hover {
   transform: translateY(-15px);

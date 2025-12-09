@@ -116,19 +116,59 @@ exports.updateCustomerStatus = (req, res) => {
 exports.saveMeasurements = (req, res) => {
   const { id } = req.params;
   const { top, bottom, notes } = req.body;
+  const adminId = req.user.id;
 
-  CustomerMeasurements.upsert(id, { top, bottom, notes }, (err, result) => {
-    if (err) {
-      return res.status(500).json({
-        success: false,
-        message: "Error saving measurements",
-        error: err
-      });
+  // Check if measurements already exist
+  CustomerMeasurements.getByCustomerId(id, (checkErr, existing) => {
+    if (checkErr) {
+      console.error('Error checking existing measurements:', checkErr);
     }
 
-    res.json({
-      success: true,
-      message: "Measurements saved successfully"
+    const isUpdate = existing && existing.length > 0;
+
+    CustomerMeasurements.upsert(id, { top, bottom, notes }, (err, result) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Error saving measurements",
+          error: err
+        });
+      }
+
+      // Prepare measurement summary
+      const measurementSummary = [];
+      if (top && Object.keys(top).length > 0) {
+        measurementSummary.push(`Top: ${Object.keys(top).length} measurements`);
+      }
+      if (bottom && Object.keys(bottom).length > 0) {
+        measurementSummary.push(`Bottom: ${Object.keys(bottom).length} measurements`);
+      }
+      if (notes) {
+        measurementSummary.push(`Notes: ${notes.substring(0, 50)}${notes.length > 50 ? '...' : ''}`);
+      }
+
+      // Log the action - measurements don't have order_item_id, so we use NULL
+      const ActionLog = require('../model/ActionLogModel');
+      ActionLog.create({
+        order_item_id: null, // NULL for non-order actions
+        user_id: adminId,
+        action_type: 'add_measurements',
+        action_by: 'admin',
+        previous_status: null,
+        new_status: null,
+        reason: null,
+        notes: `Admin ${isUpdate ? 'updated' : 'added'} measurements for customer ${id}: ${measurementSummary.join(', ')}`
+      }, (logErr) => {
+        if (logErr) {
+          console.error('Error logging measurement action:', logErr);
+          // If it fails due to NULL constraint, that's okay - we'll handle it gracefully
+        }
+      });
+
+      res.json({
+        success: true,
+        message: "Measurements saved successfully"
+      });
     });
   });
 };

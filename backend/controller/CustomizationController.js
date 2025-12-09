@@ -140,19 +140,64 @@ exports.getCustomizationOrderById = (req, res) => {
 exports.updateCustomizationOrderItem = (req, res) => {
   const { itemId } = req.params;
   const updateData = req.body;
+  const userId = req.user.id;
   
-  Customization.updateOrderItem(itemId, updateData, (err, result) => {
-    if (err) {
-      console.error('Update customization order error:', err);
+  // Get current status before updating
+  const Order = require('../model/OrderModel');
+  Order.getOrderItemById(itemId, (getErr, item) => {
+    if (getErr || !item) {
       return res.status(500).json({
         success: false,
-        message: 'Error updating customization order'
+        message: "Error fetching order item",
+        error: getErr
       });
     }
-    
-    res.json({
-      success: true,
-      message: 'Customization order updated successfully'
+
+    const previousStatus = item.approval_status || 'pending';
+    const previousPrice = item.final_price || null;
+  
+    Customization.updateOrderItem(itemId, updateData, (err, result) => {
+      if (err) {
+        console.error('Update customization order error:', err);
+        return res.status(500).json({
+          success: false,
+          message: 'Error updating customization order'
+        });
+      }
+      
+      // Log the action
+      const ActionLog = require('../model/ActionLogModel');
+      let actionNotes = [];
+      
+      if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
+        actionNotes.push(`Status: ${previousStatus} → ${updateData.approvalStatus}`);
+      }
+      if (updateData.finalPrice && updateData.finalPrice !== previousPrice) {
+        actionNotes.push(`Price: ₱${previousPrice || 0} → ₱${updateData.finalPrice}`);
+      }
+      if (updateData.adminNotes) {
+        actionNotes.push(`Admin notes: ${updateData.adminNotes}`);
+      }
+
+      ActionLog.create({
+        order_item_id: itemId,
+        user_id: userId,
+        action_type: 'status_update',
+        action_by: 'admin',
+        previous_status: previousStatus,
+        new_status: updateData.approvalStatus || previousStatus,
+        reason: null,
+        notes: `Admin updated customization order: ${actionNotes.join(', ')}`
+      }, (logErr) => {
+        if (logErr) {
+          console.error('Error logging action:', logErr);
+        }
+      });
+      
+      res.json({
+        success: true,
+        message: 'Customization order updated successfully'
+      });
     });
   });
 };
@@ -161,6 +206,7 @@ exports.updateCustomizationOrderItem = (req, res) => {
 exports.updateApprovalStatus = (req, res) => {
   const { itemId } = req.params;
   const { status } = req.body;
+  const userId = req.user.id;
   
   if (!status) {
     return res.status(400).json({
@@ -169,18 +215,49 @@ exports.updateApprovalStatus = (req, res) => {
     });
   }
   
-  Customization.updateApprovalStatus(itemId, status, (err, result) => {
-    if (err) {
-      console.error('Update approval status error:', err);
+  // Get current status before updating
+  const Order = require('../model/OrderModel');
+  Order.getOrderItemById(itemId, (getErr, item) => {
+    if (getErr || !item) {
       return res.status(500).json({
         success: false,
-        message: 'Error updating approval status'
+        message: "Error fetching order item",
+        error: getErr
       });
     }
-    
-    res.json({
-      success: true,
-      message: 'Approval status updated successfully'
+
+    const previousStatus = item.approval_status || 'pending';
+  
+    Customization.updateApprovalStatus(itemId, status, (err, result) => {
+      if (err) {
+        console.error('Update approval status error:', err);
+        return res.status(500).json({
+          success: false,
+          message: 'Error updating approval status'
+        });
+      }
+      
+      // Log the action
+      const ActionLog = require('../model/ActionLogModel');
+      ActionLog.create({
+        order_item_id: itemId,
+        user_id: userId,
+        action_type: 'status_update',
+        action_by: 'admin',
+        previous_status: previousStatus,
+        new_status: status,
+        reason: null,
+        notes: `Admin updated customization approval status from ${previousStatus} to ${status}`
+      }, (logErr) => {
+        if (logErr) {
+          console.error('Error logging action:', logErr);
+        }
+      });
+      
+      res.json({
+        success: true,
+        message: 'Approval status updated successfully'
+      });
     });
   });
 };

@@ -1,12 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controller/UserController');
+const { verifyToken } = require('../middleware/AuthToken');
 
 // GET /api/user/rentals - Get available rental items with pagination and filters
 router.get('/rentals', userController.getAvailableRentals);
 
 // GET /api/user/rentals/featured - Get featured rentals for homepage
 router.get('/rentals/featured', userController.getFeaturedRentals);
+
+// GET /api/user/measurements - Get current user's measurements
+router.get('/measurements', verifyToken, userController.getMyMeasurements);
 
 // GET /api/user/rentals/search - Search rental items
 router.get('/rentals/search', userController.searchRentals);

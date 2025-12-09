@@ -1,5 +1,5 @@
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows, Stage, Grid } from '@react-three/drei';
+import { OrbitControls, ContactShadows, Stage } from '@react-three/drei';
 import { useCallback, useEffect, Suspense, useState } from 'react';
 import * as THREE from 'three';
 import GarmentModel from './GarmentModel';
@@ -43,17 +43,17 @@ export default function Viewer3D({ garment, size, fit, modelSize, colors, fabric
       >
         <color attach="background" args={[0, 0, 0]} />
         <fog attach="fog" args={[0x000000, 10, 30]} />
-        <Stage intensity={0.6} environment="studio" adjustCamera={false} shadows="accumulative">
+        <Stage intensity={0.6} adjustCamera={false} shadows="accumulative" environment={null}>
           <Suspense fallback={<mesh><boxGeometry args={[1, 2, 0.5]} /><meshStandardMaterial color="#cccccc" /></mesh>}>
             <GarmentModel garment={garment} size={size} fit={fit} modelSize={modelSize} colors={colors} fabric={fabric} pattern={pattern} style={style} measurements={measurements} personalization={personalization} pantsType={pantsType} />
           </Suspense>
         </Stage>
         <directionalLight position={[4, 6, -3]} intensity={0.6} color={garment === 'pants' ? '#b0c7ff' : '#bcd0ff'} />
         <directionalLight position={[-5, 3, 5]} intensity={0.3} color={garment === 'pants' ? '#ffd6b3' : '#ffddb7'} />
+        <ambientLight intensity={0.4} />
 
         <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={10} blur={2.6} far={4.5} />
         <OrbitControls enablePan={false} enabled={!isAnyButtonMoving && !isAnyAccessoryMoving} />
-        <Environment preset="studio" />
         {buttons && buttons.map((btn) => (
           <DraggableButton
             key={btn.id}

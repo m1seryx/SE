@@ -72,13 +72,14 @@ function AdminPage() {
                 <th>Customer</th>
                 <th>Type of Service</th>
                 <th>Status</th>
+                <th>Reason for Cancellation</th>
                 <th>Time</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="4" className="loading-cell">
+                  <td colSpan="5" className="loading-cell">
                     Loading recent activities...
                   </td>
                 </tr>
@@ -92,12 +93,20 @@ function AdminPage() {
                         {activity.statusText}
                       </span>
                     </td>
+                    <td style={{ 
+                      color: activity.reason ? '#666' : '#999', 
+                      fontStyle: activity.reason ? 'normal' : 'italic',
+                      maxWidth: '200px',
+                      wordWrap: 'break-word'
+                    }}>
+                      {activity.reason || '-'}
+                    </td>
                     <td>{activity.time}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4" className="no-data-cell">
+                  <td colSpan="5" className="no-data-cell">
                     No recent activities found
                   </td>
                 </tr>

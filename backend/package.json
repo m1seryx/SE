@@ -5,7 +5,8 @@
   "scripts": {
     "devStart": "nodemon server.js",
     "migrate:user-fields": "node database/add_user_fields.js",
-    "migrate:appointment-slots": "node database/appointment_slots.js"
+    "migrate:appointment-slots": "node database/appointment_slots.js",
+    "migrate:action-logs": "node database/action_logs.js"
   },
   "keywords": [],
   "author": "",

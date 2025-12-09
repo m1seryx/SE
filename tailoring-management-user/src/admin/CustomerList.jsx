@@ -4,8 +4,10 @@ import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
 import { getAllCustomers, updateCustomer, updateCustomerStatus, getCustomerById, getMeasurements, saveMeasurements } from '../api/CustomerApi';
 import { getUserRole } from '../api/AuthApi';
+import { useAlert } from '../context/AlertContext';
 
 const CustomerList = () => {
+  const { alert, confirm } = useAlert();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -93,7 +95,7 @@ const CustomerList = () => {
       
       setShowEditModal(true);
     } else {
-      alert(result.message || 'Failed to load customer details');
+      await alert(result.message || 'Failed to load customer details', 'Error', 'error');
     }
   };
 
@@ -116,14 +118,14 @@ const CustomerList = () => {
           }
         }
         
-        alert('Customer updated successfully!');
+        await alert('Customer updated successfully!', 'Success', 'success');
         setShowEditModal(false);
         loadCustomers();
       } else {
-        alert(result.message || 'Failed to update customer');
+        await alert(result.message || 'Failed to update customer', 'Error', 'error');
       }
     } catch (err) {
-      alert('Failed to update customer');
+      await alert('Failed to update customer', 'Error', 'error');
       console.error(err);
     }
   };
@@ -132,13 +134,13 @@ const CustomerList = () => {
     try {
       const result = await updateCustomerStatus(customerId, newStatus);
       if (result.success) {
-        alert('Customer status updated successfully!');
+        await alert('Customer status updated successfully!', 'Success', 'success');
         loadCustomers();
       } else {
-        alert(result.message || 'Failed to update status');
+        await alert(result.message || 'Failed to update status', 'Error', 'error');
       }
     } catch (err) {
-      alert('Failed to update status');
+      await alert('Failed to update status', 'Error', 'error');
       console.error(err);
     }
   };
@@ -242,9 +244,10 @@ const CustomerList = () => {
                         {(customer.status === 'active' || !customer.status || customer.status === null) ? (
                           <button 
                             className="icon-btn decline" 
-                            onClick={(e) => { 
+                            onClick={async (e) => { 
                               e.stopPropagation(); 
-                              if (confirm(`Are you sure you want to deactivate ${customer.first_name} ${customer.last_name}?`)) {
+                              const confirmed = await confirm(`Are you sure you want to deactivate ${customer.first_name} ${customer.last_name}?`, 'Confirm Deactivation', 'warning');
+                              if (confirmed) {
                                 handleStatusChange(customer.user_id, 'inactive');
                               }
                             }} 
@@ -258,9 +261,10 @@ const CustomerList = () => {
                         ) : (
                           <button 
                             className="icon-btn accept" 
-                            onClick={(e) => { 
+                            onClick={async (e) => { 
                               e.stopPropagation(); 
-                              if (confirm(`Are you sure you want to activate ${customer.first_name} ${customer.last_name}?`)) {
+                              const confirmed = await confirm(`Are you sure you want to activate ${customer.first_name} ${customer.last_name}?`, 'Confirm Activation', 'warning');
+                              if (confirmed) {
                                 handleStatusChange(customer.user_id, 'active');
                               }
                             }} 

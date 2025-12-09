@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllRentals, getRentalImageUrl } from '../../api/RentalApi';
 import { addToCart } from '../../api/CartApi';
-import brown from "../../assets/brown.png";
-import full from "../../assets/full.png";
-import tuxedo from "../../assets/tuxedo.png";
 import suitSample from "../../assets/suits.png";
+import { useAlert } from '../../context/AlertContext';
 
 const RentalClothes = ({ openAuthModal, showAll = false }) => {
+  const { alert } = useAlert();
   const [rentalItems, setRentalItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -18,39 +17,186 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
   const [cartMessage, setCartMessage] = useState('');
   const [addingToCart, setAddingToCart] = useState(false);
   const navigate = useNavigate();
+
+  // Helper functions to determine measurement type
+  const isTopCategory = (category) => {
+    return ['suit', 'tuxedo', 'formal_wear', 'business'].includes(category);
+  };
+
+  const isBottomCategory = (category) => {
+    return ['casual', 'pants', 'trousers'].includes(category);
+  };
+
+  // Parse and format measurements for display
+  const formatMeasurements = (item) => {
+    if (!item || !item.size) return 'N/A';
+    
+    try {
+      // Handle both string JSON and already parsed objects
+      let measurements;
+      if (typeof item.size === 'string') {
+        // Try to parse as JSON
+        try {
+          measurements = JSON.parse(item.size);
+        } catch (parseError) {
+          // If it's not valid JSON, return as plain text
+          return item.size;
+        }
+      } else {
+        measurements = item.size;
+      }
+      
+      // If it's not an object, return as is (backward compatibility)
+      if (!measurements || typeof measurements !== 'object' || Array.isArray(measurements)) {
+        return typeof item.size === 'string' ? item.size : JSON.stringify(item.size);
+      }
+
+      const category = item.category || 'suit';
+      
+      if (isTopCategory(category)) {
+        const parts = [];
+        // Check for truthy values (not empty string, null, undefined, or 0)
+        if (measurements.chest && measurements.chest !== '' && measurements.chest !== '0') {
+          parts.push({ label: 'Chest', value: measurements.chest });
+        }
+        if (measurements.shoulders && measurements.shoulders !== '' && measurements.shoulders !== '0') {
+          parts.push({ label: 'Shoulders', value: measurements.shoulders });
+        }
+        if (measurements.sleeveLength && measurements.sleeveLength !== '' && measurements.sleeveLength !== '0') {
+          parts.push({ label: 'Sleeve Length', value: measurements.sleeveLength });
+        }
+        if (measurements.neck && measurements.neck !== '' && measurements.neck !== '0') {
+          parts.push({ label: 'Neck', value: measurements.neck });
+        }
+        if (measurements.waist && measurements.waist !== '' && measurements.waist !== '0') {
+          parts.push({ label: 'Waist', value: measurements.waist });
+        }
+        if (measurements.length && measurements.length !== '' && measurements.length !== '0') {
+          parts.push({ label: 'Length', value: measurements.length });
+        }
+        
+        return parts.length > 0 ? (
+          <div>
+            <strong style={{ display: 'block', marginBottom: '10px', color: '#333', fontSize: '1rem' }}>Top Measurements</strong>
+            <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e0e0e0', borderRadius: '6px', overflow: 'hidden' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f8f9fa' }}>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333', fontSize: '0.9rem' }}>Measurement</th>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333', fontSize: '0.9rem' }}>Value (inches)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parts.map((part, idx) => (
+                  <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
+                    <td style={{ padding: '10px', borderBottom: '1px solid #f0f0f0', fontWeight: '500' }}>{part.label}</td>
+                    <td style={{ padding: '10px', borderBottom: '1px solid #f0f0f0' }}>{part.value}"</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : 'No measurements available';
+      } else if (isBottomCategory(category)) {
+        const parts = [];
+        if (measurements.waist && measurements.waist !== '' && measurements.waist !== '0') {
+          parts.push({ label: 'Waist', value: measurements.waist });
+        }
+        if (measurements.hips && measurements.hips !== '' && measurements.hips !== '0') {
+          parts.push({ label: 'Hips', value: measurements.hips });
+        }
+        if (measurements.inseam && measurements.inseam !== '' && measurements.inseam !== '0') {
+          parts.push({ label: 'Inseam', value: measurements.inseam });
+        }
+        if (measurements.length && measurements.length !== '' && measurements.length !== '0') {
+          parts.push({ label: 'Length', value: measurements.length });
+        }
+        if (measurements.thigh && measurements.thigh !== '' && measurements.thigh !== '0') {
+          parts.push({ label: 'Thigh', value: measurements.thigh });
+        }
+        if (measurements.outseam && measurements.outseam !== '' && measurements.outseam !== '0') {
+          parts.push({ label: 'Outseam', value: measurements.outseam });
+        }
+        
+        return parts.length > 0 ? (
+          <div>
+            <strong style={{ display: 'block', marginBottom: '10px', color: '#333', fontSize: '1rem' }}>Bottom Measurements</strong>
+            <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e0e0e0', borderRadius: '6px', overflow: 'hidden' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f8f9fa' }}>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333', fontSize: '0.9rem' }}>Measurement</th>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333', fontSize: '0.9rem' }}>Value (inches)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parts.map((part, idx) => (
+                  <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
+                    <td style={{ padding: '10px', borderBottom: '1px solid #f0f0f0', fontWeight: '500' }}>{part.label}</td>
+                    <td style={{ padding: '10px', borderBottom: '1px solid #f0f0f0' }}>{part.value}"</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : 'No measurements available';
+      } else {
+        // For other categories, try to display if it's a valid object
+        if (measurements && typeof measurements === 'object') {
+          const parts = Object.entries(measurements)
+            .filter(([key, value]) => value && value !== '' && value !== '0')
+            .map(([key, value]) => ({ label: key.charAt(0).toUpperCase() + key.slice(1), value }));
+          
+          return parts.length > 0 ? (
+            <div>
+              <div style={{ marginLeft: '10px' }}>
+                {parts.map((part, idx) => (
+                  <div key={idx} style={{ marginBottom: '4px', fontSize: '0.9rem' }}>
+                    <span style={{ fontWeight: '500' }}>{part.label}:</span> {part.value}"
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (typeof item.size === 'string' ? item.size : 'N/A');
+        }
+        // For other categories, return as is
+        return typeof item.size === 'string' ? item.size : JSON.stringify(item.size);
+      }
+    } catch (e) {
+      console.error('Error formatting measurements:', e, 'Item size:', item.size);
+      // If parsing fails, return as is (backward compatibility)
+      return typeof item.size === 'string' ? item.size : 'N/A';
+    }
+  };
   
   // Multi-select state
   const [selectedItems, setSelectedItems] = useState([]);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [isDateModalOpen, setIsDateModalOpen] = useState(false);
 
-  // Fallback items for when API fails
-  const fallbackItems = [
-    { name: 'Brown Suit', price: 'P 800', img: brown, id: 1, daily_rate: 800, base_rental_fee: 500, deposit_amount: 1000 },
-    { name: 'Full Suit', price: 'P 800', img: full, id: 2, daily_rate: 800, base_rental_fee: 500, deposit_amount: 1000 },
-    { name: 'Tuxedo', price: 'P 800', img: tuxedo, id: 3, daily_rate: 800, base_rental_fee: 500, deposit_amount: 1000 },
-  ];
-
   useEffect(() => {
     const fetchRentals = async () => {
       try {
+        setLoading(true);
         const result = await getAllRentals();
         if (result.items && result.items.length > 0) {
           // Transform API data to match component structure
+          // IMPORTANT: Preserve all fields including size (which contains measurements as JSON)
           const transformedItems = result.items.map(item => ({
             ...item,
             img: item.image_url ? getRentalImageUrl(item.image_url) : suitSample,
-            price: item.daily_rate ? `P ${item.daily_rate}/day` : 'P 800/day'
+            price: item.daily_rate ? `P ${item.daily_rate}/day` : 'P 800/day',
+            // Ensure size field is preserved (contains measurements JSON)
+            size: item.size || null,
+            category: item.category || 'suit'
           }));
           setRentalItems(transformedItems);
         } else {
-          // Use fallback items if API returns empty
-          setRentalItems(fallbackItems);
+          // No items found - set empty array
+          setRentalItems([]);
         }
       } catch (error) {
         console.error('Error fetching rentals:', error);
-        // Use fallback items on error
-        setRentalItems(fallbackItems);
+        // On error, set empty array
+        setRentalItems([]);
       } finally {
         setLoading(false);
       }
@@ -114,9 +260,9 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
   };
 
   // Open date modal for multi-select
-  const openDateModal = () => {
+  const openDateModal = async () => {
     if (selectedItems.length === 0) {
-      alert('Please select at least one item');
+      await alert('Please select at least one item', 'Selection Required', 'warning');
       return;
     }
     setStartDate('');
@@ -373,7 +519,18 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
           </div>
         </div>
         <div className="rental-grid">
-          {displayItems.map((item, i) => (
+          {displayItems.length === 0 ? (
+            <div style={{ 
+              gridColumn: '1 / -1', 
+              textAlign: 'center', 
+              padding: '60px 20px',
+              color: '#666',
+              fontSize: '18px'
+            }}>
+              <p style={{ margin: 0, fontWeight: '500' }}>No rental clothes</p>
+            </div>
+          ) : (
+            displayItems.map((item, i) => (
             <div 
               key={i} 
               className="rental-card"
@@ -435,7 +592,8 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                 )}
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
       </section>
 
@@ -777,19 +935,27 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                       </div>
                     </div>
                     <div className="detail-row">
-                      <div className="detail-item">
-                        <strong>Size:</strong> {selectedItem.size || 'N/A'}
-                      </div>
-                      <div className="detail-item">
-                        <strong>Color:</strong> {selectedItem.color || 'N/A'}
+                      <div className="detail-item" style={{ width: '100%' }}>
+                        <strong style={{ display: 'block', marginBottom: '10px' }}>Measurements:</strong> 
+                        <div style={{ marginTop: '5px', fontSize: '0.9rem', color: '#666' }}>
+                          {formatMeasurements(selectedItem)}
+                        </div>
                       </div>
                     </div>
                     <div className="detail-row">
                       <div className="detail-item">
-                        <strong>Material:</strong> {selectedItem.material || 'N/A'}
+                        <strong>Color:</strong> {selectedItem.color || 'N/A'}
                       </div>
                       <div className="detail-item">
+                        <strong>Material:</strong> {selectedItem.material || 'N/A'}
+                      </div>
+                    </div>
+                    <div className="detail-row">
+                      <div className="detail-item">
                         <strong>Base Fee:</strong> ₱{selectedItem.base_rental_fee || '0'}
+                      </div>
+                      <div className="detail-item">
+                        <strong>Daily Rate:</strong> ₱{selectedItem.daily_rate || '0'}/day
                       </div>
                     </div>
                   </div>

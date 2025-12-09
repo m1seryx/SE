@@ -5,10 +5,13 @@ import '../styles/Profile.css';
 import logo from "../assets/logo.png";
 import dp from "../assets/dp.png";
 import { getUser } from '../api/AuthApi';
-import { getUserOrderTracking, getStatusBadgeClass, getStatusLabel } from '../api/OrderTrackingApi';
+import { getUserOrderTracking, getStatusBadgeClass, getStatusLabel, cancelOrderItem } from '../api/OrderTrackingApi';
 import ImagePreviewModal from '../components/ImagePreviewModal';
+import { useAlert } from '../context/AlertContext';
+import { getMyMeasurements } from '../api/CustomerApi';
 
 const Profile = () => {
+  const { alert } = useAlert();
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +25,17 @@ const Profile = () => {
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState('');
   const [previewImageAlt, setPreviewImageAlt] = useState('');
+  
+  // Measurements modal state
+  const [measurementsModalOpen, setMeasurementsModalOpen] = useState(false);
+  const [measurements, setMeasurements] = useState(null);
+  const [loadingMeasurements, setLoadingMeasurements] = useState(false);
+  
+  // Cancel order modal state
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [itemToCancel, setItemToCancel] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
 
   // Function to open image preview
   const openImagePreview = (imageUrl, altText) => {
@@ -71,17 +85,21 @@ const Profile = () => {
 
   // Check for price confirmation orders and show notification
   useEffect(() => {
-    if (orders.length > 0) {
-      const priceConfirmationOrders = orders.filter(order =>
-        order.items && order.items.some(item => item.status === 'price_confirmation')
-      );
+    const checkPriceConfirmation = async () => {
+      if (orders.length > 0) {
+        const priceConfirmationOrders = orders.filter(order =>
+          order.items && order.items.some(item => item.status === 'price_confirmation')
+        );
 
-      if (priceConfirmationOrders.length > 0) {
-        // Show notification for price confirmation
-        const notificationMessage = `You have ${priceConfirmationOrders.length} order(s) awaiting price confirmation!`;
-        alert(notificationMessage); // Simple notification - you can replace with a better notification system
+        if (priceConfirmationOrders.length > 0) {
+          // Show notification for price confirmation
+          const notificationMessage = `You have ${priceConfirmationOrders.length} order(s) awaiting price confirmation!`;
+          await alert(notificationMessage, 'Price Confirmation Required', 'info');
+        }
       }
-    }
+    };
+    
+    checkPriceConfirmation();
   }, [orders]);
 
   // Format date for display
@@ -233,18 +251,18 @@ const Profile = () => {
       const result = await response.json();
 
       if (result.success) {
-        alert('Price accepted! Your order is now accepted.');
+        await alert('Price accepted! Your order is now accepted.', 'Success', 'success');
         // Refresh orders to show updated status
         const ordersResult = await getUserOrderTracking();
         if (ordersResult.success) {
           setOrders(ordersResult.data);
         }
       } else {
-        alert(result.message || 'Failed to accept price');
+        await alert(result.message || 'Failed to accept price', 'Error', 'error');
         console.error('Failed to accept price:', result);
       }
     } catch (error) {
-      alert('Error accepting price. Please try again.');
+      await alert('Error accepting price. Please try again.', 'Error', 'error');
       console.error('Error accepting price:', error);
     }
   };
@@ -264,18 +282,18 @@ const Profile = () => {
       const result = await response.json();
 
       if (result.success) {
-        alert('Price declined. Your order has been cancelled.');
+        await alert('Price declined. Your order has been cancelled.', 'Success', 'success');
         // Refresh orders to show updated status
         const ordersResult = await getUserOrderTracking();
         if (ordersResult.success) {
           setOrders(ordersResult.data);
         }
       } else {
-        alert(result.message || 'Failed to decline price');
+        await alert(result.message || 'Failed to decline price', 'Error', 'error');
         console.error('Failed to decline price:', result);
       }
     } catch (error) {
-      alert('Error declining price. Please try again.');
+      await alert('Error declining price. Please try again.', 'Error', 'error');
       console.error('Error declining price:', error);
     }
   };
@@ -1025,8 +1043,37 @@ const Profile = () => {
         <div className="user-info-card">
           <div className="user-card-row">
             <img src={dp} alt="User" className="user-avatar" />
-            <div>
+            <div style={{ flex: 1 }}>
               <div className="user-name">{user.first_name} {user.last_name}</div>
+              <button 
+                onClick={async () => {
+                  setLoadingMeasurements(true);
+                  setMeasurementsModalOpen(true);
+                  const result = await getMyMeasurements();
+                  if (result.success && result.measurements) {
+                    setMeasurements(result.measurements);
+                  } else {
+                    setMeasurements(null);
+                  }
+                  setLoadingMeasurements(false);
+                }}
+                style={{
+                  marginTop: '10px',
+                  padding: '8px 16px',
+                  backgroundColor: '#8B4513',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'background 0.3s ease'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#6B3410'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = '#8B4513'}
+              >
+                View Measurements
+              </button>
             </div>
           </div>
         </div>
@@ -1316,12 +1363,39 @@ const Profile = () => {
                         <span className="date-info">Requested: {formatDate(item.order_date)}</span>
                         <span className="date-info">Updated: {formatDate(item.status_updated_at)}</span>
                       </div>
-                      <button
-                        className="btn-view-details"
-                        onClick={() => handleViewDetails(item)}
-                      >
-                        View Details
-                      </button>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                          className="btn-view-details"
+                          onClick={() => handleViewDetails(item)}
+                        >
+                          View Details
+                        </button>
+                        {item.status !== 'cancelled' && item.status !== 'completed' && item.status !== 'ready_to_pickup' && (
+                          <button
+                            className="btn-cancel"
+                            onClick={() => {
+                              setItemToCancel(item);
+                              setCancelReason('');
+                              setCancelModalOpen(true);
+                            }}
+                            style={{
+                              padding: '8px 16px',
+                              backgroundColor: '#f44336',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '0.9rem',
+                              fontWeight: '500',
+                              transition: 'background 0.3s ease'
+                            }}
+                            onMouseEnter={(e) => e.target.style.backgroundColor = '#da190b'}
+                            onMouseLeave={(e) => e.target.style.backgroundColor = '#f44336'}
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -1332,7 +1406,6 @@ const Profile = () => {
         </div >
       </main >
 
-    * Order Details Modal */
       {
         detailsModalOpen && selectedItem && (
           <div className="details-modal-overlay" onClick={closeDetailsModal}>
@@ -1413,6 +1486,240 @@ const Profile = () => {
         altText={previewImageAlt}
         onClose={() => setImagePreviewOpen(false)}
       />
+
+      {/* Measurements Modal */}
+      {measurementsModalOpen && (
+        <div 
+          className="details-modal-overlay" 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setMeasurementsModalOpen(false);
+            }
+          }}
+        >
+          <div className="details-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="details-modal-header">
+              <h3>My Measurements</h3>
+              <button className="details-modal-close" onClick={() => setMeasurementsModalOpen(false)}>×</button>
+            </div>
+            <div className="details-modal-content">
+              {loadingMeasurements ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>Loading measurements...</div>
+              ) : measurements ? (
+                <div>
+                  {/* Top Measurements */}
+                  {measurements.top && Object.keys(measurements.top).length > 0 && (
+                    <div style={{ marginBottom: '30px' }}>
+                      <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '1.1rem', fontWeight: '600', borderBottom: '2px solid #8B4513', paddingBottom: '8px' }}>Top Measurements</h4>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#f8f9fa' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Measurement</th>
+                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Value (inches)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(measurements.top).map(([key, value], idx) => {
+                            if (!value || value === '' || value === '0') return null;
+                            // Format label to match admin input labels
+                            const labelMap = {
+                              'chest': 'Chest',
+                              'shoulders': 'Shoulders',
+                              'sleeveLength': 'Sleeve Length',
+                              'neck': 'Neck',
+                              'waist': 'Waist',
+                              'length': 'Length'
+                            };
+                            const label = labelMap[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1').trim();
+                            return (
+                              <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
+                                <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', fontWeight: '500', color: '#000' }}>{label}</td>
+                                <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}>{value}"</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Bottom Measurements */}
+                  {measurements.bottom && Object.keys(measurements.bottom).length > 0 && (
+                    <div style={{ marginBottom: '30px' }}>
+                      <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '1.1rem', fontWeight: '600', borderBottom: '2px solid #8B4513', paddingBottom: '8px' }}>Bottom Measurements</h4>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#f8f9fa' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Measurement</th>
+                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Value (inches)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(measurements.bottom).map(([key, value], idx) => {
+                            if (!value || value === '' || value === '0') return null;
+                            // Format label to match admin input labels
+                            const labelMap = {
+                              'waist': 'Waist',
+                              'hips': 'Hips',
+                              'inseam': 'Inseam',
+                              'length': 'Length',
+                              'thigh': 'Thigh',
+                              'outseam': 'Outseam'
+                            };
+                            const label = labelMap[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1').trim();
+                            return (
+                              <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
+                                <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', fontWeight: '500', color: '#000' }}>{label}</td>
+                                <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}>{value}"</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {measurements.notes && (
+                    <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                      <strong style={{ display: 'block', marginBottom: '8px', color: '#333' }}>Notes:</strong>
+                      <p style={{ margin: 0, color: '#666' }}>{measurements.notes}</p>
+                    </div>
+                  )}
+
+                  {(!measurements.top || Object.keys(measurements.top).length === 0) && 
+                   (!measurements.bottom || Object.keys(measurements.bottom).length === 0) && (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                      No measurements have been recorded yet. Please contact the admin to add your measurements.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                  No measurements have been recorded yet. Please contact the admin to add your measurements.
+                </div>
+              )}
+            </div>
+            <div className="details-modal-footer">
+              <button className="btn-secondary" onClick={() => setMeasurementsModalOpen(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Order Modal */}
+      {cancelModalOpen && itemToCancel && (
+        <div 
+          className="details-modal-overlay" 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setCancelModalOpen(false);
+              setItemToCancel(null);
+              setCancelReason('');
+            }
+          }}
+        >
+          <div className="details-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="details-modal-header">
+              <h3>Cancel Service</h3>
+              <button className="details-modal-close" onClick={() => {
+                setCancelModalOpen(false);
+                setItemToCancel(null);
+                setCancelReason('');
+              }}>×</button>
+            </div>
+            <div className="details-modal-content">
+              <p style={{ marginBottom: '20px', color: '#666' }}>
+                Are you sure you want to cancel this service? Please provide a reason for cancellation.
+              </p>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#333' }}>
+                  Cancellation Reason <span style={{ color: '#f44336' }}>*</span>
+                </label>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Please provide a reason for cancellation..."
+                  rows={4}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontFamily: 'inherit',
+                    resize: 'vertical'
+                  }}
+                  required
+                />
+              </div>
+            </div>
+            <div className="details-modal-footer" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button 
+                className="btn-secondary" 
+                onClick={() => {
+                  setCancelModalOpen(false);
+                  setItemToCancel(null);
+                  setCancelReason('');
+                }}
+                disabled={cancelling}
+              >
+                Close
+              </button>
+              <button
+                onClick={async () => {
+                  if (!cancelReason.trim()) {
+                    await alert('Please provide a cancellation reason', 'Required', 'warning');
+                    return;
+                  }
+
+                  setCancelling(true);
+                  const result = await cancelOrderItem(itemToCancel.order_item_id, cancelReason.trim());
+                  
+                  if (result.success) {
+                    await alert('Service cancelled successfully', 'Success', 'success');
+                    setCancelModalOpen(false);
+                    setItemToCancel(null);
+                    setCancelReason('');
+                    // Refresh orders
+                    const ordersResult = await getUserOrderTracking();
+                    if (ordersResult.success) {
+                      const filteredOrders = ordersResult.data.map(order => ({
+                        ...order,
+                        items: order.items.filter(item =>
+                          item.status !== 'cancelled' &&
+                          item.status !== 'rejected' &&
+                          item.status !== 'price_declined'
+                        )
+                      })).filter(order => order.items.length > 0);
+                      setOrders(filteredOrders);
+                    }
+                  } else {
+                    await alert(result.message || 'Failed to cancel service', 'Error', 'error');
+                  }
+                  setCancelling(false);
+                }}
+                disabled={cancelling || !cancelReason.trim()}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#f44336',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: cancelling || !cancelReason.trim() ? 'not-allowed' : 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '500',
+                  opacity: cancelling || !cancelReason.trim() ? 0.6 : 1
+                }}
+              >
+                {cancelling ? 'Cancelling...' : 'Confirm Cancellation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div >
   );
 };

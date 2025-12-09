@@ -1,3 +1,27 @@
+.profile-page {
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.profile-page::-webkit-scrollbar {
+  width: 10px;
+}
+
+.profile-page::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.profile-page::-webkit-scrollbar-thumb {
+  background: #8B4513;
+  border-radius: 10px;
+}
+
+.profile-page::-webkit-scrollbar-thumb:hover {
+  background: #6B3410;
+}
+
 .profile-main {
   padding: 20px;
 }

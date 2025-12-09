@@ -16,6 +16,9 @@ router.get('/:id', orderController.getOrderById);
 router.put('/:id/status', orderController.updateOrderStatus);
 router.put('/:id/cancel', orderController.cancelOrder);
 
+// Cancel order item (individual item)
+router.post('/items/:id/cancel', orderController.cancelOrderItem);
+
 // Order item approval (admin only)
 router.put('/items/:id/approval', orderController.updateItemApprovalStatus);
 

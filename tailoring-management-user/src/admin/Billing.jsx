@@ -3,8 +3,10 @@ import '../adminStyle/bill.css';
 import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
 import { getAllBillingRecords, getBillingStats, updateBillingRecordStatus } from '../api/BillingApi';
+import { useAlert } from '../context/AlertContext';
 
 const Billing = () => {
+  const { alert } = useAlert();
   const [allBills, setAllBills] = useState([]);
   const [billingStats, setBillingStats] = useState({
     total: 0,
@@ -92,14 +94,14 @@ const Billing = () => {
         ));
         const bill = allBills.find(b => b.id === billId);
         if (bill) {
-          alert(`Payment status for ${bill.uniqueNo} updated to ${newStatus}!`);
+          await alert(`Payment status for ${bill.uniqueNo} updated to ${newStatus}!`, 'Success', 'success');
         }
       } else {
-        alert(response.message || 'Failed to update payment status');
+        await alert(response.message || 'Failed to update payment status', 'Error', 'error');
       }
     } catch (error) {
       console.error('Error updating payment status:', error);
-      alert('Error updating payment status');
+      await alert('Error updating payment status', 'Error', 'error');
     }
   };
 

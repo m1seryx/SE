@@ -7,6 +7,7 @@ import { getAllCustomizationOrders, updateCustomizationOrderItem } from '../api/
 import { getUserRole } from '../api/AuthApi';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 import { getMeasurements, saveMeasurements } from '../api/CustomerApi';
+import { useAlert } from '../context/AlertContext';
 
 // Helper to check if user is authenticated
 const isAuthenticated = () => {
@@ -15,6 +16,7 @@ const isAuthenticated = () => {
 
 
 const Customize = () => {
+  const { alert } = useAlert();
   const navigate = useNavigate();
   const [allItems, setAllItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -927,10 +929,10 @@ const Customize = () => {
               <button className="btn-save" onClick={async () => {
                 const result = await saveMeasurements(selectedOrder.user_id, measurements);
                 if (result.success) {
-                  alert('Measurements saved successfully!');
+                  await alert('Measurements saved successfully!', 'Success', 'success');
                   setShowMeasurementsModal(false);
                 } else {
-                  alert(result.message || 'Failed to save measurements');
+                  await alert(result.message || 'Failed to save measurements', 'Error', 'error');
                 }
               }}>Save Measurements</button>
             </div>

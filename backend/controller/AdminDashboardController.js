@@ -43,6 +43,9 @@ function mapStatus(status, orderStatus) {
   if (raw.includes('rent') || raw === 'rented') {
     return { status: 'rented', statusText: 'Rented' };
   }
+  if (raw === 'accepted' || raw.includes('accept')) {
+    return { status: 'accepted', statusText: 'Accepted' };
+  }
   if (raw.includes('progress') || raw.includes('confirm') || raw.includes('pending')) {
     return { status: 'in-progress', statusText: 'In Progress' };
   }
@@ -142,21 +145,95 @@ exports.getDashboardOverview = async (req, res) => {
       return [{ total: 0 }];
     });
 
-    const recentActivityQuery = query(
-      `SELECT 
-         oi.item_id,
-         oi.service_type,
-         oi.approval_status,
-         o.status AS order_status,
-         o.order_date,
-         u.first_name,
-         u.last_name
-       FROM order_items oi
-       JOIN orders o ON oi.order_id = o.order_id
-       JOIN user u ON o.user_id = u.user_id
-       ORDER BY o.order_date DESC, oi.item_id DESC
-       LIMIT 10`
-    ).catch(err => {
+    // Get recent activities from both action logs AND recent order items
+    // This ensures we show all activities even if some aren't logged yet
+    const ActionLog = require('../model/ActionLogModel');
+    const recentActivityQuery = Promise.all([
+      // Get action logs
+      new Promise((resolve) => {
+        ActionLog.getAll(20, (err, logs) => {
+          if (err) {
+            console.error('Error fetching action logs:', err);
+            resolve([]);
+          } else {
+            resolve(logs || []);
+          }
+        });
+      }),
+      // Get recent order items (fallback/supplement)
+      query(
+        `SELECT 
+           oi.item_id,
+           oi.service_type,
+           oi.approval_status,
+           o.status AS order_status,
+           o.order_date,
+           u.first_name,
+           u.last_name,
+           NULL as reason,
+           'status_update' as action_type,
+           'admin' as action_by,
+           NULL as notes
+         FROM order_items oi
+         JOIN orders o ON oi.order_id = o.order_id
+         JOIN user u ON o.user_id = u.user_id
+         WHERE oi.approval_status IS NOT NULL
+         ORDER BY o.order_date DESC, oi.item_id DESC
+         LIMIT 20`
+      ).catch(err => {
+        console.error('Error in order items query:', err);
+        return [];
+      })
+    ]).then(([logs, orderItems]) => {
+      // Combine and deduplicate by order_item_id and timestamp
+      const activityMap = new Map();
+      
+      // Add action logs first (they have more detail)
+      logs.forEach(log => {
+        const key = `${log.order_item_id || 'null'}_${log.created_at}`;
+        activityMap.set(key, {
+          item_id: log.item_id || null,
+          service_type: log.service_type || (log.action_type === 'add_measurements' ? 'Measurements' : 'N/A'),
+          approval_status: log.new_status || log.previous_status || log.action_type,
+          order_status: log.new_status || log.previous_status || log.action_type,
+          order_date: log.created_at,
+          first_name: log.first_name,
+          last_name: log.last_name,
+          reason: log.reason,
+          action_type: log.action_type,
+          action_by: log.action_by,
+          notes: log.notes
+        });
+      });
+      
+      // Add order items that aren't already in logs
+      orderItems.forEach(item => {
+        const timestamp = item.order_date;
+        const key = `${item.item_id}_${timestamp}`;
+        if (!activityMap.has(key)) {
+          activityMap.set(key, {
+            item_id: item.item_id,
+            service_type: item.service_type,
+            approval_status: item.approval_status,
+            order_status: item.order_status,
+            order_date: timestamp,
+            first_name: item.first_name,
+            last_name: item.last_name,
+            reason: item.reason,
+            action_type: item.action_type || 'status_update',
+            action_by: item.action_by || 'admin',
+            notes: item.notes
+          });
+        }
+      });
+      
+      // Convert map to array and sort by date
+      const activities = Array.from(activityMap.values())
+        .sort((a, b) => new Date(b.order_date) - new Date(a.order_date))
+        .slice(0, 20); // Limit to 20 most recent
+      
+      return activities;
+    }).catch(err => {
       console.error('Error in recentActivityQuery:', err);
       return [];
     });
@@ -242,7 +319,10 @@ exports.getDashboardOverview = async (req, res) => {
         service: mapService(row.service_type),
         status: mappedStatus.status,
         statusText: mappedStatus.statusText,
-        time: formatTimeAgo(orderDate)
+        time: formatTimeAgo(orderDate),
+        reason: row.reason || null,
+        actionType: row.action_type || null,
+        actionBy: row.action_by || null
       };
     });
 

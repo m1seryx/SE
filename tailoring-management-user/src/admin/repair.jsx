@@ -4,8 +4,10 @@ import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
 import { getAllRepairOrders, getRepairOrdersByStatus, updateRepairOrderItem } from '../api/RepairOrderApi';
 import ImagePreviewModal from '../components/ImagePreviewModal';
+import { useAlert } from '../context/AlertContext';
 
 const Repair = () => {
+  const { alert, confirm } = useAlert();
   const [allItems, setAllItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -211,19 +213,20 @@ const Repair = () => {
         console.log("Refreshing data...");
         await loadRepairOrders(); // Refresh data
         console.log("Data refreshed");
-        alert("Repair request accepted!");
+        await alert("Repair request accepted!", "Success", "success");
       } else {
-        alert(result.message || "Failed to accept repair request");
+        await alert(result.message || "Failed to accept repair request", "Error", "error");
       }
     } catch (err) {
       console.error("Accept error:", err);
-      alert("Failed to accept repair request");
+      await alert("Failed to accept repair request", "Error", "error");
     }
   };
 
   const handleDecline = async (itemId) => {
     console.log("Declining item:", itemId);
-    if (window.confirm("Decline this repair request?")) {
+    const confirmed = await confirm("Decline this repair request?", "Decline Repair", "warning");
+    if (confirmed) {
       try {
         const result = await updateRepairOrderItem(itemId, {
           approvalStatus: 'cancelled'  // Use 'cancelled' instead of 'rejected'
@@ -232,11 +235,11 @@ const Repair = () => {
         if (result.success) {
           loadRepairOrders(); // Refresh data
         } else {
-          alert(result.message || "Failed to decline repair request");
+          await alert(result.message || "Failed to decline repair request", "Error", "error");
         }
       } catch (err) {
         console.error("Decline error:", err);
-        alert("Failed to decline repair request");
+        await alert("Failed to decline repair request", "Error", "error");
       }
     }
   };
@@ -264,13 +267,13 @@ const Repair = () => {
         
         const item = allItems.find(o => o.item_id === itemId);
         if (item) {
-          alert(`Order #${item.order_id} status updated!`);
+          await alert(`Order #${item.order_id} status updated!`, "Success", "success");
         }
       } else {
-        alert(result.message || "Failed to update status");
+        await alert(result.message || "Failed to update status", "Error", "error");
       }
     } catch (err) {
-      alert("Failed to update status");
+      await alert("Failed to update status", "Error", "error");
     }
   };
 
@@ -302,13 +305,13 @@ const Repair = () => {
       if (result.success) {
         setShowEditModal(false);
         loadRepairOrders(); // Refresh data
-        alert('Repair order updated successfully!');
+        await alert('Repair order updated successfully!', "Success", "success");
       } else {
-        alert(result.message || 'Failed to update repair order');
+        await alert(result.message || 'Failed to update repair order', "Error", "error");
       }
     } catch (err) {
       console.error("Frontend - Update error:", err);
-      alert('Failed to update repair order');
+      await alert('Failed to update repair order', "Error", "error");
     }
   };
 

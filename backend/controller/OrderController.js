@@ -182,10 +182,115 @@ exports.cancelOrder = (req, res) => {
   });
 };
 
+// Cancel order item (individual item)
+exports.cancelOrderItem = (req, res) => {
+  const itemId = req.params.id;
+  const { reason } = req.body;
+  const userId = req.user.id;
+  const isAdmin = req.user.role === 'admin';
+
+  if (!reason || reason.trim() === '') {
+    return res.status(400).json({
+      success: false,
+      message: "Cancellation reason is required"
+    });
+  }
+
+  // Get order item to check permissions
+  Order.getOrderItemById(itemId, (err, item) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+        error: err
+      });
+    }
+
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: "Order item not found"
+      });
+    }
+
+    // Get order to check user ownership
+    Order.getById(item.order_id, (orderErr, orderResult) => {
+      if (orderErr || !orderResult || orderResult.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found"
+        });
+      }
+
+      const order = orderResult[0];
+
+      // Check permissions - user can only cancel their own items, admin can cancel any
+      if (!isAdmin && order.user_id !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. You can only cancel your own orders."
+        });
+      }
+
+      // Check if already cancelled
+      if (item.approval_status === 'cancelled') {
+        return res.status(400).json({
+          success: false,
+          message: "This order item is already cancelled"
+        });
+      }
+
+      const previousStatus = item.approval_status || 'pending';
+
+      // Cancel the order item
+      Order.cancelOrderItem(itemId, reason, (cancelErr, cancelResult) => {
+        if (cancelErr) {
+          return res.status(500).json({
+            success: false,
+            message: "Error cancelling order item",
+            error: cancelErr
+          });
+        }
+
+        // Log the action
+        const ActionLog = require('../model/ActionLogModel');
+        ActionLog.create({
+          order_item_id: itemId,
+          user_id: userId,
+          action_type: 'cancel',
+          action_by: isAdmin ? 'admin' : 'user',
+          previous_status: previousStatus,
+          new_status: 'cancelled',
+          reason: reason,
+          notes: `Order item cancelled by ${isAdmin ? 'admin' : 'user'}`
+        }, (logErr) => {
+          if (logErr) {
+            console.error('Error logging action:', logErr);
+          }
+        });
+
+        // Update order tracking
+        const OrderTracking = require('../model/OrderTrackingModel');
+        OrderTracking.updateStatus(itemId, 'cancelled', `Cancelled: ${reason}`, userId, (trackErr) => {
+          if (trackErr) {
+            console.error('Error updating order tracking:', trackErr);
+          }
+        });
+
+        res.json({
+          success: true,
+          message: "Order item cancelled successfully"
+        });
+      });
+    });
+  });
+};
+
 // Update order item approval status
 exports.updateItemApprovalStatus = (req, res) => {
   const itemId = req.params.id;
   const { status } = req.body;
+  const userId = req.user.id;
 
   if (!status) {
     return res.status(400).json({
@@ -202,18 +307,48 @@ exports.updateItemApprovalStatus = (req, res) => {
     });
   }
 
-  Order.updateItemApprovalStatus(itemId, status, (err, result) => {
-    if (err) {
+  // Get current status before updating
+  Order.getOrderItemById(itemId, (getErr, item) => {
+    if (getErr || !item) {
       return res.status(500).json({
         success: false,
-        message: "Error updating item approval status",
-        error: err
+        message: "Error fetching order item",
+        error: getErr
       });
     }
 
-    res.json({
-      success: true,
-      message: "Item approval status updated successfully"
+    const previousStatus = item.approval_status || 'pending';
+
+    Order.updateItemApprovalStatus(itemId, status, (err, result) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Error updating item approval status",
+          error: err
+        });
+      }
+
+      // Log the action
+      const ActionLog = require('../model/ActionLogModel');
+      ActionLog.create({
+        order_item_id: itemId,
+        user_id: userId,
+        action_type: 'status_update',
+        action_by: 'admin',
+        previous_status: previousStatus,
+        new_status: status,
+        reason: null,
+        notes: `Admin updated order item status from ${previousStatus} to ${status}`
+      }, (logErr) => {
+        if (logErr) {
+          console.error('Error logging action:', logErr);
+        }
+      });
+
+      res.json({
+        success: true,
+        message: "Item approval status updated successfully"
+      });
     });
   });
 };
@@ -395,20 +530,64 @@ exports.updateRepairOrderItem = (req, res) => {
     });
   }
 
-  Order.updateRepairOrderItem(itemId, updateData, (err, result) => {
-    console.log("Controller - Update result:", err, result);
-    if (err) {
+  // Get current status before updating
+  Order.getOrderItemById(itemId, (getErr, item) => {
+    if (getErr || !item) {
       return res.status(500).json({
         success: false,
-        message: "Error updating repair order item",
-        error: err
+        message: "Error fetching order item",
+        error: getErr
       });
     }
 
-    console.log("Controller - Update successful, affected rows:", result?.affectedRows);
-    res.json({
-      success: true,
-      message: "Repair order item updated successfully"
+    const previousStatus = item.approval_status || 'pending';
+    const previousPrice = item.final_price || null;
+
+    Order.updateRepairOrderItem(itemId, updateData, (err, result) => {
+      console.log("Controller - Update result:", err, result);
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Error updating repair order item",
+          error: err
+        });
+      }
+
+      // Log the action
+      const ActionLog = require('../model/ActionLogModel');
+      const userId = req.user.id;
+      let actionNotes = [];
+      
+      if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
+        actionNotes.push(`Status: ${previousStatus} → ${updateData.approvalStatus}`);
+      }
+      if (updateData.finalPrice && updateData.finalPrice !== previousPrice) {
+        actionNotes.push(`Price: ₱${previousPrice || 0} → ₱${updateData.finalPrice}`);
+      }
+      if (updateData.adminNotes) {
+        actionNotes.push(`Admin notes: ${updateData.adminNotes}`);
+      }
+
+      ActionLog.create({
+        order_item_id: itemId,
+        user_id: userId,
+        action_type: 'status_update',
+        action_by: 'admin',
+        previous_status: previousStatus,
+        new_status: updateData.approvalStatus || previousStatus,
+        reason: null,
+        notes: `Admin updated repair order: ${actionNotes.join(', ')}`
+      }, (logErr) => {
+        if (logErr) {
+          console.error('Error logging action:', logErr);
+        }
+      });
+
+      console.log("Controller - Update successful, affected rows:", result?.affectedRows);
+      res.json({
+        success: true,
+        message: "Repair order item updated successfully"
+      });
     });
   });
 };
@@ -523,18 +702,62 @@ exports.updateDryCleaningOrderItem = (req, res) => {
     });
   }
 
-  Order.updateDryCleaningOrderItem(itemId, updateData, (err, result) => {
-    if (err) {
+  // Get current status before updating
+  Order.getOrderItemById(itemId, (getErr, item) => {
+    if (getErr || !item) {
       return res.status(500).json({
         success: false,
-        message: "Error updating dry cleaning order item",
-        error: err
+        message: "Error fetching order item",
+        error: getErr
       });
     }
 
-    res.json({
-      success: true,
-      message: "Dry cleaning order item updated successfully"
+    const previousStatus = item.approval_status || 'pending';
+    const previousPrice = item.final_price || null;
+
+    Order.updateDryCleaningOrderItem(itemId, updateData, (err, result) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Error updating dry cleaning order item",
+          error: err
+        });
+      }
+
+      // Log the action
+      const ActionLog = require('../model/ActionLogModel');
+      const userId = req.user.id;
+      let actionNotes = [];
+      
+      if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
+        actionNotes.push(`Status: ${previousStatus} → ${updateData.approvalStatus}`);
+      }
+      if (updateData.finalPrice && updateData.finalPrice !== previousPrice) {
+        actionNotes.push(`Price: ₱${previousPrice || 0} → ₱${updateData.finalPrice}`);
+      }
+      if (updateData.adminNotes) {
+        actionNotes.push(`Admin notes: ${updateData.adminNotes}`);
+      }
+
+      ActionLog.create({
+        order_item_id: itemId,
+        user_id: userId,
+        action_type: 'status_update',
+        action_by: 'admin',
+        previous_status: previousStatus,
+        new_status: updateData.approvalStatus || previousStatus,
+        reason: null,
+        notes: `Admin updated dry cleaning order: ${actionNotes.join(', ')}`
+      }, (logErr) => {
+        if (logErr) {
+          console.error('Error logging action:', logErr);
+        }
+      });
+
+      res.json({
+        success: true,
+        message: "Dry cleaning order item updated successfully"
+      });
     });
   });
 };
@@ -654,18 +877,58 @@ exports.updateRentalOrderItem = (req, res) => {
     });
   }
 
-  Order.updateRentalOrderItem(itemId, updateData, (err, result) => {
-    if (err) {
+  // Get current status before updating
+  Order.getOrderItemById(itemId, (getErr, item) => {
+    if (getErr || !item) {
       return res.status(500).json({
         success: false,
-        message: "Error updating rental order item",
-        error: err
+        message: "Error fetching order item",
+        error: getErr
       });
     }
 
-    res.json({
-      success: true,
-      message: "Rental order item updated successfully"
+    const previousStatus = item.approval_status || 'pending';
+
+    Order.updateRentalOrderItem(itemId, updateData, (err, result) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Error updating rental order item",
+          error: err
+        });
+      }
+
+      // Log the action
+      const ActionLog = require('../model/ActionLogModel');
+      const userId = req.user.id;
+      let actionNotes = [];
+      
+      if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
+        actionNotes.push(`Status: ${previousStatus} → ${updateData.approvalStatus}`);
+      }
+      if (updateData.adminNotes) {
+        actionNotes.push(`Admin notes: ${updateData.adminNotes}`);
+      }
+
+      ActionLog.create({
+        order_item_id: itemId,
+        user_id: userId,
+        action_type: 'status_update',
+        action_by: 'admin',
+        previous_status: previousStatus,
+        new_status: updateData.approvalStatus || previousStatus,
+        reason: null,
+        notes: `Admin updated rental order: ${actionNotes.join(', ')}`
+      }, (logErr) => {
+        if (logErr) {
+          console.error('Error logging action:', logErr);
+        }
+      });
+
+      res.json({
+        success: true,
+        message: "Rental order item updated successfully"
+      });
     });
   });
 };

@@ -1,4 +1,5 @@
 const RentalInventory = require('../model/RentalInventoryModel');
+const CustomerMeasurements = require('../model/CustomerMeasurementsModel');
 
 // Get available rental items for user browsing
 exports.getAvailableRentals = (req, res) => {
@@ -268,6 +269,54 @@ exports.getSimilarRentals = (req, res) => {
         message: "Similar rentals retrieved successfully",
         items: similarItems
       });
+    });
+  });
+};
+
+// Get current user's measurements
+exports.getMyMeasurements = (req, res) => {
+  const userId = req.user.id; // From JWT token
+
+  CustomerMeasurements.getByCustomerId(userId, (err, results) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Error fetching measurements",
+        error: err
+      });
+    }
+
+    if (!results || results.length === 0) {
+      return res.json({
+        success: true,
+        message: "No measurements found",
+        measurements: null
+      });
+    }
+
+    const measurement = results[0];
+    
+    // Parse JSON strings
+    let topMeasurements = {};
+    let bottomMeasurements = {};
+    
+    try {
+      topMeasurements = measurement.top_measurements ? JSON.parse(measurement.top_measurements) : {};
+      bottomMeasurements = measurement.bottom_measurements ? JSON.parse(measurement.bottom_measurements) : {};
+    } catch (parseErr) {
+      console.error('Error parsing measurements:', parseErr);
+    }
+
+    res.json({
+      success: true,
+      message: "Measurements retrieved successfully",
+      measurements: {
+        top: topMeasurements,
+        bottom: bottomMeasurements,
+        notes: measurement.notes || '',
+        created_at: measurement.created_at,
+        updated_at: measurement.updated_at
+      }
     });
   });
 };

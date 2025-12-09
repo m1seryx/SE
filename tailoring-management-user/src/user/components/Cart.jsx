@@ -10,8 +10,10 @@ import {
   getCartSummary
 } from '../../api/CartApi';
 import ImagePreviewModal from '../../components/ImagePreviewModal';
+import { useAlert } from '../../context/AlertContext';
 
 const Cart = ({ isOpen, onClose, onCartUpdate }) => {
+  const { confirm } = useAlert();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -124,7 +126,8 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
   };
 
   const handleRemoveItem = async (cartId) => {
-    if (!window.confirm('Are you sure you want to remove this item?')) {
+    const confirmed = await confirm('Are you sure you want to remove this item?', 'Remove Item', 'warning');
+    if (!confirmed) {
       return;
     }
 
@@ -180,7 +183,8 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to submit ${selectedItems.length} selected item(s)?`)) {
+    const confirmed = await confirm(`Are you sure you want to submit ${selectedItems.length} selected item(s)?`, 'Submit Order', 'warning');
+    if (!confirmed) {
       return;
     }
 
@@ -215,7 +219,8 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
   };
 
   const handleClearCart = async () => {
-    if (!window.confirm('Are you sure you want to clear your entire cart?')) {
+    const confirmed = await confirm('Are you sure you want to clear your entire cart?', 'Clear Cart', 'warning');
+    if (!confirmed) {
       return;
     }
 

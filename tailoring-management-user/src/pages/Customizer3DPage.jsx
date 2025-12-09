@@ -146,7 +146,7 @@ const Customizer3DPage = () => {
     setStyle(s);
   }, [garment]);
 
-  const handleSaveDesign = () => {
+  const handleSaveDesign = async () => {
     const summary = {
       garment,
       size,
@@ -257,7 +257,7 @@ const Customizer3DPage = () => {
             imageData: dataUrl,
             garmentName: garmentName,
           });
-          alert('✓ Design image ready!');
+          await alert('✓ Design image ready!', 'Success', 'success');
         } else {
           // Download for web
           const link = document.createElement('a');
@@ -266,14 +266,14 @@ const Customizer3DPage = () => {
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          alert('✓ Design image with details saved as PNG!');
+          await alert('✓ Design image with details saved as PNG!', 'Success', 'success');
         }
       } else {
-        alert('Canvas not found. Design saved to localStorage only.');
+        await alert('Canvas not found. Design saved to localStorage only.', 'Warning', 'warning');
       }
     } catch (error) {
       console.error('Error saving design as PNG:', error);
-      alert('Error saving image. Design saved to localStorage.');
+      await alert('Error saving image. Design saved to localStorage.', 'Error', 'error');
     }
   };
 
@@ -301,7 +301,7 @@ const Customizer3DPage = () => {
     return null;
   };
 
-  const handleApplyDesign = () => {
+  const handleApplyDesign = async () => {
     const garmentTypeName = getGarmentTypeName();
     
     // Calculate estimated price based on garment type
@@ -352,7 +352,7 @@ const Customizer3DPage = () => {
       });
       
       // Show confirmation
-      alert('✓ Design sent to app!');
+      await alert('✓ Design sent to app!', 'Success', 'success');
       return;
     }
     

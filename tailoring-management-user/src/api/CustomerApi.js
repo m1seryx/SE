@@ -92,7 +92,7 @@ export async function saveMeasurements(customerId, measurements) {
   }
 }
 
-// Get customer measurements
+// Get customer measurements (admin only)
 export async function getMeasurements(customerId) {
   try {
     const response = await axios.get(`${BASE_URL}/customers/${customerId}/measurements`, {
@@ -104,6 +104,23 @@ export async function getMeasurements(customerId) {
     return {
       success: false,
       message: error.response?.data?.message || "Error fetching measurements"
+    };
+  }
+}
+
+// Get current user's own measurements
+export async function getMyMeasurements() {
+  try {
+    const response = await axios.get(`${BASE_URL}/user/measurements`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Get my measurements error:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Error fetching measurements",
+      measurements: null
     };
   }
 }

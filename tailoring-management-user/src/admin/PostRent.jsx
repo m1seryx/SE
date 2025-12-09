@@ -4,8 +4,10 @@ import '../adminStyle/post.css';
 import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
 import { getAllRentals, createRental, updateRental, deleteRental, getRentalImageUrl } from '../api/RentalApi';
+import { useAlert } from '../context/AlertContext';
 
 const PostRent = () => {
+  const { alert, confirm } = useAlert();
   const [items, setItems] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -29,7 +31,21 @@ const PostRent = () => {
     total_available: '1',
     material: '',
     care_instructions: '',
-    status: 'available'
+    status: 'available',
+    measurements: {
+      // Top measurements
+      chest: '',
+      shoulders: '',
+      sleeveLength: '',
+      neck: '',
+      waist: '',
+      length: '',
+      // Bottom measurements
+      hips: '',
+      inseam: '',
+      thigh: '',
+      outseam: ''
+    }
   });
 
   // Load rental items from API on component mount
@@ -39,13 +55,27 @@ const PostRent = () => {
 
   const loadRentalItems = async () => {
     try {
+      setIsLoading(true);
+      setError('');
       const result = await getAllRentals();
-      if (result.items) {
+      console.log('Rental items API response:', result); // Debug log
+      if (result.items && Array.isArray(result.items) && result.items.length > 0) {
         setItems(result.items);
+        console.log('Loaded rental items:', result.items.length); // Debug log
+      } else if (result && Array.isArray(result) && result.length > 0) {
+        // Handle case where API returns array directly
+        setItems(result);
+        console.log('Loaded rental items (array):', result.length); // Debug log
+      } else {
+        console.log('No rental items found in database. Admin should add items via "Add Post +" button.');
+        setItems([]);
       }
     } catch (error) {
       console.error('Error loading rental items:', error);
-      setError('Error loading rental items');
+      setError('Error loading rental items: ' + (error.message || 'Unknown error'));
+      setItems([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -54,6 +84,22 @@ const PostRent = () => {
     if (id != null) {
       const item = items.find(i => i.item_id === id);
       if (item) {
+        // Parse measurements if stored as JSON string
+        let measurements = {
+          chest: '', shoulders: '', sleeveLength: '', neck: '', waist: '', length: '',
+          hips: '', inseam: '', thigh: '', outseam: ''
+        };
+        if (item.size) {
+          try {
+            const parsed = typeof item.size === 'string' ? JSON.parse(item.size) : item.size;
+            if (parsed && typeof parsed === 'object') {
+              measurements = { ...measurements, ...parsed };
+            }
+          } catch (e) {
+            // If not JSON, keep as is (backward compatibility)
+          }
+        }
+
         setFormData({
           item_name: item.item_name || '',
           description: item.description || '',
@@ -67,7 +113,8 @@ const PostRent = () => {
           total_available: item.total_available?.toString() || '1',
           material: item.material || '',
           care_instructions: item.care_instructions || '',
-          status: item.status || 'available'
+          status: item.status || 'available',
+          measurements: measurements
         });
         setImagePreview(item.image_url ? getRentalImageUrl(item.image_url) : '');
         setEditingId(id);
@@ -86,7 +133,11 @@ const PostRent = () => {
         total_available: '1',
         material: '',
         care_instructions: '',
-        status: 'available'
+        status: 'available',
+        measurements: {
+          chest: '', shoulders: '', sleeveLength: '', neck: '', waist: '', length: '',
+          hips: '', inseam: '', thigh: '', outseam: ''
+        }
       });
       setImagePreview('');
       setImageFile(null);
@@ -128,6 +179,25 @@ const PostRent = () => {
     }
   };
 
+  // Determine if category uses top or bottom measurements
+  const isTopCategory = (category) => {
+    return ['suit', 'tuxedo', 'formal_wear', 'business'].includes(category);
+  };
+
+  const isBottomCategory = (category) => {
+    return ['casual', 'pants', 'trousers'].includes(category);
+  };
+
+  const handleMeasurementChange = (field, value) => {
+    setFormData({
+      ...formData,
+      measurements: {
+        ...formData.measurements,
+        [field]: value
+      }
+    });
+  };
+
   const saveItem = async () => {
     setError('');
     setIsLoading(true);
@@ -139,22 +209,45 @@ const PostRent = () => {
       return;
     }
 
+    // Prepare form data with measurements as JSON string in size field
+    const measurementsToSave = {};
+    if (isTopCategory(formData.category)) {
+      measurementsToSave.chest = formData.measurements.chest || '';
+      measurementsToSave.shoulders = formData.measurements.shoulders || '';
+      measurementsToSave.sleeveLength = formData.measurements.sleeveLength || '';
+      measurementsToSave.neck = formData.measurements.neck || '';
+      measurementsToSave.waist = formData.measurements.waist || '';
+      measurementsToSave.length = formData.measurements.length || '';
+    } else if (isBottomCategory(formData.category)) {
+      measurementsToSave.waist = formData.measurements.waist || '';
+      measurementsToSave.hips = formData.measurements.hips || '';
+      measurementsToSave.inseam = formData.measurements.inseam || '';
+      measurementsToSave.length = formData.measurements.length || '';
+      measurementsToSave.thigh = formData.measurements.thigh || '';
+      measurementsToSave.outseam = formData.measurements.outseam || '';
+    }
+
+    const dataToSave = {
+      ...formData,
+      size: JSON.stringify(measurementsToSave)
+    };
+
     try {
       let result;
       
       if (editingId) {
         // Update existing item
-        result = await updateRental(editingId, formData, imageFile);
+        result = await updateRental(editingId, dataToSave, imageFile);
       } else {
         // Create new item
-        result = await createRental(formData, imageFile);
+        result = await createRental(dataToSave, imageFile);
       }
 
       if (result.success !== false) {
         // Reload items from server
         await loadRentalItems();
         closeModal();
-        alert(editingId ? 'Item updated successfully!' : 'Item posted successfully!');
+        await alert(editingId ? 'Item updated successfully!' : 'Item posted successfully!', 'Success', 'success');
       } else {
         setError(result.message || 'Error saving item');
       }
@@ -167,12 +260,13 @@ const PostRent = () => {
   };
 
   const deleteItem = async (id) => {
-    if (window.confirm('Delete this item permanently?')) {
+    const confirmed = await confirm('Delete this item permanently?', 'Delete Item', 'warning');
+    if (confirmed) {
       try {
         const result = await deleteRental(id);
         if (result.success !== false) {
           setItems(prev => prev.filter(item => item.item_id !== id));
-          alert('Item deleted successfully!');
+          await alert('Item deleted successfully!', 'Success', 'success');
         } else {
           setError(result.message || 'Error deleting item');
         }
@@ -193,7 +287,10 @@ const PostRent = () => {
     setSelectedItem(null);
   };
 
-  const filteredItems = filter ? items.filter(i => i.status === filter) : items;
+  // Filter items by status - handle null/undefined status values
+  const filteredItems = filter 
+    ? items.filter(i => (i.status || 'available') === filter) 
+    : items;
 
   return (
     <div className="postrent">
@@ -229,9 +326,13 @@ const PostRent = () => {
         </div>
 
         <div className="items-grid">
-          {filteredItems.length === 0 ? (
+          {isLoading ? (
+            <p className="empty-message">Loading rental items...</p>
+          ) : filteredItems.length === 0 ? (
             <p className="empty-message">
-              No items found. Click "Add Post +" to start!
+              {items.length === 0 
+                ? 'No rental items found in database. Click "Add Post +" to add your first rental item!' 
+                : `No items found with status "${filter || 'all'}". ${items.length} total item(s) in database.`}
             </p>
           ) : (
             filteredItems.map(item => (
@@ -324,9 +425,236 @@ const PostRent = () => {
                     <option value="formal_wear">Formal Wear</option>
                     <option value="business">Business</option>
                     <option value="casual">Casual</option>
+                    <option value="pants">Pants</option>
+                    <option value="trousers">Trousers</option>
                   </select>
                 </div>
               </div>
+
+              {/* Measurements Section - Dynamic based on category */}
+              {isTopCategory(formData.category) && (
+                <div className="measurements-section" style={{ marginBottom: '20px' }}>
+                  <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '1.1rem', fontWeight: '600' }}>Top Measurements</h4>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f8f9fa' }}>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Measurement</th>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Value (inches)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Chest (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.5"
+                            value={formData.measurements.chest} 
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              measurements: { ...formData.measurements, chest: e.target.value }
+                            })} 
+                            placeholder="Enter chest measurement"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Shoulders (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.5"
+                            value={formData.measurements.shoulders} 
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              measurements: { ...formData.measurements, shoulders: e.target.value }
+                            })} 
+                            placeholder="Enter shoulder measurement"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Sleeve Length (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.5"
+                            value={formData.measurements.sleeveLength} 
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              measurements: { ...formData.measurements, sleeveLength: e.target.value }
+                            })} 
+                            placeholder="Enter sleeve length"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Neck (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.5"
+                            value={formData.measurements.neck} 
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              measurements: { ...formData.measurements, neck: e.target.value }
+                            })} 
+                            placeholder="Enter neck measurement"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Waist (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.5"
+                            value={formData.measurements.waist} 
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              measurements: { ...formData.measurements, waist: e.target.value }
+                            })} 
+                            placeholder="Enter waist measurement"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '12px', color: '#000' }}><strong style={{ color: '#000' }}>Length (inches)</strong></td>
+                        <td style={{ padding: '12px' }}>
+                          <input 
+                            type="number" 
+                            step="0.5"
+                            value={formData.measurements.length} 
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              measurements: { ...formData.measurements, length: e.target.value }
+                            })} 
+                            placeholder="Enter length measurement"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {isBottomCategory(formData.category) && (
+                <div className="measurements-section" style={{ marginBottom: '20px' }}>
+                  <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '1.1rem', fontWeight: '600' }}>Bottom Measurements</h4>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f8f9fa' }}>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Measurement</th>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Value (inches)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Waist (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.5"
+                            value={formData.measurements.waist} 
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              measurements: { ...formData.measurements, waist: e.target.value }
+                            })} 
+                            placeholder="Enter waist measurement"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Hips (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.5"
+                            value={formData.measurements.hips} 
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              measurements: { ...formData.measurements, hips: e.target.value }
+                            })} 
+                            placeholder="Enter hip measurement"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Inseam (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.5"
+                            value={formData.measurements.inseam} 
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              measurements: { ...formData.measurements, inseam: e.target.value }
+                            })} 
+                            placeholder="Enter inseam measurement"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Length (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.5"
+                            value={formData.measurements.length} 
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              measurements: { ...formData.measurements, length: e.target.value }
+                            })} 
+                            placeholder="Enter length measurement"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Thigh (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.5"
+                            value={formData.measurements.thigh} 
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              measurements: { ...formData.measurements, thigh: e.target.value }
+                            })} 
+                            placeholder="Enter thigh measurement"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '12px', color: '#000' }}><strong style={{ color: '#000' }}>Outseam (inches)</strong></td>
+                        <td style={{ padding: '12px' }}>
+                          <input 
+                            type="number" 
+                            step="0.5"
+                            value={formData.measurements.outseam} 
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              measurements: { ...formData.measurements, outseam: e.target.value }
+                            })} 
+                            placeholder="Enter outseam measurement"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               <div className="form-grid">
                 <div className="input-group">
@@ -378,15 +706,6 @@ const PostRent = () => {
                     value={formData.brand} 
                     onChange={(e) => setFormData({ ...formData, brand: e.target.value })} 
                     placeholder="e.g., Armani"
-                  />
-                </div>
-                <div className="input-group">
-                  <label>Size</label>
-                  <input 
-                    type="text" 
-                    value={formData.size} 
-                    onChange={(e) => setFormData({ ...formData, size: e.target.value })} 
-                    placeholder="e.g., L, 42"
                   />
                 </div>
               </div>
@@ -486,8 +805,50 @@ const PostRent = () => {
               <span>{selectedItem.brand || 'N/A'}</span>
             </div>
             <div className="detail-item">
-              <label>Size:</label>
-              <span>{selectedItem.size || 'N/A'}</span>
+              <label>Measurements:</label>
+              <div style={{ marginTop: '8px' }}>
+                {(() => {
+                  let measurements = {};
+                  try {
+                    measurements = typeof selectedItem.size === 'string' ? JSON.parse(selectedItem.size || '{}') : (selectedItem.size || {});
+                  } catch (e) {
+                    // If not JSON, show as plain text
+                    return <span>{selectedItem.size || 'N/A'}</span>;
+                  }
+                  
+                  if (isTopCategory(selectedItem.category)) {
+                    return (
+                      <div>
+                        <strong>Top Measurements:</strong>
+                        <div style={{ marginLeft: '15px', marginTop: '5px' }}>
+                          {measurements.chest && <div>Chest: {measurements.chest}"</div>}
+                          {measurements.shoulders && <div>Shoulders: {measurements.shoulders}"</div>}
+                          {measurements.sleeveLength && <div>Sleeve Length: {measurements.sleeveLength}"</div>}
+                          {measurements.neck && <div>Neck: {measurements.neck}"</div>}
+                          {measurements.waist && <div>Waist: {measurements.waist}"</div>}
+                          {measurements.length && <div>Length: {measurements.length}"</div>}
+                        </div>
+                      </div>
+                    );
+                  } else if (isBottomCategory(selectedItem.category)) {
+                    return (
+                      <div>
+                        <strong>Bottom Measurements:</strong>
+                        <div style={{ marginLeft: '15px', marginTop: '5px' }}>
+                          {measurements.waist && <div>Waist: {measurements.waist}"</div>}
+                          {measurements.hips && <div>Hips: {measurements.hips}"</div>}
+                          {measurements.inseam && <div>Inseam: {measurements.inseam}"</div>}
+                          {measurements.length && <div>Length: {measurements.length}"</div>}
+                          {measurements.thigh && <div>Thigh: {measurements.thigh}"</div>}
+                          {measurements.outseam && <div>Outseam: {measurements.outseam}"</div>}
+                        </div>
+                      </div>
+                    );
+                  } else {
+                    return <span>{selectedItem.size || 'N/A'}</span>;
+                  }
+                })()}
+              </div>
             </div>
             <div className="detail-item">
               <label>Color:</label>
