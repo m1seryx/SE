@@ -382,26 +382,6 @@ export default function RepairClothes() {
             <Ionicons name="chevron-down" size={16} color="#8D6E63" />
           </TouchableOpacity>
 
-            {/* Date Picker Modal */}
-            <DateTimePickerModal
-              visible={showDatePicker}
-              mode="date"
-              value={appointmentDate || new Date()}
-              minimumDate={new Date()}
-              onConfirm={handleDateConfirm}
-              onCancel={handlePickerCancel}
-            />
-
-            {/* Time Picker Modal */}
-            <DateTimePickerModal
-              visible={showTimePicker}
-              mode="time"
-              value={appointmentDate || new Date()}
-              onConfirm={handleTimeConfirm}
-              onCancel={handlePickerCancel}
-            />
-          </View>
-
           {/* Price Estimate */}
           {estimatedPrice > 0 && (
             <View style={styles.summaryCard}>
@@ -454,6 +434,25 @@ export default function RepairClothes() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Date Picker Modal */}
+      <DateTimePickerModal
+        visible={showDatePicker}
+        mode="date"
+        value={appointmentDate || new Date()}
+        minimumDate={new Date()}
+        onConfirm={handleDateConfirm}
+        onCancel={handlePickerCancel}
+      />
+
+      {/* Time Picker Modal */}
+      <DateTimePickerModal
+        visible={showTimePicker}
+        mode="time"
+        value={appointmentDate || new Date()}
+        onConfirm={handleTimeConfirm}
+        onCancel={handlePickerCancel}
+      />
     </SafeAreaView>
   );
 }

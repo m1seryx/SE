@@ -316,16 +316,6 @@ export default function DryCleaningClothes() {
             <Ionicons name="chevron-down" size={16} color="#8D6E63" />
           </TouchableOpacity>
 
-            <DateTimePickerModal
-              visible={showDatePicker}
-              mode="date"
-              value={pickupDate}
-              minimumDate={new Date()}
-              onConfirm={handleDateConfirm}
-              onCancel={handlePickerCancel}
-            />
-          </View>
-
           {/* Buttons */}
           <View style={styles.buttonRow}>
             <TouchableOpacity
@@ -346,6 +336,16 @@ export default function DryCleaningClothes() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Date Picker Modal */}
+      <DateTimePickerModal
+        visible={showDatePicker}
+        mode="date"
+        value={pickupDate}
+        minimumDate={new Date()}
+        onConfirm={handleDateConfirm}
+        onCancel={handlePickerCancel}
+      />
     </SafeAreaView>
   );
 }
