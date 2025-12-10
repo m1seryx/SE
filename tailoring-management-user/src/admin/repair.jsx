@@ -74,8 +74,19 @@ const Repair = () => {
   };
 
   // Get next status in workflow
-  const getNextStatus = (currentStatus, serviceType = 'repair') => {
+  const getNextStatus = (currentStatus, serviceType = 'repair', item = null) => {
     if (!currentStatus || currentStatus === 'pending_review' || currentStatus === 'pending') {
+      return 'accepted';
+    }
+    
+    // If status is 'accepted', skip 'price_confirmation' and go directly to 'confirmed'
+    // Price confirmation should only appear if admin explicitly sets status to 'price_confirmation' when editing price
+    if (currentStatus === 'accepted') {
+      return 'confirmed';
+    }
+    
+    // If status is 'price_confirmation', next is 'accepted' (after user confirms the price)
+    if (currentStatus === 'price_confirmation') {
       return 'accepted';
     }
     
@@ -97,8 +108,8 @@ const Repair = () => {
   };
 
   // Get next status label for display
-  const getNextStatusLabel = (currentStatus, serviceType = 'repair') => {
-    const nextStatus = getNextStatus(currentStatus, serviceType);
+  const getNextStatusLabel = (currentStatus, serviceType = 'repair', item = null) => {
+    const nextStatus = getNextStatus(currentStatus, serviceType, item);
     if (!nextStatus) return null;
     
     const labelMap = {
@@ -292,6 +303,19 @@ const Repair = () => {
     setShowEditModal(true);
   };
 
+  // Helper to get estimated price for comparison
+  const getEstimatedPrice = (item) => {
+    if (!item || !item.specific_data) return null;
+    const damageLevel = item.specific_data.damageLevel;
+    const prices = {
+      'minor': 300,
+      'moderate': 500,
+      'major': 800,
+      'severe': 1200
+    };
+    return item.specific_data.estimatedPrice || prices[damageLevel] || null;
+  };
+
   const handleSaveEdit = async () => {
     if (!selectedOrder) return;
     
@@ -456,11 +480,11 @@ const Repair = () => {
                         </div>
                       ) : (
                         <div className="action-buttons">
-                          {getNextStatus(item.approval_status, 'repair') && (
+                          {getNextStatus(item.approval_status, 'repair', item) && (
                             <button 
                               className="icon-btn next-status" 
-                              onClick={() => updateStatus(item.item_id, getNextStatus(item.approval_status, 'repair'))} 
-                              title={`Move to ${getNextStatusLabel(item.approval_status, 'repair')}`}
+                              onClick={() => updateStatus(item.item_id, getNextStatus(item.approval_status, 'repair', item))} 
+                              title={`Move to ${getNextStatusLabel(item.approval_status, 'repair', item)}`}
                               style={{ backgroundColor: '#4CAF50', color: 'white' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -523,10 +547,41 @@ const Repair = () => {
                 <input 
                   type="number" 
                   value={editForm.finalPrice} 
-                  onChange={(e) => setEditForm({...editForm, finalPrice: e.target.value})} 
+                  onChange={(e) => {
+                    const newPrice = e.target.value;
+                    const estimatedPrice = getEstimatedPrice(selectedOrder);
+                    const currentPrice = parseFloat(selectedOrder.final_price || 0);
+                    
+                    // If price is being changed and status is pending or accepted, auto-set to price_confirmation
+                    let newStatus = editForm.approvalStatus;
+                    if (newPrice && estimatedPrice && (editForm.approvalStatus === 'pending' || editForm.approvalStatus === 'accepted')) {
+                      const priceChanged = Math.abs(parseFloat(newPrice) - estimatedPrice) > 0.01;
+                      if (priceChanged) {
+                        newStatus = 'price_confirmation';
+                      }
+                    }
+                    
+                    setEditForm({...editForm, finalPrice: newPrice, approvalStatus: newStatus});
+                  }} 
                   placeholder="Enter final price" 
                   style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                 />
+                {(() => {
+                  const estimatedPrice = getEstimatedPrice(selectedOrder);
+                  if (estimatedPrice && editForm.finalPrice) {
+                    const priceDiff = parseFloat(editForm.finalPrice) - estimatedPrice;
+                    if (Math.abs(priceDiff) > 0.01) {
+                      return (
+                        <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '0.9em' }}>
+                          <strong>⚠️ Price Changed:</strong> Estimated: ₱{estimatedPrice.toFixed(2)} → New: ₱{parseFloat(editForm.finalPrice).toFixed(2)}
+                          <br />
+                          <span style={{ color: '#666', fontSize: '0.85em' }}>Status will be set to "Price Confirmation" to notify customer.</span>
+                        </div>
+                      );
+                    }
+                  }
+                  return null;
+                })()}
               </div>
               
               <div className="form-group">
@@ -544,6 +599,11 @@ const Repair = () => {
                   <option value="completed">Completed</option>
                   <option value="cancelled">Rejected</option>
                 </select>
+                {editForm.approvalStatus === 'price_confirmation' && (
+                  <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#e3f2fd', borderRadius: '4px', fontSize: '0.9em', color: '#1976d2' }}>
+                    ℹ️ Customer will be notified to confirm the updated price.
+                  </div>
+                )}
               </div>
               
               <div className="form-group">

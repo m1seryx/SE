@@ -5,6 +5,72 @@ import { addToCart } from '../../api/CartApi';
 import suitSample from "../../assets/suits.png";
 import { useAlert } from '../../context/AlertContext';
 
+// Measurements Dropdown Component
+const MeasurementsDropdown = ({ measurements, item, isInModal = false }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div style={{ marginTop: isInModal ? '0' : '8px', marginBottom: isInModal ? '0' : '8px' }}>
+      <div style={{ marginBottom: isInModal ? '10px' : '0' }}>
+        {isInModal && <strong style={{ display: 'block', marginBottom: '10px' }}>Measurements:</strong>}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(!isOpen);
+          }}
+          style={{
+            width: '100%',
+            padding: isInModal ? '8px 12px' : '6px 10px',
+            backgroundColor: '#f8f9fa',
+            border: '1px solid #dee2e6',
+            borderRadius: '4px',
+            fontSize: isInModal ? '14px' : '12px',
+            color: '#495057',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            transition: 'all 0.2s ease',
+            fontWeight: isInModal ? '500' : 'normal'
+          }}
+          onMouseEnter={(e) => e.target.style.backgroundColor = '#e9ecef'}
+          onMouseLeave={(e) => e.target.style.backgroundColor = '#f8f9fa'}
+        >
+          <span>Show Measurements</span>
+          <span style={{ fontSize: isInModal ? '12px' : '10px', transition: 'transform 0.2s ease', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+            ▼
+          </span>
+        </button>
+      </div>
+      
+      {isOpen && (
+        <div style={{
+          marginTop: '8px',
+          padding: isInModal ? '15px' : '10px',
+          backgroundColor: '#fff',
+          border: '1px solid #dee2e6',
+          borderRadius: '4px',
+          fontSize: isInModal ? '14px' : '11px',
+          color: '#333',
+          maxHeight: isInModal ? '300px' : '200px',
+          overflowY: 'auto',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          {measurements.map((measurement, idx) => (
+            <div key={idx} style={{ 
+              padding: isInModal ? '6px 0' : '4px 0',
+              borderBottom: idx < measurements.length - 1 ? '1px solid #f0f0f0' : 'none',
+              fontSize: isInModal ? '14px' : '11px'
+            }}>
+              {measurement}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const RentalClothes = ({ openAuthModal, showAll = false }) => {
   const { alert } = useAlert();
   const [rentalItems, setRentalItems] = useState([]);
@@ -12,11 +78,37 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [rentalDuration, setRentalDuration] = useState(3); // Default to 3 days
+  const [endDate, setEndDate] = useState(''); // Auto-calculated
   const [totalCost, setTotalCost] = useState(0);
   const [cartMessage, setCartMessage] = useState('');
   const [addingToCart, setAddingToCart] = useState(false);
   const navigate = useNavigate();
+
+  // Calculate end date from start date and duration
+  const calculateEndDate = (start, duration) => {
+    if (!start) return '';
+    const startDateObj = new Date(start);
+    const endDateObj = new Date(startDateObj);
+    endDateObj.setDate(startDateObj.getDate() + duration - 1); // -1 because start date counts as day 1
+    return endDateObj.toISOString().split('T')[0];
+  };
+
+  // Update end date and total cost when start date or duration changes
+  useEffect(() => {
+    if (startDate && rentalDuration) {
+      const calculatedEndDate = calculateEndDate(startDate, rentalDuration);
+      setEndDate(calculatedEndDate);
+      // Calculate total cost based on duration
+      if (selectedItem) {
+        const cost = calculateTotalCost(rentalDuration, selectedItem);
+        setTotalCost(cost);
+      }
+    } else {
+      setEndDate('');
+      setTotalCost(0);
+    }
+  }, [startDate, rentalDuration, selectedItem]);
 
   // Helper functions to determine measurement type
   const isTopCategory = (category) => {
@@ -25,6 +117,60 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
 
   const isBottomCategory = (category) => {
     return ['casual', 'pants', 'trousers'].includes(category);
+  };
+
+  // Get measurements summary for card display (compact format)
+  const getMeasurementsSummary = (item) => {
+    if (!item || !item.size) return null;
+    
+    try {
+      let measurements;
+      let sizeString = item.size;
+      
+      // Check if size is truncated (starts with { but doesn't end with })
+      if (typeof sizeString === 'string' && sizeString.startsWith('{') && !sizeString.endsWith('}')) {
+        // Truncated data - don't show it
+        return null;
+      }
+      
+      if (typeof sizeString === 'string') {
+        try {
+          measurements = JSON.parse(sizeString);
+        } catch (parseError) {
+          // Invalid JSON - likely truncated or corrupted
+          return null;
+        }
+      } else {
+        measurements = sizeString;
+      }
+      
+      if (!measurements || typeof measurements !== 'object' || Array.isArray(measurements)) {
+        return null;
+      }
+
+      // Filter out empty values and create summary - only show measurements with actual values
+      const parts = Object.entries(measurements)
+        .filter(([key, value]) => {
+          // Only include if value exists, is not empty string, not '0', and not null/undefined
+          return value !== null && value !== undefined && value !== '' && value !== '0' && String(value).trim() !== '';
+        })
+        .map(([key, value]) => {
+          // Format key names properly
+          let label = key;
+          // Handle camelCase
+          label = label.replace(/([A-Z])/g, ' $1');
+          // Capitalize first letter
+          label = label.charAt(0).toUpperCase() + label.slice(1).toLowerCase();
+          // Handle specific cases
+          label = label.replace('sleeve length', 'Sleeve Length');
+          label = label.replace('sleevelength', 'Sleeve Length');
+          return `${label}: ${value}"`;
+        });
+
+      return parts.length > 0 ? parts : null;
+    } catch (e) {
+      return null;
+    }
   };
 
   // Parse and format measurements for display
@@ -183,10 +329,15 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
           const transformedItems = result.items.map(item => ({
             ...item,
             img: item.image_url ? getRentalImageUrl(item.image_url) : suitSample,
-            price: item.daily_rate ? `P ${item.daily_rate}/day` : 'P 800/day',
+            price: item.price ? `P ${item.price}` : 'P 500',
             // Ensure size field is preserved (contains measurements JSON)
             size: item.size || null,
-            category: item.category || 'suit'
+            category: item.category || 'suit',
+            // Preserve all other fields
+            item_name: item.item_name,
+            brand: item.brand,
+            color: item.color,
+            material: item.material
           }));
           setRentalItems(transformedItems);
         } else {
@@ -214,32 +365,39 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
     navigate('/rentals');
   };
 
-  // Calculate rental cost
-  const calculateTotalCost = (start, end, item) => {
-    if (!start || !end || !item) return 0;
+  // Calculate rental cost using new formula: price = (rental_days / 3) * base_price_per_3_days
+  const calculateTotalCost = (duration, item) => {
+    if (!duration || !item || duration < 3) return 0;
     
-    const startDate = new Date(start);
-    const endDate = new Date(end);
+    // Ensure duration is a multiple of 3
+    const validDuration = Math.floor(duration / 3) * 3;
+    if (validDuration < 3) return 0;
     
-    if (endDate <= startDate) return 0;
+    // Get base price from item (price per 3 days)
+    // Parse price - it might be a string like "P 500" or "500" or a number
+    let basePrice = 500; // Default fallback
+    if (item.price) {
+      const priceStr = String(item.price).replace(/[^\d.]/g, ''); // Remove non-numeric chars except decimal
+      const parsedPrice = parseFloat(priceStr);
+      if (!isNaN(parsedPrice) && parsedPrice > 0) {
+        basePrice = parsedPrice;
+      }
+    }
     
-    const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-    const dailyRate = parseFloat(item.daily_rate) || 0;
-    const baseFee = parseFloat(item.base_rental_fee) || 0;
-    
-    return baseFee + (dailyRate * days);
+    // Formula: price = (rental_days / 3) * base_price_per_3_days
+    return (validDuration / 3) * basePrice;
   };
 
-  // Calculate total cost for multiple items
-  const calculateMultiTotalCost = (start, end, items) => {
-    if (!start || !end || !items || items.length === 0) return 0;
-    return items.reduce((total, item) => total + calculateTotalCost(start, end, item), 0);
+  // Calculate total cost for multiple items (same duration for all)
+  const calculateMultiTotalCost = (duration, items) => {
+    if (!duration || !items || items.length === 0) return 0;
+    return items.reduce((total, item) => total + calculateTotalCost(duration, item), 0);
   };
 
-  // Calculate total deposit for multiple items
-  const calculateMultiDeposit = (items) => {
+  // Calculate total downpayment for multiple items
+  const calculateMultiDownpayment = (items) => {
     if (!items || items.length === 0) return 0;
-    return items.reduce((total, item) => total + (parseFloat(item.deposit_amount) || 0), 0);
+    return items.reduce((total, item) => total + (parseFloat(item.downpayment) || 0), 0);
   };
 
   // Toggle item selection
@@ -266,42 +424,39 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
       return;
     }
     setStartDate('');
+    setRentalDuration(3);
     setEndDate('');
     setTotalCost(0);
     setCartMessage('');
     setIsDateModalOpen(true);
   };
 
+  // Update total cost for bundle when start date or duration changes
+  useEffect(() => {
+    if (startDate && rentalDuration && selectedItems.length > 0 && isDateModalOpen) {
+      const calculatedEndDate = calculateEndDate(startDate, rentalDuration);
+      setEndDate(calculatedEndDate);
+      const cost = calculateMultiTotalCost(rentalDuration, selectedItems);
+      setTotalCost(cost);
+    } else if (isDateModalOpen) {
+      setEndDate('');
+      setTotalCost(0);
+    }
+  }, [startDate, rentalDuration, selectedItems, isDateModalOpen]);
+
   // Close date modal
   const closeDateModal = () => {
     setIsDateModalOpen(false);
   };
 
-  // Handle date changes
+  // Handle start date changes
   const handleStartDateChange = (date) => {
     setStartDate(date);
-    if (endDate) {
-      if (isMultiSelectMode && selectedItems.length > 0) {
-        const cost = calculateMultiTotalCost(date, endDate, selectedItems);
-        setTotalCost(cost);
-      } else if (selectedItem) {
-        const cost = calculateTotalCost(date, endDate, selectedItem);
-        setTotalCost(cost);
-      }
-    }
   };
 
-  const handleEndDateChange = (date) => {
-    setEndDate(date);
-    if (startDate) {
-      if (isMultiSelectMode && selectedItems.length > 0) {
-        const cost = calculateMultiTotalCost(startDate, date, selectedItems);
-        setTotalCost(cost);
-      } else if (selectedItem) {
-        const cost = calculateTotalCost(startDate, date, selectedItem);
-        setTotalCost(cost);
-      }
-    }
+  // Handle duration changes
+  const handleDurationChange = (duration) => {
+    setRentalDuration(parseInt(duration));
   };
 
   // Reset dates and cost when modal opens/closes
@@ -309,6 +464,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
     console.log('openModal called with item:', item);
     setSelectedItem(item);
     setStartDate('');
+    setRentalDuration(3);
     setEndDate('');
     setTotalCost(0);
     setCartMessage('');
@@ -318,8 +474,8 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
 
   // Handle adding rental to cart
   const handleAddToCart = async () => {
-    if (!selectedItem || !startDate || !endDate) {
-      setCartMessage('Please select rental dates');
+    if (!selectedItem || !startDate || !rentalDuration) {
+      setCartMessage('Please select start date and rental duration');
       return;
     }
 
@@ -331,12 +487,12 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
         serviceType: 'rental',
         serviceId: selectedItem.id || selectedItem.item_id,
         quantity: 1,
-        basePrice: selectedItem.base_rental_fee || selectedItem.base_fee || '0',
+        basePrice: '0', // Not used in new system
         finalPrice: totalCost.toString(),
         pricingFactors: {
-          daily_rate: selectedItem.daily_rate || '800',
-          days: Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)),
-          deposit_amount: selectedItem.deposit_amount || '0'
+          duration: rentalDuration,
+          price: totalCost,
+          downpayment: selectedItem.downpayment || '0'
         },
         specificData: {
           item_name: selectedItem.item_name || selectedItem.name || 'Rental Item',
@@ -347,7 +503,8 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
         },
         rentalDates: {
           startDate: startDate,
-          endDate: endDate
+          endDate: endDate,
+          duration: rentalDuration
         }
       };
 
@@ -360,6 +517,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
           setIsModalOpen(false);
           setSelectedItem(null);
           setStartDate('');
+          setRentalDuration(3);
           setEndDate('');
           setTotalCost(0);
         }, 1500);
@@ -378,8 +536,8 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
 
   // Handle adding multiple rentals to cart as one bundle
   const handleAddMultipleToCart = async () => {
-    if (selectedItems.length === 0 || !startDate || !endDate) {
-      setCartMessage('Please select items and rental dates');
+    if (selectedItems.length === 0 || !startDate || !rentalDuration) {
+      setCartMessage('Please select items, start date, and rental duration');
       return;
     }
 
@@ -387,8 +545,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
     setCartMessage('');
 
     try {
-      const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
-      const totalDeposit = calculateMultiDeposit(selectedItems);
+      const totalDownpayment = calculateMultiDownpayment(selectedItems);
       
       // Create bundle of all selected items
       const itemsBundle = selectedItems.map(item => ({
@@ -397,23 +554,21 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
         brand: item.brand || 'Unknown',
         size: item.size || 'Standard',
         category: item.category || 'rental',
-        daily_rate: item.daily_rate || 800,
-        base_rental_fee: item.base_rental_fee || 0,
-        deposit_amount: item.deposit_amount || 0,
+        downpayment: item.downpayment || 0,
         image_url: getRentalImageUrl(item.image_url),
-        individual_cost: calculateTotalCost(startDate, endDate, item)
+        individual_cost: calculateTotalCost(rentalDuration, item)
       }));
 
       const rentalData = {
         serviceType: 'rental',
         serviceId: itemsBundle[0].id, // Primary item ID
         quantity: selectedItems.length,
-        basePrice: itemsBundle.reduce((sum, item) => sum + (parseFloat(item.base_rental_fee) || 0), 0).toString(),
+        basePrice: '0', // Not used in new system
         finalPrice: totalCost.toString(),
         pricingFactors: {
-          daily_rate: 'varies',
-          days: days,
-          deposit_amount: totalDeposit.toString(),
+          duration: rentalDuration,
+          price: totalCost,
+          downpayment: totalDownpayment.toString(),
           is_bundle: true,
           item_count: selectedItems.length
         },
@@ -428,7 +583,8 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
         },
         rentalDates: {
           startDate: startDate,
-          endDate: endDate
+          endDate: endDate,
+          duration: rentalDuration
         }
       };
 
@@ -575,6 +731,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
               <div className="rental-info">
                 <h3>{item.item_name || item.name}</h3>
                 <p className="price">{item.price}</p>
+                
                 {!isMultiSelectMode && (
                   <button onClick={() => openModal(item)} className="btn-view">View</button>
                 )}
@@ -619,7 +776,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
           </span>
           <span style={{ color: '#aaa' }}>|</span>
           <span style={{ fontSize: '14px', color: '#aaa' }}>
-            Est. Deposit: ₱{calculateMultiDeposit(selectedItems).toLocaleString()}
+            Est. Downpayment: ₱{calculateMultiDownpayment(selectedItems).toLocaleString()}
           </span>
           <button
             onClick={openDateModal}
@@ -723,7 +880,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
             <div className="date-section" style={{ marginBottom: '20px' }}>
               <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
                 <div className="date-input-group" style={{ flex: 1, minWidth: '200px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#000' }}>Start Date</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#000' }}>Start Date *</label>
                   <input 
                     type="date" 
                     className="date-input" 
@@ -742,13 +899,11 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                   />
                 </div>
                 <div className="date-input-group" style={{ flex: 1, minWidth: '200px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#000' }}>End Date</label>
-                  <input 
-                    type="date" 
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#000' }}>Rental Duration *</label>
+                  <select 
                     className="date-input" 
-                    value={endDate}
-                    onChange={(e) => handleEndDateChange(e.target.value)}
-                    min={startDate || new Date().toISOString().split('T')[0]}
+                    value={rentalDuration}
+                    onChange={(e) => handleDurationChange(e.target.value)}
                     style={{
                       width: '100%',
                       padding: '12px',
@@ -758,8 +913,40 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                       color: '#000',
                       backgroundColor: '#fff'
                     }}
-                  />
+                  >
+                    <option value="3">3 days</option>
+                    <option value="6">6 days</option>
+                    <option value="9">9 days</option>
+                    <option value="12">12 days</option>
+                    <option value="15">15 days</option>
+                    <option value="18">18 days</option>
+                    <option value="21">21 days</option>
+                    <option value="24">24 days</option>
+                    <option value="27">27 days</option>
+                    <option value="30">30 days</option>
+                  </select>
                 </div>
+                {endDate && (
+                  <div className="date-input-group" style={{ flex: 1, minWidth: '200px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#000' }}>End Date (Auto-calculated)</label>
+                    <input 
+                      type="date" 
+                      className="date-input" 
+                      value={endDate}
+                      disabled
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: '1px solid #ddd',
+                        fontSize: '14px',
+                        color: '#666',
+                        backgroundColor: '#f5f5f5',
+                        cursor: 'not-allowed'
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
             
@@ -792,7 +979,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                 {/* Individual item costs */}
                 <div style={{ marginBottom: '15px' }}>
                   {selectedItems.map((item, idx) => {
-                    const itemCost = calculateTotalCost(startDate, endDate, item);
+                    const itemCost = calculateTotalCost(rentalDuration, item);
                     return (
                       <div key={idx} style={{
                         display: 'flex',
@@ -815,8 +1002,8 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                   color: '#28a745',
                   fontWeight: '600'
                 }}>
-                  <span>Total Security Deposit (Due Now):</span>
-                  <span>₱{calculateMultiDeposit(selectedItems).toLocaleString()}</span>
+                  <span>Total Downpayment (Due upon pick up):</span>
+                  <span>₱{calculateMultiDownpayment(selectedItems).toLocaleString()}</span>
                 </div>
                 
                 <div className="cost-total" style={{
@@ -868,19 +1055,19 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
               </button>
               <button 
                 onClick={handleAddMultipleToCart}
-                disabled={!startDate || !endDate || totalCost <= 0 || addingToCart}
+                disabled={!startDate || !rentalDuration || totalCost <= 0 || addingToCart}
                 style={{
                   padding: '12px 24px',
-                  backgroundColor: (!startDate || !endDate || totalCost <= 0 || addingToCart) ? '#ccc' : '#007bff',
+                  backgroundColor: (!startDate || !rentalDuration || totalCost <= 0 || addingToCart) ? '#ccc' : '#007bff',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
-                  cursor: (!startDate || !endDate || totalCost <= 0 || addingToCart) ? 'not-allowed' : 'pointer',
+                  cursor: (!startDate || !rentalDuration || totalCost <= 0 || addingToCart) ? 'not-allowed' : 'pointer',
                   fontSize: '14px',
                   fontWeight: '600'
                 }}
               >
-                {addingToCart ? 'Adding...' : `Add Bundle to Cart - ₱${calculateMultiDeposit(selectedItems).toLocaleString()}`}
+                {addingToCart ? 'Adding...' : `Add Bundle to Cart - ₱${calculateMultiDownpayment(selectedItems).toLocaleString()}`}
               </button>
             </div>
           </div>
@@ -936,10 +1123,22 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                     </div>
                     <div className="detail-row">
                       <div className="detail-item" style={{ width: '100%' }}>
-                        <strong style={{ display: 'block', marginBottom: '10px' }}>Measurements:</strong> 
-                        <div style={{ marginTop: '5px', fontSize: '0.9rem', color: '#666' }}>
-                          {formatMeasurements(selectedItem)}
-                        </div>
+                        {(() => {
+                          const measurementsSummary = getMeasurementsSummary(selectedItem);
+                          if (measurementsSummary && measurementsSummary.length > 0) {
+                            return (
+                              <MeasurementsDropdown measurements={measurementsSummary} item={selectedItem} isInModal={true} />
+                            );
+                          }
+                          return (
+                            <div>
+                              <strong style={{ display: 'block', marginBottom: '10px' }}>Measurements:</strong> 
+                              <div style={{ marginTop: '5px', fontSize: '0.9rem', color: '#666' }}>
+                                {formatMeasurements(selectedItem)}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className="detail-row">
@@ -952,10 +1151,10 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                     </div>
                     <div className="detail-row">
                       <div className="detail-item">
-                        <strong>Base Fee:</strong> ₱{selectedItem.base_rental_fee || '0'}
+                        <strong>Price:</strong> ₱{selectedItem.price || '0'}
                       </div>
                       <div className="detail-item">
-                        <strong>Daily Rate:</strong> ₱{selectedItem.daily_rate || '0'}/day
+                        <strong>Downpayment:</strong> ₱{selectedItem.downpayment || '0'}
                       </div>
                     </div>
                   </div>
@@ -981,7 +1180,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                 <div className="rental-actions">
                   <div className="date-section">
                     <div className="date-input-group">
-                      <label>Start Date</label>
+                      <label>Start Date *</label>
                       <input 
                         type="date" 
                         className="date-input" 
@@ -991,18 +1190,48 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                       />
                     </div>
                     <div className="date-input-group">
-                      <label>End Date</label>
-                      <input 
-                        type="date" 
+                      <label>Rental Duration *</label>
+                      <select 
                         className="date-input" 
-                        value={endDate}
-                        onChange={(e) => handleEndDateChange(e.target.value)}
-                        min={startDate || new Date().toISOString().split('T')[0]}
-                      />
+                        value={rentalDuration}
+                        onChange={(e) => handleDurationChange(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          border: '1px solid #ddd',
+                          fontSize: '14px',
+                          color: '#000',
+                          backgroundColor: '#fff'
+                        }}
+                      >
+                        <option value="3">3 days</option>
+                        <option value="6">6 days</option>
+                        <option value="9">9 days</option>
+                        <option value="12">12 days</option>
+                        <option value="15">15 days</option>
+                        <option value="18">18 days</option>
+                        <option value="21">21 days</option>
+                        <option value="24">24 days</option>
+                        <option value="27">27 days</option>
+                        <option value="30">30 days</option>
+                      </select>
                     </div>
+                    {endDate && (
+                      <div className="date-input-group" style={{ gridColumn: '1 / -1' }}>
+                        <label>End Date (Auto-calculated)</label>
+                        <input 
+                          type="date" 
+                          className="date-input" 
+                          value={endDate}
+                          disabled
+                          style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+                        />
+                      </div>
+                    )}
                   </div>
                   
-                  {totalCost > 0 && (
+                  {totalCost > 0 && startDate && (
                     <div className="cost-breakdown">
                       <h4>Payment Details</h4>
                       <div className="cost-disclaimer" style={{
@@ -1021,16 +1250,12 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                         </span>
                       </div>
                       <div className="cost-item">
-                        <span>Security Deposit (Due Now):</span>
-                        <span>₱{selectedItem.deposit_amount || '0'}</span>
+                        <span>Downpayment (Due Now):</span>
+                        <span>₱{parseFloat(selectedItem.downpayment || '0').toFixed(2)}</span>
                       </div>
                       <div className="cost-item">
-                        <span>Base Fee:</span>
-                        <span>₱{selectedItem.base_rental_fee || '0'}</span>
-                      </div>
-                      <div className="cost-item">
-                        <span>Daily Rate (₱{selectedItem.daily_rate || '800'} × {Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24))} days):</span>
-                        <span>₱{(parseFloat(selectedItem.daily_rate) || 800) * Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24))}</span>
+                        <span>Rental Price ({rentalDuration} days):</span>
+                        <span>₱{totalCost.toFixed(2)}</span>
                       </div>
                       <div className="cost-total">
                         <span>Total Rental Cost (Due on Return):</span>
@@ -1049,9 +1274,9 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                   <button 
                     className="btn-rent" 
                     onClick={handleAddToCart}
-                    disabled={!startDate || !endDate || totalCost <= 0 || addingToCart}
+                    disabled={!startDate || !rentalDuration || totalCost <= 0 || addingToCart}
                   >
-                    {addingToCart ? 'Adding to Cart...' : `Add to Cart - ₱${selectedItem.deposit_amount || '0'}`}
+                    {addingToCart ? 'Adding to Cart...' : `Add to Cart - ₱${totalCost > 0 ? totalCost.toFixed(2) : (selectedItem.downpayment || '0')}`}
                   </button>
                 </div>
               </div>

@@ -600,7 +600,15 @@ Order.getRentalOrders = (callback) => {
       DATE_FORMAT(o.order_date, '%Y-%m-%d %H:%i:%s') as order_date,
       DATE_FORMAT(oi.appointment_date, '%Y-%m-%d %H:%i:%s') as appointment_date,
       DATE_FORMAT(oi.rental_start_date, '%Y-%m-%d') as rental_start_date,
-      DATE_FORMAT(oi.rental_end_date, '%Y-%m-%d') as rental_end_date
+      DATE_FORMAT(oi.rental_end_date, '%Y-%m-%d') as rental_end_date,
+      COALESCE(
+        (SELECT ot.status 
+         FROM order_tracking ot 
+         WHERE ot.order_item_id = oi.item_id 
+         ORDER BY ot.created_at DESC 
+         LIMIT 1), 
+        oi.approval_status
+      ) as approval_status
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.order_id
     JOIN user u ON o.user_id = u.user_id

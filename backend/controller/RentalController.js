@@ -2,7 +2,7 @@ const RentalInventory = require('../model/RentalInventoryModel');
 
 // Create rental item
 exports.createRental = (req, res) => {
-  const { item_name, description, brand, size, color, category, base_rental_fee, daily_rate, deposit_amount, total_available, image_url, material, care_instructions } = req.body;
+  const { item_name, description, brand, size, color, category, price, downpayment, total_available, image_url, material, care_instructions } = req.body;
 
   // Handle image upload
   let imageUrl = null;
@@ -11,9 +11,9 @@ exports.createRental = (req, res) => {
   }
 
   // Validation
-  if (!item_name || !base_rental_fee || !daily_rate) {
+  if (!item_name || !price) {
     return res.status(400).json({ 
-      message: "Item name, base rental fee, and daily rate are required" 
+      message: "Item name and price are required" 
     });
   }
 
@@ -24,9 +24,8 @@ exports.createRental = (req, res) => {
     size,
     color,
     category,
-    base_rental_fee,
-    daily_rate,
-    deposit_amount,
+    price,
+    downpayment,
     total_available,
     image_url: imageUrl, // Use the uploaded image path
     material,
@@ -137,7 +136,7 @@ exports.getRentalsByCategory = (req, res) => {
 
 exports.updateRental = (req, res) => {
   const { item_id } = req.params;
-  const { item_name, description, brand, size, color, category, base_rental_fee, daily_rate, deposit_amount, total_available, image_url, material, care_instructions, status } = req.body;
+  const { item_name, description, brand, size, color, category, price, downpayment, total_available, image_url, material, care_instructions, status } = req.body;
 
   // Handle image upload
   let imageUrl = image_url; // Keep existing image_url if provided
@@ -172,9 +171,8 @@ exports.updateRental = (req, res) => {
       size,
       color,
       category,
-      base_rental_fee,
-      daily_rate,
-      deposit_amount,
+      price,
+      downpayment,
       total_available,
       image_url: imageUrl,
       material,

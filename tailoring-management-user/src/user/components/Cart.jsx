@@ -11,6 +11,7 @@ import {
 } from '../../api/CartApi';
 import ImagePreviewModal from '../../components/ImagePreviewModal';
 import { useAlert } from '../../context/AlertContext';
+import { getRentalImageUrl } from '../../api/RentalApi';
 
 const Cart = ({ isOpen, onClose, onCartUpdate }) => {
   const { confirm } = useAlert();
@@ -28,6 +29,10 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState('');
   const [previewImageAlt, setPreviewImageAlt] = useState('');
+  
+  // Bundle modal state
+  const [bundleModalOpen, setBundleModalOpen] = useState(false);
+  const [bundleItems, setBundleItems] = useState([]);
 
   // Function to open image preview
   const openImagePreview = (imageUrl, altText) => {
@@ -41,6 +46,18 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
     setImagePreviewOpen(false);
     setPreviewImageUrl('');
     setPreviewImageAlt('');
+  };
+
+  // Function to open bundle modal
+  const openBundleModal = (items) => {
+    setBundleItems(items);
+    setBundleModalOpen(true);
+  };
+
+  // Function to close bundle modal
+  const closeBundleModal = () => {
+    setBundleModalOpen(false);
+    setBundleItems([]);
   };
 
   // Load cart when component opens
@@ -403,23 +420,70 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
           ) : (
             <>
               <div className="cart-items">
-                {cartItems.map((item) => (
-                  <div key={item.cart_id} className="cart-item" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                {cartItems.map((item) => {
+                  // Check if it's a rental bundle
+                  const isBundle = item.specific_data?.is_bundle || item.pricing_factors?.is_bundle;
+                  const bundleItems = item.specific_data?.bundle_items || [];
+                  
+                  // Get rental image URL
+                  const rentalImageUrl = item.service_type === 'rental' 
+                    ? (item.specific_data?.image_url || (bundleItems.length > 0 ? bundleItems[0]?.image_url : null))
+                    : null;
+
+                  return (
+                  <div 
+                    key={item.cart_id} 
+                    className="cart-item" 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'flex-start', 
+                      gap: '10px',
+                      cursor: isBundle ? 'pointer' : 'default'
+                    }}
+                    onClick={isBundle ? () => openBundleModal(bundleItems) : undefined}
+                  >
                     <input
                       type="checkbox"
                       checked={selectedItems.includes(item.cart_id)}
                       onChange={() => toggleItemSelection(item.cart_id)}
+                      onClick={(e) => e.stopPropagation()}
                       style={{ marginTop: '5px', cursor: 'pointer', width: '18px', height: '18px' }}
                     />
+                    
+                    {/* Rental Image */}
+                    {item.service_type === 'rental' && rentalImageUrl && (
+                      <div style={{ width: '80px', height: '80px', flexShrink: 0 }}>
+                        <img 
+                          src={rentalImageUrl} 
+                          alt={item.specific_data?.item_name || 'Rental Item'}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            borderRadius: '8px',
+                            border: '1px solid #e0e0e0'
+                          }}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                    
                     <div className="cart-item-info" style={{ flex: 1 }}>
                       <h4>{getServiceTypeDisplay(item.service_type)}</h4>
+                      {isBundle && (
+                        <p style={{ color: '#007bff', fontWeight: '500', marginBottom: '5px' }}>
+                          Bundle ({bundleItems.length} items) - Click to view
+                        </p>
+                      )}
                       <p>Service ID: {item.service_id}</p>
                       
                       {/* Show different pricing based on service type */}
                       {item.service_type === 'rental' ? (
                         <>
                           <p>Rental Price: {formatPrice(item.final_price)}</p>
-                          <p>Deposit: {formatPrice(item.specific_data?.deposit || item.base_price * 0.5)}</p>
+                          <p>Downpayment: {formatPrice(item.pricing_factors?.downpayment || item.specific_data?.downpayment || 0)}</p>
                         </>
                       ) : item.service_type === 'dry_cleaning' && item.specific_data?.isEstimatedPrice ? (
                         <p>Estimated Price: {formatPrice(item.final_price)}</p>
@@ -602,7 +666,7 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                       )}
                     </div>
 
-                    <div className="cart-item-actions">
+                    <div className="cart-item-actions" onClick={(e) => e.stopPropagation()}>
                       <div className="cart-quantity">
                         <label>Qty:</label>
                         <span className="quantity-display">{item.quantity || 1}</span>
@@ -618,7 +682,8 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                       </button>
                     </div>
                   </div>
-                ))}
+                );
+              })}
               </div>
 
               <div className="cart-summary">
@@ -671,6 +736,112 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
         altText={previewImageAlt}
         onClose={closeImagePreview}
       />
+
+      {/* Bundle Modal */}
+      {bundleModalOpen && (
+        <div className="cart-overlay" style={{ zIndex: 2000 }} onClick={closeBundleModal}>
+          <div 
+            className="bundle-modal" 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              maxWidth: '600px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+              zIndex: 2001
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, color: '#333' }}>Rental Bundle Items</h2>
+              <button
+                onClick={closeBundleModal}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666',
+                  padding: '0',
+                  width: '30px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px' }}>
+              {bundleItems.map((bundleItem, index) => (
+                <div 
+                  key={index}
+                  style={{
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  onClick={() => {
+                    if (bundleItem.image_url) {
+                      openImagePreview(bundleItem.image_url, bundleItem.item_name || 'Rental Item');
+                    }
+                  }}
+                >
+                  {bundleItem.image_url ? (
+                    <img
+                      src={bundleItem.image_url}
+                      alt={bundleItem.item_name || 'Rental Item'}
+                      style={{
+                        width: '100%',
+                        height: '150px',
+                        objectFit: 'cover'
+                      }}
+                      onError={(e) => {
+                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSIjOTk5Ij5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: '100%',
+                      height: '150px',
+                      backgroundColor: '#f0f0f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#999'
+                    }}>
+                      No Image
+                    </div>
+                  )}
+                  <div style={{ padding: '10px' }}>
+                    <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#333' }}>
+                      {bundleItem.item_name || 'Rental Item'}
+                    </p>
+                    {bundleItem.brand && (
+                      <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
+                        {bundleItem.brand}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

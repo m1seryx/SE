@@ -1021,6 +1021,30 @@ exports.updateRentalOrderItem = (req, res) => {
         console.error('Skipping action log: user_id is null or undefined');
       }
 
+      // If status changed to "rented", update rental_inventory status
+      if (updateData.approvalStatus === 'rented' && updateData.approvalStatus !== previousStatus) {
+        const RentalInventory = require('../model/RentalInventoryModel');
+        const rentalItemId = item.service_id; // service_id is the rental item_id
+        
+        if (rentalItemId) {
+          console.log(`Updating rental_inventory status to 'rented' for item_id: ${rentalItemId}`);
+          
+          // Update rental inventory status to 'rented'
+          const db = require('../config/db');
+          const updateSql = `UPDATE rental_inventory SET status = 'rented' WHERE item_id = ?`;
+          
+          db.query(updateSql, [rentalItemId], (rentalUpdateErr, rentalUpdateResult) => {
+            if (rentalUpdateErr) {
+              console.error('Error updating rental_inventory status:', rentalUpdateErr);
+            } else {
+              console.log(`Successfully updated rental_inventory status to 'rented' for item_id: ${rentalItemId}`);
+            }
+          });
+        } else {
+          console.warn('Cannot update rental_inventory: service_id is missing from order item');
+        }
+      }
+
       res.json({
         success: true,
         message: "Rental order item updated successfully"

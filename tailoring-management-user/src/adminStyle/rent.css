@@ -350,13 +350,17 @@ tbody {
 }
 
 .status-badge {
-  display: inline-block;
+  display: inline-block !important;
   padding: 6px 14px;
   border-radius: 20px;
   font-weight: 600;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background-color: #f5f5f5 !important;
+  color: #757575 !important;
 }
 
 .stats-grid {
@@ -381,6 +385,41 @@ tbody {
 .status-badge.overdue {
   background: #ffebee;
   color: #d32f2f;
+}
+
+.status-badge.pending {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.status-badge.accepted {
+  background: #e8f5e9;
+  color: #388e3c;
+}
+
+.status-badge.ready-to-pickup {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.status-badge.rented {
+  background: #f3e5f5;
+  color: #9c27b0;
+}
+
+.status-badge.completed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.cancelled {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.status-badge.unknown {
+  background: #f5f5f5;
+  color: #757575;
 }
 
 /* ============ RESPONSIVE ============ */
@@ -553,13 +592,17 @@ tbody {
 }
 
 .status-badge {
-  display: inline-block;
+  display: inline-block !important;
   padding: 6px 14px;
   border-radius: 20px;
   font-weight: 600;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background-color: #f5f5f5 !important;
+  color: #757575 !important;
 }
 
 .stats-grid {
@@ -584,6 +627,41 @@ tbody {
 .status-badge.overdue {
   background: #ffebee;
   color: #d32f2f;
+}
+
+.status-badge.pending {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.status-badge.accepted {
+  background: #e8f5e9;
+  color: #388e3c;
+}
+
+.status-badge.ready-to-pickup {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.status-badge.rented {
+  background: #f3e5f5;
+  color: #9c27b0;
+}
+
+.status-badge.completed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.cancelled {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.status-badge.unknown {
+  background: #f5f5f5;
+  color: #757575;
 }
 
 /* ============ RESPONSIVE ============ */
@@ -756,13 +834,17 @@ tbody {
 }
 
 .status-badge {
-  display: inline-block;
+  display: inline-block !important;
   padding: 6px 14px;
   border-radius: 20px;
   font-weight: 600;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background-color: #f5f5f5 !important;
+  color: #757575 !important;
 }
 
 .stats-grid {
@@ -787,6 +869,41 @@ tbody {
 .status-badge.overdue {
   background: #ffebee;
   color: #d32f2f;
+}
+
+.status-badge.pending {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.status-badge.accepted {
+  background: #e8f5e9;
+  color: #388e3c;
+}
+
+.status-badge.ready-to-pickup {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.status-badge.rented {
+  background: #f3e5f5;
+  color: #9c27b0;
+}
+
+.status-badge.completed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.cancelled {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.status-badge.unknown {
+  background: #f5f5f5;
+  color: #757575;
 }
 
 /* ============ RESPONSIVE ============ */
@@ -838,6 +955,8 @@ tbody tr.clickable-row:active {
   display: flex;
   gap: 8px;
   justify-content: flex-start;
+  position: relative;
+  z-index: 10;
 }
 
 .icon-btn {
@@ -852,6 +971,9 @@ tbody tr.clickable-row:active {
   transition: all 0.2s ease;
   background: #f5f5f5;
   color: #666;
+  position: relative;
+  z-index: 100;
+  pointer-events: auto;
 }
 
 .icon-btn:focus {

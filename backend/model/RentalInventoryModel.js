@@ -5,8 +5,8 @@ const RentalInventory = {
   create: (itemData, callback) => {
     const sql = `
       INSERT INTO rental_inventory 
-      (item_name, description, brand, size, color, category, base_rental_fee, daily_rate, deposit_amount, total_available, image_url, material, care_instructions) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (item_name, description, brand, size, color, category, price, downpayment, total_available, image_url, material, care_instructions) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const values = [
       itemData.item_name,
@@ -15,9 +15,8 @@ const RentalInventory = {
       itemData.size || null,
       itemData.color || null,
       itemData.category || null,
-      itemData.base_rental_fee,
-      itemData.daily_rate,
-      itemData.deposit_amount || '0',
+      itemData.price,
+      itemData.downpayment || '0',
       itemData.total_available || 1,
       itemData.image_url || null,
       itemData.material || null,
@@ -43,12 +42,12 @@ const RentalInventory = {
     }
     
     if (filters.min_price) {
-      sql += " AND daily_rate >= ?";
+      sql += " AND price >= ?";
       values.push(filters.min_price);
     }
     
     if (filters.max_price) {
-      sql += " AND daily_rate <= ?";
+      sql += " AND price <= ?";
       values.push(filters.max_price);
     }
     
@@ -85,12 +84,12 @@ const RentalInventory = {
     }
     
     if (filters.min_price) {
-      sql += " AND daily_rate >= ?";
+      sql += " AND price >= ?";
       values.push(filters.min_price);
     }
     
     if (filters.max_price) {
-      sql += " AND daily_rate <= ?";
+      sql += " AND price <= ?";
       values.push(filters.max_price);
     }
     
@@ -126,12 +125,12 @@ const RentalInventory = {
     }
     
     if (filters.min_price) {
-      sql += " AND daily_rate >= ?";
+      sql += " AND price >= ?";
       values.push(filters.min_price);
     }
     
     if (filters.max_price) {
-      sql += " AND daily_rate <= ?";
+      sql += " AND price <= ?";
       values.push(filters.max_price);
     }
     
@@ -168,12 +167,12 @@ const RentalInventory = {
     }
     
     if (filters.min_price) {
-      sql += " AND daily_rate >= ?";
+      sql += " AND price >= ?";
       values.push(filters.min_price);
     }
     
     if (filters.max_price) {
-      sql += " AND daily_rate <= ?";
+      sql += " AND price <= ?";
       values.push(filters.max_price);
     }
     
@@ -230,7 +229,7 @@ const RentalInventory = {
     const sql = `
       UPDATE rental_inventory 
       SET item_name = ?, description = ?, brand = ?, size = ?, color = ?, category = ?, 
-          base_rental_fee = ?, daily_rate = ?, deposit_amount = ?, total_available = ?, 
+          price = ?, downpayment = ?, total_available = ?, 
           image_url = ?, material = ?, care_instructions = ?, status = ?
       WHERE item_id = ?
     `;
@@ -241,9 +240,8 @@ const RentalInventory = {
       itemData.size || null,
       itemData.color || null,
       itemData.category || null,
-      itemData.base_rental_fee,
-      itemData.daily_rate,
-      itemData.deposit_amount || '0',
+      itemData.price,
+      itemData.downpayment || '0',
       itemData.total_available,
       itemData.image_url || null,
       itemData.material || null,

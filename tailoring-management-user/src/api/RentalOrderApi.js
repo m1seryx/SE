@@ -48,15 +48,12 @@ export async function getRentalOrdersByStatus(status) {
 // Update rental order item (admin only)
 export async function updateRentalOrderItem(itemId, updateData) {
     try {
-        console.log("Making API call to update rental item:", itemId, updateData);
         const response = await axios.put(`${BASE_URL}/orders/rental/items/${itemId}`, updateData, {
             headers: getAuthHeaders()
         });
-        console.log("API response:", response.data);
         return response.data;
     } catch (error) {
         console.error("Update rental order item error:", error);
-        console.error("Error response:", error.response?.data);
         return {
             success: false,
             message: error.response?.data?.message || "Error updating rental order item"

@@ -25,9 +25,8 @@ const PostRent = () => {
     size: '',
     color: '',
     category: 'suit',
-    base_rental_fee: '',
-    daily_rate: '',
-    deposit_amount: '',
+    price: '',
+    downpayment: '',
     total_available: '1',
     material: '',
     care_instructions: '',
@@ -107,9 +106,8 @@ const PostRent = () => {
           size: item.size || '',
           color: item.color || '',
           category: item.category || 'suit',
-          base_rental_fee: item.base_rental_fee || '',
-          daily_rate: item.daily_rate || '',
-          deposit_amount: item.deposit_amount || '',
+          price: item.price || '',
+          downpayment: item.downpayment || '',
           total_available: item.total_available?.toString() || '1',
           material: item.material || '',
           care_instructions: item.care_instructions || '',
@@ -127,9 +125,8 @@ const PostRent = () => {
         size: '',
         color: '',
         category: 'suit',
-        base_rental_fee: '',
-        daily_rate: '',
-        deposit_amount: '',
+        price: '',
+        downpayment: '',
         total_available: '1',
         material: '',
         care_instructions: '',
@@ -203,8 +200,8 @@ const PostRent = () => {
     setIsLoading(true);
 
     // Validation
-    if (!formData.item_name || !formData.base_rental_fee || !formData.daily_rate) {
-      setError('Item name, base rental fee, and daily rate are required');
+    if (!formData.item_name || !formData.price) {
+      setError('Item name and price are required');
       setIsLoading(false);
       return;
     }
@@ -345,7 +342,7 @@ const PostRent = () => {
                 <div className="compact-item-info">
                   <h3>{item.item_name}</h3>
                   <div className="compact-item-price">
-                    ₱{item.base_rental_fee || '0'} / day
+                    ₱{item.price || '0'}
                   </div>
                   <span className={`status-badge ${item.status?.toLowerCase()}`}>
                     {item.status || 'available'}
@@ -658,35 +655,26 @@ const PostRent = () => {
 
               <div className="form-grid">
                 <div className="input-group">
-                  <label>Base Rental Fee *</label>
+                  <label>Price *</label>
                   <input 
                     type="text" 
-                    value={formData.base_rental_fee} 
-                    onChange={(e) => setFormData({ ...formData, base_rental_fee: e.target.value })} 
-                    placeholder="e.g., 100.00"
+                    value={formData.price} 
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })} 
+                    placeholder="e.g., 500.00"
                   />
                 </div>
                 <div className="input-group">
-                  <label>Daily Rate *</label>
+                  <label>Downpayment Amount</label>
                   <input 
                     type="text" 
-                    value={formData.daily_rate} 
-                    onChange={(e) => setFormData({ ...formData, daily_rate: e.target.value })} 
-                    placeholder="e.g., 30.00"
+                    value={formData.downpayment} 
+                    onChange={(e) => setFormData({ ...formData, downpayment: e.target.value })} 
+                    placeholder="e.g., 200.00"
                   />
                 </div>
               </div>
 
               <div className="form-grid">
-                <div className="input-group">
-                  <label>Deposit Amount</label>
-                  <input 
-                    type="text" 
-                    value={formData.deposit_amount} 
-                    onChange={(e) => setFormData({ ...formData, deposit_amount: e.target.value })} 
-                    placeholder="e.g., 200.00"
-                  />
-                </div>
                 <div className="input-group">
                   <label>Total Available</label>
                   <input 
@@ -786,131 +774,127 @@ const PostRent = () => {
                   alt={selectedItem.item_name} 
                   className="detail-image"
                 />
+              </div>
+              
+              <div className="detail-info-section">
+                <div className="detail-status">
+                  <span className={`status-badge ${selectedItem.status?.toLowerCase()}`}>
+                    {selectedItem.status || 'available'}
+                  </span>
+                </div>
+                
+                <div className="detail-grid">
+                  <div className="detail-item">
+                    <label>Category:</label>
+                    <span>{selectedItem.category || 'N/A'}</span>
+                  </div>
+                  <div className="detail-item">
+                    <label>Brand:</label>
+                    <span>{selectedItem.brand || 'N/A'}</span>
+                  </div>
+                  <div className="detail-item">
+                    <label>Measurements:</label>
+                    <div style={{ marginTop: '8px' }}>
+                      {(() => {
+                        let measurements = {};
+                        try {
+                          measurements = typeof selectedItem.size === 'string' ? JSON.parse(selectedItem.size || '{}') : (selectedItem.size || {});
+                        } catch (e) {
+                          // If not JSON, show as plain text
+                          return <span>{selectedItem.size || 'N/A'}</span>;
+                        }
+                        
+                        if (isTopCategory(selectedItem.category)) {
+                          return (
+                            <div>
+                              <strong>Top Measurements:</strong>
+                              <div style={{ marginLeft: '15px', marginTop: '5px' }}>
+                                {measurements.chest && <div>Chest: {measurements.chest}"</div>}
+                                {measurements.shoulders && <div>Shoulders: {measurements.shoulders}"</div>}
+                                {measurements.sleeveLength && <div>Sleeve Length: {measurements.sleeveLength}"</div>}
+                                {measurements.neck && <div>Neck: {measurements.neck}"</div>}
+                                {measurements.waist && <div>Waist: {measurements.waist}"</div>}
+                                {measurements.length && <div>Length: {measurements.length}"</div>}
+                              </div>
+                            </div>
+                          );
+                        } else if (isBottomCategory(selectedItem.category)) {
+                          return (
+                            <div>
+                              <strong>Bottom Measurements:</strong>
+                              <div style={{ marginLeft: '15px', marginTop: '5px' }}>
+                                {measurements.waist && <div>Waist: {measurements.waist}"</div>}
+                                {measurements.hips && <div>Hips: {measurements.hips}"</div>}
+                                {measurements.inseam && <div>Inseam: {measurements.inseam}"</div>}
+                                {measurements.length && <div>Length: {measurements.length}"</div>}
+                                {measurements.thigh && <div>Thigh: {measurements.thigh}"</div>}
+                                {measurements.outseam && <div>Outseam: {measurements.outseam}"</div>}
+                              </div>
+                            </div>
+                          );
+                        } else {
+                          return <span>{selectedItem.size || 'N/A'}</span>;
+                        }
+                      })()}
+                    </div>
+                  </div>
+                  <div className="detail-item">
+                    <label>Color:</label>
+                    <span>{selectedItem.color || 'N/A'}</span>
+                  </div>
+                  <div className="detail-item">
+                    <label>Material:</label>
+                    <span>{selectedItem.material || 'N/A'}</span>
+                  </div>
+                  <div className="detail-item">
+                    <label>Available:</label>
+                    <span>{selectedItem.total_available || '0'}</span>
+                  </div>
+                </div>
+                
+                <div className="detail-pricing">
+                  <h4>Pricing</h4>
+                  <div className="price-grid">
+                    <div className="price-item">
+                      <label>Price:</label>
+                      <span className="price-value">₱{selectedItem.price || '0'}</span>
+                    </div>
+                    <div className="price-item">
+                      <label>Downpayment:</label>
+                      <span className="price-value">₱{selectedItem.downpayment || '0'}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {selectedItem.description && (
+                  <div className="detail-description">
+                    <h4>Description</h4>
+                    <p>{selectedItem.description}</p>
+                  </div>
+                )}
+                
+                {selectedItem.care_instructions && (
+                  <div className="detail-care">
+                    <h4>Care Instructions</h4>
+                    <p>{selectedItem.care_instructions}</p>
+                  </div>
+                )}
+                
+                <div className="detail-actions">
+                  <button className="detail-edit-btn" onClick={() => { closeDetailModal(); openModal(selectedItem.item_id); }}>
+                    Edit Item
+                  </button>
+                  <button className="detail-delete-btn" onClick={() => { closeDetailModal(); deleteItem(selectedItem.item_id); }}>
+                    Delete Item
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        
-        <div className="detail-info-section">
-          <div className="detail-status">
-            <span className={`status-badge ${selectedItem.status?.toLowerCase()}`}>
-              {selectedItem.status || 'available'}
-            </span>
-          </div>
-          
-          <div className="detail-grid">
-            <div className="detail-item">
-              <label>Category:</label>
-              <span>{selectedItem.category || 'N/A'}</span>
-            </div>
-            <div className="detail-item">
-              <label>Brand:</label>
-              <span>{selectedItem.brand || 'N/A'}</span>
-            </div>
-            <div className="detail-item">
-              <label>Measurements:</label>
-              <div style={{ marginTop: '8px' }}>
-                {(() => {
-                  let measurements = {};
-                  try {
-                    measurements = typeof selectedItem.size === 'string' ? JSON.parse(selectedItem.size || '{}') : (selectedItem.size || {});
-                  } catch (e) {
-                    // If not JSON, show as plain text
-                    return <span>{selectedItem.size || 'N/A'}</span>;
-                  }
-                  
-                  if (isTopCategory(selectedItem.category)) {
-                    return (
-                      <div>
-                        <strong>Top Measurements:</strong>
-                        <div style={{ marginLeft: '15px', marginTop: '5px' }}>
-                          {measurements.chest && <div>Chest: {measurements.chest}"</div>}
-                          {measurements.shoulders && <div>Shoulders: {measurements.shoulders}"</div>}
-                          {measurements.sleeveLength && <div>Sleeve Length: {measurements.sleeveLength}"</div>}
-                          {measurements.neck && <div>Neck: {measurements.neck}"</div>}
-                          {measurements.waist && <div>Waist: {measurements.waist}"</div>}
-                          {measurements.length && <div>Length: {measurements.length}"</div>}
-                        </div>
-                      </div>
-                    );
-                  } else if (isBottomCategory(selectedItem.category)) {
-                    return (
-                      <div>
-                        <strong>Bottom Measurements:</strong>
-                        <div style={{ marginLeft: '15px', marginTop: '5px' }}>
-                          {measurements.waist && <div>Waist: {measurements.waist}"</div>}
-                          {measurements.hips && <div>Hips: {measurements.hips}"</div>}
-                          {measurements.inseam && <div>Inseam: {measurements.inseam}"</div>}
-                          {measurements.length && <div>Length: {measurements.length}"</div>}
-                          {measurements.thigh && <div>Thigh: {measurements.thigh}"</div>}
-                          {measurements.outseam && <div>Outseam: {measurements.outseam}"</div>}
-                        </div>
-                      </div>
-                    );
-                  } else {
-                    return <span>{selectedItem.size || 'N/A'}</span>;
-                  }
-                })()}
-              </div>
-            </div>
-            <div className="detail-item">
-              <label>Color:</label>
-              <span>{selectedItem.color || 'N/A'}</span>
-            </div>
-            <div className="detail-item">
-              <label>Material:</label>
-              <span>{selectedItem.material || 'N/A'}</span>
-            </div>
-            <div className="detail-item">
-              <label>Available:</label>
-              <span>{selectedItem.total_available || '0'}</span>
-            </div>
-          </div>
-          
-          <div className="detail-pricing">
-            <h4>Pricing</h4>
-            <div className="price-grid">
-              <div className="price-item">
-                <label>Base Fee:</label>
-                <span className="price-value">₱{selectedItem.base_rental_fee || '0'}</span>
-              </div>
-              <div className="price-item">
-                <label>Daily Rate:</label>
-                <span className="price-value">₱{selectedItem.daily_rate || '0'}</span>
-              </div>
-              <div className="price-item">
-                <label>Deposit:</label>
-                <span className="price-value">₱{selectedItem.deposit_amount || '0'}</span>
-              </div>
-            </div>
-          </div>
-          
-          {selectedItem.description && (
-            <div className="detail-description">
-              <h4>Description</h4>
-              <p>{selectedItem.description}</p>
-            </div>
-          )}
-          
-          {selectedItem.care_instructions && (
-            <div className="detail-care">
-              <h4>Care Instructions</h4>
-              <p>{selectedItem.care_instructions}</p>
-            </div>
-          )}
-          
-          <div className="detail-actions">
-            <button className="detail-edit-btn" onClick={() => { closeDetailModal(); openModal(selectedItem.item_id); }}>
-              Edit Item
-            </button>
-            <button className="detail-delete-btn" onClick={() => { closeDetailModal(); deleteItem(selectedItem.item_id); }}>
-              Delete Item
-            </button>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
-  </div>
-)}
-</div>
-); 
+  );
 };
 
 export default PostRent;

@@ -113,6 +113,73 @@ const Profile = () => {
     });
   };
 
+  // Format date and time in 12-hour format
+  const formatDateTo12Hour = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      
+      const dateStr = date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      
+      const timeStr = date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+      
+      return `${dateStr} at ${timeStr}`;
+    } catch (e) {
+      return 'N/A';
+    }
+  };
+
+  // Helper function to format size measurements
+  const formatSize = (size) => {
+    if (!size) return 'N/A';
+    
+    // If it's already a string and not JSON, return as is
+    if (typeof size === 'string' && !size.trim().startsWith('{')) {
+      return size;
+    }
+    
+    try {
+      // Parse JSON if it's a string
+      let measurements = typeof size === 'string' ? JSON.parse(size) : size;
+      
+      // If it's not an object, return as is
+      if (!measurements || typeof measurements !== 'object' || Array.isArray(measurements)) {
+        return typeof size === 'string' ? size : JSON.stringify(size);
+      }
+      
+      // Format measurements nicely
+      const labelMap = {
+        'chest': 'Chest',
+        'shoulders': 'Shoulders',
+        'sleeveLength': 'Sleeve Length',
+        'neck': 'Neck',
+        'waist': 'Waist',
+        'length': 'Length'
+      };
+      
+      const parts = Object.entries(measurements)
+        .filter(([key, value]) => value !== null && value !== undefined && value !== '' && value !== '0')
+        .map(([key, value]) => {
+          const label = labelMap[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1').trim();
+          return `${label}: ${value}"`;
+        });
+      
+      return parts.length > 0 ? parts.join(', ') : 'N/A';
+    } catch (e) {
+      // If parsing fails, return as is
+      return typeof size === 'string' ? size : 'N/A';
+    }
+  };
+
   // Get status badge class
   const getStatusBadgeClass = (status) => {
     const statusMap = {
@@ -326,58 +393,168 @@ const Profile = () => {
 
   // Render service-specific details
   const renderServiceDetails = (item) => {
-    const { service_type, specific_data } = item;
+    const { service_type, specific_data, rental_start_date, rental_end_date } = item;
 
-    console.log('Rendering service details for:', { service_type, specific_data });
+    console.log('Rendering service details for:', { service_type, specific_data, rental_start_date, rental_end_date, item });
     console.log('Service type type:', typeof service_type);
     console.log('Service type value:', `"${service_type}"`);
 
     switch (service_type) {
       case 'rental':
         console.log('Matched rental case');
+        const isBundle = specific_data?.is_bundle === true || specific_data?.category === 'rental_bundle';
+        const bundleItems = specific_data?.bundle_items || [];
+        
         return (
           <div className="service-details rental-details">
             <h4>Rental Details</h4>
 
-            {/* Show rental image if available */}
-            {specific_data.image_url && specific_data.image_url !== 'no-image' && (
-              <div className="detail-row">
-                <span className="detail-label">Item Photo:</span>
-                <div className="detail-value">
-                  <img
-                    src={specific_data.image_url}
-                    alt="Rental item"
-                    className="damage-photo"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      console.log('Rental image failed to load:', specific_data.image_url);
-                    }}
-                  />
+            {/* Show bundle items with images if it's a bundle */}
+            {isBundle && bundleItems.length > 0 ? (
+              <div className="detail-row" style={{ marginBottom: '20px' }}>
+                <span className="detail-label">Rental Items:</span>
+                <div className="detail-value" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  {bundleItems.map((bundleItem, idx) => (
+                    <div key={idx} style={{ 
+                      border: '1px solid #e0e0e0', 
+                      borderRadius: '8px', 
+                      padding: '15px',
+                      backgroundColor: '#f9f9f9'
+                    }}>
+                      {/* Show image if available */}
+                      {bundleItem.image_url && bundleItem.image_url !== 'no-image' && (
+                        <div style={{ marginBottom: '10px' }}>
+                          <img
+                            src={bundleItem.image_url}
+                            alt={bundleItem.item_name || 'Rental item'}
+                            className="damage-photo clickable-image"
+                            onClick={() => openImagePreview(bundleItem.image_url, bundleItem.item_name || 'Rental Item')}
+                            title="Click to enlarge"
+                            style={{ maxWidth: '200px', maxHeight: '200px', cursor: 'pointer', borderRadius: '6px' }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div><strong>Item {idx + 1}:</strong> {bundleItem.item_name || 'N/A'}</div>
+                      <div><strong>Brand:</strong> {bundleItem.brand || 'N/A'}</div>
+                      <div><strong>Size:</strong> {formatSize(bundleItem.size)}</div>
+                      <div><strong>Category:</strong> {bundleItem.category || 'N/A'}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
+            ) : (
+              /* Show single rental image if available */
+              specific_data.image_url && specific_data.image_url !== 'no-image' && (
+                <div className="detail-row">
+                  <span className="detail-label">Item Photo:</span>
+                  <div className="detail-value">
+                    <img
+                      src={specific_data.image_url}
+                      alt="Rental item"
+                      className="damage-photo clickable-image"
+                      onClick={() => openImagePreview(specific_data.image_url, specific_data.item_name || 'Rental Item')}
+                      title="Click to enlarge"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        console.log('Rental image failed to load:', specific_data.image_url);
+                      }}
+                    />
+                  </div>
+                </div>
+              )
             )}
 
             <div className="detail-row">
               <span className="detail-label">Item Name:</span>
-              <span className="detail-value">{specific_data.item_name || 'N/A'}</span>
+              <span className="detail-value">
+                {isBundle && bundleItems.length > 0 
+                  ? bundleItems.map(item => item.item_name).join(', ')
+                  : (specific_data.item_name || 'N/A')}
+              </span>
             </div>
             <div className="detail-row">
               <span className="detail-label">Category:</span>
-              <span className="detail-value">{specific_data.category || 'N/A'}</span>
+              <span className="detail-value">
+                {isBundle && bundleItems.length > 0
+                  ? bundleItems.map(item => item.category || 'rental').join(', ')
+                  : (specific_data.category || 'N/A')}
+              </span>
             </div>
             <div className="detail-row">
               <span className="detail-label">Brand:</span>
-              <span className="detail-value">{specific_data.brand || 'N/A'}</span>
+              <span className="detail-value">
+                {isBundle && bundleItems.length > 0
+                  ? bundleItems.map(item => item.brand || 'N/A').join(', ')
+                  : (specific_data.brand || 'N/A')}
+              </span>
             </div>
-            <div className="detail-row">
-              <span className="detail-label">Size:</span>
-              <span className="detail-value">{specific_data.size || 'N/A'}</span>
+            <div className="detail-row" style={{ alignItems: 'flex-start' }}>
+              <span className="detail-label" style={{ minWidth: '120px' }}>Size:</span>
+              <span className="detail-value" style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, textAlign: 'left' }}>
+                {isBundle && bundleItems.length > 0
+                  ? bundleItems.map((item, idx) => (
+                      <div key={idx} style={{ 
+                        fontSize: '0.9rem', 
+                        lineHeight: '1.5',
+                        padding: '8px 12px',
+                        backgroundColor: '#f5f5f5',
+                        borderRadius: '6px',
+                        border: '1px solid #e0e0e0'
+                      }}>
+                        <strong style={{ color: '#333', marginRight: '8px' }}>Item {idx + 1}:</strong>
+                        <span style={{ color: '#666' }}>{formatSize(item.size)}</span>
+                      </div>
+                    ))
+                  : (
+                      <div style={{ 
+                        fontSize: '0.9rem', 
+                        lineHeight: '1.5',
+                        padding: '8px 12px',
+                        backgroundColor: '#f5f5f5',
+                        borderRadius: '6px',
+                        border: '1px solid #e0e0e0',
+                        color: '#666'
+                      }}>
+                        {formatSize(specific_data.size)}
+                      </div>
+                    )}
+              </span>
             </div>
             <div className="detail-row">
               <span className="detail-label">Rental Period:</span>
               <span className="detail-value">
-                {specific_data.rental_start_date ? new Date(specific_data.rental_start_date).toLocaleDateString() : 'N/A'} to {' '}
-                {specific_data.rental_end_date ? new Date(specific_data.rental_end_date).toLocaleDateString() : 'N/A'}
+                {(() => {
+                  // Try to get dates from order item (rental_start_date/rental_end_date) or specific_data
+                  // Also check item directly in case it's nested
+                  const startDate = rental_start_date || item?.rental_start_date || specific_data?.rental_start_date || specific_data?.rentalDates?.startDate;
+                  const endDate = rental_end_date || item?.rental_end_date || specific_data?.rental_end_date || specific_data?.rentalDates?.endDate;
+                  
+                  console.log('Rental dates check:', { rental_start_date, rental_end_date, item_rental_start: item?.rental_start_date, item_rental_end: item?.rental_end_date, startDate, endDate });
+                  
+                  if (startDate && endDate) {
+                    try {
+                      return `${formatDate(startDate)} to ${formatDate(endDate)}`;
+                    } catch (e) {
+                      return `${startDate} to ${endDate}`;
+                    }
+                  } else if (startDate) {
+                    try {
+                      return `${formatDate(startDate)} to N/A`;
+                    } catch (e) {
+                      return `${startDate} to N/A`;
+                    }
+                  } else if (endDate) {
+                    try {
+                      return `N/A to ${formatDate(endDate)}`;
+                    } catch (e) {
+                      return `N/A to ${endDate}`;
+                    }
+                  }
+                  return 'N/A to N/A';
+                })()}
               </span>
             </div>
             {specific_data.notes && (
@@ -454,16 +631,12 @@ const Profile = () => {
               <span className="detail-value">{specific_data.damageDescription || 'N/A'}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">Pickup Date:</span>
-              <span className="detail-value">{specific_data.pickupDate || 'N/A'}</span>
+              <span className="detail-label">Drop Off Item Date:</span>
+              <span className="detail-value">{formatDateTo12Hour(specific_data.pickupDate)}</span>
             </div>
             <div className="detail-row">
               <span className="detail-label">Estimated Price:</span>
               <span className="detail-value">₱{estimatedPrice}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Estimated Time:</span>
-              <span className="detail-value">{estimatedTime}</span>
             </div>
           </div>
         );
@@ -675,16 +848,12 @@ const Profile = () => {
               <span className="detail-value">{specific_data.notes || 'None'}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">Pickup Date:</span>
-              <span className="detail-value">{specific_data.pickupDate || 'N/A'}</span>
+              <span className="detail-label">Drop Off Item Date:</span>
+              <span className="detail-value">{formatDateTo12Hour(specific_data.pickupDate)}</span>
             </div>
             <div className="detail-row">
               <span className="detail-label">Estimated Price:</span>
               <span className="detail-value">₱{dryCleaningEstimatedPrice}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Estimated Time:</span>
-              <span className="detail-value">{dryCleaningEstimatedTime}</span>
             </div>
           </div>
         );
@@ -710,7 +879,8 @@ const Profile = () => {
   // Helper function to get timeline dot status
   const getStatusDotClass = (currentStatus, stepStatus, serviceType = null) => {
     // Define status flows for different service types
-    const rentalFlow = ['pending', 'ready_to_pickup', 'ready_for_pickup', 'rented', 'returned', 'completed'];
+    // Rental flow: pending -> ready_to_pickup -> rented -> returned (no completed)
+    const rentalFlow = ['pending', 'ready_to_pickup', 'ready_for_pickup', 'rented', 'returned'];
     // Updated default flow to handle both workflows - always includes price_confirmation
     const defaultFlow = ['pending', 'price_confirmation', 'accepted', 'in_progress', 'ready_to_pickup', 'completed'];
 
@@ -740,7 +910,8 @@ const Profile = () => {
   // Helper function to get timeline date
   const getTimelineDate = (updatedAt, currentStatus, stepStatus, serviceType = null) => {
     // Define status flows for different service types
-    const rentalFlow = ['pending', 'ready_to_pickup', 'ready_for_pickup', 'rented', 'returned', 'completed'];
+    // Rental flow: pending -> ready_to_pickup -> rented -> returned (no completed)
+    const rentalFlow = ['pending', 'ready_to_pickup', 'ready_for_pickup', 'rented', 'returned'];
     // Updated default flow to handle both workflows - always includes price_confirmation
     const defaultFlow = ['pending', 'price_confirmation', 'accepted', 'in_progress', 'ready_to_pickup', 'completed'];
 
@@ -775,7 +946,8 @@ const Profile = () => {
   // Helper function to check if timeline item should be marked as completed
   const getTimelineItemClass = (currentStatus, stepStatus, serviceType = null) => {
     // Define status flows for different service types
-    const rentalFlow = ['pending', 'ready_to_pickup', 'ready_for_pickup', 'rented', 'returned', 'completed'];
+    // Rental flow: pending -> ready_to_pickup -> rented -> returned (no completed)
+    const rentalFlow = ['pending', 'ready_to_pickup', 'ready_for_pickup', 'rented', 'returned'];
     // Updated default flow to handle both workflows - always includes price_confirmation
     const defaultFlow = ['pending', 'price_confirmation', 'accepted', 'in_progress', 'ready_to_pickup', 'completed'];
 
@@ -941,7 +1113,9 @@ const Profile = () => {
             order_date: order.order_date,
             status_updated_at: item.status_updated_at,
             specific_data: item.specific_data,
-            pricing_factors: item.pricing_factors
+            pricing_factors: item.pricing_factors,
+            rental_start_date: item.rental_start_date,
+            rental_end_date: item.rental_end_date
           });
         }
       });
@@ -1169,6 +1343,12 @@ const Profile = () => {
               {getAllOrderItems().map((item) => {
                 const estimatedPrice = getEstimatedPrice(item.specific_data, item.service_type);
                 const priceChanged = hasPriceChanged(item.specific_data, item.final_price, item.service_type, item.pricing_factors);
+                
+                // Calculate remaining amount for rental items with "rented" status
+                const isRentalRented = item.service_type === 'rental' && item.status === 'rented';
+                const downpayment = parseFloat(item.pricing_factors?.downpayment || item.specific_data?.downpayment || 0);
+                const finalPrice = parseFloat(item.final_price || 0);
+                const remainingAmount = isRentalRented ? Math.max(0, finalPrice - downpayment) : finalPrice;
 
                 return (
                   <div key={`${item.order_id}-${item.order_item_id}-${item.service_type}-${item.status_updated_at || Date.now()}`} className="order-card">
@@ -1184,7 +1364,23 @@ const Profile = () => {
                           )}
                         </span>
                       </div>
-                      <div className="order-price">₱{parseFloat(item.final_price).toFixed(2)}</div>
+                      <div className="order-price">
+                        {isRentalRented ? (
+                          <>
+                            <div style={{ fontSize: '14px', color: '#666', textDecoration: 'line-through' }}>
+                              ₱{finalPrice.toFixed(2)}
+                            </div>
+                            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ff9800' }}>
+                              ₱{remainingAmount.toFixed(2)}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                              Remaining
+                            </div>
+                          </>
+                        ) : (
+                          `₱${finalPrice.toFixed(2)}`
+                        )}
+                      </div>
                     </div>
 
                     <div className="order-status">
@@ -1196,7 +1392,36 @@ const Profile = () => {
                     {/* Price Comparison */}
                     {(estimatedPrice > 0 || item.final_price > 0) && (
                       <div className="price-comparison">
-                        {estimatedPrice > 0 ? (
+                        {isRentalRented ? (
+                          <>
+                            <div className="price-row">
+                              <span className="price-label">Total Rental Price:</span>
+                              <span className="price-value final">₱{finalPrice.toFixed(2)}</span>
+                            </div>
+                            <div className="price-row">
+                              <span className="price-label">Downpayment Paid:</span>
+                              <span className="price-value" style={{ color: '#4caf50' }}>-₱{downpayment.toFixed(2)}</span>
+                            </div>
+                            <div className="price-row" style={{ borderTop: '2px solid #e0e0e0', paddingTop: '8px', marginTop: '8px' }}>
+                              <span className="price-label" style={{ fontWeight: 'bold', fontSize: '16px' }}>Remaining Amount:</span>
+                              <span className="price-value" style={{ fontWeight: 'bold', fontSize: '18px', color: '#ff9800' }}>
+                                ₱{remainingAmount.toFixed(2)}
+                              </span>
+                            </div>
+                            <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#fff3e0', borderRadius: '6px', fontSize: '13px', color: '#666' }}>
+                              💡 Pay the remaining amount when you return the rental item.
+                            </div>
+                          </>
+                        ) : item.status === 'pending' ? (
+                          // For pending status, only show estimated price if available
+                          estimatedPrice > 0 ? (
+                            <div className="price-row">
+                              <span className="price-label">Estimated Price:</span>
+                              <span className="price-value estimated">₱{estimatedPrice.toFixed(2)}</span>
+                            </div>
+                          ) : null
+                        ) : item.status === 'price_confirmation' && estimatedPrice > 0 ? (
+                          // For price_confirmation status, show both estimated and final price
                           <>
                             <div className="price-row">
                               <span className="price-label">Estimated Price:</span>
@@ -1206,28 +1431,29 @@ const Profile = () => {
                               <span className="price-label">Final Price:</span>
                               <span className={`price-value ${priceChanged ? 'changed' : 'same'}`}>
                                 ₱{parseFloat(item.final_price).toFixed(2)}
-                                {priceChanged && item.status === 'price_confirmation' && <span className="price-change-indicator">⚠️ Updated by Admin</span>}
+                                {priceChanged && <span className="price-change-indicator">⚠️ Updated by Admin</span>}
                               </span>
                             </div>
+                            {priceChanged && item.specific_data?.adminNotes && (
+                              <div className="admin-notes">
+                                <span className="notes-label">Admin Note:</span>
+                                <span className="notes-text">{item.specific_data.adminNotes}</span>
+                              </div>
+                            )}
                           </>
                         ) : (
+                          // For other statuses (accepted, in_progress, etc.), show final price
                           <div className="price-row">
                             <span className="price-label">Final Price:</span>
                             <span className="price-value final">₱{parseFloat(item.final_price).toFixed(2)}</span>
                           </div>
                         )}
-                        {priceChanged && item.status === 'price_confirmation' && item.specific_data?.adminNotes && (
-                          <div className="admin-notes">
-                            <span className="notes-label">Admin Note:</span>
-                            <span className="notes-text">{item.specific_data.adminNotes}</span>
-                          </div>
-                        )}
                       </div>
                     )}
 
-                    {/* Deposit Amount for Rental (Ready to Pick Up) */}
+                    {/* Downpayment Amount for Rental (Ready to Pick Up) */}
                     {item.service_type === 'rental' && (item.status === 'ready_to_pickup' || item.status === 'ready_for_pickup') && (
-                      <div className="deposit-info" style={{
+                      <div className="downpayment-info" style={{
                         background: '#fff3e0',
                         border: '2px solid #ff9800',
                         borderRadius: '8px',
@@ -1236,13 +1462,13 @@ const Profile = () => {
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                           <span style={{ fontSize: '24px' }}>💰</span>
-                          <strong style={{ color: '#e65100', fontSize: '16px' }}>Deposit Payment Required</strong>
+                          <strong style={{ color: '#e65100', fontSize: '16px' }}>Downpayment Payment Required</strong>
                         </div>
                         <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
-                          Please pay the deposit amount when picking up your rental item from the store.
+                          Please pay the downpayment amount when picking up your rental item from the store.
                         </div>
                         <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#ff9800' }}>
-                          Deposit Amount: ₱{parseFloat(item.pricing_factors?.deposit_amount || item.specific_data?.deposit_amount || 0).toLocaleString()}
+                          Downpayment Amount: ₱{parseFloat(item.pricing_factors?.downpayment || item.specific_data?.downpayment || 0).toLocaleString()}
                         </div>
                       </div>
                     )}
@@ -1252,7 +1478,7 @@ const Profile = () => {
                         {/* Conditional timeline based on service type */}
                         {item.service_type === 'rental' ? (
                           <>
-                            {/* Rental Timeline: Order Placed → Ready to Pick Up → Rented → Returned → Completed */}
+                            {/* Rental Timeline: Order Placed → Ready to Pick Up → Rented → Returned */}
                             <div className={`timeline-item ${getTimelineItemClass(item.status, 'pending', 'rental')}`}>
                               <div className={`timeline-dot ${getStatusDotClass(item.status, 'pending', 'rental')}`}></div>
                               <div className="timeline-content">
@@ -1282,14 +1508,6 @@ const Profile = () => {
                               <div className="timeline-content">
                                 <div className="timeline-title">Returned</div>
                                 <div className="timeline-date">{getTimelineDate(item.status_updated_at, item.status, 'returned', 'rental')}</div>
-                              </div>
-                            </div>
-
-                            <div className={`timeline-item ${getTimelineItemClass(item.status, 'completed', 'rental')}`}>
-                              <div className={`timeline-dot ${getStatusDotClass(item.status, 'completed', 'rental')}`}></div>
-                              <div className="timeline-content">
-                                <div className="timeline-title">Completed</div>
-                                <div className="timeline-date">{getTimelineDate(item.status_updated_at, item.status, 'completed', 'rental')}</div>
                               </div>
                             </div>
                           </>
@@ -1390,7 +1608,9 @@ const Profile = () => {
                         >
                           View Details
                         </button>
-                        {item.status !== 'cancelled' && item.status !== 'completed' && item.status !== 'ready_to_pickup' && (
+                        {/* Show cancel button for rentals (bundled and single) and other services */}
+                        {/* Show cancel button for rentals (bundled and single) and other services that are not completed/cancelled/returned */}
+                        {item.status !== 'cancelled' && item.status !== 'completed' && item.status !== 'returned' && (
                           <button
                             className="btn-cancel"
                             onClick={() => {
@@ -1451,7 +1671,41 @@ const Profile = () => {
                   </div>
                   <div className="summary-item">
                     <span className="summary-label">Price:</span>
-                    <span className="summary-value">₱{parseFloat(selectedItem.final_price).toFixed(2)}</span>
+                    <span className="summary-value">
+                      {(() => {
+                        const isRentalRented = selectedItem.service_type === 'rental' && selectedItem.status === 'rented';
+                        const downpayment = parseFloat(selectedItem.pricing_factors?.downpayment || selectedItem.specific_data?.downpayment || 0);
+                        const finalPrice = parseFloat(selectedItem.final_price || 0);
+                        const remainingAmount = isRentalRented ? Math.max(0, finalPrice - downpayment) : finalPrice;
+                        
+                        if (isRentalRented) {
+                          return (
+                            <div>
+                              <div style={{ fontSize: '14px', color: '#666', textDecoration: 'line-through', marginBottom: '4px' }}>
+                                ₱{finalPrice.toFixed(2)}
+                              </div>
+                              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ff9800' }}>
+                                ₱{remainingAmount.toFixed(2)}
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                (Remaining after downpayment)
+                              </div>
+                            </div>
+                          );
+                        }
+                        
+                        // For pending status, show estimated price if available, otherwise show final price
+                        if (selectedItem.status === 'pending') {
+                          const estimatedPrice = getEstimatedPrice(selectedItem.specific_data, selectedItem.service_type);
+                          if (estimatedPrice > 0) {
+                            return `₱${estimatedPrice.toFixed(2)} (Estimated)`;
+                          }
+                        }
+                        
+                        // For price_confirmation or other statuses, show final price
+                        return `₱${finalPrice.toFixed(2)}`;
+                      })()}
+                    </span>
                   </div>
                   <div className="summary-item">
                     <span className="summary-label">Order Date:</span>
@@ -1490,9 +1744,37 @@ const Profile = () => {
                     </div>
                   </div>
                 )}
-                <button className="btn-secondary" onClick={closeDetailsModal}>
-                  Close
-                </button>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  {/* Show cancel button for rentals (bundled and single) and other services that are not completed/cancelled/returned */}
+                  {selectedItem.status !== 'cancelled' && selectedItem.status !== 'completed' && selectedItem.status !== 'returned' && (
+                    <button
+                      onClick={() => {
+                        setItemToCancel(selectedItem);
+                        setCancelReason('');
+                        setCancelModalOpen(true);
+                        closeDetailsModal();
+                      }}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#f44336',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        fontWeight: '500',
+                        transition: 'background 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = '#da190b'}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = '#f44336'}
+                    >
+                      Cancel Order
+                    </button>
+                  )}
+                  <button className="btn-secondary" onClick={closeDetailsModal}>
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>

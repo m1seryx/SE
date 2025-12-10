@@ -30,7 +30,8 @@ function Rental() {
     try {
       const result = await getAllRentalOrders();
       if (result.success) {
-        setRentals(result.orders);
+        // Ensure we're setting a fresh array to trigger React re-render
+        setRentals([...result.orders]);
       } else {
         console.error('Failed to load rental orders:', result.message);
       }
@@ -43,8 +44,11 @@ function Rental() {
 
   const stats = {
     pending: rentals.filter(r => r.approval_status === 'pending' || r.approval_status === 'pending_review').length,
-    accepted: rentals.filter(r => r.approval_status === 'accepted').length,
-    ready_to_pickup: rentals.filter(r => r.approval_status === 'ready_to_pickup' || r.approval_status === 'ready_for_pickup').length,
+    ready_to_pickup: rentals.filter(r => 
+      r.approval_status === 'ready_to_pickup' || 
+      r.approval_status === 'ready_for_pickup' ||
+      r.approval_status === 'accepted' // Treat accepted as ready_to_pickup for rentals
+    ).length,
     rented: rentals.filter(r => r.approval_status === 'rented').length,
     returned: rentals.filter(r => r.approval_status === 'returned').length
   };
@@ -54,10 +58,12 @@ function Rental() {
     switch (viewFilter) {
       case 'pending':
         return rentals.filter(r => r.approval_status === 'pending' || r.approval_status === 'pending_review');
-      case 'accepted':
-        return rentals.filter(r => r.approval_status === 'accepted');
       case 'ready-to-pickup':
-        return rentals.filter(r => r.approval_status === 'ready_to_pickup' || r.approval_status === 'ready_for_pickup');
+        return rentals.filter(r => 
+          r.approval_status === 'ready_to_pickup' || 
+          r.approval_status === 'ready_for_pickup' ||
+          r.approval_status === 'accepted' // Treat accepted as ready_to_pickup for rentals
+        );
       case 'rented':
         return rentals.filter(r => r.approval_status === 'rented');
       case 'returned':
@@ -74,12 +80,14 @@ function Rental() {
       rental.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rental.specific_data?.item_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Normalize status for filtering
+    // Normalize status for filtering - treat 'accepted' as 'ready_to_pickup' since accepted doesn't exist in rental flow
     let normalizedStatus = rental.approval_status;
     if (rental.approval_status === 'pending_review') {
       normalizedStatus = 'pending';
     } else if (rental.approval_status === 'ready_for_pickup') {
       normalizedStatus = 'ready_to_pickup';
+    } else if (rental.approval_status === 'accepted') {
+      normalizedStatus = 'ready_to_pickup'; // Treat accepted as ready_to_pickup for rentals
     }
 
     const matchesStatus = !statusFilter || normalizedStatus === statusFilter;
@@ -87,18 +95,18 @@ function Rental() {
     return matchesSearch && matchesStatus;
   });
 
-  // Handle Accept rental
+  // Handle Accept rental - moves directly to ready_to_pickup
   const handleAccept = async (rental) => {
     const confirmed = await confirm(`Accept rental order ORD-${rental.order_id}?`, 'Accept Rental', 'warning');
     if (!confirmed) return;
 
     try {
       const result = await updateRentalOrderItem(rental.item_id, {
-        approvalStatus: 'accepted'
+        approvalStatus: 'ready_to_pickup'
       });
 
       if (result.success) {
-        await alert('Rental accepted! Status changed to "Accepted"', 'Success', 'success');
+        await alert('Rental accepted! Status changed to "Ready to Pick Up"', 'Success', 'success');
         await loadRentalOrders();
       } else {
         await alert(result.message || 'Failed to accept rental', 'Error', 'error');
@@ -169,8 +177,6 @@ function Rental() {
   };
 
   const handleStatusUpdate = async (itemId, newStatus) => {
-    console.log("Frontend - Updating rental status:", itemId, "to", newStatus);
-
     const confirmed = await confirm(`Update status to "${getStatusLabel(newStatus)}"?`, 'Update Status', 'warning');
     if (!confirmed) return;
 
@@ -179,11 +185,12 @@ function Rental() {
         approvalStatus: newStatus
       });
 
-      console.log("Frontend - Update result:", result);
-
       if (result.success) {
         await alert(`Status updated to "${getStatusLabel(newStatus)}"`, 'Success', 'success');
-        await loadRentalOrders();
+        // Reload orders after a brief delay to ensure state updates properly
+        setTimeout(() => {
+          loadRentalOrders();
+        }, 100);
       } else {
         await alert(result.message || 'Failed to update status', 'Error', 'error');
       }
@@ -194,10 +201,14 @@ function Rental() {
   };
 
   const getStatusClass = (status) => {
+    // For rentals, treat 'accepted' as 'ready_to_pickup' since accepted status doesn't exist in rental flow
+    let normalizedStatus = status === 'accepted' ? 'ready_to_pickup' : status;
+    // Also normalize ready_for_pickup to ready_to_pickup
+    normalizedStatus = normalizedStatus === 'ready_for_pickup' ? 'ready_to_pickup' : normalizedStatus;
+    
     const statusMap = {
       'pending': 'pending',
       'pending_review': 'pending',
-      'accepted': 'accepted',
       'ready_to_pickup': 'ready-to-pickup',
       'ready_for_pickup': 'ready-to-pickup',
       'picked_up': 'picked-up',
@@ -206,14 +217,17 @@ function Rental() {
       'completed': 'completed',
       'cancelled': 'cancelled'
     };
-    return statusMap[status] || 'unknown';
+    return statusMap[normalizedStatus] || 'unknown';
   };
 
   const getStatusLabel = (status) => {
+    // For rentals, normalize status - treat 'accepted' and 'ready_for_pickup' as 'ready_to_pickup'
+    let normalizedStatus = status === 'accepted' ? 'ready_to_pickup' : status;
+    normalizedStatus = normalizedStatus === 'ready_for_pickup' ? 'ready_to_pickup' : normalizedStatus;
+    
     const labelMap = {
       'pending': 'Pending',
       'pending_review': 'Pending',
-      'accepted': 'Accepted',
       'ready_to_pickup': 'Ready to Pick Up',
       'ready_for_pickup': 'Ready to Pick Up',
       'picked_up': 'Picked Up',
@@ -222,23 +236,45 @@ function Rental() {
       'completed': 'Completed',
       'cancelled': 'Cancelled'
     };
-    return labelMap[status] || status;
+    return labelMap[normalizedStatus] || normalizedStatus;
   };
 
   // Get next status in workflow
   const getNextStatus = (currentStatus, serviceType = 'rental') => {
-    if (!currentStatus || currentStatus === 'pending_review' || currentStatus === 'pending') {
-      return 'accepted';
+    // For rental service type, use simplified flow
+    if (serviceType === 'rental') {
+      // Handle null/undefined/empty status
+      if (!currentStatus || currentStatus === 'pending_review' || currentStatus === 'pending') {
+        return 'ready_to_pickup';
+      }
+      
+      // Normalize status variants to standard form
+      let normalizedStatus = currentStatus;
+      if (currentStatus === 'ready_for_pickup' || currentStatus === 'accepted') {
+        normalizedStatus = 'ready_to_pickup';
+      }
+      
+      // Rental flow: pending → ready_to_pickup → rented → returned
+      if (normalizedStatus === 'ready_to_pickup') {
+        return 'rented';
+      } else if (normalizedStatus === 'rented') {
+        return 'returned';
+      } else if (normalizedStatus === 'returned') {
+        return 'completed';
+      }
+      return null; // Already at final status or unknown status
     }
     
+    // For other service types
     const statusFlow = {
       'repair': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed'],
       'customization': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed'],
-      'dry_cleaning': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed'],
-      'rental': ['pending', 'accepted', 'ready_for_pickup', 'picked_up', 'rented', 'returned', 'completed']
+      'dry_cleaning': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed']
     };
     
-    const flow = statusFlow[serviceType] || statusFlow['rental'];
+    const flow = statusFlow[serviceType];
+    if (!flow) return null;
+    
     const currentIndex = flow.indexOf(currentStatus);
     
     if (currentIndex === -1 || currentIndex === flow.length - 1) {
@@ -253,17 +289,19 @@ function Rental() {
     const nextStatus = getNextStatus(currentStatus, serviceType);
     if (!nextStatus) return null;
     
+    // Map next status to action label
     const labelMap = {
-      'accepted': 'Accept',
       'price_confirmation': 'Price Confirm',
       'confirmed': 'Start Progress',
       'ready_for_pickup': 'Ready for Pickup',
+      'ready_to_pickup': 'Ready for Pickup',
       'completed': 'Complete',
       'picked_up': 'Mark Picked Up',
       'rented': 'Mark Rented',
       'returned': 'Mark Returned'
     };
     
+    // Return the label for the next status, or use getStatusLabel as fallback
     return labelMap[nextStatus] || getStatusLabel(nextStatus);
   };
 
@@ -284,14 +322,6 @@ function Rental() {
               <div className="stat-icon" style={{ background: '#fff3e0', color: '#ff9800' }}>📋</div>
             </div>
             <div className="stat-number">{stats.pending}</div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-header">
-              <span>Accepted</span>
-              <div className="stat-icon" style={{ background: '#e1f5fe', color: '#039be5' }}>✓</div>
-            </div>
-            <div className="stat-number">{stats.accepted}</div>
           </div>
 
           <div className="stat-card">
@@ -329,7 +359,6 @@ function Rental() {
           <select className="status-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="">All Status</option>
             <option value="pending">Pending</option>
-            <option value="accepted">Accepted</option>
             <option value="ready_to_pickup">Ready to Pick Up</option>
             <option value="rented">Rented</option>
             <option value="returned">Returned</option>
@@ -351,7 +380,7 @@ function Rental() {
                   <th>Rented Item</th>
                   <th>Rental Period</th>
                   <th>Total Price</th>
-                  <th>Deposit Amount</th>
+                  <th>Downpayment Amount</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -366,7 +395,7 @@ function Rental() {
                 ) : (
                   filteredRentals.map(rental => {
                     const isPending = rental.approval_status === 'pending' || rental.approval_status === 'pending_review';
-                    const depositAmount = rental.pricing_factors?.deposit_amount || rental.specific_data?.deposit_amount || 0;
+                    const downpaymentAmount = rental.pricing_factors?.downpayment || rental.specific_data?.downpayment || 0;
 
                     return (
                       <tr key={rental.item_id} className="clickable-row" onClick={() => handleViewDetails(rental)}>
@@ -379,55 +408,68 @@ function Rental() {
                             : 'N/A'}
                         </td>
                         <td>₱{parseFloat(rental.final_price || 0).toLocaleString()}</td>
-                        <td>₱{parseFloat(depositAmount).toLocaleString()}</td>
+                        <td>₱{parseFloat(downpaymentAmount).toLocaleString()}</td>
                         <td onClick={(e) => e.stopPropagation()}>
-                          <span className={`status-badge ${getStatusClass(rental.approval_status)}`}>
-                            {getStatusLabel(rental.approval_status)}
+                          <span 
+                            className={`status-badge ${getStatusClass(rental.approval_status || 'pending')}`}
+                            style={{ 
+                              display: 'inline-block',
+                              visibility: 'visible',
+                              opacity: 1,
+                              minWidth: '120px',
+                              textAlign: 'center'
+                            }}
+                          >
+                            {getStatusLabel(rental.approval_status || 'pending')}
                           </span>
                         </td>
                         <td onClick={(e) => e.stopPropagation()}>
-                          {isPending ? (
-                            <div className="action-buttons">
-                              <button className="icon-btn accept" onClick={() => handleAccept(rental)} title="Accept">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                              </button>
-                              <button className="icon-btn decline" onClick={() => handleDecline(rental)} title="Decline">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
-                              </button>
-                              <button className="icon-btn edit" onClick={() => handleEditClick(rental)} title="Edit">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                </svg>
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="action-buttons">
-                              {getNextStatus(rental.approval_status, 'rental') && (
+                          <div className="action-buttons">
+                            {/* Show move to next status button for all statuses */}
+                            {(() => {
+                              const currentStatus = rental.approval_status || 'pending';
+                              const nextStatus = getNextStatus(currentStatus, 'rental');
+                              if (!nextStatus) return null;
+                              const nextStatusLabel = getNextStatusLabel(currentStatus, 'rental');
+                              return (
                                 <button 
                                   className="icon-btn next-status" 
-                                  onClick={() => handleStatusUpdate(rental.item_id, getNextStatus(rental.approval_status, 'rental'))} 
-                                  title={`Move to ${getNextStatusLabel(rental.approval_status, 'rental')}`}
-                                  style={{ backgroundColor: '#4CAF50', color: 'white' }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStatusUpdate(rental.item_id, nextStatus);
+                                  }} 
+                                  title={`Move to ${nextStatusLabel}`}
+                                  style={{ backgroundColor: '#4CAF50', color: 'white', zIndex: 10 }}
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <polyline points="9 18 15 12 9 6"></polyline>
                                   </svg>
                                 </button>
-                              )}
-                              <button className="icon-btn edit" onClick={() => handleEditClick(rental)} title="Edit">
+                              );
+                            })()}
+                            {/* Show decline button only for pending rentals */}
+                            {isPending && (
+                              <button 
+                                className="icon-btn decline" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDecline(rental);
+                                }} 
+                                title="Decline"
+                              >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                                  <line x1="6" y1="6" x2="18" y2="18"></line>
                                 </svg>
                               </button>
-                            </div>
-                          )}
+                            )}
+                            <button className="icon-btn edit" onClick={() => handleEditClick(rental)} title="Edit">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -476,9 +518,7 @@ function Rental() {
                   onChange={(e) => setEditData({ ...editData, approvalStatus: e.target.value })}
                   className="form-control"
                 >
-                  <option value="accepted">Accepted</option>
                   <option value="ready_for_pickup">Ready to Pick Up</option>
-                  <option value="picked_up">Picked Up</option>
                   <option value="rented">Rented</option>
                   <option value="returned">Returned</option>
                   <option value="completed">Completed</option>
@@ -584,9 +624,9 @@ function Rental() {
                 </span>
               </div>
               <div className="detail-row">
-                <strong>Deposit Amount:</strong>
+                <strong>Downpayment Amount:</strong>
                 <span style={{ color: '#ff9800', fontWeight: 'bold' }}>
-                  ₱{parseFloat(selectedRental.pricing_factors?.deposit_amount || selectedRental.specific_data?.deposit_amount || 0).toLocaleString()}
+                  ₱{parseFloat(selectedRental.pricing_factors?.downpayment || selectedRental.specific_data?.downpayment || 0).toLocaleString()}
                 </span>
               </div>
               <div className="detail-row">

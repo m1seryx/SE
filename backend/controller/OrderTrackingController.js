@@ -109,7 +109,10 @@ exports.getUserOrderTracking = (req, res) => {
           status_label: statusInfo.label,
           status_class: statusInfo.class,
           status_updated_at: item.status_updated_at,
-          next_statuses: nextStatuses
+          next_statuses: nextStatuses,
+          rental_start_date: item.rental_start_date || null,
+          rental_end_date: item.rental_end_date || null,
+          pricing_factors: pricingFactors
         });
       } catch (itemErr) {
         console.error('Error processing order item:', item, itemErr);
