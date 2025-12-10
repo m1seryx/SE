@@ -119,7 +119,8 @@ export default function DryCleaningClothes() {
           } as any);
 
           const token = await AsyncStorage.getItem('userToken');
-          const uploadResponse = await fetch('http://192.168.254.102:5000/api/dry-cleaning/upload-image', {
+          const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL?.replace('/api', '') || 'http://192.168.254.106:5000';
+          const uploadResponse = await fetch(`${API_BASE}/api/dry-cleaning/upload-image`, {
             method: 'POST',
             headers: {
               'Authorization': token ? `Bearer ${token}` : '',
@@ -141,21 +142,32 @@ export default function DryCleaningClothes() {
         }
       }
 
-      // Prepare dry cleaning data for backend
+      // Prepare dry cleaning data for backend (matching web app structure)
+      const pricePerItem = getPriceForGarment(selectedItem);
+      const isEstimatedPrice = false; // Since we have fixed prices per garment type
+      
       const dryCleaningData = {
         serviceType: 'dry_cleaning',
-        serviceId: 3,
-        serviceName: `${selectedItem} Dry Cleaning`,
-        basePrice: '0', // No base price, price depends only on quantity and brand
-        finalPrice: totalPrice.toString(),
+        serviceId: null, // Backend will generate
         quantity: qty,
+        basePrice: '0',
+        finalPrice: totalPrice.toString(),
+        pricingFactors: {
+          quantity: qty,
+          pricePerItem: pricePerItem.toString(),
+          pickupDate: pickupDate.toISOString()
+        },
         specificData: {
+          serviceName: `${selectedItem} Dry Cleaning`,
+          brand: clothingBrand || '',
+          notes: specialInstructions || '',
           garmentType: selectedItem,
-          clothingBrand: clothingBrand,
-          specialInstructions: specialInstructions,
           quantity: qty,
           imageUrl: imageUrl || 'no-image',
-          pickupDate: pickupDate.toISOString()
+          pickupDate: pickupDate.toISOString(),
+          pricePerItem: pricePerItem.toString(),
+          isEstimatedPrice: isEstimatedPrice,
+          uploadedAt: new Date().toISOString()
         }
       };
 

@@ -7,6 +7,7 @@ import dp from "../assets/dp.png";
 import { getUser } from '../api/AuthApi';
 import { getUserOrderTracking, getStatusBadgeClass, getStatusLabel, cancelOrderItem } from '../api/OrderTrackingApi';
 import ImagePreviewModal from '../components/ImagePreviewModal';
+import TransactionLogModal from './components/TransactionLogModal';
 import { useAlert } from '../context/AlertContext';
 import { getMyMeasurements } from '../api/CustomerApi';
 
@@ -36,6 +37,10 @@ const Profile = () => {
   const [itemToCancel, setItemToCancel] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
+  
+  // Transaction log modal state
+  const [transactionLogModalOpen, setTransactionLogModalOpen] = useState(false);
+  const [selectedOrderItemId, setSelectedOrderItemId] = useState(null);
 
   // Function to open image preview
   const openImagePreview = (imageUrl, altText) => {
@@ -969,6 +974,18 @@ const Profile = () => {
     return currentIndex >= stepIndex ? 'completed' : '';
   };
 
+  // Helper function to get payment status badge class
+  const getPaymentStatusBadgeClass = (paymentStatus) => {
+    const statusMap = {
+      'unpaid': 'unpaid',
+      'paid': 'paid',
+      'down-payment': 'down-payment',
+      'fully_paid': 'fully-paid',
+      'cancelled': 'cancelled'
+    };
+    return statusMap[paymentStatus] || 'unknown';
+  };
+
   // Helper function to get estimated price from specific_data
   const getEstimatedPrice = (specificData, serviceType) => {
     if (serviceType === 'repair') {
@@ -1383,10 +1400,15 @@ const Profile = () => {
                       </div>
                     </div>
 
-                    <div className="order-status">
+                    <div className="order-status" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                       <span className={`status-badge ${getStatusBadgeClass(item.status)}`}>
                         {getStatusLabel(item.status)}
                       </span>
+                      {item.payment_status_display && (
+                        <span className={`status-badge ${getPaymentStatusBadgeClass(item.payment_status)}`}>
+                          💳 {item.payment_status_display}
+                        </span>
+                      )}
                     </div>
 
                     {/* Price Comparison */}
@@ -1601,12 +1623,34 @@ const Profile = () => {
                         <span className="date-info">Requested: {formatDate(item.order_date)}</span>
                         <span className="date-info">Updated: {formatDate(item.status_updated_at)}</span>
                       </div>
-                      <div style={{ display: 'flex', gap: '10px' }}>
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         <button
                           className="btn-view-details"
                           onClick={() => handleViewDetails(item)}
                         >
                           View Details
+                        </button>
+                        <button
+                          className="btn-view-transactions"
+                          onClick={() => {
+                            setSelectedOrderItemId(item.order_item_id);
+                            setTransactionLogModalOpen(true);
+                          }}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#8B4513',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem',
+                            fontWeight: '500',
+                            transition: 'background 0.3s ease'
+                          }}
+                          onMouseEnter={(e) => e.target.style.backgroundColor = '#6B3410'}
+                          onMouseLeave={(e) => e.target.style.backgroundColor = '#8B4513'}
+                        >
+                          💳 Transaction Log
                         </button>
                         {/* Show cancel button for rentals (bundled and single) and other services */}
                         {/* Show cancel button for rentals (bundled and single) and other services that are not completed/cancelled/returned */}
@@ -1787,6 +1831,16 @@ const Profile = () => {
         imageUrl={previewImageUrl}
         altText={previewImageAlt}
         onClose={() => setImagePreviewOpen(false)}
+      />
+
+      {/* Transaction Log Modal */}
+      <TransactionLogModal
+        isOpen={transactionLogModalOpen}
+        onClose={() => {
+          setTransactionLogModalOpen(false);
+          setSelectedOrderItemId(null);
+        }}
+        orderItemId={selectedOrderItemId}
       />
 
       {/* Measurements Modal */}

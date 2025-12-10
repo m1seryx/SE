@@ -63,6 +63,7 @@
     },
     "updates": {
       "enabled": false,
+      "checkAutomatically": "NEVER",
       "fallbackToCacheTimeout": 0
     }
   }

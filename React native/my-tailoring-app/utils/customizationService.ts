@@ -1,5 +1,7 @@
 // utils/customizationService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
 import apiCall from './apiService';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.1.202:5000/api';
@@ -120,22 +122,63 @@ export const getCustomizationStats = async () => {
   });
 };
 
-// Helper to convert base64 image to FormData for upload
-export const convertBase64ToFormData = (base64Image: string, filename: string = 'design.png'): FormData => {
+// Helper to convert base64 image to FormData for upload (React Native compatible)
+// Returns both FormData and the temporary file URI for cleanup
+export const convertBase64ToFormData = async (
+  base64Image: string, 
+  filename: string = 'design.png'
+): Promise<{ formData: FormData; fileUri: string }> => {
+  if (!base64Image) {
+    throw new Error('Base64 image data is required');
+  }
+
   // Remove data URL prefix if present
   const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
   
-  // Convert base64 to blob
-  const byteCharacters = atob(base64Data);
-  const byteNumbers = new Array(byteCharacters.length);
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  if (!base64Data) {
+    throw new Error('Invalid base64 image data');
   }
-  const byteArray = new Uint8Array(byteNumbers);
-  const blob = new Blob([byteArray], { type: 'image/png' });
   
+  // Determine image type from base64 prefix or filename
+  let imageType = 'image/png';
+  if (base64Image.includes('data:image/jpeg') || base64Image.includes('data:image/jpg')) {
+    imageType = 'image/jpeg';
+  } else if (base64Image.includes('data:image/png')) {
+    imageType = 'image/png';
+  } else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) {
+    imageType = 'image/jpeg';
+  }
+  
+  // Ensure cache directory exists
+  if (!FileSystem.cacheDirectory) {
+    throw new Error('FileSystem cache directory is not available');
+  }
+  
+  // Save base64 to temporary file with unique name to avoid conflicts
+  const timestamp = Date.now();
+  const uniqueFilename = `${timestamp}-${filename}`;
+  let fileUri = `${FileSystem.cacheDirectory}${uniqueFilename}`;
+  
+  try {
+    await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+  } catch (writeError: any) {
+    console.error('Error writing base64 to file:', writeError);
+    throw new Error(`Failed to save image to temporary file: ${writeError?.message || writeError}`);
+  }
+  
+  // For React Native FormData, Android needs file:// prefix, iOS works with or without it
+  // Let's use the file URI directly as cacheDirectory provides the correct path
+  const formDataUri = Platform.OS === 'android' ? `file://${fileUri}` : fileUri;
+  
+  // Create FormData with file URI (React Native format)
   const formData = new FormData();
-  formData.append('customizationImage', blob as any, filename);
+  formData.append('customizationImage', {
+    uri: formDataUri,
+    type: imageType,
+    name: filename,
+  } as any);
   
-  return formData;
+  return { formData, fileUri };
 };

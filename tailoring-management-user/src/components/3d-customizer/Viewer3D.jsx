@@ -41,8 +41,8 @@ export default function Viewer3D({ garment, size, fit, modelSize, colors, fabric
           preserveDrawingBuffer: true  // Required for screenshot capture
         }}
       >
-        <color attach="background" args={[0, 0, 0]} />
-        <fog attach="fog" args={[0x000000, 10, 30]} />
+        <color attach="background" args={[1, 1, 1]} />
+        <fog attach="fog" args={[0xffffff, 10, 30]} />
         <Stage intensity={0.6} adjustCamera={false} shadows="accumulative" environment={null}>
           <Suspense fallback={<mesh><boxGeometry args={[1, 2, 0.5]} /><meshStandardMaterial color="#cccccc" /></mesh>}>
             <GarmentModel garment={garment} size={size} fit={fit} modelSize={modelSize} colors={colors} fabric={fabric} pattern={pattern} style={style} measurements={measurements} personalization={personalization} pantsType={pantsType} />

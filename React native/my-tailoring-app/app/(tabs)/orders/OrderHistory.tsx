@@ -243,6 +243,19 @@ export default function OrderHistoryScreen() {
       </View>
 
       <View style={styles.orderActions}>
+        <TouchableOpacity
+          style={styles.transactionLogButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            router.push({
+              pathname: "/(tabs)/orders/TransactionLog",
+              params: { orderItemId: item.order_item_id?.toString() || item.id?.toString() },
+            });
+          }}
+        >
+          <Ionicons name="receipt-outline" size={16} color="#8B4513" />
+          <Text style={styles.transactionLogButtonText}>Transaction Log</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton}>
           <Text style={styles.actionText}>View Details</Text>
           <Ionicons name="chevron-forward" size={16} color="#94665B" />
@@ -540,8 +553,26 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: "#F3F4F6",
+    flexDirection: "row",
+    gap: 12,
+  },
+  transactionLogButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF4E6",
+    paddingVertical: 12,
+    borderRadius: 16,
+    gap: 6,
+  },
+  transactionLogButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#8B4513",
   },
   actionButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

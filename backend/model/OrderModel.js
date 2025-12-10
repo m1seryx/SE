@@ -16,19 +16,40 @@ const Order = {
       const orderId = orderResult.insertId;
 
       // Insert order items
-      const itemValues = cartItems.map(item => [
-        orderId,
-        item.service_type,
-        item.service_id,
-        item.quantity || 1,
-        item.base_price,
-        item.final_price,
-        item.appointment_date,
-        item.rental_start_date,
-        item.rental_end_date,
-        item.pricing_factors || '{}',
-        item.specific_data || '{}'
-      ]);
+      const itemValues = cartItems.map(item => {
+        let pricingFactors = item.pricing_factors || '{}';
+        
+        // For rental services, ensure downpayment is 50% of final price
+        if (item.service_type === 'rental') {
+          try {
+            const factors = typeof pricingFactors === 'string' ? JSON.parse(pricingFactors) : pricingFactors;
+            const totalPrice = parseFloat(item.final_price || 0);
+            const expectedDownpayment = totalPrice * 0.5;
+            
+            // Update downpayment to 50% of total price
+            factors.downpayment = expectedDownpayment.toString();
+            factors.down_payment = expectedDownpayment.toString();
+            
+            pricingFactors = JSON.stringify(factors);
+          } catch (e) {
+            console.error('Error parsing pricing factors for rental:', e);
+          }
+        }
+        
+        return [
+          orderId,
+          item.service_type,
+          item.service_id,
+          item.quantity || 1,
+          item.base_price,
+          item.final_price,
+          item.appointment_date,
+          item.rental_start_date,
+          item.rental_end_date,
+          pricingFactors,
+          item.specific_data || '{}'
+        ];
+      });
 
       const itemSql = `
         INSERT INTO order_items (

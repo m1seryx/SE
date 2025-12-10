@@ -10,38 +10,90 @@ exports.getCompletedItems = (req, res) => {
     });
   }
 
-  // Query to get all completed items except rental items
-  const sql = `
-    SELECT 
-      oi.item_id,
-      oi.order_id,
-      oi.service_type,
-      oi.final_price,
-      oi.approval_status,
-      oi.payment_status,
-      o.status as order_status,
-      o.order_date,
-      u.user_id,
-      u.first_name,
-      u.last_name,
-      u.email,
-      u.phone_number
-    FROM order_items oi
-    JOIN orders o ON oi.order_id = o.order_id
-    JOIN user u ON o.user_id = u.user_id
-    WHERE oi.service_type != 'rental' 
-    AND (oi.approval_status = 'completed' OR o.status = 'completed')
-    ORDER BY o.order_date DESC
+  // First check if completed_item_image column exists
+  const checkColumnSql = `
+    SELECT COUNT(*) as column_exists
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'order_items'
+    AND COLUMN_NAME = 'completed_item_image'
   `;
 
-  db.query(sql, (err, results) => {
-    if (err) {
-      return res.status(500).json({
-        success: false,
-        message: "Database error",
-        error: err
-      });
+  db.query(checkColumnSql, (checkErr, checkResults) => {
+    if (checkErr) {
+      console.error('Error checking column existence:', checkErr);
+      // Continue anyway, we'll handle it in the main query
     }
+
+    const columnExists = checkResults && checkResults[0] && checkResults[0].column_exists > 0;
+    
+    // Build SQL query based on whether column exists
+    let sql;
+    if (columnExists) {
+      sql = `
+        SELECT 
+          oi.item_id,
+          oi.order_id,
+          oi.service_type,
+          oi.final_price,
+          oi.base_price,
+          oi.approval_status,
+          oi.payment_status,
+          oi.specific_data,
+          oi.pricing_factors,
+          oi.completed_item_image,
+          o.status as order_status,
+          o.order_date,
+          u.user_id,
+          u.first_name,
+          u.last_name,
+          u.email,
+          u.phone_number
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.order_id
+        JOIN user u ON o.user_id = u.user_id
+        WHERE oi.service_type != 'rental' 
+        AND (oi.approval_status = 'completed' OR o.status = 'completed')
+        ORDER BY o.order_date DESC
+      `;
+    } else {
+      sql = `
+        SELECT 
+          oi.item_id,
+          oi.order_id,
+          oi.service_type,
+          oi.final_price,
+          oi.base_price,
+          oi.approval_status,
+          oi.payment_status,
+          oi.specific_data,
+          oi.pricing_factors,
+          NULL as completed_item_image,
+          o.status as order_status,
+          o.order_date,
+          u.user_id,
+          u.first_name,
+          u.last_name,
+          u.email,
+          u.phone_number
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.order_id
+        JOIN user u ON o.user_id = u.user_id
+        WHERE oi.service_type != 'rental' 
+        AND (oi.approval_status = 'completed' OR o.status = 'completed')
+        ORDER BY o.order_date DESC
+      `;
+    }
+
+    db.query(sql, (err, results) => {
+      if (err) {
+        console.error('Database query error:', err);
+        return res.status(500).json({
+          success: false,
+          message: "Database error",
+          error: err.message || err
+        });
+      }
 
     // Transform data into inventory items
     const inventoryItems = results.map(item => {
@@ -65,21 +117,59 @@ exports.getCompletedItems = (req, res) => {
           uniqueNo = `S${item.item_id}${Math.floor(Math.random() * 1000)}`;
       }
 
+      // Parse JSON fields
+      let specificData = {};
+      let pricingFactors = {};
+      try {
+        specificData = item.specific_data ? JSON.parse(item.specific_data) : {};
+        pricingFactors = item.pricing_factors ? JSON.parse(item.pricing_factors) : {};
+      } catch (e) {
+        console.error('Error parsing JSON fields:', e);
+      }
+
+      // Format service type for display
+      let serviceTypeDisplay = item.service_type;
+      switch(item.service_type.toLowerCase()) {
+        case 'dry_cleaning':
+        case 'drycleaning':
+        case 'dry-cleaning':
+          serviceTypeDisplay = 'Dry Cleaning';
+          break;
+        case 'customize':
+        case 'customization':
+          serviceTypeDisplay = 'Customization';
+          break;
+        case 'repair':
+          serviceTypeDisplay = 'Repair';
+          break;
+        default:
+          serviceTypeDisplay = item.service_type.charAt(0).toUpperCase() + item.service_type.slice(1);
+      }
+
       return {
         id: item.item_id,
+        orderId: item.order_id,
         uniqueNo: uniqueNo,
         customerName: `${item.first_name} ${item.last_name}`,
+        customerEmail: item.email,
+        customerPhone: item.phone_number,
         serviceType: item.service_type,
+        serviceTypeDisplay: serviceTypeDisplay,
         date: item.order_date ? new Date(item.order_date).toISOString().split('T')[0] : 'N/A',
         price: parseFloat(item.final_price || 0),
-        status: item.approval_status || item.order_status
+        basePrice: parseFloat(item.base_price || 0),
+        status: item.approval_status || item.order_status,
+        specificData: specificData,
+        pricingFactors: pricingFactors,
+        completedItemImage: item.completed_item_image || null
       };
     });
 
-    res.json({
-      success: true,
-      message: "Inventory items retrieved successfully",
-      items: inventoryItems
+      res.json({
+        success: true,
+        message: "Inventory items retrieved successfully",
+        items: inventoryItems
+      });
     });
   });
 };
@@ -103,39 +193,92 @@ exports.getItemsByServiceType = (req, res) => {
     });
   }
 
-  // Query to get items by service type (excluding rental)
-  const sql = `
-    SELECT 
-      oi.item_id,
-      oi.order_id,
-      oi.service_type,
-      oi.final_price,
-      oi.approval_status,
-      oi.payment_status,
-      o.status as order_status,
-      o.order_date,
-      u.user_id,
-      u.first_name,
-      u.last_name,
-      u.email,
-      u.phone_number
-    FROM order_items oi
-    JOIN orders o ON oi.order_id = o.order_id
-    JOIN user u ON o.user_id = u.user_id
-    WHERE oi.service_type = ? 
-    AND oi.service_type != 'rental'
-    AND (oi.approval_status = 'completed' OR o.status = 'completed')
-    ORDER BY o.order_date DESC
+  // First check if completed_item_image column exists
+  const checkColumnSql = `
+    SELECT COUNT(*) as column_exists
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'order_items'
+    AND COLUMN_NAME = 'completed_item_image'
   `;
 
-  db.query(sql, [serviceType], (err, results) => {
-    if (err) {
-      return res.status(500).json({
-        success: false,
-        message: "Database error",
-        error: err
-      });
+  db.query(checkColumnSql, (checkErr, checkResults) => {
+    if (checkErr) {
+      console.error('Error checking column existence:', checkErr);
+      // Continue anyway, we'll handle it in the main query
     }
+
+    const columnExists = checkResults && checkResults[0] && checkResults[0].column_exists > 0;
+    
+    // Build SQL query based on whether column exists
+    let sql;
+    if (columnExists) {
+      sql = `
+        SELECT 
+          oi.item_id,
+          oi.order_id,
+          oi.service_type,
+          oi.final_price,
+          oi.base_price,
+          oi.approval_status,
+          oi.payment_status,
+          oi.specific_data,
+          oi.pricing_factors,
+          oi.completed_item_image,
+          o.status as order_status,
+          o.order_date,
+          u.user_id,
+          u.first_name,
+          u.last_name,
+          u.email,
+          u.phone_number
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.order_id
+        JOIN user u ON o.user_id = u.user_id
+        WHERE oi.service_type = ? 
+        AND oi.service_type != 'rental'
+        AND (oi.approval_status = 'completed' OR o.status = 'completed')
+        ORDER BY o.order_date DESC
+      `;
+    } else {
+      sql = `
+        SELECT 
+          oi.item_id,
+          oi.order_id,
+          oi.service_type,
+          oi.final_price,
+          oi.base_price,
+          oi.approval_status,
+          oi.payment_status,
+          oi.specific_data,
+          oi.pricing_factors,
+          NULL as completed_item_image,
+          o.status as order_status,
+          o.order_date,
+          u.user_id,
+          u.first_name,
+          u.last_name,
+          u.email,
+          u.phone_number
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.order_id
+        JOIN user u ON o.user_id = u.user_id
+        WHERE oi.service_type = ? 
+        AND oi.service_type != 'rental'
+        AND (oi.approval_status = 'completed' OR o.status = 'completed')
+        ORDER BY o.order_date DESC
+      `;
+    }
+
+    db.query(sql, [serviceType], (err, results) => {
+      if (err) {
+        console.error('Database query error:', err);
+        return res.status(500).json({
+          success: false,
+          message: "Database error",
+          error: err.message || err
+        });
+      }
 
     // Transform data into inventory items
     const inventoryItems = results.map(item => {
@@ -159,21 +302,59 @@ exports.getItemsByServiceType = (req, res) => {
           uniqueNo = `S${item.item_id}${Math.floor(Math.random() * 1000)}`;
       }
 
+      // Parse JSON fields
+      let specificData = {};
+      let pricingFactors = {};
+      try {
+        specificData = item.specific_data ? JSON.parse(item.specific_data) : {};
+        pricingFactors = item.pricing_factors ? JSON.parse(item.pricing_factors) : {};
+      } catch (e) {
+        console.error('Error parsing JSON fields:', e);
+      }
+
+      // Format service type for display
+      let serviceTypeDisplay = item.service_type;
+      switch(item.service_type.toLowerCase()) {
+        case 'dry_cleaning':
+        case 'drycleaning':
+        case 'dry-cleaning':
+          serviceTypeDisplay = 'Dry Cleaning';
+          break;
+        case 'customize':
+        case 'customization':
+          serviceTypeDisplay = 'Customization';
+          break;
+        case 'repair':
+          serviceTypeDisplay = 'Repair';
+          break;
+        default:
+          serviceTypeDisplay = item.service_type.charAt(0).toUpperCase() + item.service_type.slice(1);
+      }
+
       return {
         id: item.item_id,
+        orderId: item.order_id,
         uniqueNo: uniqueNo,
         customerName: `${item.first_name} ${item.last_name}`,
+        customerEmail: item.email,
+        customerPhone: item.phone_number,
         serviceType: item.service_type,
+        serviceTypeDisplay: serviceTypeDisplay,
         date: item.order_date ? new Date(item.order_date).toISOString().split('T')[0] : 'N/A',
         price: parseFloat(item.final_price || 0),
-        status: item.approval_status || item.order_status
+        basePrice: parseFloat(item.base_price || 0),
+        status: item.approval_status || item.order_status,
+        specificData: specificData,
+        pricingFactors: pricingFactors,
+        completedItemImage: item.completed_item_image || null
       };
     });
 
-    res.json({
-      success: true,
-      message: `Inventory items for ${serviceType} retrieved successfully`,
-      items: inventoryItems
+      res.json({
+        success: true,
+        message: `Inventory items for ${serviceType} retrieved successfully`,
+        items: inventoryItems
+      });
     });
   });
 };

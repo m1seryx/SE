@@ -10,6 +10,9 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  Modal,
+  TextInput,
+  Alert,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "react-native-paper";
@@ -17,6 +20,8 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { rentalService } from "../../../utils/rentalService";
+import { cartService } from "../../../utils/apiService";
+import DateTimePickerModal from "../../../components/DateTimePickerModal";
 
 const { width, height } = Dimensions.get("window");
 
@@ -38,6 +43,16 @@ export default function RentalLanding() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState("All");
+  
+  // Multi-select state
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const [showBundleModal, setShowBundleModal] = useState(false);
+  const [bundleStartDate, setBundleStartDate] = useState<Date | null>(null);
+  const [bundleDuration, setBundleDuration] = useState(3);
+  const [bundleEndDate, setBundleEndDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [addingToCart, setAddingToCart] = useState(false);
 
   // Fetch rentals on mount
   useEffect(() => {
@@ -96,6 +111,161 @@ export default function RentalLanding() {
           const category = item.category || item.item_category || "Other";
           return category === selectedCategory;
         });
+
+  // Toggle item selection
+  const toggleItemSelection = (item: any) => {
+    if (isMultiSelectMode) {
+      setSelectedItems(prev => {
+        const isSelected = prev.some(i => (i.item_id || i.id) === (item.item_id || item.id));
+        if (isSelected) {
+          return prev.filter(i => (i.item_id || i.id) !== (item.item_id || item.id));
+        } else {
+          return [...prev, item];
+        }
+      });
+    } else {
+      router.push(`/(tabs)/rental/${item.item_id}`);
+    }
+  };
+
+  // Check if item is selected
+  const isItemSelected = (item: any) => {
+    return selectedItems.some(i => (i.item_id || i.id) === (item.item_id || item.id));
+  };
+
+  // Calculate rental cost for a single item
+  const calculateItemCost = (item: any, duration: number) => {
+    if (!duration || duration < 3) return 0;
+    const validDuration = Math.floor(duration / 3) * 3;
+    if (validDuration < 3) return 0;
+    const basePrice = parseFloat(item.daily_rate || item.price || '500');
+    return (validDuration / 3) * basePrice;
+  };
+
+  // Calculate total cost for bundle
+  const calculateBundleTotal = () => {
+    if (!bundleStartDate || !bundleDuration || selectedItems.length === 0) return 0;
+    return selectedItems.reduce((total, item) => total + calculateItemCost(item, bundleDuration), 0);
+  };
+
+  // Calculate total downpayment for bundle (50% of total cost)
+  const calculateBundleDownpayment = () => {
+    const totalCost = calculateBundleTotal();
+    return totalCost * 0.5; // 50% of total cost
+  };
+
+  // Calculate end date from start date and duration
+  useEffect(() => {
+    if (bundleStartDate && bundleDuration) {
+      const endDate = new Date(bundleStartDate);
+      endDate.setDate(endDate.getDate() + bundleDuration - 1);
+      setBundleEndDate(endDate);
+    } else {
+      setBundleEndDate(null);
+    }
+  }, [bundleStartDate, bundleDuration]);
+
+  // Open bundle modal
+  const openBundleModal = () => {
+    if (selectedItems.length === 0) {
+      Alert.alert("No Items Selected", "Please select at least one item to rent");
+      return;
+    }
+    setBundleStartDate(null);
+    setBundleDuration(3);
+    setBundleEndDate(null);
+    setShowBundleModal(true);
+  };
+
+  // Close bundle modal
+  const closeBundleModal = () => {
+    setShowBundleModal(false);
+    setBundleStartDate(null);
+    setBundleDuration(3);
+    setBundleEndDate(null);
+  };
+
+  // Handle date confirmation
+  const handleDateConfirm = (selectedDate: Date) => {
+    setBundleStartDate(selectedDate);
+    setShowDatePicker(false);
+  };
+
+  // Add bundle to cart
+  const handleAddBundleToCart = async () => {
+    if (!bundleStartDate || !bundleDuration || selectedItems.length === 0) {
+      Alert.alert("Missing Information", "Please select start date and rental duration");
+      return;
+    }
+
+    setAddingToCart(true);
+    try {
+      const totalCost = calculateBundleTotal();
+      const totalDownpayment = totalCost * 0.5; // 50% of total cost
+      
+      // Create bundle items array
+      const bundleItems = selectedItems.map(item => ({
+        id: item.item_id || item.id,
+        item_name: item.item_name || item.name || 'Rental Item',
+        brand: item.brand || 'Unknown',
+        size: item.size || 'Standard',
+        category: item.category || 'rental',
+        downpayment: item.downpayment || 0,
+        image_url: rentalService.getImageUrl(item.image_url),
+        individual_cost: calculateItemCost(item, bundleDuration)
+      }));
+
+      const rentalData = {
+        serviceType: 'rental',
+        serviceId: bundleItems[0].id,
+        quantity: selectedItems.length,
+        basePrice: '0',
+        finalPrice: totalCost.toString(),
+        pricingFactors: {
+          duration: bundleDuration,
+          price: totalCost,
+          downpayment: totalDownpayment.toString(),
+          is_bundle: true,
+          item_count: selectedItems.length
+        },
+        specificData: {
+          is_bundle: true,
+          bundle_items: bundleItems,
+          item_names: bundleItems.map(i => i.item_name).join(', '),
+          item_name: `Rental Bundle (${selectedItems.length} items)`,
+          brand: 'Multiple',
+          size: 'Various',
+          category: 'rental_bundle',
+          image_url: bundleItems[0]?.image_url || ''
+        },
+        rentalDates: {
+          startDate: bundleStartDate.toISOString().split('T')[0],
+          endDate: bundleEndDate!.toISOString().split('T')[0],
+          duration: bundleDuration
+        }
+      };
+
+      const result = await cartService.addToCart(rentalData);
+      
+      if (result.success) {
+        Alert.alert("Success!", `${selectedItems.length} items added to cart as bundle!`, [
+          { text: "View Cart", onPress: () => router.push("/(tabs)/cart/Cart") },
+          { text: "Continue", onPress: () => {
+            setSelectedItems([]);
+            setIsMultiSelectMode(false);
+            closeBundleModal();
+          }},
+        ]);
+      } else {
+        Alert.alert("Error", result.message || "Failed to add bundle to cart");
+      }
+    } catch (error: any) {
+      console.error('Add bundle to cart error:', error);
+      Alert.alert("Error", error.message || "Failed to add bundle to cart");
+    } finally {
+      setAddingToCart(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -191,7 +361,36 @@ export default function RentalLanding() {
                   : `${selectedCategory} Collection`}
               </Text>
             </View>
-            <Text style={styles.itemCount}>{filteredRentals.length} items</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Text style={styles.itemCount}>{filteredRentals.length} items</Text>
+              {/* Multi-select Toggle Button */}
+              <TouchableOpacity
+                onPress={() => {
+                  if (isMultiSelectMode) {
+                    setIsMultiSelectMode(false);
+                    setSelectedItems([]);
+                  } else {
+                    setIsMultiSelectMode(true);
+                  }
+                }}
+                style={[
+                  styles.multiSelectButton,
+                  isMultiSelectMode && styles.multiSelectButtonActive
+                ]}
+              >
+                <Ionicons 
+                  name={isMultiSelectMode ? "close" : "checkbox-outline"} 
+                  size={18} 
+                  color={isMultiSelectMode ? "#fff" : "#78350F"} 
+                />
+                <Text style={[
+                  styles.multiSelectButtonText,
+                  isMultiSelectMode && styles.multiSelectButtonTextActive
+                ]}>
+                  {isMultiSelectMode ? 'Cancel' : 'Select Multiple'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
         {/* Loading State */}
@@ -216,39 +415,272 @@ export default function RentalLanding() {
         ) : (
           /* RENTAL GRID */
           <View style={styles.rentalGrid}>
-            {filteredRentals.map((item) => (
-              <TouchableOpacity
-                key={item.item_id}
-                style={styles.rentalCard}
-                activeOpacity={0.88}
-                onPress={() => router.push(`/(tabs)/rental/${item.item_id}`)}
-              >
-                <View style={styles.imageWrapper}>
-                  <Image
-                    source={getImageSource(item)}
-                    style={styles.rentalImage}
-                    resizeMode="cover"
-                  />
-                  <LinearGradient
-                    colors={["transparent", "rgba(0,0,0,0.6)"]}
-                    style={StyleSheet.absoluteFillObject}
-                  />
-                </View>
-                <View style={styles.rentalInfoOverlay}>
-                  <Text style={styles.rentalTitle} numberOfLines={2}>
-                    {item.item_name}
-                  </Text>
-                  <View style={styles.priceRow}>
-                    <Text style={styles.rentalPrice}>₱{item.daily_rate}</Text>
-                    <Text style={styles.priceLabel}>/day</Text>
+            {filteredRentals.map((item) => {
+              const selected = isItemSelected(item);
+              return (
+                <TouchableOpacity
+                  key={item.item_id}
+                  style={[
+                    styles.rentalCard,
+                    isMultiSelectMode && selected && styles.rentalCardSelected
+                  ]}
+                  activeOpacity={0.88}
+                  onPress={() => toggleItemSelection(item)}
+                >
+                  {/* Selection Checkbox */}
+                  {isMultiSelectMode && (
+                    <View style={styles.selectionCheckbox}>
+                      <View style={[
+                        styles.checkbox,
+                        selected && styles.checkboxChecked
+                      ]}>
+                        {selected && (
+                          <Ionicons name="checkmark" size={16} color="#fff" />
+                        )}
+                      </View>
+                    </View>
+                  )}
+                  
+                  <View style={styles.imageWrapper}>
+                    <Image
+                      source={getImageSource(item)}
+                      style={[
+                        styles.rentalImage,
+                        isMultiSelectMode && selected && styles.rentalImageSelected
+                      ]}
+                      resizeMode="cover"
+                    />
+                    <LinearGradient
+                      colors={["transparent", "rgba(0,0,0,0.6)"]}
+                      style={StyleSheet.absoluteFillObject}
+                    />
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+                  <View style={styles.rentalInfoOverlay}>
+                    <Text style={styles.rentalTitle} numberOfLines={2}>
+                      {item.item_name}
+                    </Text>
+                    <View style={styles.priceRow}>
+                      <Text style={styles.rentalPrice}>₱{item.daily_rate}</Text>
+                      <Text style={styles.priceLabel}>/day</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
         </View>
       </ScrollView>
+
+      {/* Floating Bundle Action Bar */}
+      {isMultiSelectMode && selectedItems.length > 0 && (
+        <View style={styles.bundleActionBar}>
+          <View style={styles.bundleInfo}>
+            <Text style={styles.bundleInfoText}>
+              <Text style={styles.bundleCount}>{selectedItems.length}</Text> item{selectedItems.length > 1 ? 's' : ''} selected
+            </Text>
+            <Text style={styles.bundleDownpayment}>
+              Est. Downpayment: ₱{calculateBundleDownpayment().toLocaleString()}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.bundleButton}
+            onPress={openBundleModal}
+          >
+            <Text style={styles.bundleButtonText}>Set Dates & Add to Cart</Text>
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Bundle Modal */}
+      <Modal
+        visible={showBundleModal}
+        transparent
+        animationType="slide"
+        onRequestClose={closeBundleModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.bundleModalContent}>
+            <View style={styles.bundleModalHeader}>
+              <Text style={styles.bundleModalTitle}>
+                Rental Bundle ({selectedItems.length} items)
+              </Text>
+              <TouchableOpacity onPress={closeBundleModal}>
+                <Ionicons name="close" size={28} color="#1F2937" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Selected Items Preview */}
+              <View style={styles.selectedItemsPreview}>
+                <Text style={styles.selectedItemsTitle}>Selected Items:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectedItemsScroll}>
+                  {selectedItems.map((item, idx) => (
+                    <View key={idx} style={styles.selectedItemChip}>
+                      <Image
+                        source={getImageSource(item)}
+                        style={styles.selectedItemImage}
+                        resizeMode="cover"
+                      />
+                      <Text style={styles.selectedItemName} numberOfLines={1}>
+                        {item.item_name || item.name}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => toggleItemSelection(item)}
+                        style={styles.removeItemButton}
+                      >
+                        <Ionicons name="close-circle" size={20} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* Date Selection */}
+              <View style={styles.dateSection}>
+                <Text style={styles.dateSectionTitle}>Rental Dates *</Text>
+                
+                <View style={styles.dateInputGroup}>
+                  <Text style={styles.dateLabel}>Start Date</Text>
+                  <TouchableOpacity
+                    style={styles.dateInput}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Ionicons name="calendar-outline" size={20} color="#78350F" />
+                    <Text style={styles.dateInputText}>
+                      {bundleStartDate
+                        ? bundleStartDate.toLocaleDateString("en-US", {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })
+                        : "Select start date"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.dateInputGroup}>
+                  <Text style={styles.dateLabel}>Rental Duration</Text>
+                  <View style={styles.durationSelector}>
+                    {[3, 6, 9, 12, 15, 18, 21, 24, 27, 30].map((days) => (
+                      <TouchableOpacity
+                        key={days}
+                        style={[
+                          styles.durationChip,
+                          bundleDuration === days && styles.durationChipActive,
+                        ]}
+                        onPress={() => setBundleDuration(days)}
+                      >
+                        <Text
+                          style={[
+                            styles.durationChipText,
+                            bundleDuration === days && styles.durationChipTextActive,
+                          ]}
+                        >
+                          {days} days
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {bundleEndDate && (
+                  <View style={styles.dateInputGroup}>
+                    <Text style={styles.dateLabel}>End Date (Auto-calculated)</Text>
+                    <View style={[styles.dateInput, styles.dateInputDisabled]}>
+                      <Ionicons name="calendar-outline" size={20} color="#9CA3AF" />
+                      <Text style={[styles.dateInputText, styles.dateInputTextDisabled]}>
+                        {bundleEndDate.toLocaleDateString("en-US", {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              {/* Cost Breakdown */}
+              {bundleStartDate && bundleDuration && (
+                <View style={styles.costBreakdown}>
+                  <Text style={styles.costBreakdownTitle}>Payment Summary</Text>
+                  
+                  <View style={styles.costWarning}>
+                    <Ionicons name="warning-outline" size={18} color="#F59E0B" />
+                    <Text style={styles.costWarningText}>
+                      Note: Final cost may vary based on actual rental duration and item condition upon return.
+                    </Text>
+                  </View>
+
+                  {selectedItems.map((item, idx) => {
+                    const itemCost = calculateItemCost(item, bundleDuration);
+                    return (
+                      <View key={idx} style={styles.costItemRow}>
+                        <Text style={styles.costItemName} numberOfLines={1}>
+                          {item.item_name || item.name}
+                        </Text>
+                        <Text style={styles.costItemValue}>₱{itemCost.toFixed(2)}</Text>
+                      </View>
+                    );
+                  })}
+
+                  <View style={styles.costDivider} />
+                  
+                  <View style={styles.costTotalRow}>
+                    <Text style={styles.costTotalLabel}>Total Downpayment (Due Now):</Text>
+                    <Text style={styles.costTotalValue}>
+                      ₱{calculateBundleDownpayment().toLocaleString()}
+                    </Text>
+                  </View>
+
+                  <View style={styles.costTotalRow}>
+                    <Text style={styles.costTotalLabel}>Total Rental Cost (Due on Return):</Text>
+                    <Text style={styles.costTotalValue}>
+                      ₱{calculateBundleTotal().toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Action Buttons */}
+              <View style={styles.bundleModalActions}>
+                <TouchableOpacity
+                  style={styles.bundleCancelButton}
+                  onPress={closeBundleModal}
+                >
+                  <Text style={styles.bundleCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.bundleSubmitButton,
+                    (!bundleStartDate || !bundleDuration || addingToCart) && styles.bundleSubmitButtonDisabled
+                  ]}
+                  onPress={handleAddBundleToCart}
+                  disabled={!bundleStartDate || !bundleDuration || addingToCart}
+                >
+                  <Text style={styles.bundleSubmitText}>
+                    {addingToCart ? 'Adding...' : `Add Bundle - ₱${calculateBundleDownpayment().toLocaleString()}`}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Date Picker Modal */}
+      <DateTimePickerModal
+        visible={showDatePicker}
+        mode="date"
+        value={bundleStartDate || new Date()}
+        minimumDate={new Date()}
+        onConfirm={handleDateConfirm}
+        onCancel={() => setShowDatePicker(false)}
+      />
 
       {/* BOTTOM NAV */}
       <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 12) }]}>
@@ -536,5 +968,334 @@ const styles = StyleSheet.create({
     backgroundColor: "#FDE68A",
     alignItems: "center",
     justifyContent: "center",
+  },
+  
+  // Multi-select styles
+  multiSelectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#78350F',
+  },
+  multiSelectButtonActive: {
+    backgroundColor: '#78350F',
+    borderColor: '#78350F',
+  },
+  multiSelectButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#78350F',
+  },
+  multiSelectButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  selectionCheckbox: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 10,
+  },
+  checkbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#007bff',
+    borderColor: '#007bff',
+  },
+  rentalCardSelected: {
+    borderWidth: 3,
+    borderColor: '#007bff',
+  },
+  rentalImageSelected: {
+    opacity: 0.7,
+  },
+  
+  // Bundle Action Bar
+  bundleActionBar: {
+    position: 'absolute',
+    bottom: 80,
+    left: 0,
+    right: 0,
+    backgroundColor: '#1a1a2e',
+    padding: 16,
+    marginHorizontal: 20,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 15,
+    zIndex: 1000,
+  },
+  bundleInfo: {
+    flex: 1,
+  },
+  bundleInfoText: {
+    fontSize: 15,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  bundleCount: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  bundleDownpayment: {
+    fontSize: 13,
+    color: '#CBD5E1',
+    marginTop: 4,
+  },
+  bundleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#007bff',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  bundleButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  
+  // Bundle Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  bundleModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: height * 0.9,
+    paddingBottom: 20,
+  },
+  bundleModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  bundleModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  selectedItemsPreview: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  selectedItemsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 12,
+  },
+  selectedItemsScroll: {
+    flexDirection: 'row',
+  },
+  selectedItemChip: {
+    marginRight: 12,
+    width: 100,
+    alignItems: 'center',
+  },
+  selectedItemImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    marginBottom: 6,
+  },
+  selectedItemName: {
+    fontSize: 12,
+    color: '#1F2937',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  removeItemButton: {
+    marginTop: 4,
+  },
+  dateSection: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  dateSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 16,
+  },
+  dateInputGroup: {
+    marginBottom: 20,
+  },
+  dateLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 14,
+    backgroundColor: '#FFFFFF',
+  },
+  dateInputDisabled: {
+    backgroundColor: '#F9FAFB',
+  },
+  dateInputText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#1F2937',
+  },
+  dateInputTextDisabled: {
+    color: '#9CA3AF',
+  },
+  durationSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  durationChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  durationChipActive: {
+    backgroundColor: '#78350F',
+    borderColor: '#78350F',
+  },
+  durationChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#78350F',
+  },
+  durationChipTextActive: {
+    color: '#FFFFFF',
+  },
+  costBreakdown: {
+    padding: 20,
+    backgroundColor: '#F9FAFB',
+    margin: 20,
+    borderRadius: 16,
+  },
+  costBreakdownTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 16,
+  },
+  costWarning: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#FFF3CD',
+    borderWidth: 1,
+    borderColor: '#FFC107',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  costWarningText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#856404',
+    lineHeight: 16,
+  },
+  costItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  costItemName: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1F2937',
+  },
+  costItemValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  costDivider: {
+    height: 2,
+    backgroundColor: '#1F2937',
+    marginVertical: 12,
+  },
+  costTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  costTotalLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  costTotalValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#78350F',
+  },
+  bundleModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 20,
+  },
+  bundleCancelButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  bundleCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  bundleSubmitButton: {
+    flex: 1,
+    backgroundColor: '#007bff',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  bundleSubmitButtonDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
+  bundleSubmitText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

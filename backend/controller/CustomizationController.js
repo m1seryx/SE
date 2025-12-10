@@ -219,6 +219,18 @@ exports.updateCustomizationOrderItem = (req, res) => {
       } else {
         console.error('Skipping action log: user_id is null or undefined');
       }
+
+      // Auto-update billing payment_status
+      const billingHelper = require('../utils/billingHelper');
+      if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
+        billingHelper.updateBillingStatus(itemId, 'customization', updateData.approvalStatus, previousStatus, (billingErr, billingResult) => {
+          if (billingErr) {
+            console.error('Error auto-updating billing status:', billingErr);
+          } else if (billingResult) {
+            console.log('Billing status auto-updated:', billingResult);
+          }
+        });
+      }
       
       res.json({
         success: true,
@@ -299,6 +311,18 @@ exports.updateApprovalStatus = (req, res) => {
         });
       } else {
         console.error('Skipping action log: user_id is null or undefined');
+      }
+
+      // Auto-update billing payment_status
+      const billingHelper = require('../utils/billingHelper');
+      if (status !== previousStatus) {
+        billingHelper.updateBillingStatus(itemId, 'customization', status, previousStatus, (billingErr, billingResult) => {
+          if (billingErr) {
+            console.error('Error auto-updating billing status:', billingErr);
+          } else if (billingResult) {
+            console.log('Billing status auto-updated:', billingResult);
+          }
+        });
       }
       
       res.json({

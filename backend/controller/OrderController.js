@@ -629,6 +629,29 @@ exports.updateRepairOrderItem = (req, res) => {
         console.error('Skipping action log: user_id is null or undefined');
       }
 
+      // Update billing status if status changed
+      const billingHelper = require('../utils/billingHelper');
+      if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
+        const serviceType = (item.service_type || 'repair').toLowerCase().trim();
+        console.log(`[BILLING] ===== STARTING BILLING UPDATE FOR REPAIR =====`);
+        console.log(`[BILLING] Item ID: ${itemId}`);
+        console.log(`[BILLING] Service Type: "${serviceType}" (from DB: "${item.service_type}")`);
+        console.log(`[BILLING] New Status: "${updateData.approvalStatus}"`);
+        console.log(`[BILLING] Previous Status: "${previousStatus}"`);
+        
+        billingHelper.updateBillingStatus(itemId, serviceType, updateData.approvalStatus, previousStatus, (billingErr, billingResult) => {
+          if (billingErr) {
+            console.error('[BILLING] ===== ERROR UPDATING BILLING STATUS FOR REPAIR =====');
+            console.error('[BILLING] Error details:', billingErr);
+          } else if (billingResult) {
+            console.log('[BILLING] ===== BILLING UPDATE SUCCESS FOR REPAIR =====');
+            console.log('[BILLING] Result:', JSON.stringify(billingResult, null, 2));
+          } else {
+            console.log('[BILLING] ===== NO BILLING UPDATE NEEDED FOR REPAIR =====');
+          }
+        });
+      }
+
       console.log("Controller - Update successful, affected rows:", result?.affectedRows);
       res.json({
         success: true,
@@ -825,6 +848,29 @@ exports.updateDryCleaningOrderItem = (req, res) => {
         console.error('Skipping action log: user_id is null or undefined');
       }
 
+      // Update billing status if status changed
+      const billingHelper = require('../utils/billingHelper');
+      if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
+        const serviceType = (item.service_type || 'dry_cleaning').toLowerCase().trim();
+        console.log(`[BILLING] ===== STARTING BILLING UPDATE FOR DRY CLEANING =====`);
+        console.log(`[BILLING] Item ID: ${itemId}`);
+        console.log(`[BILLING] Service Type: "${serviceType}" (from DB: "${item.service_type}")`);
+        console.log(`[BILLING] New Status: "${updateData.approvalStatus}"`);
+        console.log(`[BILLING] Previous Status: "${previousStatus}"`);
+        
+        billingHelper.updateBillingStatus(itemId, serviceType, updateData.approvalStatus, previousStatus, (billingErr, billingResult) => {
+          if (billingErr) {
+            console.error('[BILLING] ===== ERROR UPDATING BILLING STATUS FOR DRY CLEANING =====');
+            console.error('[BILLING] Error details:', billingErr);
+          } else if (billingResult) {
+            console.log('[BILLING] ===== BILLING UPDATE SUCCESS FOR DRY CLEANING =====');
+            console.log('[BILLING] Result:', JSON.stringify(billingResult, null, 2));
+          } else {
+            console.log('[BILLING] ===== NO BILLING UPDATE NEEDED FOR DRY CLEANING =====');
+          }
+        });
+      }
+
       res.json({
         success: true,
         message: "Dry cleaning order item updated successfully"
@@ -969,6 +1015,8 @@ exports.updateRentalOrderItem = (req, res) => {
         });
       }
 
+      console.log(`[RENTAL UPDATE] Database update completed for item ${itemId}, affectedRows: ${result?.affectedRows}`);
+
       // Log the action - ALWAYS log status updates
       const ActionLog = require('../model/ActionLogModel');
       // Get admin user_id - use req.user.id if available, otherwise get from order
@@ -1019,6 +1067,38 @@ exports.updateRentalOrderItem = (req, res) => {
         });
       } else {
         console.error('Skipping action log: user_id is null or undefined');
+      }
+
+      // Auto-update billing payment_status - MUST happen after database update completes
+      const billingHelper = require('../utils/billingHelper');
+      if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
+        const serviceType = (item.service_type || 'rental').toLowerCase().trim();
+        console.log(`[BILLING] ===== STARTING BILLING UPDATE =====`);
+        console.log(`[BILLING] Item ID: ${itemId}`);
+        console.log(`[BILLING] Service Type: "${serviceType}" (from DB: "${item.service_type}")`);
+        console.log(`[BILLING] New Status: "${updateData.approvalStatus}"`);
+        console.log(`[BILLING] Previous Status: "${previousStatus}"`);
+        console.log(`[BILLING] Status Changed: ${updateData.approvalStatus !== previousStatus}`);
+        
+        billingHelper.updateBillingStatus(itemId, serviceType, updateData.approvalStatus, previousStatus, (billingErr, billingResult) => {
+          if (billingErr) {
+            console.error('[BILLING] ===== ERROR UPDATING BILLING STATUS =====');
+            console.error('[BILLING] Error details:', billingErr);
+            console.error('[BILLING] Error message:', billingErr.message);
+            console.error('[BILLING] Error stack:', billingErr.stack);
+          } else if (billingResult) {
+            console.log('[BILLING] ===== BILLING UPDATE SUCCESS =====');
+            console.log('[BILLING] Result:', JSON.stringify(billingResult, null, 2));
+          } else {
+            console.log('[BILLING] ===== NO BILLING UPDATE NEEDED =====');
+            console.log('[BILLING] Status change did not require payment update');
+          }
+        });
+      } else {
+        console.log(`[BILLING] ===== SKIPPING BILLING UPDATE =====`);
+        console.log(`[BILLING] approvalStatus: ${updateData.approvalStatus}`);
+        console.log(`[BILLING] previousStatus: ${previousStatus}`);
+        console.log(`[BILLING] statusChanged: ${updateData.approvalStatus && updateData.approvalStatus !== previousStatus}`);
       }
 
       // If status changed to "rented", update rental_inventory status

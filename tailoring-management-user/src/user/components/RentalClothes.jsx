@@ -394,10 +394,11 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
     return items.reduce((total, item) => total + calculateTotalCost(duration, item), 0);
   };
 
-  // Calculate total downpayment for multiple items
-  const calculateMultiDownpayment = (items) => {
-    if (!items || items.length === 0) return 0;
-    return items.reduce((total, item) => total + (parseFloat(item.downpayment) || 0), 0);
+  // Calculate total downpayment for multiple items (50% of total cost)
+  const calculateMultiDownpayment = (items, duration) => {
+    if (!items || items.length === 0 || !duration) return 0;
+    const totalCost = calculateMultiTotalCost(duration, items);
+    return totalCost * 0.5; // 50% of total cost
   };
 
   // Toggle item selection
@@ -483,6 +484,9 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
     setCartMessage('');
 
     try {
+      // Calculate downpayment as 50% of total cost
+      const downpayment = totalCost * 0.5;
+
       const rentalData = {
         serviceType: 'rental',
         serviceId: selectedItem.id || selectedItem.item_id,
@@ -492,7 +496,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
         pricingFactors: {
           duration: rentalDuration,
           price: totalCost,
-          downpayment: selectedItem.downpayment || '0'
+          downpayment: downpayment.toString()
         },
         specificData: {
           item_name: selectedItem.item_name || selectedItem.name || 'Rental Item',
@@ -545,7 +549,8 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
     setCartMessage('');
 
     try {
-      const totalDownpayment = calculateMultiDownpayment(selectedItems);
+      // Calculate downpayment as 50% of total cost
+      const totalDownpayment = totalCost * 0.5;
       
       // Create bundle of all selected items
       const itemsBundle = selectedItems.map(item => ({
@@ -776,7 +781,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
           </span>
           <span style={{ color: '#aaa' }}>|</span>
           <span style={{ fontSize: '14px', color: '#aaa' }}>
-            Est. Downpayment: ₱{calculateMultiDownpayment(selectedItems).toLocaleString()}
+            Est. Downpayment: ₱{totalCost > 0 ? (totalCost * 0.5).toFixed(2) : '0.00'}
           </span>
           <button
             onClick={openDateModal}
@@ -1003,7 +1008,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                   fontWeight: '600'
                 }}>
                   <span>Total Downpayment (Due upon pick up):</span>
-                  <span>₱{calculateMultiDownpayment(selectedItems).toLocaleString()}</span>
+                  <span>₱{(totalCost * 0.5).toFixed(2)}</span>
                 </div>
                 
                 <div className="cost-total" style={{
@@ -1067,7 +1072,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                   fontWeight: '600'
                 }}
               >
-                {addingToCart ? 'Adding...' : `Add Bundle to Cart - ₱${calculateMultiDownpayment(selectedItems).toLocaleString()}`}
+                {addingToCart ? 'Adding...' : `Add Bundle to Cart - ₱${(totalCost * 0.5).toFixed(2)}`}
               </button>
             </div>
           </div>
@@ -1250,8 +1255,8 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                         </span>
                       </div>
                       <div className="cost-item">
-                        <span>Downpayment (Due Now):</span>
-                        <span>₱{parseFloat(selectedItem.downpayment || '0').toFixed(2)}</span>
+                        <span>Downpayment (Due Now - 50%):</span>
+                        <span>₱{(totalCost * 0.5).toFixed(2)}</span>
                       </div>
                       <div className="cost-item">
                         <span>Rental Price ({rentalDuration} days):</span>
@@ -1276,7 +1281,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                     onClick={handleAddToCart}
                     disabled={!startDate || !rentalDuration || totalCost <= 0 || addingToCart}
                   >
-                    {addingToCart ? 'Adding to Cart...' : `Add to Cart - ₱${totalCost > 0 ? totalCost.toFixed(2) : (selectedItem.downpayment || '0')}`}
+                    {addingToCart ? 'Adding to Cart...' : `Add to Cart - Downpayment: ₱${totalCost > 0 ? (totalCost * 0.5).toFixed(2) : '0.00'}`}
                   </button>
                 </div>
               </div>

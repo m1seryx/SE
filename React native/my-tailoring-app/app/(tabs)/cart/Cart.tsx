@@ -11,15 +11,16 @@ import {
   Platform,
   Dimensions,
   Alert,
+  TextInput,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { CartItem } from "../../../utils/cartStore";
 import { orderStore } from "../../../utils/orderStore";
-import { cartService } from "../../../utils/apiService";
+import { cartService, API_BASE_URL } from "../../../utils/apiService";
 
-const { height } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 export default function CartScreen() {
   const router = useRouter();
@@ -31,6 +32,9 @@ export default function CartScreen() {
   const [selectedItemDetails, setSelectedItemDetails] =
     useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [orderNotes, setOrderNotes] = useState('');
+  const [showBundleModal, setShowBundleModal] = useState(false);
+  const [bundleItems, setBundleItems] = useState<any[]>([]);
 
   // Fetch cart items from backend
   useEffect(() => {
@@ -45,16 +49,31 @@ export default function CartScreen() {
       if (response.success) {
         console.log('Cart items from backend:', response.items);
         // Transform backend cart items to match frontend CartItem interface
-        const transformedItems = response.items.map((item: any) => {
+          const transformedItems = response.items.map((item: any) => {
           console.log('Processing cart item:', item);
           console.log('Specific data:', item.specific_data);
           console.log('Image URL from backend:', item.specific_data?.imageUrl);
           
-          const API_BASE = 'http://192.168.254.102:5000';
-          const imageUrl = item.specific_data?.imageUrl;
+          // Get API base URL without /api suffix
+          const API_BASE = API_BASE_URL.replace('/api', '');
+          // Check if it's a bundle
+          const isBundle = item.specific_data?.is_bundle || item.pricing_factors?.is_bundle;
+          const bundleItems = item.specific_data?.bundle_items || [];
+          
+          // Get image URL - check multiple possible locations
+          let imageUrl = item.specific_data?.imageUrl || 
+                        item.specific_data?.image_url || 
+                        item.specific_data?.designImage;
+          
+          // For rentals, use image_url from specific_data or first bundle item
+          if (item.service_type === 'rental' && !imageUrl) {
+            imageUrl = item.specific_data?.image_url || (bundleItems.length > 0 ? bundleItems[0]?.image_url : null);
+          }
+          
           let processedImage = '';
-          if (imageUrl && imageUrl !== 'no-image') {
+          if (imageUrl && imageUrl !== 'no-image' && imageUrl.trim() !== '') {
             processedImage = imageUrl.startsWith('http') ? imageUrl : `${API_BASE}${imageUrl}`;
+            console.log('Processed image URL:', processedImage);
           }
           
           // Format the date nicely
@@ -110,6 +129,9 @@ export default function CartScreen() {
             preferredDate: item.specific_data?.preferredDate || '',
             notes: item.specific_data?.notes || '',
             designData: item.specific_data?.designData || null,
+            // Bundle information
+            isBundle: isBundle,
+            bundleItems: bundleItems,
             // Raw item for reference
             rawItem: item,
           };
@@ -187,8 +209,9 @@ export default function CartScreen() {
 
   const confirmBooking = async () => {
     try {
-      // Submit cart to create order
-      const response = await cartService.submitCart();
+      setLoading(true);
+      // Submit only selected items with order notes
+      const response = await cartService.submitCart(orderNotes, selectedItems);
       if (response.success) {
         // Add items to order store for local tracking
         const selectedCartItems = cartItems.filter((item) =>
@@ -219,19 +242,50 @@ export default function CartScreen() {
           });
         });
 
-        // Remove items from local cart state
-        setSelectedItems([]);
+        // Remove submitted items from local cart state
         setCartItems(prev => prev.filter(item => !selectedItems.includes(item.id)));
-
-        Alert.alert("Success", "Appointment booked successfully! Check your order history.");
+        setSelectedItems([]);
+        setOrderNotes('');
         setShowConfirmModal(false);
-        router.push("/home");
+        
+        // Refresh cart
+        await fetchCartItems();
+        
+        // Show success message and navigate after user dismisses alert
+        Alert.alert(
+          "Success", 
+          "Order submitted successfully! Check your order history.",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                // Use a small delay to ensure navigation happens after alert is fully dismissed
+                setTimeout(() => {
+                  try {
+                    router.replace("/home");
+                  } catch (navError) {
+                    console.error("Navigation error:", navError);
+                    // Fallback: try push instead
+                    try {
+                      router.push("/home");
+                    } catch (pushError) {
+                      console.error("Push navigation also failed:", pushError);
+                    }
+                  }
+                }, 100);
+              }
+            }
+          ],
+          { cancelable: false }
+        );
       } else {
         Alert.alert("Error", response.message || "Failed to submit cart");
       }
     } catch (error) {
       console.error("Error submitting cart:", error);
       Alert.alert("Error", "Failed to submit cart");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -319,18 +373,31 @@ export default function CartScreen() {
                     </View>
                   </View>
 
-                  {/* Icon */}
-                  <View style={styles.iconContainer}>
-                    <Ionicons
-                      name={item.icon as any}
-                      size={32}
-                      color="#94665B"
+                  {/* Icon or Image */}
+                  {item.image && item.image !== 'no-image' && item.image.trim() !== '' ? (
+                    <Image
+                      source={{ uri: item.image }}
+                      style={styles.rentalImageThumbnail}
+                      resizeMode="cover"
                     />
-                  </View>
+                  ) : (
+                    <View style={styles.iconContainer}>
+                      <Ionicons
+                        name={item.icon as any}
+                        size={32}
+                        color="#94665B"
+                      />
+                    </View>
+                  )}
 
                   {/* Details */}
                   <View style={styles.itemDetails}>
                     <Text style={styles.serviceType}>{getServiceTypeDisplay(item.service)}</Text>
+                    {item.isBundle && (
+                      <Text style={styles.bundleBadge}>
+                        Bundle ({item.bundleItems?.length || 0} items) - Tap to view
+                      </Text>
+                    )}
                     <Text style={styles.itemName}>{item.item}</Text>
                     <Text style={styles.serviceIdText}>Service ID: {item.serviceId}</Text>
                     
@@ -399,36 +466,69 @@ export default function CartScreen() {
 
                     {item.service?.toLowerCase() === 'rental' && (
                       <>
-                        {item.garmentType && (
+                        {item.isBundle ? (
                           <Text style={styles.itemDetailText}>
-                            {item.quantity > 1 ? `${item.quantity}x ` : ''}{item.garmentType}
+                            Bundle of {item.bundleItems?.length || 0} rental items
                           </Text>
+                        ) : (
+                          <>
+                            {item.garmentType && (
+                              <Text style={styles.itemDetailText}>
+                                {item.quantity > 1 ? `${item.quantity}x ` : ''}{item.garmentType}
+                              </Text>
+                            )}
+                          </>
                         )}
                         {item.downpayment > 0 && (
                           <Text style={styles.itemDetailText}>
                             Downpayment: ₱{item.downpayment.toLocaleString()}
                           </Text>
                         )}
+                        {item.rentalStartDate && item.rentalEndDate && (
+                          <Text style={styles.itemDetailText}>
+                            Rental: {new Date(item.rentalStartDate).toLocaleDateString()} - {new Date(item.rentalEndDate).toLocaleDateString()}
+                          </Text>
+                        )}
                       </>
                     )}
 
-                    {/* View Details */}
-                    <TouchableOpacity
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        showItemDetails(item);
-                      }}
-                      style={styles.viewDetailsLink}
-                    >
-                      <Text style={styles.viewDetailsLinkText}>
-                        View Details
-                      </Text>
-                      <Ionicons
-                        name="chevron-forward"
-                        size={14}
-                        color="#94665B"
-                      />
-                    </TouchableOpacity>
+                    {/* View Details or Bundle */}
+                    {item.isBundle ? (
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          setBundleItems(item.bundleItems || []);
+                          setShowBundleModal(true);
+                        }}
+                        style={styles.viewDetailsLink}
+                      >
+                        <Text style={styles.viewDetailsLinkText}>
+                          View Bundle Items
+                        </Text>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={14}
+                          color="#94665B"
+                        />
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          showItemDetails(item);
+                        }}
+                        style={styles.viewDetailsLink}
+                      >
+                        <Text style={styles.viewDetailsLinkText}>
+                          View Details
+                        </Text>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={14}
+                          color="#94665B"
+                        />
+                      </TouchableOpacity>
+                    )}
 
                     {/* Price display */}
                     {item.service?.toLowerCase() === 'rental' ? (
@@ -694,7 +794,15 @@ export default function CartScreen() {
                   {/* Rental Details */}
                   {selectedItemDetails.service?.toLowerCase() === 'rental' && (
                     <>
-                      {selectedItemDetails.garmentType && (
+                      {selectedItemDetails.isBundle && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Bundle</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.bundleItems?.length || 0} items
+                          </Text>
+                        </View>
+                      )}
+                      {selectedItemDetails.garmentType && !selectedItemDetails.isBundle && (
                         <View style={styles.detailsSection}>
                           <Text style={styles.detailsLabel}>Item</Text>
                           <Text style={styles.detailsValue}>
@@ -741,6 +849,72 @@ export default function CartScreen() {
         </View>
       </Modal>
 
+      {/* Bundle Items Modal */}
+      <Modal
+        visible={showBundleModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowBundleModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.bundleModalContent}>
+            <View style={styles.bundleModalHeader}>
+              <Text style={styles.bundleModalTitle}>Rental Bundle Items</Text>
+              <TouchableOpacity onPress={() => setShowBundleModal(false)}>
+                <Ionicons name="close" size={28} color="#1F2937" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.bundleModalScroll}>
+              <View style={styles.bundleItemsGrid}>
+                {bundleItems.map((bundleItem: any, index: number) => {
+                  const imageUrl = bundleItem.image_url || bundleItem.imageUrl;
+                  const API_BASE = API_BASE_URL.replace('/api', '');
+                  const fullImageUrl = imageUrl && imageUrl !== 'no-image' 
+                    ? (imageUrl.startsWith('http') ? imageUrl : `${API_BASE}${imageUrl}`)
+                    : null;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.bundleItemCard}
+                      onPress={() => {
+                        if (fullImageUrl) {
+                          setSelectedItemDetails({
+                            ...bundleItem,
+                            image: fullImageUrl,
+                            service: 'rental'
+                          });
+                          setShowBundleModal(false);
+                          setShowDetailsModal(true);
+                        }
+                      }}
+                    >
+                      {fullImageUrl ? (
+                        <Image
+                          source={{ uri: fullImageUrl }}
+                          style={styles.bundleItemImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={[styles.bundleItemImage, styles.bundleItemImagePlaceholder]}>
+                          <Ionicons name="shirt-outline" size={40} color="#9CA3AF" />
+                        </View>
+                      )}
+                      <Text style={styles.bundleItemName} numberOfLines={2}>
+                        {bundleItem.item_name || bundleItem.name || 'Rental Item'}
+                      </Text>
+                      {bundleItem.brand && (
+                        <Text style={styles.bundleItemBrand}>{bundleItem.brand}</Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* Confirmation Modal */}
       <Modal visible={showConfirmModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
@@ -771,18 +945,39 @@ export default function CartScreen() {
               </Text>
             </View>
 
+            {/* Order Notes */}
+            <View style={styles.orderNotesContainer}>
+              <Text style={styles.orderNotesLabel}>Order Notes (Optional)</Text>
+              <TextInput
+                style={styles.orderNotesInput}
+                placeholder="Add any special instructions..."
+                placeholderTextColor="#9CA3AF"
+                multiline
+                numberOfLines={3}
+                value={orderNotes}
+                onChangeText={setOrderNotes}
+                textAlignVertical="top"
+              />
+            </View>
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.modalCancelButton}
-                onPress={() => setShowConfirmModal(false)}
+                onPress={() => {
+                  setShowConfirmModal(false);
+                  setOrderNotes('');
+                }}
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.modalConfirmButton}
+                style={[styles.modalConfirmButton, loading && styles.modalConfirmButtonDisabled]}
                 onPress={confirmBooking}
+                disabled={loading}
               >
-                <Text style={styles.modalConfirmText}>Confirm Booking</Text>
+                <Text style={styles.modalConfirmText}>
+                  {loading ? 'Submitting...' : 'Submit Order'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1121,6 +1316,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalConfirmText: { color: "#fff", fontWeight: "700", fontSize: 17 },
+  modalConfirmButtonDisabled: { opacity: 0.6 },
+  orderNotesContainer: {
+    width: "100%",
+    marginBottom: 24,
+  },
+  orderNotesLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginBottom: 8,
+  },
+  orderNotesInput: {
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    fontSize: 15,
+    color: "#1F2937",
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
 
   // Fixed Details Modal
   detailsModalContent: {
@@ -1200,5 +1417,83 @@ const styles = StyleSheet.create({
     color: "#4B5563",
     marginVertical: 4,
     textAlign: "left",
+  },
+  
+  // Bundle styles
+  bundleBadge: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#007bff',
+    marginBottom: 4,
+  },
+  rentalImageThumbnail: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    marginRight: 16,
+  },
+  bundleModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: height * 0.9,
+    paddingBottom: 20,
+  },
+  bundleModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  bundleModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  bundleModalScroll: {
+    padding: 20,
+  },
+  bundleItemsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    justifyContent: 'flex-start',
+  },
+  bundleItemCard: {
+    width: (width - 80) / 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  bundleItemImage: {
+    width: '100%',
+    height: 150,
+    backgroundColor: '#F9FAFB',
+  },
+  bundleItemImagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bundleItemName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    padding: 12,
+    paddingBottom: 4,
+  },
+  bundleItemBrand: {
+    fontSize: 12,
+    color: '#6B7280',
+    paddingHorizontal: 12,
+    paddingBottom: 12,
   },
 });

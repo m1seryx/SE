@@ -180,11 +180,11 @@ export const cartService = {
     });
   },
   
-  // Submit cart as order
-  submitCart: async (notes?: string) => {
+  // Submit cart as order (with selected items and notes)
+  submitCart: async (notes?: string, selectedCartIds?: string[]) => {
     return apiCall('/cart/submit', {
       method: 'POST',
-      body: JSON.stringify({ notes }),
+      body: JSON.stringify({ notes, selectedCartIds }),
     });
   },
   
@@ -259,6 +259,45 @@ export const notificationService = {
     return apiCall('/notifications', {
       method: 'DELETE',
     });
+  }
+};
+
+// Appointment Slot API functions
+export const appointmentSlotService = {
+  // Get available time slots for a date and service type
+  getAvailableSlots: async (serviceType: string, date: string) => {
+    return apiCall(`/appointments/available?serviceType=${serviceType}&date=${date}`);
+  },
+  
+  // Book a slot
+  bookSlot: async (serviceType: string, date: string, time: string, cartItemId?: string) => {
+    return apiCall('/appointments/book', {
+      method: 'POST',
+      body: JSON.stringify({ serviceType, date, time, cartItemId }),
+    });
+  },
+  
+  // Check if a specific slot is available
+  checkSlotAvailability: async (serviceType: string, date: string, time: string) => {
+    return apiCall(`/appointments/check?serviceType=${serviceType}&date=${date}&time=${time}`);
+  },
+};
+
+// Transaction Log API functions
+export const transactionLogService = {
+  // Get transaction logs for an order item
+  getTransactionLogsByOrderItem: async (orderItemId: string | number) => {
+    return apiCall(`/transaction-logs/order-item/${orderItemId}`);
+  },
+  
+  // Get transaction logs for current user
+  getMyTransactionLogs: async () => {
+    return apiCall('/transaction-logs/my-logs');
+  },
+  
+  // Get transaction summary for an order item
+  getTransactionSummary: async (orderItemId: string | number) => {
+    return apiCall(`/transaction-logs/summary/${orderItemId}`);
   }
 };
 

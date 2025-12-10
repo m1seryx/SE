@@ -4,6 +4,7 @@ import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
 import { getAllBillingRecords, getBillingStats, updateBillingRecordStatus } from '../api/BillingApi';
 import { useAlert } from '../context/AlertContext';
+import ImagePreviewModal from '../components/ImagePreviewModal';
 
 const Billing = () => {
   const { alert } = useAlert();
@@ -21,8 +22,9 @@ const Billing = () => {
   const [serviceFilter, setServiceFilter] = useState('');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
+  const [imagePreview, setImagePreview] = useState({ isOpen: false, imageUrl: '', altText: '' });
 
-  // Fetch billing data on component mount
+  // Fetch billing data on component mount and refresh periodically
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -45,15 +47,20 @@ const Billing = () => {
     };
 
     fetchData();
+    
+    // Refresh billing data every 5 seconds to catch automatic updates
+    const refreshInterval = setInterval(fetchData, 5000);
+    
+    return () => clearInterval(refreshInterval);
   }, []);
 
   // Calculate statistics from local data (fallback)
   const localStats = {
     total: allBills.length,
-    paid: allBills.filter(b => b.status === 'Paid').length,
-    unpaid: allBills.filter(b => b.status === 'Unpaid').length,
-    totalRevenue: allBills.filter(b => b.status === 'Paid').reduce((sum, b) => sum + b.price, 0),
-    pendingRevenue: allBills.filter(b => b.status === 'Unpaid').reduce((sum, b) => sum + b.price, 0)
+    paid: allBills.filter(b => b.status === 'Paid' || b.status === 'Fully Paid').length,
+    unpaid: allBills.filter(b => b.status === 'Unpaid' || b.status === 'Down-payment').length,
+    totalRevenue: allBills.filter(b => b.status === 'Paid' || b.status === 'Fully Paid').reduce((sum, b) => sum + b.price, 0),
+    pendingRevenue: allBills.filter(b => b.status === 'Unpaid' || b.status === 'Down-payment').reduce((sum, b) => sum + b.price, 0)
   };
 
   // Filter logic
@@ -76,7 +83,7 @@ const Billing = () => {
 
     // Apply service type filter
     if (serviceFilter) {
-      bills = bills.filter(bill => bill.serviceType === serviceFilter);
+      bills = bills.filter(bill => (bill.serviceTypeDisplay || bill.serviceType) === serviceFilter);
     }
 
     return bills;
@@ -84,17 +91,46 @@ const Billing = () => {
 
   const filteredBills = getFilteredBills();
 
-  // Update payment status
+  // Get next payment status for a bill
+  const getNextPaymentStatus = (bill) => {
+    const serviceType = (bill.serviceType || '').toLowerCase();
+    const currentStatus = bill.status;
+
+    // For rental: down-payment → fully paid
+    if (serviceType === 'rental') {
+      if (currentStatus === 'Down-payment') {
+        return 'Fully Paid';
+      }
+      return 'Down-payment';
+    }
+
+    // For other services: unpaid → paid
+    if (currentStatus === 'Unpaid') {
+      return 'Paid';
+    }
+    return 'Unpaid';
+  };
+
+  // Update payment status (manual override)
   const updatePaymentStatus = async (billId, newStatus) => {
     try {
       const response = await updateBillingRecordStatus(billId, newStatus);
       if (response.success) {
-        setAllBills(allBills.map(bill => 
-          bill.id === billId ? { ...bill, status: newStatus } : bill
-        ));
+        // Refresh all billing data to get latest from server
+        const recordsResponse = await getAllBillingRecords();
+        if (recordsResponse.success) {
+          setAllBills(recordsResponse.records);
+        }
+        const statsResponse = await getBillingStats();
+        if (statsResponse.success) {
+          setBillingStats(statsResponse.stats);
+        }
+        
         const bill = allBills.find(b => b.id === billId);
         if (bill) {
-          await alert(`Payment status for ${bill.uniqueNo} updated to ${newStatus}!`, 'Success', 'success');
+          await alert(`Payment status for ${bill.uniqueNo} manually updated to ${newStatus}!`, 'Success', 'success');
+        } else {
+          await alert(`Payment status updated to ${newStatus}!`, 'Success', 'success');
         }
       } else {
         await alert(response.message || 'Failed to update payment status', 'Error', 'error');
@@ -111,6 +147,75 @@ const Billing = () => {
     setShowDetailModal(true);
   };
 
+  const openImagePreview = (imageUrl, altText) => {
+    setImagePreview({ isOpen: true, imageUrl, altText });
+  };
+
+  const closeImagePreview = () => {
+    setImagePreview({ isOpen: false, imageUrl: '', altText: '' });
+  };
+
+  // Get service image URL
+  const getServiceImageUrl = (bill) => {
+    if (!bill.specificData) return null;
+    
+    const imageUrl = bill.specificData.imageUrl;
+    if (!imageUrl || imageUrl === 'no-image') return null;
+
+    // Handle both relative and absolute URLs
+    if (imageUrl.startsWith('http')) {
+      return imageUrl;
+    }
+    return `http://localhost:5000${imageUrl}`;
+  };
+
+  // Get service description
+  const getServiceDescription = (bill) => {
+    if (!bill.specificData) return null;
+    const data = bill.specificData;
+    const serviceType = (bill.serviceType || '').toLowerCase();
+
+    if (serviceType === 'rental') {
+      // For rental, show item name and description
+      const bundleItems = data.bundle_items || [];
+      if (bundleItems.length > 0) {
+        return bundleItems.map(item => `${item.name || 'Rental Item'} - ${item.description || 'No description'}`).join(', ');
+      }
+      return data.name || data.description || 'Rental service';
+    } else if (serviceType === 'dry_cleaning' || serviceType === 'dry-cleaning' || serviceType === 'drycleaning') {
+      return `${data.garmentType || 'Garment'} - Brand: ${data.brand || 'N/A'} - Quantity: ${data.quantity || 1}`;
+    } else if (serviceType === 'repair') {
+      return `${data.serviceName || 'Repair'} - ${data.damageDescription || 'No description'}`;
+    } else if (serviceType === 'customization' || serviceType === 'customize') {
+      return `${data.garmentType || 'Custom'} - ${data.fabricType || 'N/A'} fabric`;
+    }
+
+    return data.description || data.notes || 'Service details';
+  };
+
+  // Get rental price display
+  const getRentalPriceDisplay = (bill) => {
+    if ((bill.serviceType || '').toLowerCase() !== 'rental') {
+      return `₱${bill.price.toLocaleString()}`;
+    }
+
+    // For rental, show down payment and full price
+    // Check multiple possible field names for down payment
+    const downPayment = bill.pricingFactors?.downpayment || 
+                       bill.pricingFactors?.down_payment || 
+                       bill.pricingFactors?.downPayment ||
+                       bill.specificData?.downpayment ||
+                       0;
+    const fullPrice = bill.price || 0;
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <span style={{ fontSize: '14px' }}>Down Payment: ₱{parseFloat(downPayment).toLocaleString()}</span>
+        <span style={{ fontSize: '14px' }}>Full Price: ₱{parseFloat(fullPrice).toLocaleString()}</span>
+      </div>
+    );
+  };
+
   // Get service type color
   const getServiceTypeColor = (serviceType) => {
     const colors = {
@@ -123,6 +228,17 @@ const Billing = () => {
       'Other': '#607d8b'          // Blue Grey
     };
     return colors[serviceType] || '#666';
+  };
+
+  // Get status button style
+  const getStatusButtonStyle = (status) => {
+    const styles = {
+      'Paid': { backgroundColor: '#e8f5e9', color: '#2e7d32' },
+      'Fully Paid': { backgroundColor: '#c8e6c9', color: '#1b5e20' },
+      'Unpaid': { backgroundColor: '#ffebee', color: '#d32f2f' },
+      'Down-payment': { backgroundColor: '#fff3e0', color: '#e65100' }
+    };
+    return styles[status] || styles['Unpaid'];
   };
 
   return (
@@ -197,7 +313,9 @@ const Billing = () => {
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="">All Payment Status</option>
             <option value="Paid">Paid</option>
+            <option value="Fully Paid">Fully Paid</option>
             <option value="Unpaid">Unpaid</option>
+            <option value="Down-payment">Down-payment</option>
           </select>
 
           <select value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)}>
@@ -238,49 +356,66 @@ const Billing = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredBills.map(bill => (
-                    <tr key={bill.id}>
-                      <td><strong>{bill.uniqueNo}</strong></td>
-                      <td>{bill.customerName}</td>
-                      <td>
-                        <span className="service-type-badge" data-service-type={bill.serviceType}>
-                          {bill.serviceType}
-                        </span>
-                      </td>
-                      <td>{bill.date}</td>
+                  filteredBills.map(bill => {
+                    const nextStatus = getNextPaymentStatus(bill);
+                    const statusStyle = getStatusButtonStyle(bill.status);
+                    
+                    return (
+                      <tr key={bill.id}>
+                        <td><strong>{bill.uniqueNo}</strong></td>
+                        <td>{bill.customerName}</td>
+                        <td>
+                          <span className="service-type-badge" data-service-type={(bill.serviceType || '').toLowerCase()}>
+                            {bill.serviceTypeDisplay || bill.serviceType}
+                          </span>
+                        </td>
+                        <td>{bill.date}</td>
                       <td style={{ fontWeight: '600', color: '#2e7d32' }}>
-                        ₱{bill.price.toLocaleString()}
+                        {getRentalPriceDisplay(bill)}
                       </td>
                       <td>
-                        <select
-                          className={`status-select ${bill.status.toLowerCase()}`}
-                          value={bill.status}
-                          onChange={(e) => updatePaymentStatus(bill.id, e.target.value)}
+                        <span className={`status-badge ${bill.status.toLowerCase().replace(' ', '-')}`}
                           style={{
-                            padding: '8px 16px',
+                            padding: '6px 14px',
                             borderRadius: '20px',
-                            border: 'none',
                             fontWeight: '600',
                             fontSize: '14px',
-                            cursor: 'pointer',
-                            backgroundColor: bill.status === 'Paid' ? '#e8f5e9' : '#ffebee',
-                            color: bill.status === 'Paid' ? '#2e7d32' : '#d32f2f'
+                            display: 'inline-block',
+                            ...statusStyle
                           }}
                         >
-                          <option value="Paid">Paid</option>
-                          <option value="Unpaid">Unpaid</option>
-                        </select>
+                          {bill.status}
+                        </span>
                       </td>
-                      <td>
-                        <button
-                          className="action-btn"
-                          onClick={() => handleViewDetails(bill.id)}
-                        >
-                          View
-                        </button>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <div className="action-buttons">
+                          <button 
+                            className="icon-btn next-status" 
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              await updatePaymentStatus(bill.id, nextStatus);
+                            }} 
+                            title={`Manually move to ${nextStatus} (Note: Payment status auto-updates when service status changes in management pages)`}
+                            style={{ backgroundColor: '#4CAF50', color: 'white', zIndex: 10 }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                          </button>
+                          <button
+                            className="action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewDetails(bill.id);
+                            }}
+                          >
+                            View
+                          </button>
+                        </div>
                       </td>
-                    </tr>
-                  ))
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -296,7 +431,7 @@ const Billing = () => {
             if (e.target.classList.contains('modal-overlay')) setShowDetailModal(false);
           }}
         >
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="modal-header">
               <h2>Bill Details</h2>
               <span className="close-modal" onClick={() => setShowDetailModal(false)}>×</span>
@@ -312,8 +447,8 @@ const Billing = () => {
               </div>
               <div className="detail-row">
                 <strong>Service Type:</strong>
-                <span className="service-type-badge" data-service-type={selectedBill.serviceType}>
-                  {selectedBill.serviceType}
+                <span className="service-type-badge" data-service-type={(selectedBill.serviceType || '').toLowerCase()}>
+                  {selectedBill.serviceTypeDisplay || selectedBill.serviceType}
                 </span>
               </div>
               <div className="detail-row">
@@ -323,37 +458,92 @@ const Billing = () => {
               <div className="detail-row">
                 <strong>Price:</strong>
                 <span style={{ color: '#2e7d32', fontWeight: 'bold', fontSize: '18px' }}>
-                  ₱{selectedBill.price.toLocaleString()}
+                  {getRentalPriceDisplay(selectedBill)}
                 </span>
               </div>
               <div className="detail-row">
                 <strong>Payment Status:</strong>
-                <span className={`status-badge ${selectedBill.status.toLowerCase()}`}
+                <span className={`status-badge ${selectedBill.status.toLowerCase().replace(' ', '-')}`}
                   style={{
                     padding: '6px 14px',
                     borderRadius: '20px',
                     fontWeight: '600',
                     fontSize: '14px',
-                    backgroundColor: selectedBill.status === 'Paid' ? '#e8f5e9' : '#ffebee',
-                    color: selectedBill.status === 'Paid' ? '#2e7d32' : '#d32f2f'
+                    ...getStatusButtonStyle(selectedBill.status)
                   }}
                 >
                   {selectedBill.status}
                 </span>
               </div>
+
+              {/* Service Description */}
+              {getServiceDescription(selectedBill) && (
+                <div className="detail-row">
+                  <strong>Description:</strong>
+                  <span>{getServiceDescription(selectedBill)}</span>
+                </div>
+              )}
+
+              {/* Service Image */}
+              {getServiceImageUrl(selectedBill) && (
+                <div className="detail-row">
+                  <strong>Service Image:</strong>
+                  <div style={{ marginTop: '8px' }}>
+                    <img
+                      src={getServiceImageUrl(selectedBill)}
+                      alt="Service"
+                      style={{
+                        maxWidth: '300px',
+                        maxHeight: '300px',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => openImagePreview(getServiceImageUrl(selectedBill), `${selectedBill.serviceTypeDisplay || selectedBill.serviceType} Image`)}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                    <small style={{ display: 'block', fontSize: '11px', color: '#888', marginTop: '4px' }}>
+                      Click to enlarge
+                    </small>
+                  </div>
+                </div>
+              )}
+
+              {/* Rental specific details */}
+              {(selectedBill.serviceType || '').toLowerCase() === 'rental' && (
+                <>
+                  {selectedBill.rentalStartDate && (
+                    <div className="detail-row">
+                      <strong>Rental Start Date:</strong>
+                      <span>{new Date(selectedBill.rentalStartDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  {selectedBill.rentalEndDate && (
+                    <div className="detail-row">
+                      <strong>Rental End Date:</strong>
+                      <span>{new Date(selectedBill.rentalEndDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
             <div className="modal-footer">
-              {selectedBill.status === 'Unpaid' && (
-                <button 
-                  className="btn-save"
-                  onClick={async () => {
-                    await updatePaymentStatus(selectedBill.id, 'Paid');
-                    setShowDetailModal(false);
-                  }}
-                >
-                  Mark as Paid
-                </button>
-              )}
+              <button 
+                className="btn-save"
+                onClick={async () => {
+                  const nextStatus = getNextPaymentStatus(selectedBill);
+                  await updatePaymentStatus(selectedBill.id, nextStatus);
+                  setShowDetailModal(false);
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+                Mark as {getNextPaymentStatus(selectedBill)}
+              </button>
               <button className="close-btn" onClick={() => setShowDetailModal(false)}>
                 Close
               </button>
@@ -361,6 +551,14 @@ const Billing = () => {
           </div>
         </div>
       )}
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        isOpen={imagePreview.isOpen}
+        imageUrl={imagePreview.imageUrl}
+        altText={imagePreview.altText}
+        onClose={closeImagePreview}
+      />
     </div>
   );
 };

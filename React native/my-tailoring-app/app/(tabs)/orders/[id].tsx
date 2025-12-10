@@ -15,7 +15,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { orderTrackingService } from "../../../utils/apiService";
+import { orderTrackingService, API_BASE_URL } from "../../../utils/apiService";
 
 const { width } = Dimensions.get("window");
 
@@ -162,22 +162,40 @@ export default function OrderDetails() {
 
           {/* Image */}
           {(() => {
-            const imageUrl = order.specific_data?.imageUrl || order.specific_data?.image_url;
+            // Get image URL from various possible locations
+            let imageUrl = order.specific_data?.imageUrl || 
+                          order.specific_data?.image_url || 
+                          order.specific_data?.designImage;
+            
+            // For rental, also check bundle items
+            if (order.service_type === 'rental' && !imageUrl) {
+              const bundleItems = order.specific_data?.bundle_items || [];
+              if (bundleItems.length > 0) {
+                imageUrl = bundleItems[0]?.image_url || bundleItems[0]?.imageUrl;
+              }
+            }
+            
             const hasValidImage = imageUrl && imageUrl !== 'no-image' && imageUrl.trim() !== '';
             
             if (hasValidImage) {
+              // Get API base URL without /api suffix
+              const API_BASE = API_BASE_URL.replace('/api', '');
               const fullImageUrl = imageUrl.startsWith('http') 
                 ? imageUrl 
-                : `http://192.168.1.202:5000${imageUrl}`;
+                : `${API_BASE}${imageUrl}`;
               
               console.log('Order tracking image URL:', fullImageUrl);
+              console.log('Image source:', { imageUrl, hasValidImage, serviceType: order.service_type });
               
               return (
                 <Image
                   source={{ uri: fullImageUrl }}
                   style={styles.image}
                   resizeMode="cover"
-                  onError={(e) => console.log('Image load error:', e.nativeEvent.error, 'URL:', fullImageUrl)}
+                  onError={(e) => {
+                    console.log('Image load error:', e.nativeEvent.error);
+                    console.log('Failed URL:', fullImageUrl);
+                  }}
                   onLoad={() => console.log('Image loaded successfully:', fullImageUrl)}
                 />
               );
@@ -323,22 +341,103 @@ export default function OrderDetails() {
                   )}
                 </>
               )}
+              
+              {/* Customization Details */}
+              {(order.service_type === 'customization' || order.service_type === 'customize') && (
+                <>
+                  {order.specific_data?.garmentType && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Garment Type</Text>
+                      <Text style={styles.value}>{order.specific_data.garmentType}</Text>
+                    </View>
+                  )}
+                  {order.specific_data?.fabricType && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Fabric Type</Text>
+                      <Text style={styles.value}>{order.specific_data.fabricType}</Text>
+                    </View>
+                  )}
+                  {order.specific_data?.preferredDate && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Preferred Date</Text>
+                      <Text style={styles.value}>{formatDate(order.specific_data.preferredDate)}</Text>
+                    </View>
+                  )}
+                  {order.specific_data?.notes && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Notes</Text>
+                      <Text style={[styles.value, styles.multiline]}>{order.specific_data.notes}</Text>
+                    </View>
+                  )}
+                  {order.specific_data?.designData && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>3D Customization Details</Text>
+                      <Text style={[styles.value, styles.multiline]}>
+                        {order.specific_data.designData.size && `Size: ${order.specific_data.designData.size.charAt(0).toUpperCase() + order.specific_data.designData.size.slice(1)}\n`}
+                        {order.specific_data.designData.fit && `Fit: ${order.specific_data.designData.fit.charAt(0).toUpperCase() + order.specific_data.designData.fit.slice(1)}\n`}
+                        {order.specific_data.designData.colors?.fabric && `Color: ${order.specific_data.designData.colors.fabric}\n`}
+                        {order.specific_data.designData.pattern && order.specific_data.designData.pattern !== 'none' && `Pattern: ${order.specific_data.designData.pattern.charAt(0).toUpperCase() + order.specific_data.designData.pattern.slice(1)}\n`}
+                        {order.specific_data.designData.personalization?.initials && `Personalization: ${order.specific_data.designData.personalization.initials}`}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
             </View>
           )}
 
-          {/* Total Price - Only show confirmed price for rental or if admin confirmed */}
+          {/* Total Price */}
           <View style={styles.priceSection}>
             <Text style={styles.totalLabel}>Total Amount</Text>
-            {order.service_type === 'rental' || order.price_confirmed ? (
-              <Text style={styles.totalPrice}>
-                ₱{parseFloat(order.final_price).toLocaleString()}
-              </Text>
-            ) : (
-              <Text style={styles.pricePending}>
-                To be confirmed by admin
-              </Text>
-            )}
+            {(() => {
+              // For rental, always show price (it's calculated upfront)
+              if (order.service_type === 'rental') {
+                const price = parseFloat(order.final_price || order.base_price || '0');
+                if (price > 0) {
+                  return (
+                    <Text style={styles.totalPrice}>
+                      ₱{price.toLocaleString()}
+                    </Text>
+                  );
+                }
+              }
+              // For other services, show if price is confirmed or if final_price exists
+              if (order.price_confirmed || order.final_price) {
+                const price = parseFloat(order.final_price || order.base_price || '0');
+                if (price > 0) {
+                  return (
+                    <Text style={styles.totalPrice}>
+                      ₱{price.toLocaleString()}
+                    </Text>
+                  );
+                }
+              }
+              // Show pending message if no price
+              return (
+                <Text style={styles.pricePending}>
+                  To be confirmed by admin
+                </Text>
+              );
+            })()}
           </View>
+
+          {/* Transaction Log Button */}
+          <TouchableOpacity
+            style={styles.transactionLogButton}
+            onPress={() => {
+              if (order.order_item_id) {
+                router.push({
+                  pathname: "/(tabs)/orders/TransactionLog",
+                  params: { orderItemId: order.order_item_id.toString() },
+                });
+              } else {
+                Alert.alert("Error", "Order item ID not found");
+              }
+            }}
+          >
+            <Ionicons name="receipt-outline" size={20} color="#fff" />
+            <Text style={styles.transactionLogButtonText}>View Transaction Log</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={{ height: 120 }} />
@@ -448,6 +547,22 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: 18, color: "#6B7280", marginBottom: 6 },
   totalPrice: { fontSize: 32, fontWeight: "800", color: "#94665B" },
   pricePending: { fontSize: 18, fontWeight: "600", color: "#F59E0B", fontStyle: "italic" },
+  transactionLogButton: {
+    marginTop: 20,
+    backgroundColor: "#8B4513",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
+  },
+  transactionLogButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
   notFound: {
     flex: 1,
     textAlign: "center",

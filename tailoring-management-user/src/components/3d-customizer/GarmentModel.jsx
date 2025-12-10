@@ -51,14 +51,15 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
   const accent = colors.stitching;
   const map = useMemo(() => makePattern(pattern, baseColor, accent), [pattern, baseColor, accent]);
   const bump = useMemo(() => makeBump(), []);
+  const fabricColor = useMemo(() => new THREE.Color(baseColor), [baseColor]);
   const materialProps = useMemo(() => {
     const rough = fabric === 'silk' ? 0.25 : fabric === 'linen' ? 0.85 : fabric === 'cotton' ? 0.6 : 0.9;
     const metal = fabric === 'silk' ? 0.1 : 0.0;
     const transparent = garment === 'barong';
     const opacity = garment === 'barong' ? Math.max(0.15, Math.min(0.85, style.transparency || 0.35)) : 1;
     const bumpScale = fabric === 'silk' ? 0.02 : fabric === 'linen' ? 0.08 : fabric === 'cotton' ? 0.06 : 0.07;
-    return { roughness: rough, metalness: metal, map, color: baseColor, transparent, opacity, sheen: 1, sheenColor: baseColor, bumpMap: bump, bumpScale };
-  }, [fabric, baseColor, map, garment, style, bump]);
+    return { roughness: rough, metalness: metal, map, color: fabricColor, transparent, opacity, sheen: 1, sheenColor: fabricColor, bumpMap: bump, bumpScale };
+  }, [fabric, fabricColor, map, garment, style, bump]);
 
   const chestS = measurements.chest / 38;
   const waistS = measurements.waist / 32;
@@ -158,13 +159,23 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
 
       modelScene.traverse((child) => {
         if (child.isMesh) {
-          child.material = new THREE.MeshPhysicalMaterial(materialProps);
+          // Dispose of old material to prevent memory leaks
+          if (child.material && child.material.dispose) {
+            child.material.dispose();
+          }
+          // Create new material with updated color
+          const newMaterial = new THREE.MeshPhysicalMaterial({
+            ...materialProps,
+            color: fabricColor.clone(),
+            sheenColor: fabricColor.clone()
+          });
+          child.material = newMaterial;
           child.castShadow = true;
           child.receiveShadow = true;
         }
       });
     }
-  }, [modelScene, garment, materialProps, use3DModel]);
+  }, [modelScene, garment, materialProps, use3DModel, fabricColor]);
 
   // Pants model selection and setup (hooks must be at top level)
   let pantsModel = null;
@@ -187,13 +198,23 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
 
       pantsModelScene.traverse((child) => {
         if (child.isMesh) {
-          child.material = new THREE.MeshPhysicalMaterial(materialProps);
+          // Dispose of old material to prevent memory leaks
+          if (child.material && child.material.dispose) {
+            child.material.dispose();
+          }
+          // Create new material with updated color
+          const newMaterial = new THREE.MeshPhysicalMaterial({
+            ...materialProps,
+            color: fabricColor.clone(),
+            sheenColor: fabricColor.clone()
+          });
+          child.material = newMaterial;
           child.castShadow = true;
           child.receiveShadow = true;
         }
       });
     }
-  }, [pantsModelScene, materialProps]);
+  }, [pantsModelScene, materialProps, fabricColor]);
 
   if (garment === 'pants') {
     if (!pantsModelScene) return null;

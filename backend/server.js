@@ -75,6 +75,7 @@ const adminDashboardRoutes = require('./routes/AdminDashboardRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const customerRoutes = require('./routes/CustomerRoutes');
 const appointmentSlotRoutes = require('./routes/AppointmentSlotRoutes');
+const transactionLogRoutes = require('./routes/TransactionLogRoutes');
 
 app.use('/api', authRoutes);
 app.use('/api/rentals', rentalRoutes);
@@ -91,6 +92,7 @@ app.use('/api/admin', adminDashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/appointments', appointmentSlotRoutes);
+app.use('/api/transaction-logs', transactionLogRoutes);
 
 
 const PORT = process.env.PORT || 5000;

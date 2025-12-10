@@ -211,20 +211,30 @@ html {
 }
 
 .stat-card h3 {
-  font-size: 14px;
-  font-weight: 600;
-  color: #636E72;
+  font-size: 36px;
+  font-weight: 700;
+  color: #2D3436 !important;
   margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 .stat-card .number {
   font-size: 36px;
   font-weight: 700;
-  color: #2D3436;
+  color: #2D3436 !important;
   margin: 8px 0;
   line-height: 1.2;
+}
+
+/* Ensure stat card paragraphs (titles) have proper styling */
+.stat-card p {
+  font-size: 15px;
+  color: #636E72;
+  margin-top: 8px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .stat-card .info {

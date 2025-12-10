@@ -16,6 +16,7 @@ import { Text } from "react-native-paper";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Calendar } from "react-native-calendars";
+import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { rentalService } from "../../../utils/rentalService";
 import { cartService } from "../../../utils/apiService";
@@ -31,12 +32,20 @@ export default function RentalDetail() {
 
   const today = new Date();
   const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [rentalDuration, setRentalDuration] = useState(3); // Default to 3 days, must be multiple of 3
+  const [endDate, setEndDate] = useState<Date | null>(null); // Auto-calculated
   const [tempStartDate, setTempStartDate] = useState<Date | null>(null);
-  const [tempEndDate, setTempEndDate] = useState<Date | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false); // NEW: Full image modal
+
+  // Calculate end date from start date and duration (matches web logic)
+  const calculateEndDate = (start: Date | null, duration: number): Date | null => {
+    if (!start) return null;
+    const endDateObj = new Date(start);
+    endDateObj.setDate(start.getDate() + duration - 1); // -1 because start date counts as day 1
+    return endDateObj;
+  };
 
   // Fetch rental item details
   useEffect(() => {
@@ -44,6 +53,16 @@ export default function RentalDetail() {
       fetchRentalDetails();
     }
   }, [id]);
+
+  // Update end date when start date or duration changes
+  useEffect(() => {
+    if (startDate && rentalDuration) {
+      const calculatedEndDate = calculateEndDate(startDate, rentalDuration);
+      setEndDate(calculatedEndDate);
+    } else {
+      setEndDate(null);
+    }
+  }, [startDate, rentalDuration]);
 
   const fetchRentalDetails = async () => {
     try {
@@ -75,6 +94,16 @@ export default function RentalDetail() {
     return require("../../../assets/images/rent.jpg");
   };
 
+  // Safe format function — never crashes
+  const formatDate = (date: Date | null): string => {
+    if (!date) return "Not selected";
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -101,51 +130,44 @@ export default function RentalDetail() {
     );
   }
 
-  // Safe format function — never crashes
-  const formatDate = (date: Date | null): string => {
-    if (!date) return "Not selected";
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  const getRentalDays = (): number => {
-    if (!startDate || !endDate) return 0;
-    const diff = endDate.getTime() - startDate.getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1; // inclusive count
+  // Calculate rental cost using web formula: price = (rental_days / 3) * base_price_per_3_days
+  const calculateTotalCost = (duration: number, rentalItem: any): number => {
+    if (!duration || !rentalItem || duration < 3) return 0;
+    
+    // Ensure duration is a multiple of 3
+    const validDuration = Math.floor(duration / 3) * 3;
+    if (validDuration < 3) return 0;
+    
+    // Get base price from item (price per 3 days)
+    // Parse price - it might be a string like "P 500" or "500" or a number
+    let basePrice = 500; // Default fallback
+    if (rentalItem.price) {
+      const priceStr = String(rentalItem.price).replace(/[^\d.]/g, ''); // Remove non-numeric chars except decimal
+      const parsedPrice = parseFloat(priceStr);
+      if (!isNaN(parsedPrice) && parsedPrice > 0) {
+        basePrice = parsedPrice;
+      }
+    } else if (rentalItem.daily_rate) {
+      // Fallback: if daily_rate exists, calculate base price (3 days * daily_rate)
+      const dailyRate = parseFloat(rentalItem.daily_rate) || 0;
+      basePrice = dailyRate * 3;
+    }
+    
+    // Formula: price = (rental_days / 3) * base_price_per_3_days
+    return (validDuration / 3) * basePrice;
   };
 
   const calculateTotal = () => {
-    const days = getRentalDays();
-    const dailyRate = parseFloat(item.daily_rate) || 0;
-    const baseFee = parseFloat(item.base_rental_fee) || 0;
-    return baseFee + (dailyRate * days);
+    if (!startDate || !rentalDuration) return 0;
+    return calculateTotalCost(rentalDuration, item);
   };
 
   const getMarkedDates = () => {
     const marked: any = {};
     if (tempStartDate) {
       marked[tempStartDate.toISOString().split("T")[0]] = {
-        startingDay: true,
-        color: "#94665B",
-        textColor: "white",
-      };
-    }
-    if (tempEndDate && tempStartDate && tempEndDate >= tempStartDate) {
-      let current = new Date(tempStartDate);
-      current.setDate(current.getDate() + 1);
-      while (current < tempEndDate) {
-        marked[current.toISOString().split("T")[0]] = {
-          color: "#FDF4F0",
-          textColor: "#94665B",
-        };
-        current.setDate(current.getDate() + 1);
-      }
-      marked[tempEndDate.toISOString().split("T")[0]] = {
-        endingDay: true,
-        color: "#94665B",
+        selected: true,
+        selectedColor: "#94665B",
         textColor: "white",
       };
     }
@@ -154,32 +176,32 @@ export default function RentalDetail() {
 
   const handleDayPress = (day: any) => {
     const selected = new Date(day.dateString);
-
-    if (!tempStartDate || tempEndDate) {
-      setTempStartDate(selected);
-      setTempEndDate(null);
-    } else {
-      if (selected < tempStartDate!) {
-        setTempStartDate(selected);
-      } else {
-        setTempEndDate(selected);
-      }
-    }
+    setTempStartDate(selected);
   };
 
-  const applyDates = () => {
-    setStartDate(tempStartDate);
-    setEndDate(tempEndDate);
+  const applyStartDate = () => {
+    if (tempStartDate) {
+      setStartDate(tempStartDate);
+      // End date will be auto-calculated by useEffect
+    }
     setShowCalendar(false);
   };
 
   const handleAddToCart = () => {
-    if (!startDate || !endDate) {
-      Alert.alert("Missing Dates", "Please select both start and end dates");
+    if (!startDate) {
+      Alert.alert("Missing Date", "Please select a start date");
       return;
     }
-    if (getRentalDays() > 30) {
+    if (rentalDuration < 3) {
+      Alert.alert("Invalid Duration", "Minimum rental period is 3 days");
+      return;
+    }
+    if (rentalDuration > 30) {
       Alert.alert("Too Long", "Maximum rental period is 30 days");
+      return;
+    }
+    if (rentalDuration % 3 !== 0) {
+      Alert.alert("Invalid Duration", "Rental duration must be a multiple of 3 days (3, 6, 9, 12, etc.)");
       return;
     }
     setShowConfirmModal(true);
@@ -188,18 +210,23 @@ export default function RentalDetail() {
   const confirmAddToCart = async () => {
     try {
       setAddingToCart(true);
-      const days = getRentalDays();
       const totalPrice = calculateTotal();
+      const calculatedEndDate = endDate || calculateEndDate(startDate, rentalDuration);
+
+      if (!calculatedEndDate) {
+        Alert.alert("Error", "Unable to calculate end date");
+        return;
+      }
 
       const rentalData = {
         serviceType: 'rental',
         serviceId: item.item_id,
         quantity: 1,
-        basePrice: item.base_rental_fee || '0',
+        basePrice: item.price || item.daily_rate * 3 || '0', // Base price per 3 days
         finalPrice: totalPrice.toString(),
         pricingFactors: {
-          daily_rate: item.daily_rate || '0',
-          days: days,
+          rental_duration: rentalDuration,
+          base_price_per_3_days: item.price || item.daily_rate * 3 || '0',
           deposit_amount: item.deposit_amount || '0'
         },
         specificData: {
@@ -211,7 +238,7 @@ export default function RentalDetail() {
         },
         rentalDates: {
           startDate: startDate!.toISOString().split('T')[0],
-          endDate: endDate!.toISOString().split('T')[0]
+          endDate: calculatedEndDate.toISOString().split('T')[0]
         }
       };
 
@@ -267,7 +294,13 @@ export default function RentalDetail() {
 
           <View style={styles.priceSection}>
             <Text style={styles.priceLabel}>Rental Price</Text>
-            <Text style={styles.priceValue}>₱{item.daily_rate}/day</Text>
+            <Text style={styles.priceValue}>
+              ₱{(() => {
+                // Show price per 3 days
+                const basePrice = item.price || (item.daily_rate ? item.daily_rate * 3 : 0);
+                return parseFloat(String(basePrice).replace(/[^\d.]/g, '') || "0").toLocaleString();
+              })()}/3 days
+            </Text>
           </View>
 
           {/* Details Grid */}
@@ -299,40 +332,66 @@ export default function RentalDetail() {
             </Text>
           </View>
 
-          {/* Calendar Picker */}
+          {/* Rental Period Selection */}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Rental Period</Text>
 
+            {/* Start Date Picker */}
             <TouchableOpacity
               style={styles.calendarBtn}
               onPress={() => {
                 setTempStartDate(startDate);
-                setTempEndDate(endDate);
                 setShowCalendar(true);
               }}
             >
               <Ionicons name="calendar-outline" size={22} color="#94665B" />
               <View style={{ flex: 1, marginLeft: 12 }}>
-                {startDate && endDate ? (
-                  <>
-                    <Text style={styles.dateText}>
-                      {formatDate(startDate)} → {formatDate(endDate)}
-                    </Text>
-                    <Text style={styles.daysText}>
-                      {getRentalDays()} day{getRentalDays() > 1 ? "s" : ""}{" "}
-                      selected
-                    </Text>
-                  </>
+                {startDate ? (
+                  <Text style={styles.dateText}>
+                    Start: {formatDate(startDate)}
+                  </Text>
                 ) : (
                   <Text style={styles.placeholderText}>
-                    Tap to select dates
+                    Tap to select start date
                   </Text>
                 )}
               </View>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
             </TouchableOpacity>
 
+            {/* Duration Selector */}
+            <View style={styles.durationContainer}>
+              <Text style={styles.durationLabel}>Rental Duration *</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={rentalDuration}
+                  onValueChange={(value) => setRentalDuration(value)}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="3 days" value={3} />
+                  <Picker.Item label="6 days" value={6} />
+                  <Picker.Item label="9 days" value={9} />
+                  <Picker.Item label="12 days" value={12} />
+                  <Picker.Item label="15 days" value={15} />
+                  <Picker.Item label="18 days" value={18} />
+                  <Picker.Item label="21 days" value={21} />
+                  <Picker.Item label="24 days" value={24} />
+                  <Picker.Item label="27 days" value={27} />
+                  <Picker.Item label="30 days" value={30} />
+                </Picker>
+              </View>
+            </View>
+
+            {/* End Date Display (Auto-calculated) */}
             {startDate && endDate && (
+              <View style={styles.endDateContainer}>
+                <Text style={styles.endDateLabel}>End Date (Auto-calculated)</Text>
+                <Text style={styles.endDateValue}>{formatDate(endDate)}</Text>
+              </View>
+            )}
+
+            {/* Total Cost */}
+            {startDate && rentalDuration && (
               <View style={styles.totalSection}>
                 <Text style={styles.totalLabel}>Total Cost</Text>
                 <Text style={styles.totalValue}>
@@ -358,7 +417,7 @@ export default function RentalDetail() {
             <View style={styles.policyRow}>
               <Ionicons name="checkmark-circle" size={20} color="#10B981" />
               <Text style={styles.policyText}>
-                Minimum 1 day • Maximum 30 days
+                Minimum 3 days • Maximum 30 days • Must be multiple of 3
               </Text>
             </View>
             <View style={styles.policyRow}>
@@ -379,15 +438,15 @@ export default function RentalDetail() {
               <TouchableOpacity onPress={() => setShowCalendar(false)}>
                 <Ionicons name="close" size={28} color="#1F2937" />
               </TouchableOpacity>
-              <Text style={styles.calendarTitle}>Select Dates</Text>
+              <Text style={styles.calendarTitle}>Select Start Date</Text>
               <TouchableOpacity
-                onPress={applyDates}
-                disabled={!tempStartDate || !tempEndDate}
+                onPress={applyStartDate}
+                disabled={!tempStartDate}
               >
                 <Text
                   style={[
                     styles.doneText,
-                    (!tempStartDate || !tempEndDate) && { color: "#ccc" },
+                    !tempStartDate && { color: "#ccc" },
                   ]}
                 >
                   Done
@@ -399,7 +458,6 @@ export default function RentalDetail() {
               minDate={today.toISOString().split("T")[0]}
               onDayPress={handleDayPress}
               markedDates={getMarkedDates()}
-              markingType="period"
               theme={{
                 selectedDayBackgroundColor: "#94665B",
                 todayTextColor: "#94665B",
@@ -409,24 +467,13 @@ export default function RentalDetail() {
               }}
             />
 
-            {tempStartDate && tempEndDate && (
+            {tempStartDate && (
               <View style={styles.selectionSummary}>
                 <Text style={styles.summaryText}>
-                  {formatDate(tempStartDate)} → {formatDate(tempEndDate)}
+                  Selected: {formatDate(tempStartDate)}
                 </Text>
-                <Text style={styles.summaryDays}>
-                  {(() => {
-                    const diff =
-                      tempEndDate.getTime() - tempStartDate.getTime();
-                    return Math.ceil(diff / 86400000) + 1;
-                  })()}{" "}
-                  day
-                  {(() => {
-                    const diff =
-                      tempEndDate.getTime() - tempStartDate.getTime();
-                    const days = Math.ceil(diff / 86400000) + 1;
-                    return days > 1 ? "s" : "";
-                  })()}
+                <Text style={styles.summarySubtext}>
+                  End date will be calculated based on duration
                 </Text>
               </View>
             )}
@@ -450,26 +497,28 @@ export default function RentalDetail() {
                 {formatDate(startDate)} → {formatDate(endDate)}
               </Text>
               <Text style={styles.modalValue}>
-                {getRentalDays()} day{getRentalDays() > 1 ? "s" : ""}
+                {rentalDuration} day{rentalDuration > 1 ? "s" : ""}
               </Text>
 
               {/* Cost Breakdown */}
               <View style={styles.costBreakdown}>
                 <View style={styles.costRow}>
-                  <Text style={styles.costLabel}>Base Fee</Text>
+                  <Text style={styles.costLabel}>
+                    Base Price (per 3 days)
+                  </Text>
                   <Text style={styles.costValue}>
-                    ₱{parseFloat(item.base_rental_fee || "0").toLocaleString()}
+                    ₱{(() => {
+                      const basePrice = item.price || (item.daily_rate ? item.daily_rate * 3 : 0);
+                      return parseFloat(String(basePrice).replace(/[^\d.]/g, '') || "0").toLocaleString();
+                    })()}
                   </Text>
                 </View>
                 <View style={styles.costRow}>
                   <Text style={styles.costLabel}>
-                    Daily Rate × {getRentalDays()} days
+                    ({rentalDuration} days ÷ 3) × Base Price
                   </Text>
                   <Text style={styles.costValue}>
-                    ₱
-                    {(
-                      parseFloat(item.daily_rate || "0") * getRentalDays()
-                    ).toLocaleString()}
+                    ₱{calculateTotal().toLocaleString()}
                   </Text>
                 </View>
                 <View style={styles.costDivider} />
@@ -847,11 +896,48 @@ const styles = StyleSheet.create({
     borderTopColor: "#F5ECE3",
   },
   summaryText: { fontSize: 17, fontWeight: "700", color: "#94665B" },
-  summaryDays: {
-    fontSize: 20,
-    fontWeight: "900",
+  summarySubtext: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginTop: 6,
+  },
+  durationContainer: {
+    marginTop: 16,
+  },
+  durationLabel: {
+    fontSize: 14,
+    fontWeight: "600",
     color: "#1F2937",
-    marginTop: 10,
+    marginBottom: 8,
+  },
+  pickerContainer: {
+    backgroundColor: "#FAFAFA",
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    overflow: "hidden",
+  },
+  picker: {
+    height: 50,
+    width: "100%",
+  },
+  endDateContainer: {
+    marginTop: 16,
+    backgroundColor: "#F9FAFB",
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  endDateLabel: {
+    fontSize: 13,
+    color: "#6B7280",
+    marginBottom: 6,
+  },
+  endDateValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1F2937",
   },
   fullImageOverlay: {
     flex: 1,

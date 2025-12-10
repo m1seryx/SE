@@ -11,15 +11,20 @@ exports.getAllBillingRecords = (req, res) => {
     });
   }
 
-  // Get all order items with their details
+  // Get all order items with their details including specific_data and pricing_factors
   const sql = `
     SELECT 
       oi.item_id,
       oi.order_id,
       oi.service_type,
       oi.final_price,
+      oi.base_price,
       oi.approval_status,
       oi.payment_status,
+      oi.specific_data,
+      oi.pricing_factors,
+      oi.rental_start_date,
+      oi.rental_end_date,
       o.status as order_status,
       o.order_date,
       u.user_id,
@@ -73,6 +78,42 @@ exports.getAllBillingRecords = (req, res) => {
         paymentStatus = 'Paid';
       } else if (item.payment_status === 'cancelled') {
         paymentStatus = 'Cancelled';
+      } else if (item.payment_status === 'down-payment') {
+        paymentStatus = 'Down-payment';
+      } else if (item.payment_status === 'fully_paid') {
+        paymentStatus = 'Fully Paid';
+      }
+
+      // Parse JSON fields
+      let specificData = {};
+      let pricingFactors = {};
+      try {
+        specificData = item.specific_data ? JSON.parse(item.specific_data) : {};
+        pricingFactors = item.pricing_factors ? JSON.parse(item.pricing_factors) : {};
+      } catch (e) {
+        console.error('Error parsing JSON fields:', e);
+      }
+
+      // Format service type for display
+      let serviceTypeDisplay = item.service_type;
+      switch(item.service_type.toLowerCase()) {
+        case 'dry_cleaning':
+        case 'drycleaning':
+        case 'dry-cleaning':
+          serviceTypeDisplay = 'Dry Cleaning';
+          break;
+        case 'customize':
+        case 'customization':
+          serviceTypeDisplay = 'Customization';
+          break;
+        case 'repair':
+          serviceTypeDisplay = 'Repair';
+          break;
+        case 'rental':
+          serviceTypeDisplay = 'Rental';
+          break;
+        default:
+          serviceTypeDisplay = item.service_type.charAt(0).toUpperCase() + item.service_type.slice(1);
       }
 
       return {
@@ -80,9 +121,15 @@ exports.getAllBillingRecords = (req, res) => {
         uniqueNo: uniqueNo,
         customerName: `${item.first_name} ${item.last_name}`,
         serviceType: item.service_type,
+        serviceTypeDisplay: serviceTypeDisplay,
         date: item.order_date ? new Date(item.order_date).toISOString().split('T')[0] : 'N/A',
         price: parseFloat(item.final_price || 0),
-        status: paymentStatus
+        basePrice: parseFloat(item.base_price || 0),
+        status: paymentStatus,
+        specificData: specificData,
+        pricingFactors: pricingFactors,
+        rentalStartDate: item.rental_start_date,
+        rentalEndDate: item.rental_end_date
       };
     });
 
@@ -120,8 +167,13 @@ exports.getBillingRecordsByStatus = (req, res) => {
       oi.order_id,
       oi.service_type,
       oi.final_price,
+      oi.base_price,
       oi.approval_status,
       oi.payment_status,
+      oi.specific_data,
+      oi.pricing_factors,
+      oi.rental_start_date,
+      oi.rental_end_date,
       o.status as order_status,
       o.order_date,
       u.user_id,
@@ -176,6 +228,42 @@ exports.getBillingRecordsByStatus = (req, res) => {
         paymentStatus = 'Paid';
       } else if (item.payment_status === 'cancelled') {
         paymentStatus = 'Cancelled';
+      } else if (item.payment_status === 'down-payment') {
+        paymentStatus = 'Down-payment';
+      } else if (item.payment_status === 'fully_paid') {
+        paymentStatus = 'Fully Paid';
+      }
+
+      // Parse JSON fields
+      let specificData = {};
+      let pricingFactors = {};
+      try {
+        specificData = item.specific_data ? JSON.parse(item.specific_data) : {};
+        pricingFactors = item.pricing_factors ? JSON.parse(item.pricing_factors) : {};
+      } catch (e) {
+        console.error('Error parsing JSON fields:', e);
+      }
+
+      // Format service type for display
+      let serviceTypeDisplay = item.service_type;
+      switch(item.service_type.toLowerCase()) {
+        case 'dry_cleaning':
+        case 'drycleaning':
+        case 'dry-cleaning':
+          serviceTypeDisplay = 'Dry Cleaning';
+          break;
+        case 'customize':
+        case 'customization':
+          serviceTypeDisplay = 'Customization';
+          break;
+        case 'repair':
+          serviceTypeDisplay = 'Repair';
+          break;
+        case 'rental':
+          serviceTypeDisplay = 'Rental';
+          break;
+        default:
+          serviceTypeDisplay = item.service_type.charAt(0).toUpperCase() + item.service_type.slice(1);
       }
 
       return {
@@ -183,9 +271,15 @@ exports.getBillingRecordsByStatus = (req, res) => {
         uniqueNo: uniqueNo,
         customerName: `${item.first_name} ${item.last_name}`,
         serviceType: item.service_type,
+        serviceTypeDisplay: serviceTypeDisplay,
         date: item.order_date ? new Date(item.order_date).toISOString().split('T')[0] : 'N/A',
         price: parseFloat(item.final_price || 0),
-        status: paymentStatus
+        basePrice: parseFloat(item.base_price || 0),
+        status: paymentStatus,
+        specificData: specificData,
+        pricingFactors: pricingFactors,
+        rentalStartDate: item.rental_start_date,
+        rentalEndDate: item.rental_end_date
       };
     });
 
@@ -218,11 +312,11 @@ exports.updateBillingRecordStatus = (req, res) => {
   }
 
   // Validate status
-  const validStatuses = ['Paid', 'Unpaid', 'Cancelled'];
+  const validStatuses = ['Paid', 'Unpaid', 'Cancelled', 'Down-payment', 'Fully Paid'];
   if (!validStatuses.includes(status)) {
     return res.status(400).json({
       success: false,
-      message: "Invalid status. Must be: Paid, Unpaid, or Cancelled"
+      message: "Invalid status. Must be: Paid, Unpaid, Cancelled, Down-payment, or Fully Paid"
     });
   }
 
@@ -232,6 +326,10 @@ exports.updateBillingRecordStatus = (req, res) => {
     dbStatus = 'paid';
   } else if (status === 'Cancelled') {
     dbStatus = 'cancelled';
+  } else if (status === 'Down-payment') {
+    dbStatus = 'down-payment';
+  } else if (status === 'Fully Paid') {
+    dbStatus = 'fully_paid';
   }
 
   // Update the payment_status in the database
@@ -266,10 +364,10 @@ exports.getBillingStats = (req, res) => {
   const statsSql = `
     SELECT 
       COUNT(*) as total_records,
-      SUM(CASE WHEN oi.payment_status = 'paid' THEN 1 ELSE 0 END) as paid_count,
-      SUM(CASE WHEN oi.payment_status = 'unpaid' THEN 1 ELSE 0 END) as unpaid_count,
-      SUM(CASE WHEN oi.payment_status = 'paid' THEN oi.final_price ELSE 0 END) as total_revenue,
-      SUM(CASE WHEN oi.payment_status = 'unpaid' THEN oi.final_price ELSE 0 END) as pending_revenue
+      SUM(CASE WHEN oi.payment_status IN ('paid', 'fully_paid') THEN 1 ELSE 0 END) as paid_count,
+      SUM(CASE WHEN oi.payment_status IN ('unpaid', 'down-payment') THEN 1 ELSE 0 END) as unpaid_count,
+      SUM(CASE WHEN oi.payment_status IN ('paid', 'fully_paid') THEN oi.final_price ELSE 0 END) as total_revenue,
+      SUM(CASE WHEN oi.payment_status IN ('unpaid', 'down-payment') THEN oi.final_price ELSE 0 END) as pending_revenue
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.order_id
   `;

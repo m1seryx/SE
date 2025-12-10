@@ -129,6 +129,19 @@ exports.addToCart = (req, res) => {
     });
   }
 
+  // For rental services, ensure downpayment is 50% of final price if not already set correctly
+  if (serviceType === 'rental' && pricingFactors) {
+    const totalPrice = parseFloat(finalPrice || 0);
+    const currentDownpayment = parseFloat(pricingFactors.downpayment || pricingFactors.down_payment || 0);
+    const expectedDownpayment = totalPrice * 0.5;
+    
+    // Update downpayment to 50% of total price if it doesn't match
+    if (Math.abs(currentDownpayment - expectedDownpayment) > 0.01) {
+      pricingFactors.downpayment = expectedDownpayment.toString();
+      pricingFactors.down_payment = expectedDownpayment.toString();
+    }
+  }
+
   // Import ServiceIdGenerator
   const ServiceIdGenerator = require('../model/ServiceIdGenerator');
   

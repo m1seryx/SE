@@ -1,6 +1,7 @@
 const OrderTracking = require('../model/OrderTrackingModel');
 const Order = require('../model/OrderModel');
 const Notification = require('../model/NotificationModel');
+const db = require('../config/db');
 
 // Get all order tracking for a user
 exports.getUserOrderTracking = (req, res) => {
@@ -100,6 +101,18 @@ exports.getUserOrderTracking = (req, res) => {
           nextStatuses = [];
         }
 
+        // Format payment status for display
+        let paymentStatusDisplay = 'Unpaid';
+        if (item.payment_status === 'paid') {
+          paymentStatusDisplay = 'Paid';
+        } else if (item.payment_status === 'down-payment') {
+          paymentStatusDisplay = 'Down-payment';
+        } else if (item.payment_status === 'fully_paid') {
+          paymentStatusDisplay = 'Fully Paid';
+        } else if (item.payment_status === 'cancelled') {
+          paymentStatusDisplay = 'Cancelled';
+        }
+
         orders[item.order_id].items.push({
           order_item_id: item.order_item_id,
           service_type: item.service_type,
@@ -112,7 +125,9 @@ exports.getUserOrderTracking = (req, res) => {
           next_statuses: nextStatuses,
           rental_start_date: item.rental_start_date || null,
           rental_end_date: item.rental_end_date || null,
-          pricing_factors: pricingFactors
+          pricing_factors: pricingFactors,
+          payment_status: item.payment_status || 'unpaid',
+          payment_status_display: paymentStatusDisplay
         });
       } catch (itemErr) {
         console.error('Error processing order item:', item, itemErr);
@@ -288,6 +303,56 @@ exports.updateTrackingStatus = (req, res) => {
         }
 
         console.log('Tracking status updated successfully for order item:', orderItemID);
+
+        // Update approval_status in order_items table to match tracking status
+        // Map tracking statuses to approval_status values
+        let approvalStatus = status;
+        const statusMapping = {
+          'ready_to_pickup': 'ready_to_pickup',
+          'ready_for_pickup': 'ready_to_pickup',
+          'rented': 'rented',
+          'returned': 'returned',
+          'completed': 'completed',
+          'in_progress': 'in_progress',
+          'accepted': 'accepted',
+          'price_confirmation': 'price_confirmation',
+          'cancelled': 'cancelled'
+        };
+        
+        if (statusMapping[status]) {
+          approvalStatus = statusMapping[status];
+        }
+
+        // Update approval_status in order_items
+        const updateApprovalStatusSql = `UPDATE order_items SET approval_status = ? WHERE item_id = ?`;
+        db.query(updateApprovalStatusSql, [approvalStatus, orderItemID], (updateErr, updateResult) => {
+          if (updateErr) {
+            console.error('Error updating approval_status:', updateErr);
+            // Don't fail the whole operation, just log the error
+          } else {
+            console.log(`Updated approval_status to ${approvalStatus} for order item ${orderItemID}`);
+            
+            // Auto-update billing payment_status based on status change
+            const billingHelper = require('../utils/billingHelper');
+            const previousStatus = orderItem.approval_status || 'pending';
+            
+            if (approvalStatus !== previousStatus) {
+              billingHelper.updateBillingStatus(
+                orderItemID, 
+                orderItem.service_type, 
+                approvalStatus, 
+                previousStatus, 
+                (billingErr, billingResult) => {
+                  if (billingErr) {
+                    console.error('Error auto-updating billing status:', billingErr);
+                  } else if (billingResult) {
+                    console.log('Billing status auto-updated:', billingResult);
+                  }
+                }
+              );
+            }
+          }
+        });
 
         // Get user_id from the order to create notification
         Order.getById(orderItem.order_id, (orderErr, order) => {

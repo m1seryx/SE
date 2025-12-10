@@ -20,6 +20,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { Image, Modal, ScrollView, TextInput } from 'react-native';
+import DateTimePickerModal from '../../../components/DateTimePickerModal';
 import { 
   uploadCustomizationImage, 
   addCustomizationToCart,
@@ -59,6 +61,13 @@ export default function Customizer3DScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [loadingTime, setLoadingTime] = useState(0);
+  
+  // Modal state for 3D design confirmation
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingCustomization, setPendingCustomization] = useState<CustomizationData | null>(null);
+  const [preferredDate, setPreferredDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [notes, setNotes] = useState('');
 
   // Loading timeout - show error after 15 seconds
   useEffect(() => {
@@ -264,34 +273,77 @@ export default function Customizer3DScreen() {
     }
   };
 
-  // Handle completed customization
+  // Handle completed customization - show modal instead of directly adding to cart
   const handleCustomizationComplete = async (data: CustomizationData) => {
+    // Store the customization data and show confirmation modal
+    setPendingCustomization(data);
+    setNotes(data.notes || '');
+    setPreferredDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+    setShowConfirmModal(true);
+  };
+
+  // Handle date picker
+  const handleDateConfirm = (selectedDate: Date) => {
+    setPreferredDate(selectedDate);
+    setShowDatePicker(false);
+  };
+
+  const handleDateCancel = () => {
+    setShowDatePicker(false);
+  };
+
+  // Add to cart from confirmation modal
+  const handleAddToCartFromModal = async () => {
+    if (!pendingCustomization) return;
+
     setIsSaving(true);
+    setShowConfirmModal(false);
     
     try {
       let imageUrl = 'no-image';
       
       // Upload design image if provided
-      if (data.designImage) {
+      if (pendingCustomization.designImage) {
+        let tempFileUri: string | null = null;
         try {
-          const formData = convertBase64ToFormData(data.designImage, 'custom-design.png');
+          const { formData, fileUri } = await convertBase64ToFormData(pendingCustomization.designImage, 'custom-design.png');
+          tempFileUri = fileUri;
+          
           const uploadResponse = await uploadCustomizationImage(formData);
           imageUrl = uploadResponse.imageUrl || uploadResponse.data?.imageUrl || imageUrl;
+          
+          // Clean up temporary file after successful upload
+          if (tempFileUri) {
+            try {
+              await FileSystem.deleteAsync(tempFileUri, { idempotent: true });
+            } catch (cleanupError) {
+              // Ignore cleanup errors
+              console.log('Cleanup error (non-critical):', cleanupError);
+            }
+          }
         } catch (uploadError) {
           console.error('Image upload failed:', uploadError);
+          // Clean up temp file even on error
+          if (tempFileUri) {
+            try {
+              await FileSystem.deleteAsync(tempFileUri, { idempotent: true });
+            } catch (e) {
+              // Ignore cleanup errors
+            }
+          }
           // Continue without image
         }
       }
       
       // Add to cart
       const cartResponse = await addCustomizationToCart({
-        garmentType: data.garmentType || 'Polo',
-        fabricType: data.fabricType || 'Cotton',
-        preferredDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 week from now
-        notes: data.notes || '',
+        garmentType: pendingCustomization.garmentType || 'Polo',
+        fabricType: pendingCustomization.fabricType || 'Cotton',
+        preferredDate: preferredDate.toISOString().split('T')[0],
+        notes: notes || pendingCustomization.notes || '',
         imageUrl: imageUrl,
-        designData: data.designData || {},
-        estimatedPrice: data.estimatedPrice || 500,
+        designData: pendingCustomization.designData || {},
+        estimatedPrice: pendingCustomization.estimatedPrice || 500,
       });
       
       Alert.alert(
@@ -317,6 +369,7 @@ export default function Customizer3DScreen() {
       );
     } finally {
       setIsSaving(false);
+      setPendingCustomization(null);
     }
   };
 
@@ -479,6 +532,140 @@ export default function Customizer3DScreen() {
           </View>
         </View>
       )}
+
+      {/* Confirmation Modal for 3D Design */}
+      <Modal
+        visible={showConfirmModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowConfirmModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Review Your Design</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowConfirmModal(false);
+                    setPendingCustomization(null);
+                  }}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={24} color="#5D4037" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Design Image */}
+              {pendingCustomization?.designImage && (
+                <View style={styles.imageSection}>
+                  <Text style={styles.sectionLabel}>Your 3D Design</Text>
+                  <Image
+                    source={{ uri: pendingCustomization.designImage }}
+                    style={styles.designImage}
+                    resizeMode="contain"
+                  />
+                </View>
+              )}
+
+              {/* Design Details */}
+              <View style={styles.detailsSection}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Garment Type:</Text>
+                  <Text style={styles.detailValue}>
+                    {pendingCustomization?.garmentType || 'N/A'}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Fabric Type:</Text>
+                  <Text style={styles.detailValue}>
+                    {pendingCustomization?.fabricType || 'N/A'}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Estimated Price:</Text>
+                  <Text style={styles.detailValue}>
+                    ₱{pendingCustomization?.estimatedPrice?.toLocaleString() || '500'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Preferred Date */}
+              <View style={styles.dateSection}>
+                <Text style={styles.sectionLabel}>Preferred Date</Text>
+                <TouchableOpacity
+                  style={styles.datePickerButton}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Ionicons name="calendar-outline" size={20} color="#5D4037" />
+                  <Text style={styles.datePickerText}>
+                    {preferredDate.toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color="#8D6E63" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Notes */}
+              <View style={styles.notesSection}>
+                <Text style={styles.sectionLabel}>Additional Notes (Optional)</Text>
+                <TextInput
+                  style={styles.notesInput}
+                  placeholder="Add any special instructions or notes..."
+                  placeholderTextColor="#8D6E63"
+                  multiline
+                  numberOfLines={4}
+                  value={notes}
+                  onChangeText={setNotes}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalCancelButton}
+                  onPress={() => {
+                    setShowConfirmModal(false);
+                    setPendingCustomization(null);
+                  }}
+                >
+                  <Text style={styles.modalCancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.confirmButton}
+                  onPress={handleAddToCartFromModal}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <>
+                      <Text style={styles.confirmButtonText}>Add to Cart</Text>
+                      <Ionicons name="cart-outline" size={20} color="#FFF" />
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+
+        {/* Date Picker Modal */}
+        <DateTimePickerModal
+          visible={showDatePicker}
+          mode="date"
+          value={preferredDate}
+          minimumDate={new Date()}
+          onConfirm={handleDateConfirm}
+          onCancel={handleDateCancel}
+        />
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -628,5 +815,142 @@ const styles = StyleSheet.create({
     color: '#5D4037',
     fontSize: 16,
     fontWeight: '500',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFF8F0',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8D5C4',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#5D4037',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  imageSection: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  sectionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#5D4037',
+    marginBottom: 12,
+    alignSelf: 'flex-start',
+  },
+  designImage: {
+    width: '100%',
+    height: 300,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  detailsSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#8D6E63',
+    fontWeight: '500',
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#5D4037',
+    fontWeight: '600',
+  },
+  dateSection: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8D5C4',
+  },
+  datePickerText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#5D4037',
+  },
+  notesSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  notesInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E8D5C4',
+    fontSize: 14,
+    color: '#5D4037',
+    minHeight: 100,
+    marginTop: 8,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8D6E63',
+  },
+  confirmButton: {
+    flex: 2,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#5D4037',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
