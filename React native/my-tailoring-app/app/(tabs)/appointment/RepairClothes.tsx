@@ -321,21 +321,35 @@ export default function RepairClothes() {
 
           {/* Damage Level */}
           <Text style={styles.sectionTitle}>Damage Level *</Text>
-          <View style={styles.pickerWrapper}>
-            <Picker
-              selectedValue={damageLevel}
-              onValueChange={(value) => setDamageLevel(value)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Select damage level..." value="" />
-              {damageLevels.map((level) => (
-                <Picker.Item 
-                  label={`${level.label} - ${level.description}`} 
-                  value={level.value} 
-                  key={level.value} 
-                />
-              ))}
-            </Picker>
+          <View style={styles.damageLevelContainer}>
+            {damageLevels.map((level) => (
+              <TouchableOpacity
+                key={level.value}
+                style={[
+                  styles.damageLevelCard,
+                  damageLevel === level.value && styles.damageLevelCardSelected,
+                ]}
+                onPress={() => setDamageLevel(level.value)}
+              >
+                <View style={styles.damageLevelHeader}>
+                  <Text style={[
+                    styles.damageLevelLabel,
+                    damageLevel === level.value && styles.damageLevelLabelSelected,
+                  ]}>
+                    {level.label}
+                  </Text>
+                  {damageLevel === level.value && (
+                    <Ionicons name="checkmark-circle" size={20} color="#B8860B" />
+                  )}
+                </View>
+                <Text style={[
+                  styles.damageLevelDescription,
+                  damageLevel === level.value && styles.damageLevelDescriptionSelected,
+                ]}>
+                  {level.description}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
           {damageLevel && (
             <Text style={styles.priceIndicator}>
@@ -576,6 +590,43 @@ const styles = StyleSheet.create({
   picker: {
     height: 50,
     color: '#333',
+  },
+  damageLevelContainer: {
+    marginBottom: 16,
+  },
+  damageLevelCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: '#E8D5C4',
+  },
+  damageLevelCardSelected: {
+    borderColor: '#B8860B',
+    backgroundColor: '#FFF8E7',
+  },
+  damageLevelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  damageLevelLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#5D4037',
+  },
+  damageLevelLabelSelected: {
+    color: '#B8860B',
+  },
+  damageLevelDescription: {
+    fontSize: 13,
+    color: '#8D6E63',
+    lineHeight: 18,
+  },
+  damageLevelDescriptionSelected: {
+    color: '#5D4037',
   },
   priceIndicator: {
     marginTop: 8,

@@ -80,23 +80,38 @@ export default function CartScreen() {
           return {
             id: item.cart_id,
             service: item.service_type,
+            serviceId: item.service_id,
             item: item.specific_data?.serviceName || item.service_type || 'Service',
             description: item.specific_data?.damageDescription || item.specific_data?.specialInstructions || '',
             price: parseFloat(item.final_price) || 0,
+            basePrice: parseFloat(item.base_price) || 0,
             icon: getServiceIcon(item.service_type),
             garmentType: item.specific_data?.garmentType || '',
             damageType: item.specific_data?.damageLevel || item.specific_data?.damageType || '',
+            damageDescription: item.specific_data?.damageDescription || '',
             specialInstructions: item.specific_data?.specialInstructions || '',
             image: processedImage,
             appointmentDate: formattedDate,
             // Additional fields for detailed view
-            clothingBrand: item.specific_data?.clothingBrand || '',
+            clothingBrand: item.specific_data?.clothingBrand || item.specific_data?.brand || '',
             quantity: item.specific_data?.quantity || 1,
             fabricType: item.specific_data?.fabricType || '',
             style: item.specific_data?.style || '',
             buttonStyle: item.specific_data?.buttonStyle || '',
             sizeMeasurement: item.specific_data?.sizeMeasurement || '',
-            basePrice: parseFloat(item.base_price) || 0,
+            // Rental specific
+            downpayment: item.pricing_factors?.downpayment || item.specific_data?.downpayment || 0,
+            rentalStartDate: item.rental_start_date || '',
+            rentalEndDate: item.rental_end_date || '',
+            // Dry cleaning specific
+            pricePerItem: item.specific_data?.pricePerItem || '',
+            isEstimatedPrice: item.specific_data?.isEstimatedPrice || false,
+            // Customization specific
+            preferredDate: item.specific_data?.preferredDate || '',
+            notes: item.specific_data?.notes || '',
+            designData: item.specific_data?.designData || null,
+            // Raw item for reference
+            rawItem: item,
           };
         });
         console.log('Transformed cart items:', transformedItems);
@@ -115,6 +130,7 @@ export default function CartScreen() {
       case 'dry_cleaning':
         return 'water-outline';
       case 'customize':
+      case 'customization':
         return 'color-palette-outline';
       case 'repair':
         return 'construct-outline';
@@ -122,6 +138,22 @@ export default function CartScreen() {
         return 'shirt-outline';
       default:
         return 'shirt-outline';
+    }
+  };
+
+  const getServiceTypeDisplay = (serviceType: string): string => {
+    switch (serviceType?.toLowerCase()) {
+      case 'dry_cleaning':
+        return 'Dry Cleaning';
+      case 'customize':
+      case 'customization':
+        return 'Customization';
+      case 'repair':
+        return 'Repair';
+      case 'rental':
+        return 'Rental';
+      default:
+        return serviceType || 'Service';
     }
   };
 
@@ -298,33 +330,92 @@ export default function CartScreen() {
 
                   {/* Details */}
                   <View style={styles.itemDetails}>
-                    <Text style={styles.serviceType}>{item.service}</Text>
+                    <Text style={styles.serviceType}>{getServiceTypeDisplay(item.service)}</Text>
                     <Text style={styles.itemName}>{item.item}</Text>
-                    {item.garmentType && (
-                      <Text style={styles.itemGarment}>
-                        {item.quantity > 1 ? `${item.quantity}x ` : ''}{item.garmentType}
-                      </Text>
-                    )}
-                    {item.description && (
-                      <Text style={styles.itemDescription} numberOfLines={2}>
-                        {item.description}
-                      </Text>
+                    <Text style={styles.serviceIdText}>Service ID: {item.serviceId}</Text>
+                    
+                    {/* Service-specific information */}
+                    {item.service?.toLowerCase() === 'repair' && (
+                      <>
+                        {item.damageType && (
+                          <Text style={styles.itemDetailText}>Damage Level: {item.damageType}</Text>
+                        )}
+                        {item.garmentType && (
+                          <Text style={styles.itemDetailText}>Garment: {item.garmentType}</Text>
+                        )}
+                        {item.damageDescription && (
+                          <Text style={styles.itemDetailText} numberOfLines={2}>
+                            Description: {item.damageDescription}
+                          </Text>
+                        )}
+                        {item.appointmentDate && (
+                          <Text style={styles.itemDetailText}>Drop off preferred date: {item.appointmentDate}</Text>
+                        )}
+                      </>
                     )}
 
-                    {/* Appointment Tag */}
-                    {item.appointmentDate && (
-                      <View style={styles.appointmentTag}>
-                        <Ionicons name="calendar" size={16} color="#94665B" />
-                        <Text style={styles.appointmentText}>
-                          {item.appointmentDate}
-                        </Text>
-                      </View>
+                    {item.service?.toLowerCase() === 'dry_cleaning' && (
+                      <>
+                        {item.garmentType && (
+                          <Text style={styles.itemDetailText}>
+                            Garment Type: {item.garmentType.charAt(0).toUpperCase() + item.garmentType.slice(1)}
+                          </Text>
+                        )}
+                        {item.clothingBrand && (
+                          <Text style={styles.itemDetailText}>Brand: {item.clothingBrand}</Text>
+                        )}
+                        {item.quantity > 0 && (
+                          <Text style={styles.itemDetailText}>Quantity: {item.quantity} items</Text>
+                        )}
+                        {item.appointmentDate && (
+                          <Text style={styles.itemDetailText}>Drop off date: {item.appointmentDate}</Text>
+                        )}
+                        {item.pricePerItem && (
+                          <Text style={styles.itemDetailText}>
+                            Price per item: ₱{parseFloat(item.pricePerItem).toFixed(2)}
+                          </Text>
+                        )}
+                      </>
                     )}
 
-                    {/* View Details – Now Clickable! */}
+                    {item.service?.toLowerCase() === 'customization' && (
+                      <>
+                        {item.garmentType && (
+                          <Text style={styles.itemDetailText}>Garment Type: {item.garmentType}</Text>
+                        )}
+                        {item.fabricType && (
+                          <Text style={styles.itemDetailText}>Fabric Type: {item.fabricType}</Text>
+                        )}
+                        {item.preferredDate && (
+                          <Text style={styles.itemDetailText}>Preferred Date: {item.preferredDate}</Text>
+                        )}
+                        {item.notes && (
+                          <Text style={styles.itemDetailText} numberOfLines={2}>
+                            Notes: {item.notes}
+                          </Text>
+                        )}
+                      </>
+                    )}
+
+                    {item.service?.toLowerCase() === 'rental' && (
+                      <>
+                        {item.garmentType && (
+                          <Text style={styles.itemDetailText}>
+                            {item.quantity > 1 ? `${item.quantity}x ` : ''}{item.garmentType}
+                          </Text>
+                        )}
+                        {item.downpayment > 0 && (
+                          <Text style={styles.itemDetailText}>
+                            Downpayment: ₱{item.downpayment.toLocaleString()}
+                          </Text>
+                        )}
+                      </>
+                    )}
+
+                    {/* View Details */}
                     <TouchableOpacity
                       onPress={(e) => {
-                        e.stopPropagation(); // ← Stops parent onPress
+                        e.stopPropagation();
                         showItemDetails(item);
                       }}
                       style={styles.viewDetailsLink}
@@ -339,14 +430,29 @@ export default function CartScreen() {
                       />
                     </TouchableOpacity>
 
-                    {/* Only show price for rental, or if admin confirmed price */}
+                    {/* Price display */}
                     {item.service?.toLowerCase() === 'rental' ? (
+                      <>
+                        <Text style={styles.itemPrice}>
+                          Rental Price: ₱{item.price.toLocaleString()}
+                        </Text>
+                        {item.downpayment > 0 && (
+                          <Text style={styles.itemPriceSmall}>
+                            Downpayment: ₱{item.downpayment.toLocaleString()}
+                          </Text>
+                        )}
+                      </>
+                    ) : item.service?.toLowerCase() === 'dry_cleaning' && item.isEstimatedPrice ? (
+                      <Text style={styles.itemPricePending}>
+                        Estimated Price: ₱{item.price.toLocaleString()}
+                      </Text>
+                    ) : item.service?.toLowerCase() === 'dry_cleaning' ? (
                       <Text style={styles.itemPrice}>
-                        ₱{item.price.toLocaleString()}
+                        Final Price: ₱{item.price.toLocaleString()}
                       </Text>
                     ) : (
                       <Text style={styles.itemPricePending}>
-                        Price: To be confirmed
+                        Estimated Price: ₱{item.price.toLocaleString()}
                       </Text>
                     )}
                   </View>
@@ -410,15 +516,25 @@ export default function CartScreen() {
               {selectedItemDetails && (
                 <>
                   {selectedItemDetails.image && selectedItemDetails.image !== 'no-image' && selectedItemDetails.image.trim() !== '' && !selectedItemDetails.image.includes('no-image') ? (
-                    <Image
-                      source={{ uri: selectedItemDetails.image }}
-                      style={styles.detailsImage}
-                      onError={(error) => {
-                        console.log('Image load error:', error);
-                        console.log('Failed to load image URL:', selectedItemDetails.image);
-                      }}
-                      onLoad={() => console.log('Image loaded successfully:', selectedItemDetails.image)}
-                    />
+                    <>
+                      <Image
+                        source={{ uri: selectedItemDetails.image }}
+                        style={styles.detailsImage}
+                        onError={(error) => {
+                          console.log('Image load error:', error);
+                          console.log('Failed to load image URL:', selectedItemDetails.image);
+                        }}
+                        onLoad={() => console.log('Image loaded successfully:', selectedItemDetails.image)}
+                      />
+                      <View style={styles.detailsSection}>
+                        <Text style={styles.detailsImageLabel}>
+                          {selectedItemDetails.service?.toLowerCase() === 'repair' ? 'Damage photo uploaded' :
+                           selectedItemDetails.service?.toLowerCase() === 'dry_cleaning' ? 'Clothing photo uploaded' :
+                           selectedItemDetails.service?.toLowerCase() === 'customization' || selectedItemDetails.service?.toLowerCase() === 'customize' ? 'Design preview uploaded' :
+                           'Photo uploaded'}
+                        </Text>
+                      </View>
+                    </>
                   ) : (
                     <View style={[styles.detailsImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f0f0' }]}> 
                       <Text style={{ color: '#666' }}>No image available</Text>
@@ -428,115 +544,195 @@ export default function CartScreen() {
                   <View style={styles.detailsSection}>
                     <Text style={styles.detailsLabel}>Service</Text>
                     <Text style={styles.detailsValue}>
-                      {selectedItemDetails.service}
+                      {getServiceTypeDisplay(selectedItemDetails.service)}
                     </Text>
                   </View>
 
+                  {selectedItemDetails.serviceId && (
+                    <View style={styles.detailsSection}>
+                      <Text style={styles.detailsLabel}>Service ID</Text>
+                      <Text style={styles.detailsValue}>
+                        {selectedItemDetails.serviceId}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Repair Details */}
+                  {selectedItemDetails.service?.toLowerCase() === 'repair' && (
+                    <>
+                      {selectedItemDetails.damageType && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Damage Level</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.damageType}
+                          </Text>
+                        </View>
+                      )}
+                      {selectedItemDetails.garmentType && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Garment</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.garmentType}
+                          </Text>
+                        </View>
+                      )}
+                      {selectedItemDetails.damageDescription && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Description</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.damageDescription}
+                          </Text>
+                        </View>
+                      )}
+                      {selectedItemDetails.appointmentDate && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Drop off preferred date</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.appointmentDate}
+                          </Text>
+                        </View>
+                      )}
+                    </>
+                  )}
+
+                  {/* Dry Cleaning Details */}
+                  {selectedItemDetails.service?.toLowerCase() === 'dry_cleaning' && (
+                    <>
+                      {selectedItemDetails.garmentType && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Garment Type</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.garmentType.charAt(0).toUpperCase() + selectedItemDetails.garmentType.slice(1)}
+                          </Text>
+                        </View>
+                      )}
+                      {selectedItemDetails.clothingBrand && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Brand</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.clothingBrand}
+                          </Text>
+                        </View>
+                      )}
+                      {selectedItemDetails.quantity > 0 && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Quantity</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.quantity} items
+                          </Text>
+                        </View>
+                      )}
+                      {selectedItemDetails.appointmentDate && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Drop off date</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.appointmentDate}
+                          </Text>
+                        </View>
+                      )}
+                      {selectedItemDetails.pricePerItem && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Price per item</Text>
+                          <Text style={styles.detailsValue}>
+                            ₱{parseFloat(selectedItemDetails.pricePerItem).toFixed(2)}
+                          </Text>
+                        </View>
+                      )}
+                    </>
+                  )}
+
+                  {/* Customization Details */}
+                  {(selectedItemDetails.service?.toLowerCase() === 'customization' || selectedItemDetails.service?.toLowerCase() === 'customize') && (
+                    <>
+                      {selectedItemDetails.garmentType && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Garment Type</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.garmentType}
+                          </Text>
+                        </View>
+                      )}
+                      {selectedItemDetails.fabricType && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Fabric Type</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.fabricType}
+                          </Text>
+                        </View>
+                      )}
+                      {selectedItemDetails.preferredDate && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Preferred Date</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.preferredDate}
+                          </Text>
+                        </View>
+                      )}
+                      {selectedItemDetails.notes && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Notes</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.notes}
+                          </Text>
+                        </View>
+                      )}
+                      {selectedItemDetails.designData && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>3D Customization Details</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.designData.size && `Size: ${selectedItemDetails.designData.size.charAt(0).toUpperCase() + selectedItemDetails.designData.size.slice(1)}\n`}
+                            {selectedItemDetails.designData.fit && `Fit: ${selectedItemDetails.designData.fit.charAt(0).toUpperCase() + selectedItemDetails.designData.fit.slice(1)}\n`}
+                            {selectedItemDetails.designData.colors?.fabric && `Color: ${selectedItemDetails.designData.colors.fabric}\n`}
+                            {selectedItemDetails.designData.pattern && selectedItemDetails.designData.pattern !== 'none' && `Pattern: ${selectedItemDetails.designData.pattern.charAt(0).toUpperCase() + selectedItemDetails.designData.pattern.slice(1)}\n`}
+                            {selectedItemDetails.designData.personalization?.initials && `Personalization: ${selectedItemDetails.designData.personalization.initials}\n`}
+                          </Text>
+                        </View>
+                      )}
+                    </>
+                  )}
+
+                  {/* Rental Details */}
+                  {selectedItemDetails.service?.toLowerCase() === 'rental' && (
+                    <>
+                      {selectedItemDetails.garmentType && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Item</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.garmentType}
+                          </Text>
+                        </View>
+                      )}
+                      {selectedItemDetails.rentalStartDate && selectedItemDetails.rentalEndDate && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Rental Period</Text>
+                          <Text style={styles.detailsValue}>
+                            {new Date(selectedItemDetails.rentalStartDate).toLocaleDateString()} - {new Date(selectedItemDetails.rentalEndDate).toLocaleDateString()}
+                          </Text>
+                        </View>
+                      )}
+                    </>
+                  )}
+
+                  {/* Price Display */}
                   <View style={styles.detailsSection}>
-                    <Text style={styles.detailsLabel}>Item</Text>
-                    <Text style={styles.detailsValue}>
-                      {selectedItemDetails.item}
+                    <Text style={styles.detailsLabel}>
+                      {selectedItemDetails.service?.toLowerCase() === 'rental' ? 'Rental Price' : 
+                       selectedItemDetails.service?.toLowerCase() === 'dry_cleaning' && selectedItemDetails.isEstimatedPrice ? 'Estimated Price' :
+                       selectedItemDetails.service?.toLowerCase() === 'dry_cleaning' ? 'Final Price' : 'Estimated Price'}
                     </Text>
-                  </View>
-
-                  {selectedItemDetails.garmentType && (
-                    <View style={styles.detailsSection}>
-                      <Text style={styles.detailsLabel}>Garment Type</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedItemDetails.garmentType}
-                      </Text>
-                    </View>
-                  )}
-
-                  {selectedItemDetails.quantity > 1 && (
-                    <View style={styles.detailsSection}>
-                      <Text style={styles.detailsLabel}>Quantity</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedItemDetails.quantity}
-                      </Text>
-                    </View>
-                  )}
-
-                  {selectedItemDetails.clothingBrand && (
-                    <View style={styles.detailsSection}>
-                      <Text style={styles.detailsLabel}>Clothing Brand</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedItemDetails.clothingBrand}
-                      </Text>
-                    </View>
-                  )}
-
-                  {selectedItemDetails.fabricType && (
-                    <View style={styles.detailsSection}>
-                      <Text style={styles.detailsLabel}>Fabric Type</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedItemDetails.fabricType}
-                      </Text>
-                    </View>
-                  )}
-
-                  {selectedItemDetails.style && (
-                    <View style={styles.detailsSection}>
-                      <Text style={styles.detailsLabel}>Style</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedItemDetails.style}
-                      </Text>
-                    </View>
-                  )}
-
-                  {selectedItemDetails.buttonStyle && (
-                    <View style={styles.detailsSection}>
-                      <Text style={styles.detailsLabel}>Button Style</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedItemDetails.buttonStyle}
-                      </Text>
-                    </View>
-                  )}
-
-                  {selectedItemDetails.sizeMeasurement && (
-                    <View style={styles.detailsSection}>
-                      <Text style={styles.detailsLabel}>Size Measurement</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedItemDetails.sizeMeasurement}
-                      </Text>
-                    </View>
-                  )}
-
-                  {selectedItemDetails.damageType && (
-                    <View style={styles.detailsSection}>
-                      <Text style={styles.detailsLabel}>Type of Damage</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedItemDetails.damageType}
-                      </Text>
-                    </View>
-                  )}
-
-                  {selectedItemDetails.appointmentDate && (
-                    <View style={styles.detailsSection}>
-                      <Text style={styles.detailsLabel}>Preferred Date & Time</Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedItemDetails.appointmentDate}
-                      </Text>
-                    </View>
-                  )}
-
-                  {selectedItemDetails.specialInstructions && (
-                    <View style={styles.detailsSection}>
-                      <Text style={styles.detailsLabel}>
-                        Special Instructions
-                      </Text>
-                      <Text style={styles.detailsValue}>
-                        {selectedItemDetails.specialInstructions}
-                      </Text>
-                    </View>
-                  )}
-
-                  <View style={styles.detailsSection}>
-                    <Text style={styles.detailsLabel}>Price</Text>
                     <Text style={styles.detailsPriceValue}>
                       ₱{selectedItemDetails.price.toLocaleString()}
                     </Text>
                   </View>
+
+                  {selectedItemDetails.service?.toLowerCase() === 'rental' && selectedItemDetails.downpayment > 0 && (
+                    <View style={styles.detailsSection}>
+                      <Text style={styles.detailsLabel}>Downpayment</Text>
+                      <Text style={styles.detailsPriceValue}>
+                        ₱{selectedItemDetails.downpayment.toLocaleString()}
+                      </Text>
+                    </View>
+                  )}
                 </>
               )}
               <View style={{ height: 60 }} />
@@ -774,8 +970,20 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginRight: 4,
   },
-  itemPrice: { fontSize: 20, fontWeight: "800", color: "#94665B" },
-  itemPricePending: { fontSize: 14, fontWeight: "600", color: "#F59E0B", fontStyle: "italic" },
+  serviceIdText: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    marginBottom: 4,
+  },
+  itemDetailText: {
+    fontSize: 13,
+    color: "#6B7280",
+    marginBottom: 4,
+    lineHeight: 18,
+  },
+  itemPrice: { fontSize: 16, fontWeight: "700", color: "#94665B", marginTop: 4 },
+  itemPriceSmall: { fontSize: 14, fontWeight: "600", color: "#94665B", marginTop: 2 },
+  itemPricePending: { fontSize: 14, fontWeight: "600", color: "#F59E0B", fontStyle: "italic", marginTop: 4 },
   removeButton: { padding: 10 },
   cancelButtonText: { 
     color: "#EF4444", 
@@ -933,6 +1141,11 @@ const styles = StyleSheet.create({
   },
   detailsModalTitle: { fontSize: 22, fontWeight: "700", color: "#1F2937" },
   detailsImage: { width: "100%", height: 250, resizeMode: "cover" },
+  detailsImageLabel: {
+    fontSize: 12,
+    color: "#6B7280",
+    fontStyle: "italic",
+  },
   detailsSection: {
     paddingHorizontal: 24,
     paddingVertical: 16,
