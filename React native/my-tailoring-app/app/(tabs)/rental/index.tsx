@@ -10,8 +10,8 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -31,6 +31,7 @@ const categories = [
 ];
 
 export default function RentalLanding() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [rentals, setRentals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -250,39 +251,35 @@ export default function RentalLanding() {
       </ScrollView>
 
       {/* BOTTOM NAV */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          onPress={() => router.replace("/home")}
-          style={styles.navItemWrap}
-        >
-          <Ionicons name="home-outline" size={22} color="#64748B" />
-          <Text style={styles.navLabel}>Home</Text>
+      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <TouchableOpacity onPress={() => router.replace("/home")}>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="home-outline" size={20} color="#9CA3AF" />
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() =>
             router.push("/(tabs)/appointment/appointmentSelection")
           }
-          style={styles.navItemWrap}
         >
-          <Ionicons name="calendar-outline" size={22} color="#64748B" />
-          <Text style={styles.navLabel}>Book</Text>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
+          </View>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => router.push("/(tabs)/cart/Cart")}
-          style={styles.navItemWrap}
-        >
-          <Ionicons name="cart-outline" size={22} color="#64748B" />
-          <Text style={styles.navLabel}>Cart</Text>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => router.push("/(tabs)/UserProfile/profile")}
-          style={styles.navItemWrap}
         >
-          <Ionicons name="person-outline" size={22} color="#64748B" />
-          <Text style={styles.navLabel}>Profile</Text>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="person-outline" size={20} color="#9CA3AF" />
+          </View>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -507,23 +504,37 @@ const styles = StyleSheet.create({
 
   // Bottom Nav
   bottomNav: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#EEE",
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 16,
-    paddingBottom: Platform.OS === "ios" ? 34 : 20,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
+    elevation: 10,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 20,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -3 },
   },
-  navItemWrap: { alignItems: "center", gap: 4 },
-  navLabel: { fontSize: 11, color: "#64748B", fontWeight: "600" },
+  navItemWrap: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navItemWrapActive: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#FDE68A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

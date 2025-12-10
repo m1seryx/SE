@@ -8,10 +8,10 @@ import {
   ScrollView,
   FlatList,
   Dimensions,
-  SafeAreaView,
   Platform,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { orderTrackingService } from "../../../utils/apiService";
@@ -35,6 +35,7 @@ interface OrderData {
 
 export default function OrderHistoryScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [selectedFilter, setSelectedFilter] = useState<string>("All");
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -368,10 +369,10 @@ export default function OrderHistoryScreen() {
       />
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <TouchableOpacity onPress={() => router.replace("/home")}>
           <View style={styles.navItemWrap}>
-            <Ionicons name="home" size={20} color="#9CA3AF" />
+            <Ionicons name="home-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
 
@@ -585,7 +586,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    paddingVertical: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: "#EEE",
     position: "absolute",

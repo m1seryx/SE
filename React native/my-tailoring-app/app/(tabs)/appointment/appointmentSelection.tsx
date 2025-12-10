@@ -8,8 +8,8 @@ import {
   ScrollView,
   Dimensions,
   Platform,
-  SafeAreaView,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -20,6 +20,7 @@ const { width, height } = Dimensions.get("window");
 
 export default function AppointmentSelection() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [showCustomizationModal, setShowCustomizationModal] = useState(false);
 
   const services = [
@@ -122,42 +123,29 @@ export default function AppointmentSelection() {
         </View>
       </ScrollView>
 
-      <View style={styles.bottomNav}>
-        <View style={styles.navItemWrap}>
-          <TouchableOpacity onPress={() => router.replace("/home")}>
-            <View style={styles.navItemWrap}>
-              <Ionicons name="home" size={22} color="#9CA3AF" />
-              <Text style={styles.navLabel}>Home</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          onPress={() =>
-            router.push("/(tabs)/appointment/appointmentSelection")
-          }
-          style={styles.navItemWrapActive}
-        >
-          <Ionicons name="calendar-outline" size={22} color="#78350F" />
-          <Text style={styles.navLabelActive}>Book</Text>
+      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <TouchableOpacity onPress={() => router.replace("/home")}>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="home-outline" size={20} color="#9CA3AF" />
+          </View>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => router.push("/(tabs)/cart/Cart")}
-          style={styles.navItemWrap}
-        >
-          <View style={styles.cartBadgeContainer}>
-            <Ionicons name="cart-outline" size={22} color="#64748B" />
+        <View style={styles.navItemWrapActive}>
+          <Ionicons name="receipt-outline" size={20} color="#7A5A00" />
+        </View>
+
+        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
           </View>
-          <Text style={styles.navLabel}>Cart</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => router.push("../UserProfile/profile")}
-          style={styles.navItemWrap}
         >
-          <Ionicons name="person-outline" size={22} color="#64748B" />
-          <Text style={styles.navLabel}>Profile</Text>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="person-outline" size={20} color="#9CA3AF" />
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -292,60 +280,33 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    paddingVertical: 16,
-    paddingBottom: Platform.OS === "ios" ? 28 : 16,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
+    borderTopColor: "#EEE",
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
+    elevation: 10,
     shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: -4 },
-    elevation: 20,
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -3 },
   },
   navItemWrap: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#F3F4F6",
     alignItems: "center",
-    paddingHorizontal: 12,
-    gap: 4,
+    justifyContent: "center",
   },
   navItemWrapActive: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#FDE68A",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    backgroundColor: "#FEF3C7",
-    borderRadius: 20,
-    gap: 4,
-  },
-  navLabel: {
-    fontSize: 11,
-    color: "#64748B",
-    fontWeight: "600",
-  },
-  navLabelActive: {
-    fontSize: 11,
-    color: "#78350F",
-    fontWeight: "700",
-  },
-  cartBadge: {
-    position: "absolute",
-    top: -4,
-    right: -8,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#DC2626",
     justifyContent: "center",
-    alignItems: "center",
-  },
-  cartBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 9,
-    fontWeight: "700",
-  },
-  cartBadgeContainer: {
-    position: "relative",
   },
 });

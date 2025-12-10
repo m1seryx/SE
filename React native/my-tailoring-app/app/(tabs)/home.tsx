@@ -8,12 +8,13 @@ import {
   ScrollView,
   Dimensions,
   Platform,
-  SafeAreaView,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { rentalService } from "../../utils/rentalService";
 import { notificationService } from "../../utils/apiService";
@@ -45,6 +46,7 @@ const services = [
 
 export default function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [rentals, setRentals] = useState<any[]>([]);
   const [loadingRentals, setLoadingRentals] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -156,7 +158,7 @@ export default function HomeScreen() {
               onPress={() => {
                 if (s.id === "s1") router.push("/rental");
                 else if (s.id === "s2")
-                  router.push("/(tabs)/appointment/CustomizeClothes");
+                  router.push("/(tabs)/appointment/CustomizationService");
                 else if (s.id === "s3")
                   router.push("/(tabs)/appointment/RepairClothes");
                 else if (s.id === "s4")
@@ -225,7 +227,7 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <View style={styles.navItemWrapActive}>
           <Ionicons name="home" size={20} color="#7A5A00" />
         </View>
@@ -416,7 +418,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    paddingVertical: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: "#EEE",
     position: "absolute",

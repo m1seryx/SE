@@ -8,9 +8,9 @@ import {
   Image,
   ScrollView,
   Dimensions,
-  SafeAreaView,
   Alert,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -22,6 +22,7 @@ export default function CustomizeClothes() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [image, setImage] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
   const [garmentCategory, setGarmentCategory] = useState("");
   const [style, setStyle] = useState("");
   const [fabricType, setFabricType] = useState("");
@@ -244,18 +245,24 @@ export default function CustomizeClothes() {
       </ScrollView>
 
      
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <TouchableOpacity onPress={() => router.push("../home")}>
-          <Ionicons name="home-outline" size={22} color="#777" />
+          <View style={styles.navItemWrap}>
+            <Ionicons name="home-outline" size={20} color="#9CA3AF" />
+          </View>
         </TouchableOpacity>
-         <TouchableOpacity onPress={() => router.push("../appointment")}>
-                  <Ionicons name="receipt-outline" size={22} color="#777" />
+        <View style={styles.navItemWrapActive}>
+          <Ionicons name="receipt-outline" size={20} color="#7A5A00" />
+        </View>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
+          </View>
         </TouchableOpacity>
-        <TouchableOpacity>
-          <Ionicons name="cart-outline" size={22} color="#777" />
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <Ionicons name="person-outline" size={22} color="#777" />
+        <TouchableOpacity onPress={() => router.push("../UserProfile/profile")}>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="person-outline" size={20} color="#9CA3AF" />
+          </View>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -389,18 +396,35 @@ const styles = StyleSheet.create({
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
-    backgroundColor: "#f5f5f5",
-    paddingVertical: height * 0.015,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#EEE",
     position: "absolute",
-    bottom: height * 0.015,
-    width: "55%",
-    alignSelf: "center",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    elevation: 10,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 5,
+    shadowOffset: { width: 0, height: -3 },
+  },
+  navItemWrap: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navItemWrapActive: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#FDE68A",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

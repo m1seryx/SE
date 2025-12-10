@@ -6,13 +6,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   Modal,
   Image,
   Platform,
   Dimensions,
   Alert,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { CartItem } from "../../../utils/cartStore";
@@ -23,6 +23,7 @@ const { height } = Dimensions.get("window");
 
 export default function CartScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -620,10 +621,10 @@ export default function CartScreen() {
       )}
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <TouchableOpacity onPress={() => router.replace("/home")}>
           <View style={styles.navItemWrap}>
-            <Ionicons name="home" size={20} color="#9CA3AF" />
+            <Ionicons name="home-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
 
@@ -638,7 +639,7 @@ export default function CartScreen() {
         </TouchableOpacity>
 
         <View style={styles.navItemWrapActive}>
-          <Ionicons name="cart-outline" size={20} color="#7A5A00" />
+          <Ionicons name="cart" size={20} color="#7A5A00" />
         </View>
 
         <TouchableOpacity onPress={() => router.push("../UserProfile/profile")}>
@@ -952,7 +953,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    paddingVertical: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: "#EEE",
     position: "absolute",

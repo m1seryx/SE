@@ -7,7 +7,6 @@ import {
   Text,
   Alert,
   BackHandler,
-  SafeAreaView,
   StatusBar,
   TouchableOpacity,
   Platform,
@@ -18,6 +17,7 @@ import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { 

@@ -7,12 +7,12 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  SafeAreaView,
   Dimensions,
   Alert,
   Platform,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { orderTrackingService } from "../../../utils/apiService";
@@ -22,6 +22,7 @@ const { width } = Dimensions.get("window");
 export default function OrderDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -344,24 +345,32 @@ export default function OrderDetails() {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <TouchableOpacity onPress={() => router.push("/home")}>
-          <Ionicons name="home-outline" size={26} color="#9CA3AF" />
+          <View style={styles.navItemWrap}>
+            <Ionicons name="home-outline" size={20} color="#9CA3AF" />
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() =>
             router.push("/(tabs)/appointment/appointmentSelection")
           }
         >
-          <Ionicons name="receipt-outline" size={26} color="#9CA3AF" />
+          <View style={styles.navItemWrap}>
+            <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
+          </View>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
-          <Ionicons name="cart-outline" size={26} color="#9CA3AF" />
+          <View style={styles.navItemWrap}>
+            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => router.push("/(tabs)/UserProfile/profile")}
         >
-          <Ionicons name="person" size={26} color="#7A5A00" />
+          <View style={styles.navItemWrap}>
+            <Ionicons name="person-outline" size={20} color="#9CA3AF" />
+          </View>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -457,17 +466,37 @@ const styles = StyleSheet.create({
     color: "#6B7280",
   },
   bottomNav: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#EEE",
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 16,
-    paddingBottom: Platform.OS === "ios" ? 34 : 20,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
     elevation: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -3 },
+  },
+  navItemWrap: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navItemWrapActive: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#FDE68A",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
