@@ -10,8 +10,9 @@ import {
   Dimensions,
   Alert,
   Platform,
+  ActivityIndicator,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -27,7 +28,6 @@ export default function RepairClothes() {
 
   // Form States
   const [image, setImage] = useState<string | null>(null);
-  const insets = useSafeAreaInsets();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState("");
   const [damageLevel, setDamageLevel] = useState("");
@@ -259,20 +259,26 @@ export default function RepairClothes() {
     }
   };
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={{ paddingBottom: height * 0.18 }}
-      >
-        <View style={styles.header}>
-          <Image
-            source={require("../../../assets/images/logo.png")}
-            style={styles.logo}
-          />
-          <Text style={styles.headerTitle}>Jackman Tailor Deluxe</Text>
-        </View>
+  const handleClose = () => {
+    router.back();
+  };
 
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+          <Ionicons name="arrow-back" size={24} color="#5D4037" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>🔧 Repair Request</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Repair Request</Text>
@@ -280,118 +286,101 @@ export default function RepairClothes() {
           </View>
 
           {/* Image Upload */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Upload Damage Photo (Recommended)</Text>
-            <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
-              {imagePreview ? (
-                <View style={styles.imagePreviewContainer}>
-                  <Image source={{ uri: imagePreview }} style={styles.previewImage} />
-                  <TouchableOpacity style={styles.removeImageButton} onPress={removeImage}>
-                    <Text style={styles.removeImageText}>✕ Remove</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.uploadContent}>
-                  <View style={styles.uploadIconCircle}>
-                    <Ionicons name="camera-outline" size={36} color="#9dc5e3" />
-                  </View>
-                  <Text style={styles.uploadText}>
-                    Tap to upload photo of damage
-                  </Text>
-                  <Text style={styles.uploadSubtext}>
-                    Clear image helps us serve you better
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.sectionTitle}>Upload Damage Photo (Recommended)</Text>
+          <TouchableOpacity style={styles.imageUpload} onPress={pickImage}>
+            {imagePreview ? (
+              <View style={styles.imagePreviewContainer}>
+                <Image source={{ uri: imagePreview }} style={styles.previewImage} />
+                <TouchableOpacity style={styles.removeImageButton} onPress={removeImage}>
+                  <Ionicons name="close-circle" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.uploadPlaceholder}>
+                <Ionicons name="camera-outline" size={40} color="#8D6E63" />
+                <Text style={styles.uploadText}>Tap to upload photo of damage</Text>
+                <Text style={styles.uploadSubtext}>Clear image helps us serve you better</Text>
+              </View>
+            )}
+          </TouchableOpacity>
 
           {/* Garment Type */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Garment Type *</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={selectedItem}
-                onValueChange={(value) => setSelectedItem(value)}
-                style={styles.picker}
-              >
-                <Picker.Item label="Select garment type..." value="" />
-                {itemTypes.map((item) => (
-                  <Picker.Item label={item} value={item} key={item} />
-                ))}
-              </Picker>
-            </View>
+          <Text style={styles.sectionTitle}>Garment Type *</Text>
+          <View style={styles.pickerWrapper}>
+            <Picker
+              selectedValue={selectedItem}
+              onValueChange={(value) => setSelectedItem(value)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select garment type..." value="" />
+              {itemTypes.map((item) => (
+                <Picker.Item label={item} value={item} key={item} />
+              ))}
+            </Picker>
           </View>
 
           {/* Damage Level */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Damage Level *</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={damageLevel}
-                onValueChange={(value) => setDamageLevel(value)}
-                style={styles.picker}
-              >
-                <Picker.Item label="Select damage level..." value="" />
-                {damageLevels.map((level) => (
-                  <Picker.Item 
-                    label={`${level.label} - ${level.description}`} 
-                    value={level.value} 
-                    key={level.value} 
-                  />
-                ))}
-              </Picker>
-            </View>
-            {damageLevel && (
-              <Text style={styles.priceIndicator}>
-                Estimated price: ₱{estimatedPrice}
-              </Text>
-            )}
+          <Text style={styles.sectionTitle}>Damage Level *</Text>
+          <View style={styles.pickerWrapper}>
+            <Picker
+              selectedValue={damageLevel}
+              onValueChange={(value) => setDamageLevel(value)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select damage level..." value="" />
+              {damageLevels.map((level) => (
+                <Picker.Item 
+                  label={`${level.label} - ${level.description}`} 
+                  value={level.value} 
+                  key={level.value} 
+                />
+              ))}
+            </Picker>
           </View>
+          {damageLevel && (
+            <Text style={styles.priceIndicator}>
+              Estimated price: ₱{estimatedPrice}
+            </Text>
+          )}
 
           {/* Detailed Description */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Detailed Description *</Text>
-            <TextInput
-              placeholder="Please describe the damage in detail (size, location, extent of damage)..."
-              style={styles.textArea}
-              placeholderTextColor="#94a3b8"
-              multiline
-              value={description}
-              onChangeText={setDescription}
-              textAlignVertical="top"
-            />
-            <Text style={styles.smallText}>
-              Examples: 2-inch hole in left sleeve, broken zipper on jacket back, torn seam on pants
-            </Text>
-          </View>
+          <Text style={styles.sectionTitle}>Detailed Description *</Text>
+          <TextInput
+            placeholder="Please describe the damage in detail (size, location, extent of damage)..."
+            style={styles.textArea}
+            placeholderTextColor="#999"
+            multiline
+            value={description}
+            onChangeText={setDescription}
+            textAlignVertical="top"
+          />
+          <Text style={styles.smallText}>
+            Examples: 2-inch hole in left sleeve, broken zipper on jacket back, torn seam on pants
+          </Text>
 
           {/* Appointment Date & Time Picker */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.label}>
-              Preferred Appointment Date & Time *
+          <Text style={styles.sectionTitle}>Preferred Appointment Date & Time *</Text>
+          <TouchableOpacity
+            style={styles.datePickerButton}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Ionicons name="calendar-outline" size={20} color="#8D6E63" />
+            <Text style={styles.datePickerText}>
+              {appointmentDate
+                ? appointmentDate.toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  }) +
+                  ", " +
+                  appointmentDate.toLocaleTimeString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })
+                : "Tap to select date & time"}
             </Text>
-            <TouchableOpacity
-              style={styles.dateTimeButton}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Ionicons name="calendar-outline" size={22} color="#94665B" />
-              <Text style={styles.dateTimeText}>
-                {appointmentDate
-                  ? appointmentDate.toLocaleDateString("en-US", {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                    }) +
-                    ", " +
-                    appointmentDate.toLocaleTimeString("en-US", {
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })
-                  : "Tap to select date & time"}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
+            <Ionicons name="chevron-down" size={16} color="#8D6E63" />
+          </TouchableOpacity>
 
             {/* Date Picker Modal */}
             <DateTimePickerModal
@@ -415,15 +404,21 @@ export default function RepairClothes() {
 
           {/* Price Estimate */}
           {estimatedPrice > 0 && (
-            <View style={styles.estimateContainer}>
-              <Text style={styles.estimateTitle}>Estimated Price: ₱{estimatedPrice}</Text>
-              <Text style={styles.estimateDetail}>
-                Based on damage level: {damageLevel} • Garment type: {selectedItem}
-              </Text>
-              <Text style={styles.estimateTime}>
-                ⏱️ Estimated time: {getEstimatedTime(damageLevel)}
-              </Text>
-              <Text style={styles.estimateNote}>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>Estimated Price: ₱{estimatedPrice}</Text>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Damage Level:</Text>
+                <Text style={styles.summaryValue}>{damageLevel}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Garment Type:</Text>
+                <Text style={styles.summaryValue}>{selectedItem}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Estimated Time:</Text>
+                <Text style={styles.summaryValue}>{getEstimatedTime(damageLevel)}</Text>
+              </View>
+              <Text style={styles.summaryNote}>
                 Final price will be confirmed after admin review
               </Text>
             </View>
@@ -432,328 +427,272 @@ export default function RepairClothes() {
           {/* Buttons */}
           <View style={styles.buttonRow}>
             <TouchableOpacity
-              style={[styles.button, styles.cancelBtn]}
+              style={styles.secondaryButton}
               onPress={() => router.push("./appointmentSelection")}
               disabled={loading}
             >
-              <Text style={styles.cancelText}>Cancel</Text>
+              <Ionicons name="arrow-back" size={20} color="#5D4037" />
+              <Text style={styles.secondaryButtonText}>Cancel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.button, styles.submitBtn]}
+              style={[styles.primaryButton, (!estimatedPrice || loading) && styles.buttonDisabled]}
               onPress={handleAddService}
               disabled={loading || !estimatedPrice}
             >
-              <Text style={styles.submitText}>
-                {loading ? "Adding..." : `Add to Cart - ₱${estimatedPrice || 0}`}
-              </Text>
+              {loading ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <>
+                  <Ionicons name="cart-outline" size={20} color="#FFF" />
+                  <Text style={styles.primaryButtonText}>
+                    Add to Cart - ₱{estimatedPrice || 0}
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
-
-      {/* Bottom Navigation */}
-      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <TouchableOpacity onPress={() => router.replace("/home")}>
-          <View style={styles.navItemWrap}>
-            <Ionicons name="home-outline" size={20} color="#9CA3AF" />
-          </View>
-        </TouchableOpacity>
-
-        <View style={styles.navItemWrapActive}>
-          <Ionicons name="receipt-outline" size={20} color="#7A5A00" />
-        </View>
-
-        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
-          <View style={styles.navItemWrap}>
-            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => router.push("../UserProfile/profile")}
-        >
-          <View style={styles.navItemWrap}>
-            <Ionicons name="person-outline" size={20} color="#9CA3AF" />
-          </View>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#f8fafc" },
-  container: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: width * 0.06,
-    paddingTop: height * 0.07,
-    paddingBottom: height * 0.03,
+  container: {
+    flex: 1,
+    backgroundColor: '#FFF8F0',
   },
-  logo: {
-    width: width * 0.12,
-    height: width * 0.12,
-    borderRadius: 14,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8D5C4',
+    backgroundColor: '#FFFEF9',
+  },
+  closeButton: {
+    padding: 4,
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#1e293b",
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#5D4037',
+  },
+  placeholder: {
+    width: 36,
+  },
+  content: {
     flex: 1,
-    marginLeft: 10,
+  },
+  contentContainer: {
+    padding: 20,
+    paddingBottom: 40,
   },
   card: {
-    marginHorizontal: width * 0.06,
-    marginTop: height * 0.04,
-    marginBottom: height * 0.04,
-    backgroundColor: "#ffffff",
-    borderRadius: 28,
-    padding: 28,
-    paddingTop: 32,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.1,
-    shadowRadius: 25,
-    elevation: 16,
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 24,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: '#E8D5C4',
   },
   cardHeader: {
-    alignItems: "center",
-    paddingBottom: 20,
-    borderBottomWidth: 1.5,
-    borderBottomColor: "#e2e8f0",
-    marginBottom: 32,
+    alignItems: 'center',
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8D5C4',
+    marginBottom: 24,
   },
   cardTitle: {
-    fontSize: width * 0.065,
-    fontWeight: "800",
-    color: "#1e293b",
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#5D4037',
+    marginBottom: 6,
   },
   cardSubtitle: {
-    fontSize: width * 0.04,
-    color: "#64748b",
+    fontSize: 14,
+    color: '#8D6E63',
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#5D4037',
+    marginBottom: 12,
     marginTop: 8,
   },
-  uploadBox: {
-    height: 200,
-    borderRadius: 24,
-    borderWidth: 2.5,
-    borderColor: "#cbd5e1",
-    borderStyle: "dashed",
-    backgroundColor: "#f8fafc",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
+  imageUpload: {
+    height: 150,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E8D5C4',
+    borderStyle: 'dashed',
+    overflow: 'hidden',
+    marginBottom: 20,
   },
-  imagePreviewContainer: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 22,
-    position: "relative",
-  },
-  previewImage: { 
-    width: "100%", 
-    height: "100%", 
-    borderRadius: 22 
-  },
-  removeImageButton: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 15,
-    padding: 8,
-  },
-  removeImageText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  uploadContent: { 
-    alignItems: "center", 
-    paddingHorizontal: 32 
-  },
-  uploadIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#e0f2fe",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
+  uploadPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFEF9',
   },
   uploadText: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#475569",
+    marginTop: 8,
+    color: '#8D6E63',
+    fontSize: 14,
+    fontWeight: '600',
   },
   uploadSubtext: {
-    fontSize: 13.5,
-    color: "#94a3b8",
-    marginTop: 6,
-    textAlign: "center",
+    marginTop: 4,
+    color: '#8D6E63',
+    fontSize: 12,
   },
-  fieldContainer: {
-    marginBottom: 28,
+  imagePreviewContainer: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
   },
-  label: {
-    fontSize: width * 0.042,
-    fontWeight: "700",
-    color: "#1e293b",
-    marginBottom: 10,
-    marginLeft: 4,
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 20,
+    padding: 4,
   },
   pickerWrapper: {
-    borderWidth: 2,
-    borderColor: "#cbd5e1",
-    borderRadius: 18,
-    backgroundColor: "#ffffff",
-    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: '#E8D5C4',
+    borderRadius: 12,
+    backgroundColor: '#FFF',
+    overflow: 'hidden',
+    marginBottom: 16,
   },
   picker: {
-    height: 54,
-    color: "#1e293b",
+    height: 50,
+    color: '#333',
   },
   priceIndicator: {
     marginTop: 8,
     fontSize: 14,
-    fontWeight: "600",
-    color: "#3b82f6",
-    marginLeft: 4,
+    fontWeight: '600',
+    color: '#B8860B',
+    marginBottom: 16,
   },
   textArea: {
-    borderWidth: 2,
-    borderColor: "#cbd5e1",
-    borderRadius: 18,
-    padding: 18,
-    fontSize: 15.5,
-    backgroundColor: "#ffffff",
-    minHeight: 130,
-    color: "#1e293b",
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E8D5C4',
+    fontSize: 14,
+    color: '#333',
+    minHeight: 100,
+    textAlignVertical: 'top',
+    marginBottom: 16,
   },
   smallText: {
     fontSize: 12,
-    color: "#64748b",
-    marginTop: 8,
-    marginLeft: 4,
+    color: '#8D6E63',
+    marginTop: 6,
+    marginBottom: 16,
   },
-  buttonRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 20,
-  },
-  button: {
-    flex: 1,
-    height: 58,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    marginHorizontal: 10,
-  },
-  cancelBtn: {
-    backgroundColor: "#fee2e2",
-    borderWidth: 2,
-    borderColor: "#fca5a5",
-  },
-  submitBtn: {
-    backgroundColor: "#3b82f6",
-    shadowColor: "#3b82f6",
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 10,
-  },
-  cancelText: {
-    color: "#dc2626",
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  submitText: {
-    color: "#ffffff",
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  bottomNav: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#EEE",
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    elevation: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: -3 },
-  },
-  navItemWrap: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  navItemWrapActive: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#FDE68A",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dateTimeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "#cbd5e1",
-    borderRadius: 18,
-    padding: 18,
-  },
-  dateTimeText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 16,
-    color: "#1e293b",
-    fontWeight: "500",
-  },
-  estimateContainer: {
-    backgroundColor: "#eff6ff",
-    borderRadius: 18,
-    padding: 20,
-    marginBottom: 28,
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: "#dbeafe",
+    borderColor: '#E8D5C4',
+    borderRadius: 12,
+    padding: 14,
+    backgroundColor: '#FFF',
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
-  estimateTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1e40af",
+  datePickerText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#333',
+    marginLeft: 12,
+  },
+  summaryCard: {
+    backgroundColor: '#FFF8E7',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E8D5C4',
+  },
+  summaryTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#5D4037',
+    marginBottom: 12,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 8,
   },
-  estimateDetail: {
+  summaryLabel: {
     fontSize: 14,
-    color: "#374151",
-    marginBottom: 4,
+    color: '#8D6E63',
   },
-  estimateTime: {
+  summaryValue: {
     fontSize: 14,
-    color: "#374151",
-    marginBottom: 4,
+    fontWeight: '600',
+    color: '#5D4037',
   },
-  estimateNote: {
-    fontSize: 13,
-    color: "#6b7280",
-    fontStyle: "italic",
+  summaryNote: {
+    fontSize: 12,
+    color: '#8D6E63',
+    fontStyle: 'italic',
+    marginTop: 8,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#B8860B',
+    borderRadius: 25,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    gap: 8,
+    flex: 1,
+  },
+  primaryButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonDisabled: {
+    backgroundColor: '#CCC',
+  },
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 25,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#5D4037',
+  },
+  secondaryButtonText: {
+    color: '#5D4037',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

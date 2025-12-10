@@ -4,14 +4,13 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ImageBackground,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import {
   useFonts,
   Poppins_400Regular,
@@ -72,272 +71,276 @@ export default function LoginScreen() {
   }
 
   return (
-    <ImageBackground
-      source={require("../../assets/images/tailorbackground.jpg")}
-      style={styles.background}
-      resizeMode="cover"
-      blurRadius={2}
-    >
-      <LinearGradient
-        colors={[
-          "rgba(15, 23, 42, 0.95)",
-          "rgba(30, 41, 59, 0.9)",
-          "rgba(51, 65, 85, 0.95)",
-        ]}
-        style={styles.overlay}
+    <View style={styles.background}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1, justifyContent: "center" }}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ flex: 1, justifyContent: "center" }}
-        >
-          <View style={styles.container}>
-            {/* Logo + App Name */}
+        <View style={styles.container}>
+          {/* Login Card */}
+          <View style={styles.card}>
             <View style={styles.header}>
-              <View style={styles.logoCircle}>
-                <Ionicons name="cut-outline" size={40} color="#fbbf24" />
-              </View>
-              <Text style={styles.appName}>Jackman Tailor</Text>
-              <Text style={styles.tagline}>Crafted with Precision</Text>
+              <Image 
+                source={require("../../assets/images/logo copy.png")} 
+                style={styles.logo}
+                resizeMode="contain"
+              />
+              <Text style={styles.title}>Welcome Back</Text>
+              <Text style={styles.subtitle}>Sign in to book appointments & rentals</Text>
             </View>
 
-            {/* Login Card */}
-            <View style={styles.card}>
-              <Text style={styles.title}>Welcome Back</Text>
-              <Text style={styles.subtitle}>Sign in to continue</Text>
-
-              {/* Email Input */}
-              <View style={styles.inputContainer}>
-                <Ionicons
-                  name="mail-outline"
-                  size={20}
-                  color="#94a3b8"
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Username"
-                  placeholderTextColor="#94a3b8"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  value={email}
-                  onChangeText={setEmail}
-                />
-              </View>
-
-              {/* Password Input */}
-              <View style={styles.inputContainer}>
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={20}
-                  color="#94a3b8"
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Password"
-                  placeholderTextColor="#94a3b8"
-                  secureTextEntry={!showPassword}
-                  value={password}
-                  onChangeText={setPassword}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={22}
-                    color="#94a3b8"
-                  />
-                </TouchableOpacity>
-              </View>
-
-              {/* Login Button */}
+            {/* Toggle Buttons */}
+            <View style={styles.toggleContainer}>
               <TouchableOpacity
-                style={styles.loginButton}
-                onPress={handleLogin}
-                activeOpacity={0.9}
-                disabled={loading}
+                style={[styles.toggleButton, styles.toggleButtonActive]}
+                onPress={() => {}}
               >
-                <LinearGradient
-                  colors={["#991b1b", "#7f1d1d", "#6b1414"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.gradientButton}
-                >
-                  <Text style={styles.loginButtonText}>
-                    {loading ? "Logging in..." : "Login"}
-                  </Text>
-                  {!loading && (
-                    <Ionicons
-                      name="arrow-forward"
-                      size={20}
-                      color="#fff"
-                      style={{ marginLeft: 8 }}
-                    />
-                  )}
-                </LinearGradient>
+                <Text style={styles.toggleButtonTextActive}>Login</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.toggleButton}
+                onPress={() => router.push("/signup")}
+              >
+                <Text style={styles.toggleButtonText}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
 
-              {/* Divider */}
-              <View style={styles.divider}>
-                <View style={styles.line} />
-                <Text style={styles.orText}>or</Text>
-                <View style={styles.line} />
-              </View>
+            {/* Username Input */}
+            <View style={styles.inputGroup}>
+              <TextInput
+                style={styles.input}
+                placeholder="Username"
+                placeholderTextColor="#999"
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={email}
+                onChangeText={setEmail}
+              />
+            </View>
 
-              {/* Sign Up Link */}
-              <TouchableOpacity onPress={() => router.push("/signup")}>
-                <Text style={styles.signupText}>
-                  New here?{" "}
-                  <Text style={styles.signupLink}>Create an account</Text>
+            {/* Password Input */}
+            <View style={styles.inputGroup}>
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor="#999"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={22}
+                  color="#888"
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Remember Me & Forgot Password */}
+            <View style={styles.optionsContainer}>
+              <TouchableOpacity style={styles.rememberMe}>
+                <View style={styles.checkbox} />
+                <Text style={styles.rememberMeText}>Remember me</Text>
+              </TouchableOpacity>
+              <TouchableOpacity>
+                <Text style={styles.forgotLink}>Forgot Password?</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Login Button */}
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={handleLogin}
+              activeOpacity={0.9}
+              disabled={loading}
+            >
+              <Text style={styles.submitButtonText}>
+                {loading ? "Processing..." : "Login Now"}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Footer Link */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                Don't have an account?{" "}
+                <Text style={styles.footerLink} onPress={() => router.push("/signup")}>
+                  Sign Up Now
                 </Text>
-              </TouchableOpacity>
+              </Text>
             </View>
           </View>
-        </KeyboardAvoidingView>
-      </LinearGradient>
-    </ImageBackground>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   background: {
     flex: 1,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: "#f8f4f0",
   },
   container: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
-
-  // Header with Logo
-  header: {
-    alignItems: "center",
-    marginBottom: 40,
-  },
-  logoCircle: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: "rgba(251, 191, 36, 0.15)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: "rgba(251, 191, 36, 0.3)",
-    marginBottom: 16,
-  },
-  appName: {
-    fontFamily: "Poppins_700Bold",
-    fontSize: 32,
-    color: "#fbbf24",
-    letterSpacing: 1,
-  },
-  tagline: {
-    fontFamily: "Poppins_400Regular",
-    fontSize: 14,
-    color: "#cbd5e1",
-    marginTop: 4,
-  },
-
-  // Login Card
   card: {
     width: "100%",
-    maxWidth: 380,
-    backgroundColor: "rgba(255, 255, 255, 0.96)",
-    borderRadius: 28,
+    maxWidth: 400,
+    backgroundColor: "#ffffff",
+    borderRadius: 24,
     padding: 32,
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: "#8B4513",
     shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.25,
-    shadowRadius: 40,
-    elevation: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    shadowOpacity: 0.3,
+    shadowRadius: 50,
+    elevation: 15,
   },
-
+  header: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    marginBottom: 16,
+  },
   title: {
     fontFamily: "Poppins_700Bold",
-    fontSize: 30,
-    color: "#1e293b",
-    marginBottom: 8,
+    fontSize: 28,
+    color: "#8B4513",
+    marginBottom: 6,
+    textAlign: "center",
   },
   subtitle: {
     fontFamily: "Poppins_400Regular",
-    fontSize: 16,
-    color: "#64748b",
-    marginBottom: 32,
+    fontSize: 14,
+    color: "#777",
+    textAlign: "center",
+    marginBottom: 24,
   },
-
-  inputContainer: {
+  toggleContainer: {
     flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f8fafc",
-    borderRadius: 16,
-    paddingHorizontal: 18,
-    marginBottom: 18,
-    height: 58,
-    borderWidth: 1.5,
-    borderColor: "#e2e8f0",
+    backgroundColor: "#eee",
+    borderRadius: 50,
+    padding: 6,
+    marginBottom: 24,
+    alignSelf: "center",
   },
-  inputIcon: {
-    marginRight: 12,
+  toggleButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    borderRadius: 50,
+    backgroundColor: "transparent",
   },
-  input: {
-    flex: 1,
-    fontFamily: "Poppins_500Medium",
-    fontSize: 16,
-    color: "#1e293b",
+  toggleButtonActive: {
+    backgroundColor: "#8B4513",
+    shadowColor: "#8B4513",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 4,
   },
-
-  loginButton: {
-    width: "100%",
-    borderRadius: 16,
-    overflow: "hidden",
-    marginTop: 10,
-  },
-  gradientButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 18,
-  },
-  loginButtonText: {
+  toggleButtonText: {
     fontFamily: "Poppins_600SemiBold",
-    fontSize: 17,
+    fontSize: 14,
+    color: "#888",
+  },
+  toggleButtonTextActive: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 14,
     color: "#ffffff",
   },
-
-  divider: {
+  inputGroup: {
+    width: "100%",
+    marginBottom: 14,
+    position: "relative",
+  },
+  input: {
+    width: "100%",
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderWidth: 2,
+    borderColor: "#ddd",
+    borderRadius: 12,
+    fontSize: 15,
+    fontFamily: "Poppins_400Regular",
+    backgroundColor: "#ffffff",
+    color: "#333",
+  },
+  eyeIcon: {
+    position: "absolute",
+    right: 18,
+    top: 14,
+  },
+  optionsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+    marginVertical: 16,
+  },
+  rememberMe: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 28,
-    width: "100%",
+    gap: 6,
   },
-  line: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#e2e8f0",
+  checkbox: {
+    width: 16,
+    height: 16,
+    borderWidth: 2,
+    borderColor: "#666",
+    borderRadius: 4,
   },
-  orText: {
-    marginHorizontal: 16,
-    fontFamily: "Poppins_500Medium",
-    color: "#94a3b8",
-    fontSize: 14,
+  rememberMeText: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 13,
+    color: "#666",
   },
-
-  signupText: {
-    fontFamily: "Poppins_500Medium",
-    fontSize: 15,
-    color: "#64748b",
-  },
-  signupLink: {
-    color: "#f97316",
+  forgotLink: {
     fontFamily: "Poppins_600SemiBold",
+    fontSize: 13,
+    color: "#8B4513",
+  },
+  submitButton: {
+    width: "100%",
+    paddingVertical: 14,
+    backgroundColor: "#8B4513",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+    shadowColor: "#8B4513",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  submitButtonText: {
+    fontFamily: "Poppins_700Bold",
+    fontSize: 16,
+    color: "#ffffff",
+  },
+  footer: {
+    marginTop: 24,
+  },
+  footerText: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    color: "#888",
+    textAlign: "center",
+  },
+  footerLink: {
+    fontFamily: "Poppins_700Bold",
+    color: "#8B4513",
+    textDecorationLine: "underline",
   },
 });
