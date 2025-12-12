@@ -14,6 +14,7 @@ import tuxedo from "../assets/tuxedo.png";
 import dryCleanBg from "../assets/dryclean.png";
 import { getUser, logoutUser } from '../api/AuthApi';
 import { notificationApi } from '../api/NotificationApi';
+import { getCartSummary } from '../api/CartApi';
 import RentalClothes from './components/RentalClothes';
 import Cart from './components/Cart';
 import RepairFormModal from './components/RepairFormModal';
@@ -44,6 +45,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [cartItemCount, setCartItemCount] = useState(0);
   const [orderDetailsModalOpen, setOrderDetailsModalOpen] = useState(false);
   const [selectedOrderItemId, setSelectedOrderItemId] = useState(null);
 
@@ -69,11 +71,32 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
     }
   }, []);
 
-  // Fetch notifications and unread count on mount
+  // Fetch notifications, unread count, and cart count on mount
   useEffect(() => {
     fetchNotifications();
     fetchUnreadCount();
+    fetchCartCount();
   }, []);
+
+  // Refetch cart count when cart modal opens/closes
+  useEffect(() => {
+    if (cartOpen) {
+      fetchCartCount();
+    }
+  }, [cartOpen]);
+
+  // Fetch cart item count
+  const fetchCartCount = async () => {
+    try {
+      const result = await getCartSummary();
+      if (result.success) {
+        setCartItemCount(result.itemCount || 0);
+      }
+    } catch (err) {
+      console.error('Failed to fetch cart count:', err);
+      setCartItemCount(0);
+    }
+  };
 
   // Refetch when notifications modal opens
   useEffect(() => {
@@ -84,12 +107,19 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
 
   const fetchNotifications = async () => {
     try {
+      console.log('[NOTIFICATIONS] Attempting to fetch notifications...');
       const result = await notificationApi.getNotifications();
+      console.log('[NOTIFICATIONS] Received result:', result);
       if (result.success) {
-        setNotifications(result.data);
+        setNotifications(result.data || []);
+      } else {
+        console.warn('[NOTIFICATIONS] API returned success:false');
+        setNotifications([]);
       }
     } catch (err) {
-      console.error('Failed to fetch notifications:', err);
+      console.error('[NOTIFICATIONS] Failed to fetch notifications:', err.message || err);
+      // Set empty array on error to prevent UI issues
+      setNotifications([]);
     }
   };
 
@@ -160,6 +190,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
   };
 
   const handleCartUpdate = () => {
+    fetchCartCount(); // Update cart badge count
     console.log('Cart was updated from repair modal!');
    
   };
@@ -269,7 +300,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
         </button>
         <button className="cart-button icon-button" onClick={() => setCartOpen(true)} aria-label="Cart">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 6h14l-2 9H8L6 6z" stroke="#8B4513" strokeWidth="2" fill="none"/><circle cx="9" cy="20" r="2" fill="#8B4513"/><circle cx="17" cy="20" r="2" fill="#8B4513"/></svg>
-          {cartItems.length > 0 && <span className="cart-badge">{cartItems.length}</span>}
+          {cartItemCount > 0 && <span className="cart-badge">{cartItemCount}</span>}
         </button>
         <button className="profile-button icon-button" onClick={() => setProfileDropdownOpen(!profileDropdownOpen)} aria-label="Profile">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="#8B4513" strokeWidth="2" fill="none"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6" stroke="#8B4513" strokeWidth="2" fill="none"/></svg>
@@ -413,7 +444,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
                   </button>
                 )}
               </div>
-              <div style={{ padding: '14px', maxHeight: '400px', overflowY: 'auto', display: 'grid', gap: '10px' }}>
+              <div style={{ padding: '14px', display: 'grid', gap: '10px' }}>
                 {notifications.length === 0 && (
                   <div style={{ textAlign: 'center', color: '#999', padding: '40px 0' }}>
                     No notifications yet
@@ -594,7 +625,10 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
       {/* Cart Component */}
       <Cart 
         isOpen={cartOpen} 
-        onClose={() => setCartOpen(false)}
+        onClose={() => {
+          setCartOpen(false);
+          fetchCartCount(); // Refresh cart count when cart closes
+        }}
         onCartUpdate={handleCartUpdate}
       />
 

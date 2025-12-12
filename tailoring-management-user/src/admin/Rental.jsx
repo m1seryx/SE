@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
 import '../adminStyle/rent.css';
-import { getAllRentalOrders, getRentalOrdersByStatus, updateRentalOrderItem } from '../api/RentalOrderApi';
+import { getAllRentalOrders, getRentalOrdersByStatus, updateRentalOrderItem, recordRentalPayment } from '../api/RentalOrderApi';
 import { useAlert } from '../context/AlertContext';
 
 function Rental() {
@@ -14,11 +14,13 @@ function Rental() {
   const [viewFilter, setViewFilter] = useState('all'); // New view filter for tabs
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedRental, setSelectedRental] = useState(null);
   const [editData, setEditData] = useState({
     approvalStatus: '',
     adminNotes: ''
   });
+  const [paymentAmount, setPaymentAmount] = useState('');
 
   // Load rental orders from backend
   useEffect(() => {
@@ -50,7 +52,8 @@ function Rental() {
       r.approval_status === 'accepted' // Treat accepted as ready_to_pickup for rentals
     ).length,
     rented: rentals.filter(r => r.approval_status === 'rented').length,
-    returned: rentals.filter(r => r.approval_status === 'returned').length
+    returned: rentals.filter(r => r.approval_status === 'returned').length,
+    rejected: rentals.filter(r => r.approval_status === 'cancelled').length
   };
 
   // Filter rentals based on view filter (tabs)
@@ -68,6 +71,8 @@ function Rental() {
         return rentals.filter(r => r.approval_status === 'rented');
       case 'returned':
         return rentals.filter(r => r.approval_status === 'returned');
+      case 'rejected':
+        return rentals.filter(r => r.approval_status === 'cancelled');
       default:
         return rentals;
     }
@@ -88,6 +93,8 @@ function Rental() {
       normalizedStatus = 'ready_to_pickup';
     } else if (rental.approval_status === 'accepted') {
       normalizedStatus = 'ready_to_pickup'; // Treat accepted as ready_to_pickup for rentals
+    } else if (rental.approval_status === 'cancelled') {
+      normalizedStatus = 'cancelled'; // Keep cancelled for filtering
     }
 
     const matchesStatus = !statusFilter || normalizedStatus === statusFilter;
@@ -119,14 +126,30 @@ function Rental() {
 
   // Handle Decline rental
   const handleDecline = async (rental) => {
-    const reason = await prompt('Please enter reason for declining this rental:', 'Decline Rental', 'Enter reason...');
-    if (reason === null || !reason) return; // User cancelled or empty
-
     try {
+      console.log('[DECLINE] Button clicked for rental:', rental.item_id, rental);
+      
+      const reason = await prompt('Please enter reason for declining this rental:', 'Decline Rental', 'Enter reason...');
+      console.log('[DECLINE] Prompt returned:', reason);
+      
+      if (reason === null || reason === undefined) {
+        console.log('[DECLINE] User cancelled the prompt');
+        return; // User cancelled
+      }
+      
+      if (!reason || reason.trim() === '') {
+        console.log('[DECLINE] Empty reason provided');
+        await alert('Please provide a reason for declining the rental', 'Warning', 'warning');
+        return; // Empty reason
+      }
+
+      console.log('[DECLINE] Updating rental with reason:', reason.trim());
       const result = await updateRentalOrderItem(rental.item_id, {
         approvalStatus: 'cancelled',
-        adminNotes: `Declined: ${reason}`
+        adminNotes: `Declined: ${reason.trim()}`
       });
+
+      console.log('[DECLINE] Update result:', result);
 
       if (result.success) {
         await alert('Rental declined and cancelled', 'Success', 'success');
@@ -135,8 +158,8 @@ function Rental() {
         await alert(result.message || 'Failed to decline rental', 'Error', 'error');
       }
     } catch (error) {
-      console.error('Error declining rental:', error);
-      await alert('Error declining rental', 'Error', 'error');
+      console.error('[DECLINE] Error declining rental:', error);
+      await alert(`Error declining rental: ${error.message || 'Unknown error'}`, 'Error', 'error');
     }
   };
 
@@ -200,11 +223,41 @@ function Rental() {
     }
   };
 
+  const handleRecordPayment = async () => {
+    if (!selectedRental || !paymentAmount) {
+      await alert('Please enter a payment amount', 'Error', 'error');
+      return;
+    }
+
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      await alert('Please enter a valid payment amount', 'Error', 'error');
+      return;
+    }
+
+    try {
+      const result = await recordRentalPayment(selectedRental.item_id, amount);
+      if (result.success) {
+        await alert(`Payment of ₱${amount.toFixed(2)} recorded successfully. Remaining balance: ₱${result.payment.remaining_balance.toFixed(2)}`, 'Success', 'success');
+        setShowPaymentModal(false);
+        setPaymentAmount('');
+        await loadRentalOrders();
+      } else {
+        await alert(result.message || 'Failed to record payment', 'Error', 'error');
+      }
+    } catch (error) {
+      console.error('Error recording payment:', error);
+      await alert('Error recording payment', 'Error', 'error');
+    }
+  };
+
   const getStatusClass = (status) => {
     // For rentals, treat 'accepted' as 'ready_to_pickup' since accepted status doesn't exist in rental flow
     let normalizedStatus = status === 'accepted' ? 'ready_to_pickup' : status;
     // Also normalize ready_for_pickup to ready_to_pickup
     normalizedStatus = normalizedStatus === 'ready_for_pickup' ? 'ready_to_pickup' : normalizedStatus;
+    // Map 'cancelled' to 'rejected' for display
+    normalizedStatus = normalizedStatus === 'cancelled' ? 'rejected' : normalizedStatus;
     
     const statusMap = {
       'pending': 'pending',
@@ -215,7 +268,8 @@ function Rental() {
       'rented': 'rented',
       'returned': 'returned',
       'completed': 'completed',
-      'cancelled': 'cancelled'
+      'cancelled': 'rejected',
+      'rejected': 'rejected'
     };
     return statusMap[normalizedStatus] || 'unknown';
   };
@@ -224,6 +278,8 @@ function Rental() {
     // For rentals, normalize status - treat 'accepted' and 'ready_for_pickup' as 'ready_to_pickup'
     let normalizedStatus = status === 'accepted' ? 'ready_to_pickup' : status;
     normalizedStatus = normalizedStatus === 'ready_for_pickup' ? 'ready_to_pickup' : normalizedStatus;
+    // Map 'cancelled' to 'Rejected' for display
+    normalizedStatus = normalizedStatus === 'cancelled' ? 'rejected' : normalizedStatus;
     
     const labelMap = {
       'pending': 'Pending',
@@ -234,7 +290,8 @@ function Rental() {
       'rented': 'Rented',
       'returned': 'Returned',
       'completed': 'Completed',
-      'cancelled': 'Cancelled'
+      'cancelled': 'Rejected',
+      'rejected': 'Rejected'
     };
     return labelMap[normalizedStatus] || normalizedStatus;
   };
@@ -347,6 +404,14 @@ function Rental() {
             </div>
             <div className="stat-number">{stats.returned}</div>
           </div>
+
+          <div className="stat-card">
+            <div className="stat-header">
+              <span>Rejected</span>
+              <div className="stat-icon" style={{ background: '#ffebee', color: '#f44336' }}>✕</div>
+            </div>
+            <div className="stat-number">{stats.rejected}</div>
+          </div>
         </div>
 
         <div className="search-container">
@@ -363,6 +428,7 @@ function Rental() {
             <option value="rented">Rented</option>
             <option value="returned">Returned</option>
             <option value="completed">Completed</option>
+            <option value="cancelled">Rejected</option>
           </select>
         </div>
 
@@ -380,7 +446,7 @@ function Rental() {
                   <th>Rented Item</th>
                   <th>Rental Period</th>
                   <th>Total Price</th>
-                  <th>Downpayment Amount</th>
+                  <th>Payment Status</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -396,6 +462,13 @@ function Rental() {
                   filteredRentals.map(rental => {
                     const isPending = rental.approval_status === 'pending' || rental.approval_status === 'pending_review';
                     const downpaymentAmount = rental.pricing_factors?.downpayment || rental.specific_data?.downpayment || 0;
+                    // Get amount paid and remaining balance
+                    const pricingFactors = typeof rental.pricing_factors === 'string' 
+                      ? JSON.parse(rental.pricing_factors || '{}') 
+                      : (rental.pricing_factors || {});
+                    const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
+                    const finalPrice = parseFloat(rental.final_price || 0);
+                    const remainingBalance = finalPrice - amountPaid;
 
                     return (
                       <tr key={rental.item_id} className="clickable-row" onClick={() => handleViewDetails(rental)}>
@@ -407,8 +480,20 @@ function Rental() {
                             ? `${rental.rental_start_date} to ${rental.rental_end_date}`
                             : 'N/A'}
                         </td>
-                        <td>₱{parseFloat(rental.final_price || 0).toLocaleString()}</td>
-                        <td>₱{parseFloat(downpaymentAmount).toLocaleString()}</td>
+                        <td style={{
+                          textDecoration: rental.approval_status === 'cancelled' ? 'line-through' : 'none',
+                          color: rental.approval_status === 'cancelled' ? '#999' : 'inherit'
+                        }}>
+                          ₱{finalPrice.toLocaleString()}
+                        </td>
+                        <td>
+                          <div style={{ fontSize: '12px' }}>
+                            <div>Paid: ₱{amountPaid.toLocaleString()}</div>
+                            <div style={{ color: remainingBalance > 0 ? '#ff9800' : '#4caf50', fontWeight: 'bold' }}>
+                              Remaining: ₱{Math.max(0, remainingBalance).toLocaleString()}
+                            </div>
+                          </div>
+                        </td>
                         <td onClick={(e) => e.stopPropagation()}>
                           <span 
                             className={`status-badge ${getStatusClass(rental.approval_status || 'pending')}`}
@@ -452,15 +537,38 @@ function Rental() {
                               <button 
                                 className="icon-btn decline" 
                                 onClick={(e) => {
+                                  e.preventDefault();
                                   e.stopPropagation();
-                                  handleDecline(rental);
+                                  console.log('[DECLINE] Button clicked, isPending:', isPending, 'rental:', rental);
+                                  handleDecline(rental).catch(err => {
+                                    console.error('[DECLINE] Unhandled error:', err);
+                                    alert('An unexpected error occurred while declining the rental', 'Error', 'error');
+                                  });
                                 }} 
                                 title="Decline"
+                                type="button"
+                                style={{ cursor: 'pointer', zIndex: 10, position: 'relative' }}
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <line x1="18" y1="6" x2="6" y2="18"></line>
                                   <line x1="6" y1="6" x2="18" y2="18"></line>
                                 </svg>
+                              </button>
+                            )}
+                            {/* Show record payment button only if not rejected/cancelled */}
+                            {rental.approval_status !== 'cancelled' && (
+                              <button 
+                                className="icon-btn" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedRental(rental);
+                                  setPaymentAmount('');
+                                  setShowPaymentModal(true);
+                                }} 
+                                title="Record Payment"
+                                style={{ backgroundColor: '#2196F3', color: 'white' }}
+                              >
+                                💰
                               </button>
                             )}
                             <button className="icon-btn edit" onClick={() => handleEditClick(rental)} title="Edit">
@@ -522,7 +630,7 @@ function Rental() {
                   <option value="rented">Rented</option>
                   <option value="returned">Returned</option>
                   <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
+                  <option value="cancelled">Rejected</option>
                 </select>
               </div>
 
@@ -543,6 +651,95 @@ function Rental() {
               </button>
               <button className="btn-save" onClick={handleSaveEdit}>
                 Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PAYMENT MODAL */}
+      {showPaymentModal && selectedRental && (
+        <div className="modal-overlay active" onClick={(e) => {
+          if (e.target.classList.contains('modal-overlay')) setShowPaymentModal(false);
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2>Record Payment</h2>
+              <span className="close-modal" onClick={() => setShowPaymentModal(false)}>×</span>
+            </div>
+            <div className="modal-body">
+              <div className="detail-row">
+                <strong>Order ID:</strong>
+                <span>ORD-{selectedRental.order_id}</span>
+              </div>
+              <div className="detail-row">
+                <strong>Customer:</strong>
+                <span>{selectedRental.first_name} {selectedRental.last_name}</span>
+              </div>
+              <div className="detail-row">
+                <strong>Item:</strong>
+                <span>{selectedRental.specific_data?.item_name || 'N/A'}</span>
+              </div>
+              <div className="detail-row">
+                <strong>Total Price:</strong>
+                <span style={{
+                  textDecoration: selectedRental.approval_status === 'cancelled' ? 'line-through' : 'none',
+                  color: selectedRental.approval_status === 'cancelled' ? '#999' : 'inherit'
+                }}>
+                  ₱{parseFloat(selectedRental.final_price || 0).toLocaleString()}
+                </span>
+              </div>
+              {(() => {
+                const pricingFactors = typeof selectedRental.pricing_factors === 'string' 
+                  ? JSON.parse(selectedRental.pricing_factors || '{}') 
+                  : (selectedRental.pricing_factors || {});
+                const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
+                const finalPrice = parseFloat(selectedRental.final_price || 0);
+                const remaining = finalPrice - amountPaid;
+                return (
+                  <>
+                    <div className="detail-row">
+                      <strong>Amount Paid:</strong>
+                      <span style={{ color: '#4caf50', fontWeight: 'bold' }}>
+                        ₱{amountPaid.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <strong>Remaining Balance:</strong>
+                      <span style={{ color: remaining > 0 ? '#ff9800' : '#4caf50', fontWeight: 'bold' }}>
+                        ₱{Math.max(0, remaining).toLocaleString()}
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
+              
+              <div className="form-group" style={{ marginTop: '20px' }}>
+                <label>Payment Amount *</label>
+                <input
+                  type="number"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className="form-control"
+                  placeholder="Enter payment amount"
+                  min="0"
+                  step="0.01"
+                  autoFocus
+                />
+                <small style={{ color: '#666', marginTop: '5px', display: 'block' }}>
+                  Enter the amount the customer is paying now
+                </small>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => {
+                setShowPaymentModal(false);
+                setPaymentAmount('');
+              }}>
+                Cancel
+              </button>
+              <button className="btn-save" onClick={handleRecordPayment}>
+                Record Payment
               </button>
             </div>
           </div>
@@ -619,16 +816,39 @@ function Rental() {
               </div>
               <div className="detail-row">
                 <strong>Total Price:</strong>
-                <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>
+                <span style={{ 
+                  color: selectedRental.approval_status === 'cancelled' ? '#999' : '#2e7d32', 
+                  fontWeight: 'bold',
+                  textDecoration: selectedRental.approval_status === 'cancelled' ? 'line-through' : 'none'
+                }}>
                   ₱{parseFloat(selectedRental.final_price || 0).toLocaleString()}
                 </span>
               </div>
-              <div className="detail-row">
-                <strong>Downpayment Amount:</strong>
-                <span style={{ color: '#ff9800', fontWeight: 'bold' }}>
-                  ₱{parseFloat(selectedRental.pricing_factors?.downpayment || selectedRental.specific_data?.downpayment || 0).toLocaleString()}
-                </span>
-              </div>
+              {(() => {
+                const pricingFactors = typeof selectedRental.pricing_factors === 'string' 
+                  ? JSON.parse(selectedRental.pricing_factors || '{}') 
+                  : (selectedRental.pricing_factors || {});
+                const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
+                const finalPrice = parseFloat(selectedRental.final_price || 0);
+                const remaining = finalPrice - amountPaid;
+                return (
+                  <>
+                    <div className="detail-row">
+                      <strong>Amount Paid:</strong>
+                      <span style={{ color: '#4caf50', fontWeight: 'bold' }}>
+                        ₱{amountPaid.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <strong>Remaining Balance:</strong>
+                      <span style={{ color: remaining > 0 ? '#ff9800' : '#4caf50', fontWeight: 'bold' }}>
+                        ₱{Math.max(0, remaining).toLocaleString()}
+                        {remaining <= 0 && finalPrice > 0 && ' (Fully Paid)'}
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
               <div className="detail-row">
                 <strong>Status:</strong>
                 <span className={`status-badge ${getStatusClass(selectedRental.approval_status)}`}>

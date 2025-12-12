@@ -165,6 +165,16 @@ exports.saveMeasurements = (req, res) => {
         }
       });
 
+      // Create measurement update notification for the customer
+      const Notification = require('../model/NotificationModel');
+      Notification.createMeasurementUpdateNotification(id, isUpdate, (notifErr) => {
+        if (notifErr) {
+          console.error('[NOTIFICATION] Failed to create measurement update notification:', notifErr);
+        } else {
+          console.log('[NOTIFICATION] Measurement update notification created');
+        }
+      });
+
       res.json({
         success: true,
         message: "Measurements saved successfully"

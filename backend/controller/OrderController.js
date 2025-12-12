@@ -652,6 +652,62 @@ exports.updateRepairOrderItem = (req, res) => {
         });
       }
 
+      // Create notifications for status changes
+      if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
+        const Notification = require('../model/NotificationModel');
+        const customerUserId = item.user_id; // Get customer's user_id from order
+        
+        if (customerUserId) {
+          const serviceType = (item.service_type || 'repair').toLowerCase().trim();
+          
+          // Create accepted notification
+          if (updateData.approvalStatus === 'accepted') {
+            Notification.createAcceptedNotification(customerUserId, itemId, serviceType, (notifErr) => {
+              if (notifErr) {
+                console.error('[NOTIFICATION] Failed to create accepted notification:', notifErr);
+              } else {
+                console.log('[NOTIFICATION] Accepted notification created successfully');
+              }
+            });
+          }
+          
+          // Create status update notifications
+          const statusNotificationStatuses = [
+            'confirmed',
+            'in_progress',
+            'ready_for_pickup',
+            'ready_to_pickup',
+            'completed',
+            'cancelled'
+          ];
+          
+          if (statusNotificationStatuses.includes(updateData.approvalStatus)) {
+            const statusForNotification = 
+              updateData.approvalStatus === 'confirmed' ? 'in_progress' :
+              updateData.approvalStatus === 'ready_for_pickup' ? 'ready_to_pickup' :
+              updateData.approvalStatus === 'ready_to_pickup' ? 'ready_to_pickup' :
+              updateData.approvalStatus;
+            
+            Notification.createStatusUpdateNotification(
+              customerUserId,
+              itemId,
+              statusForNotification,
+              null,
+              serviceType,
+              (notifErr) => {
+                if (notifErr) {
+                  console.error('[NOTIFICATION] Failed to create status update notification:', notifErr);
+                } else {
+                  console.log('[NOTIFICATION] Status update notification created successfully');
+                }
+              }
+            );
+          }
+        } else {
+          console.error('[NOTIFICATION] Cannot create notification: customer user_id is missing');
+        }
+      }
+
       console.log("Controller - Update successful, affected rows:", result?.affectedRows);
       res.json({
         success: true,
@@ -869,6 +925,62 @@ exports.updateDryCleaningOrderItem = (req, res) => {
             console.log('[BILLING] ===== NO BILLING UPDATE NEEDED FOR DRY CLEANING =====');
           }
         });
+      }
+
+      // Create notifications for status changes
+      if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
+        const Notification = require('../model/NotificationModel');
+        const customerUserId = item.user_id; // Get customer's user_id from order
+        
+        if (customerUserId) {
+          const serviceType = (item.service_type || 'dry_cleaning').toLowerCase().trim();
+          
+          // Create accepted notification
+          if (updateData.approvalStatus === 'accepted') {
+            Notification.createAcceptedNotification(customerUserId, itemId, serviceType, (notifErr) => {
+              if (notifErr) {
+                console.error('[NOTIFICATION] Failed to create accepted notification:', notifErr);
+              } else {
+                console.log('[NOTIFICATION] Accepted notification created successfully');
+              }
+            });
+          }
+          
+          // Create status update notifications
+          const statusNotificationStatuses = [
+            'confirmed',
+            'in_progress',
+            'ready_for_pickup',
+            'ready_to_pickup',
+            'completed',
+            'cancelled'
+          ];
+          
+          if (statusNotificationStatuses.includes(updateData.approvalStatus)) {
+            const statusForNotification = 
+              updateData.approvalStatus === 'confirmed' ? 'in_progress' :
+              updateData.approvalStatus === 'ready_for_pickup' ? 'ready_to_pickup' :
+              updateData.approvalStatus === 'ready_to_pickup' ? 'ready_to_pickup' :
+              updateData.approvalStatus;
+            
+            Notification.createStatusUpdateNotification(
+              customerUserId,
+              itemId,
+              statusForNotification,
+              null,
+              serviceType,
+              (notifErr) => {
+                if (notifErr) {
+                  console.error('[NOTIFICATION] Failed to create status update notification:', notifErr);
+                } else {
+                  console.log('[NOTIFICATION] Status update notification created successfully');
+                }
+              }
+            );
+          }
+        } else {
+          console.error('[NOTIFICATION] Cannot create notification: customer user_id is missing');
+        }
       }
 
       res.json({
@@ -1125,9 +1237,219 @@ exports.updateRentalOrderItem = (req, res) => {
         }
       }
 
+      // Create notifications for status changes
+      if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
+        const Notification = require('../model/NotificationModel');
+        const customerUserId = item.user_id; // Get customer's user_id from order
+        
+        if (customerUserId) {
+          const serviceType = (item.service_type || 'rental').toLowerCase().trim();
+          
+          // Create accepted notification
+          if (updateData.approvalStatus === 'accepted') {
+            Notification.createAcceptedNotification(customerUserId, itemId, serviceType, (notifErr) => {
+              if (notifErr) {
+                console.error('[NOTIFICATION] Failed to create accepted notification:', notifErr);
+              } else {
+                console.log('[NOTIFICATION] Accepted notification created successfully');
+              }
+            });
+          }
+          
+          // Create status update notifications (including rental-specific statuses)
+          const statusNotificationStatuses = [
+            'confirmed',
+            'in_progress',
+            'ready_for_pickup',
+            'ready_to_pickup',
+            'rented',
+            'returned',
+            'completed',
+            'cancelled'
+          ];
+          
+          if (statusNotificationStatuses.includes(updateData.approvalStatus)) {
+            const statusForNotification = 
+              updateData.approvalStatus === 'confirmed' ? 'in_progress' :
+              updateData.approvalStatus === 'ready_for_pickup' ? 'ready_to_pickup' :
+              updateData.approvalStatus === 'ready_to_pickup' ? 'ready_to_pickup' :
+              updateData.approvalStatus;
+            
+            Notification.createStatusUpdateNotification(
+              customerUserId,
+              itemId,
+              statusForNotification,
+              null,
+              serviceType,
+              (notifErr) => {
+                if (notifErr) {
+                  console.error('[NOTIFICATION] Failed to create status update notification:', notifErr);
+                } else {
+                  console.log('[NOTIFICATION] Status update notification created successfully');
+                }
+              }
+            );
+          }
+        } else {
+          console.error('[NOTIFICATION] Cannot create notification: customer user_id is missing');
+        }
+      }
+
       res.json({
         success: true,
         message: "Rental order item updated successfully"
+      });
+    });
+  });
+};
+
+// Record payment for rental item (admin only)
+exports.recordRentalPayment = (req, res) => {
+  const itemId = req.params.id;
+  const { paymentAmount } = req.body;
+
+  // Only admins can record payments
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: "Access denied. Admin only."
+    });
+  }
+
+  // Validate payment amount
+  const amount = parseFloat(paymentAmount);
+  if (!amount || amount <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid payment amount. Amount must be greater than 0."
+    });
+  }
+
+  // Get current order item
+  Order.getOrderItemById(itemId, (getErr, item) => {
+    if (getErr || !item) {
+      return res.status(404).json({
+        success: false,
+        message: "Order item not found"
+      });
+    }
+
+    // Only allow payments for rental items
+    if (item.service_type !== 'rental') {
+      return res.status(400).json({
+        success: false,
+        message: "Payment recording is only available for rental items"
+      });
+    }
+
+    // Get current pricing_factors
+    let pricingFactors = {};
+    try {
+      pricingFactors = item.pricing_factors ? JSON.parse(item.pricing_factors) : {};
+    } catch (e) {
+      console.error('Error parsing pricing_factors:', e);
+    }
+
+    // Get current amount_paid and final_price
+    const currentAmountPaid = parseFloat(pricingFactors.amount_paid || 0);
+    const finalPrice = parseFloat(item.final_price || 0);
+    const newAmountPaid = currentAmountPaid + amount;
+    const remainingBalance = finalPrice - newAmountPaid;
+
+    // Check if payment exceeds total price
+    if (newAmountPaid > finalPrice) {
+      return res.status(400).json({
+        success: false,
+        message: `Payment amount exceeds remaining balance. Total: ₱${finalPrice.toFixed(2)}, Already paid: ₱${currentAmountPaid.toFixed(2)}, Remaining: ₱${(finalPrice - currentAmountPaid).toFixed(2)}`
+      });
+    }
+
+    // Update pricing_factors with new amount_paid
+    pricingFactors.amount_paid = newAmountPaid.toString();
+    pricingFactors.remaining_balance = remainingBalance.toString();
+
+    // Update payment_status based on amount paid
+    let newPaymentStatus = item.payment_status || 'unpaid';
+    if (newAmountPaid >= finalPrice) {
+      newPaymentStatus = 'paid';
+    } else if (newAmountPaid > 0) {
+      // For rental, if paid at least 50%, it's down-payment, otherwise partial
+      const downpaymentAmount = finalPrice * 0.5;
+      if (newAmountPaid >= downpaymentAmount) {
+        newPaymentStatus = 'down-payment';
+      } else {
+        newPaymentStatus = 'partial_payment';
+      }
+    }
+
+    // Update order item
+    const db = require('../config/db');
+    const updateSql = `
+      UPDATE order_items 
+      SET 
+        pricing_factors = ?,
+        payment_status = ?
+      WHERE item_id = ?
+    `;
+
+    db.query(updateSql, [JSON.stringify(pricingFactors), newPaymentStatus, itemId], (updateErr, updateResult) => {
+      if (updateErr) {
+        return res.status(500).json({
+          success: false,
+          message: "Error recording payment",
+          error: updateErr
+        });
+      }
+
+      // Create action log for dashboard
+      const ActionLog = require('../model/ActionLogModel');
+      const previousPaymentStatus = item.payment_status || 'unpaid';
+      ActionLog.create({
+        order_item_id: itemId,
+        user_id: item.user_id,
+        action_type: 'payment',
+        action_by: 'admin',
+        previous_status: previousPaymentStatus,
+        new_status: newPaymentStatus,
+        reason: null,
+        notes: `Admin recorded payment of ₱${amount.toFixed(2)}. Total paid: ₱${newAmountPaid.toFixed(2)}. Status: ${previousPaymentStatus} → ${newPaymentStatus}`
+      }, (actionLogErr) => {
+        if (actionLogErr) {
+          console.error('Error creating payment action log:', actionLogErr);
+        } else {
+          console.log('Payment action log created successfully');
+        }
+      });
+
+      // Create payment success notification
+      if (item.user_id) {
+        const Notification = require('../model/NotificationModel');
+        const serviceType = (item.service_type || 'rental').toLowerCase().trim();
+        Notification.createPaymentSuccessNotification(
+          item.user_id,
+          itemId,
+          amount,
+          'cash', // Default to cash for admin-recorded payments
+          serviceType,
+          (notifErr) => {
+            if (notifErr) {
+              console.error('[NOTIFICATION] Failed to create payment success notification:', notifErr);
+            } else {
+              console.log('[NOTIFICATION] Payment success notification created');
+            }
+          }
+        );
+      }
+
+      res.json({
+        success: true,
+        message: "Payment recorded successfully",
+        payment: {
+          amount_paid: newAmountPaid,
+          remaining_balance: Math.max(0, remainingBalance),
+          payment_status: newPaymentStatus,
+          total_price: finalPrice
+        }
       });
     });
   });

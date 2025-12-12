@@ -365,6 +365,10 @@
     padding: 0;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
+    border: none;
+    /* Override global button styles from index.css - use CSS variable from inline style */
+    background-color: var(--preset-color, transparent) !important;
+    background: var(--preset-color, transparent) !important;
 }
 
 .presetColorName {
@@ -379,6 +383,7 @@
 .presetColorButton:hover {
     transform: scale(1.15);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    /* Don't override background color on hover - let inline style work */
 }
 
 .presetColorButton.selected {

@@ -501,11 +501,13 @@ const Order = {
               approvalStatus === 'ready_to_pickup' ? 'ready_to_pickup' :
               approvalStatus;
 
+            const serviceType = (orderItem.service_type || 'repair').toLowerCase().trim();
             Notification.createStatusUpdateNotification(
               userId,
               itemId,
               statusForNotification,
               null,
+              serviceType,
               (notifErr) => {
                 if (notifErr) console.error('Failed to create status update notification:', notifErr);
               }
@@ -756,11 +758,13 @@ Order.updateRentalOrderItem = (itemId, updateData, callback) => {
             approvalStatus === 'ready_to_pickup' ? 'ready_to_pickup' :
             approvalStatus;
 
+          const serviceType = (orderItem.service_type || 'rental').toLowerCase().trim();
           Notification.createStatusUpdateNotification(
             userId,
             itemId,
             statusForNotification,
             null,
+            serviceType,
             (notifErr) => {
               if (notifErr) console.error('Failed to create status update notification:', notifErr);
             }

@@ -219,6 +219,12 @@ html {
   letter-spacing: -0.02em;
 }
 
+/* Smaller font size for monthly revenue to fit better */
+.stat-card h3.small-revenue {
+  font-size: 24px;
+  word-break: break-word;
+}
+
 .stat-card .number {
   font-size: 36px;
   font-weight: 700;

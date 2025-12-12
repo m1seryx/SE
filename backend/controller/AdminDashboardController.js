@@ -170,18 +170,48 @@ exports.getDashboardOverview = async (req, res) => {
       return [{ total: 0 }];
     });
 
-    // Get recent activities from both action logs AND recent order items
-    // This ensures we show all activities even if some aren't logged yet
+    // Get recent activities from action logs, transaction logs, AND recent order items
+    // This ensures we show all activities including payments
     const ActionLog = require('../model/ActionLogModel');
+    const TransactionLog = require('../model/TransactionLogModel');
     const recentActivityQuery = Promise.all([
       // Get action logs
       new Promise((resolve) => {
-        ActionLog.getAll(20, (err, logs) => {
+        ActionLog.getAll(30, (err, logs) => {
           if (err) {
             console.error('Error fetching action logs:', err);
             resolve([]);
           } else {
             resolve(logs || []);
+          }
+        });
+      }),
+      // Get recent transaction logs (payments)
+      new Promise((resolve) => {
+        TransactionLog.getAll((err, transactions) => {
+          if (err) {
+            console.error('Error fetching transaction logs:', err);
+            resolve([]);
+          } else {
+            // Convert transaction logs to activity format
+            const paymentActivities = (transactions || []).slice(0, 20).map(tx => ({
+              item_id: tx.item_id || tx.order_item_id,
+              order_item_id: tx.order_item_id,
+              service_type: tx.service_type,
+              approval_status: tx.new_payment_status,
+              order_status: tx.new_payment_status,
+              order_date: tx.created_at,
+              first_name: tx.first_name,
+              last_name: tx.last_name,
+              reason: null,
+              action_type: 'payment',
+              action_by: tx.created_by || 'admin',
+              notes: `Payment: ₱${parseFloat(tx.amount || 0).toFixed(2)} via ${tx.payment_method || 'cash'}. Status: ${tx.previous_payment_status || 'unpaid'} → ${tx.new_payment_status}`,
+              amount: tx.amount,
+              payment_method: tx.payment_method,
+              payment_status: tx.new_payment_status
+            }));
+            resolve(paymentActivities);
           }
         });
       }),
@@ -209,7 +239,7 @@ exports.getDashboardOverview = async (req, res) => {
         console.error('Error in order items query:', err);
         return [];
       })
-    ]).then(([logs, orderItems]) => {
+    ]).then(([logs, paymentActivities, orderItems]) => {
       // Combine and deduplicate by order_item_id and timestamp
       const activityMap = new Map();
       
@@ -227,8 +257,18 @@ exports.getDashboardOverview = async (req, res) => {
           reason: log.reason,
           action_type: log.action_type,
           action_by: log.action_by,
-          notes: log.notes
+          notes: log.notes,
+          is_payment: log.action_type === 'payment',
+          amount: log.action_type === 'payment' ? (log.notes?.match(/₱([\d,]+\.?\d*)/)?.[1]?.replace(/,/g, '') || null) : null
         });
+      });
+      
+      // Add payment activities from transaction logs
+      paymentActivities.forEach(payment => {
+        const key = `${payment.order_item_id || 'null'}_${payment.order_date}`;
+        if (!activityMap.has(key)) {
+          activityMap.set(key, payment);
+        }
       });
       
       // Add order items that aren't already in logs
@@ -392,6 +432,21 @@ exports.getDashboardOverview = async (req, res) => {
       const orderDate = row.order_date instanceof Date
         ? row.order_date
         : new Date(row.order_date);
+      
+      // Format payment information if it's a payment action
+      let paymentInfo = null;
+      if (row.action_type === 'payment' || row.is_payment) {
+        const amount = row.amount || (row.notes?.match(/₱([\d,]+\.?\d*)/)?.[1]?.replace(/,/g, '') || null);
+        const paymentMethod = row.payment_method || (row.notes?.match(/via (\w+)/i)?.[1] || 'cash');
+        const paymentStatus = row.payment_status || row.approval_status || 'paid';
+        
+        paymentInfo = {
+          amount: amount ? parseFloat(amount) : null,
+          payment_method: paymentMethod,
+          payment_status: paymentStatus
+        };
+      }
+      
       return {
         customer: `${row.first_name} ${row.last_name}`,
         service: mapService(row.service_type),
@@ -400,7 +455,10 @@ exports.getDashboardOverview = async (req, res) => {
         time: formatTimeAgo(orderDate),
         reason: row.reason || null,
         actionType: row.action_type || null,
-        actionBy: row.action_by || null
+        actionBy: row.action_by || null,
+        notes: row.notes || null,
+        isPayment: row.action_type === 'payment' || row.is_payment || false,
+        paymentInfo: paymentInfo
       };
     });
 

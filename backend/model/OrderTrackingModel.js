@@ -123,7 +123,7 @@ const OrderTracking = {
       FROM order_tracking ot
       LEFT JOIN users u ON ot.updated_by = u.user_id
       WHERE ot.order_item_id = ?
-      ORDER BY ot.created_at ASC
+      ORDER BY ot.created_at DESC
     `;
     db.query(sql, [orderItemId], callback);
   },

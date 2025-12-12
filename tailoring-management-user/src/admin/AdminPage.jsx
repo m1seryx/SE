@@ -58,6 +58,9 @@ function AdminPage() {
     // Filter by status
     if (statusFilter !== 'all') {
       filtered = filtered.filter(activity => {
+        if (statusFilter === 'payment') {
+          return activity.isPayment === true || activity.actionType === 'payment';
+        }
         const status = activity.status?.toLowerCase() || '';
         const statusText = activity.statusText?.toLowerCase() || '';
         const filter = statusFilter.toLowerCase();
@@ -146,6 +149,7 @@ function AdminPage() {
               }}
             >
               <option value="all">All Statuses</option>
+              <option value="payment">💳 Payments</option>
               <option value="pending">Pending</option>
               <option value="accepted">Accepted</option>
               <option value="in-progress">In Progress</option>
@@ -211,7 +215,7 @@ function AdminPage() {
           ) : (
             stats.map((stat, index) => (
               <div className="stat-card" key={index}>
-                <h3>{stat.number}</h3>
+                <h3 className={stat.title === 'Monthly Revenue' ? 'small-revenue' : ''}>{stat.number}</h3>
                 <p>{stat.title}</p>
                 {stat.info && <small>{stat.info}</small>}
               </div>
@@ -225,8 +229,8 @@ function AdminPage() {
               <tr>
                 <th>Customer</th>
                 <th>Type of Service</th>
-                <th>Status</th>
-                <th>Reason for Cancellation</th>
+                <th>Status / Payment</th>
+                <th>Details / Payment Record</th>
                 <th>Time</th>
               </tr>
             </thead>
@@ -243,17 +247,63 @@ function AdminPage() {
                     <td className="customer">{activity.customer}</td>
                     <td>{activity.service}</td>
                     <td>
-                      <span className={`status ${activity.status}`}>
-                        {activity.statusText}
-                      </span>
+                      {activity.isPayment ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span className={`status ${activity.paymentInfo?.payment_status || activity.status}`} style={{ 
+                            backgroundColor: activity.paymentInfo?.payment_status === 'paid' || activity.paymentInfo?.payment_status === 'fully_paid' 
+                              ? '#d4edda' 
+                              : activity.paymentInfo?.payment_status === 'down-payment'
+                              ? '#fff3cd'
+                              : '#f8d7da',
+                            color: activity.paymentInfo?.payment_status === 'paid' || activity.paymentInfo?.payment_status === 'fully_paid'
+                              ? '#155724'
+                              : activity.paymentInfo?.payment_status === 'down-payment'
+                              ? '#856404'
+                              : '#721c24',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '600'
+                          }}>
+                            💳 Payment: {activity.paymentInfo?.payment_status === 'paid' ? 'Paid' : 
+                                         activity.paymentInfo?.payment_status === 'fully_paid' ? 'Fully Paid' :
+                                         activity.paymentInfo?.payment_status === 'down-payment' ? 'Down Payment' :
+                                         activity.paymentInfo?.payment_status === 'partial_payment' ? 'Partial Payment' :
+                                         activity.paymentInfo?.payment_status || 'Payment'}
+                          </span>
+                          {activity.paymentInfo?.amount && (
+                            <span style={{ fontSize: '11px', color: '#28a745', fontWeight: 'bold' }}>
+                              Amount: ₱{parseFloat(activity.paymentInfo.amount).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className={`status ${activity.status}`}>
+                          {activity.statusText}
+                        </span>
+                      )}
                     </td>
                     <td style={{ 
-                      color: activity.reason ? '#666' : '#999', 
-                      fontStyle: activity.reason ? 'normal' : 'italic',
+                      color: activity.reason || activity.notes ? '#666' : '#999', 
+                      fontStyle: activity.reason || activity.notes ? 'normal' : 'italic',
                       maxWidth: '200px',
-                      wordWrap: 'break-word'
+                      wordWrap: 'break-word',
+                      fontSize: activity.isPayment ? '12px' : '14px'
                     }}>
-                      {activity.reason || '-'}
+                      {activity.isPayment ? (
+                        <div>
+                          {activity.notes && (
+                            <div style={{ marginBottom: '4px' }}>{activity.notes}</div>
+                          )}
+                          {activity.paymentInfo?.payment_method && (
+                            <div style={{ fontSize: '11px', color: '#666' }}>
+                              Method: {activity.paymentInfo.payment_method}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        activity.reason || activity.notes || '-'
+                      )}
                     </td>
                     <td>{activity.time}</td>
                   </tr>

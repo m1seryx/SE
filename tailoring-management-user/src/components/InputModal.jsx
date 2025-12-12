@@ -4,6 +4,7 @@ import './AlertModal.css';
 const InputModal = ({ isOpen, title, message, placeholder = '', onConfirm, onCancel, confirmText = 'OK', cancelText = 'Cancel', defaultValue = '' }) => {
   const [inputValue, setInputValue] = useState(defaultValue);
 
+  // Handle body overflow and input value when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setInputValue(defaultValue);
@@ -20,6 +21,27 @@ const InputModal = ({ isOpen, title, message, placeholder = '', onConfirm, onCan
     }
   }, [isOpen, defaultValue]);
 
+  // Handle keyboard events - MUST be called before early return to follow Rules of Hooks
+  useEffect(() => {
+    if (!isOpen) {
+      return; // Early return inside effect is fine, but effect must always be called
+    }
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      } else if (e.key === 'Enter' && inputValue.trim()) {
+        onConfirm(inputValue);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, inputValue, onConfirm, onCancel]);
+
+  // Early return AFTER all hooks
   if (!isOpen) return null;
 
   const handleOverlayClick = (e) => {
@@ -28,27 +50,9 @@ const InputModal = ({ isOpen, title, message, placeholder = '', onConfirm, onCan
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Escape') {
-      onCancel();
-    } else if (e.key === 'Enter' && inputValue.trim()) {
-      onConfirm(inputValue);
-    }
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => {
-        document.removeEventListener('keydown', handleKeyDown);
-      };
-    }
-  }, [isOpen, inputValue]);
-
   const handleConfirm = () => {
-    if (inputValue.trim()) {
-      onConfirm(inputValue);
-    }
+    // Call onConfirm with the input value (even if empty) - the caller will validate
+    onConfirm(inputValue);
   };
 
   const handleCancel = () => {
@@ -81,7 +85,7 @@ const InputModal = ({ isOpen, title, message, placeholder = '', onConfirm, onCan
           <button className="alert-btn cancel" onClick={handleCancel}>
             {cancelText}
           </button>
-          <button className="alert-btn confirm" onClick={handleConfirm} disabled={!inputValue.trim()}>
+          <button className="alert-btn confirm" onClick={handleConfirm}>
             {confirmText}
           </button>
         </div>

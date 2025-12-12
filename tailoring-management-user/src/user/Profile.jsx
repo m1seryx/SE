@@ -187,16 +187,27 @@ const Profile = () => {
 
   // Get status badge class
   const getStatusBadgeClass = (status) => {
+    if (!status) return 'unknown';
+    
     const statusMap = {
       'pending': 'pending',
+      'pending_review': 'pending',
+      'accepted': 'accepted',
+      'rejected': 'rejected',
+      'cancelled': 'rejected',
+      'price_declined': 'rejected',
+      'price_confirmation': 'price-confirmation',
       'in_progress': 'in-progress',
-      'ready_to_pickup': 'ready',
+      'ready_to_pickup': 'ready-to-pickup',
+      'ready_for_pickup': 'ready-to-pickup',
       'picked_up': 'picked-up',
       'rented': 'rented',
       'returned': 'returned',
       'completed': 'completed'
     };
-    return statusMap[status] || 'unknown';
+    
+    const normalizedStatus = (status || '').toLowerCase().trim();
+    return statusMap[normalizedStatus] || 'unknown';
   };
 
   // Get status label
@@ -1361,11 +1372,18 @@ const Profile = () => {
                 const estimatedPrice = getEstimatedPrice(item.specific_data, item.service_type);
                 const priceChanged = hasPriceChanged(item.specific_data, item.final_price, item.service_type, item.pricing_factors);
                 
-                // Calculate remaining amount for rental items with "rented" status
-                const isRentalRented = item.service_type === 'rental' && item.status === 'rented';
-                const downpayment = parseFloat(item.pricing_factors?.downpayment || item.specific_data?.downpayment || 0);
+                // Calculate remaining amount for rental items
+                const isRental = item.service_type === 'rental';
+                // Get amount paid from pricing_factors (updated when admin records payments)
+                const pricingFactors = typeof item.pricing_factors === 'string' 
+                  ? JSON.parse(item.pricing_factors || '{}') 
+                  : (item.pricing_factors || {});
+                const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
+                const downpayment = parseFloat(pricingFactors.downpayment || item.specific_data?.downpayment || 0);
                 const finalPrice = parseFloat(item.final_price || 0);
-                const remainingAmount = isRentalRented ? Math.max(0, finalPrice - downpayment) : finalPrice;
+                // Use amount_paid if available (from transaction logs), otherwise fall back to downpayment for display
+                const totalPaid = amountPaid > 0 ? amountPaid : (isRental && item.status === 'rented' ? downpayment : 0);
+                const remainingAmount = isRental ? Math.max(0, finalPrice - totalPaid) : finalPrice;
 
                 return (
                   <div key={`${item.order_id}-${item.order_item_id}-${item.service_type}-${item.status_updated_at || Date.now()}`} className="order-card">
@@ -1382,7 +1400,7 @@ const Profile = () => {
                         </span>
                       </div>
                       <div className="order-price">
-                        {isRentalRented ? (
+                        {isRental && item.status === 'rented' ? (
                           <>
                             <div style={{ fontSize: '14px', color: '#666', textDecoration: 'line-through' }}>
                               ₱{finalPrice.toFixed(2)}
@@ -1414,15 +1432,15 @@ const Profile = () => {
                     {/* Price Comparison */}
                     {(estimatedPrice > 0 || item.final_price > 0) && (
                       <div className="price-comparison">
-                        {isRentalRented ? (
+                        {isRental && item.status === 'rented' ? (
                           <>
                             <div className="price-row">
                               <span className="price-label">Total Rental Price:</span>
                               <span className="price-value final">₱{finalPrice.toFixed(2)}</span>
                             </div>
                             <div className="price-row">
-                              <span className="price-label">Downpayment Paid:</span>
-                              <span className="price-value" style={{ color: '#4caf50' }}>-₱{downpayment.toFixed(2)}</span>
+                              <span className="price-label">Amount Paid:</span>
+                              <span className="price-value" style={{ color: '#4caf50' }}>₱{totalPaid.toFixed(2)}</span>
                             </div>
                             <div className="price-row" style={{ borderTop: '2px solid #e0e0e0', paddingTop: '8px', marginTop: '8px' }}>
                               <span className="price-label" style={{ fontWeight: 'bold', fontSize: '16px' }}>Remaining Amount:</span>
@@ -1717,12 +1735,19 @@ const Profile = () => {
                     <span className="summary-label">Price:</span>
                     <span className="summary-value">
                       {(() => {
-                        const isRentalRented = selectedItem.service_type === 'rental' && selectedItem.status === 'rented';
-                        const downpayment = parseFloat(selectedItem.pricing_factors?.downpayment || selectedItem.specific_data?.downpayment || 0);
+                        const isRental = selectedItem.service_type === 'rental';
+                        // Get amount paid from pricing_factors (updated when admin records payments)
+                        const pricingFactors = typeof selectedItem.pricing_factors === 'string' 
+                          ? JSON.parse(selectedItem.pricing_factors || '{}') 
+                          : (selectedItem.pricing_factors || {});
+                        const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
+                        const downpayment = parseFloat(pricingFactors.downpayment || selectedItem.specific_data?.downpayment || 0);
                         const finalPrice = parseFloat(selectedItem.final_price || 0);
-                        const remainingAmount = isRentalRented ? Math.max(0, finalPrice - downpayment) : finalPrice;
+                        // Use amount_paid if available (from transaction logs), otherwise fall back to downpayment for display
+                        const totalPaid = amountPaid > 0 ? amountPaid : (isRental && selectedItem.status === 'rented' ? downpayment : 0);
+                        const remainingAmount = isRental ? Math.max(0, finalPrice - totalPaid) : finalPrice;
                         
-                        if (isRentalRented) {
+                        if (isRental && selectedItem.status === 'rented') {
                           return (
                             <div>
                               <div style={{ fontSize: '14px', color: '#666', textDecoration: 'line-through', marginBottom: '4px' }}>
@@ -1732,7 +1757,7 @@ const Profile = () => {
                                 ₱{remainingAmount.toFixed(2)}
                               </div>
                               <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                                (Remaining after downpayment)
+                                (Remaining after {totalPaid > 0 ? 'payment' : 'downpayment'})
                               </div>
                             </div>
                           );

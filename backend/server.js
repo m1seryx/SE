@@ -26,6 +26,18 @@ const allowedOrigins = [
   'http://192.168.1.38:5173',
   'http://192.168.1.38:5174',
   'http://192.168.1.38:5175',
+  'http://192.168.254.102:5173',
+  'http://192.168.254.102:5174',
+  'http://192.168.254.102:5175',
+  'http://192.168.254.102:3000',
+  'http://192.168.254.102:8081',
+  'http://192.168.254.102:8082',
+  'http://192.168.1.202:5173',
+  'http://192.168.1.202:5174',
+  'http://192.168.1.202:5175',
+  'http://192.168.1.202:3000',
+  'http://192.168.1.202:8081',
+  'http://192.168.1.202:8082',
 ];
 
 app.use(cors({
@@ -36,8 +48,12 @@ app.use(cors({
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      // In development, allow any localhost origin
-      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      // In development, allow any localhost origin or local network IPs
+      if (origin.includes('localhost') || 
+          origin.includes('127.0.0.1') || 
+          origin.includes('192.168.') ||
+          origin.includes('10.0.') ||
+          origin.includes('172.16.')) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -94,6 +110,21 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/appointments', appointmentSlotRoutes);
 app.use('/api/transaction-logs', transactionLogRoutes);
 
+
+// Initialize date reminder service (runs on startup and can be scheduled)
+try {
+  const dateReminderService = require('./services/dateReminderService');
+  // Run date reminders check on startup
+  dateReminderService.checkDateReminders();
+  // Schedule to run daily (every 24 hours)
+  setInterval(() => {
+    dateReminderService.checkDateReminders();
+  }, 24 * 60 * 60 * 1000); // 24 hours in milliseconds
+  console.log('[SERVER] Date reminder service initialized');
+} catch (err) {
+  console.error('[SERVER] Error initializing date reminder service:', err.message);
+  // Don't crash the server if reminder service fails
+}
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {

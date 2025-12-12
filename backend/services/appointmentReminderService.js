@@ -50,18 +50,32 @@ function checkAppointmentReminders() {
         
         // Only create if notification doesn't exist yet for today
         if (!existingNotif || existingNotif.length === 0) {
-          Notification.createAppointmentReminderNotification(
-            item.user_id,
-            item.order_item_id,
-            item.formatted_date,
-            (notifErr) => {
-              if (notifErr) {
-                console.error('Failed to create appointment reminder:', notifErr);
-              } else {
-                console.log(`Created reminder for order item ${item.order_item_id}`);
-              }
+          // Get service type for better notification message
+          const getServiceTypeSql = `SELECT service_type FROM order_items WHERE item_id = ?`;
+          db.query(getServiceTypeSql, [item.order_item_id], (serviceErr, serviceResults) => {
+            if (serviceErr) {
+              console.error('Error fetching service type:', serviceErr);
+              return;
             }
-          );
+            
+            const serviceType = (serviceResults[0]?.service_type || 'customize').toLowerCase().trim();
+            const dateType = 'sizing'; // For appointments, it's usually sizing
+            
+            Notification.createPreferredDateReminderNotification(
+              item.user_id,
+              item.order_item_id,
+              item.appointment_date,
+              dateType,
+              serviceType,
+              (notifErr) => {
+                if (notifErr) {
+                  console.error('Failed to create appointment reminder:', notifErr);
+                } else {
+                  console.log(`Created reminder for order item ${item.order_item_id}`);
+                }
+              }
+            );
+          });
         } else {
           console.log(`Reminder already exists for order item ${item.order_item_id}`);
         }

@@ -12,6 +12,7 @@ exports.getAllBillingRecords = (req, res) => {
   }
 
   // Get all order items with their details including specific_data and pricing_factors
+  // Exclude rejected/cancelled items from billing
   const sql = `
     SELECT 
       oi.item_id,
@@ -35,6 +36,7 @@ exports.getAllBillingRecords = (req, res) => {
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.order_id
     JOIN user u ON o.user_id = u.user_id
+    WHERE oi.approval_status != 'cancelled'
     ORDER BY o.order_date DESC
   `;
 
@@ -72,19 +74,7 @@ exports.getAllBillingRecords = (req, res) => {
           uniqueNo = `S${item.item_id}${Math.floor(Math.random() * 1000)}`;
       }
 
-      // Use the payment_status from database
-      let paymentStatus = 'Unpaid';
-      if (item.payment_status === 'paid') {
-        paymentStatus = 'Paid';
-      } else if (item.payment_status === 'cancelled') {
-        paymentStatus = 'Cancelled';
-      } else if (item.payment_status === 'down-payment') {
-        paymentStatus = 'Down-payment';
-      } else if (item.payment_status === 'fully_paid') {
-        paymentStatus = 'Fully Paid';
-      }
-
-      // Parse JSON fields
+      // Parse JSON fields first (needed for payment status check)
       let specificData = {};
       let pricingFactors = {};
       try {
@@ -92,6 +82,41 @@ exports.getAllBillingRecords = (req, res) => {
         pricingFactors = item.pricing_factors ? JSON.parse(item.pricing_factors) : {};
       } catch (e) {
         console.error('Error parsing JSON fields:', e);
+      }
+
+      // Determine payment status - for rental, check if balance = 0
+      let paymentStatus = 'Unpaid';
+      const normalizedServiceType = (item.service_type || '').toLowerCase().trim();
+      
+      if (normalizedServiceType === 'rental') {
+        // Check amount_paid from pricing_factors
+        const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
+        const finalPrice = parseFloat(item.final_price || 0);
+        const remainingBalance = finalPrice - amountPaid;
+        
+        // If balance is zero or negative (overpaid), mark as Paid
+        if (remainingBalance <= 0 && finalPrice > 0) {
+          paymentStatus = 'Paid';
+        } else if (item.payment_status === 'fully_paid') {
+          paymentStatus = 'Fully Paid';
+        } else if (item.payment_status === 'down-payment') {
+          paymentStatus = 'Down-payment';
+        } else if (item.payment_status === 'partial_payment') {
+          paymentStatus = 'Partial Payment';
+        } else {
+          paymentStatus = 'Unpaid';
+        }
+      } else {
+        // For other services, use payment_status from database
+        if (item.payment_status === 'paid') {
+          paymentStatus = 'Paid';
+        } else if (item.payment_status === 'cancelled') {
+          paymentStatus = 'Cancelled';
+        } else if (item.payment_status === 'down-payment') {
+          paymentStatus = 'Down-payment';
+        } else if (item.payment_status === 'fully_paid') {
+          paymentStatus = 'Fully Paid';
+        }
       }
 
       // Format service type for display
@@ -161,6 +186,7 @@ exports.getBillingRecordsByStatus = (req, res) => {
   }
 
   // Get order items with specific status
+  // Exclude rejected/cancelled items from billing
   const sql = `
     SELECT 
       oi.item_id,
@@ -184,7 +210,8 @@ exports.getBillingRecordsByStatus = (req, res) => {
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.order_id
     JOIN user u ON o.user_id = u.user_id
-    WHERE o.status = ? OR oi.approval_status = ?
+    WHERE (o.status = ? OR oi.approval_status = ?)
+      AND oi.approval_status != 'cancelled'
     ORDER BY o.order_date DESC
   `;
 
@@ -361,6 +388,7 @@ exports.getBillingStats = (req, res) => {
   }
 
   // Get statistics query
+  // Exclude rejected/cancelled items from billing statistics
   const statsSql = `
     SELECT 
       COUNT(*) as total_records,
@@ -370,6 +398,7 @@ exports.getBillingStats = (req, res) => {
       SUM(CASE WHEN oi.payment_status IN ('unpaid', 'down-payment') THEN oi.final_price ELSE 0 END) as pending_revenue
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.order_id
+    WHERE oi.approval_status != 'cancelled'
   `;
 
   db.query(statsSql, (err, results) => {

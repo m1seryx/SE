@@ -51,14 +51,97 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
   const accent = colors.stitching;
   const map = useMemo(() => makePattern(pattern, baseColor, accent), [pattern, baseColor, accent]);
   const bump = useMemo(() => makeBump(), []);
-  const fabricColor = useMemo(() => new THREE.Color(baseColor), [baseColor]);
+  const fabricColor = useMemo(() => {
+    const color = new THREE.Color(baseColor);
+    // Calculate perceived brightness (luminance)
+    const brightness = (0.299 * color.r + 0.587 * color.g + 0.114 * color.b);
+    
+    // For dark colors, brighten them more aggressively to show true color without appearing too dark
+    if (brightness < 0.5) {
+      // More aggressive brightening for very dark colors
+      // For very dark colors (brightness < 0.2), brighten significantly
+      // For medium-dark colors (0.2-0.5), brighten moderately
+      let brightenFactor;
+      if (brightness < 0.2) {
+        // Very dark colors: brighten by 60-80%
+        brightenFactor = 1.0 + (0.2 - brightness) * 2.0 + 0.6; // 1.6 to 2.0
+      } else {
+        // Medium-dark colors: brighten by 30-50%
+        brightenFactor = 1.0 + (0.5 - brightness) * 0.67; // 1.0 to 1.2
+      }
+      
+      // Preserve the hue while brightening
+      const maxComponent = Math.max(color.r, color.g, color.b);
+      if (maxComponent > 0) {
+        // Normalize to preserve hue, then brighten
+        const normalizedR = color.r / maxComponent;
+        const normalizedG = color.g / maxComponent;
+        const normalizedB = color.b / maxComponent;
+        
+        // Brighten while maintaining relative color ratios
+        const targetBrightness = Math.min(0.6, brightness * brightenFactor);
+        const scale = targetBrightness / (0.299 * normalizedR + 0.587 * normalizedG + 0.114 * normalizedB);
+        
+        color.r = Math.min(1.0, normalizedR * scale);
+        color.g = Math.min(1.0, normalizedG * scale);
+        color.b = Math.min(1.0, normalizedB * scale);
+      }
+    }
+    return color;
+  }, [baseColor]);
+  
   const materialProps = useMemo(() => {
-    const rough = fabric === 'silk' ? 0.25 : fabric === 'linen' ? 0.85 : fabric === 'cotton' ? 0.6 : 0.9;
-    const metal = fabric === 'silk' ? 0.1 : 0.0;
+    // Fabric-specific properties
+    let rough, metal, bumpScale;
+    if (fabric === 'silk') {
+      rough = 0.25;
+      metal = 0.1;
+      bumpScale = 0.02;
+    } else if (fabric === 'linen') {
+      rough = 0.85;
+      metal = 0.0;
+      bumpScale = 0.08;
+    } else if (fabric === 'cotton') {
+      rough = 0.6;
+      metal = 0.0;
+      bumpScale = 0.06;
+    } else if (fabric === 'jusi') {
+      // Jusi fabric - smooth, slightly shiny, semi-transparent
+      rough = 0.3;
+      metal = 0.05;
+      bumpScale = 0.03;
+    } else if (fabric === 'Piña' || fabric === 'pina') {
+      // Piña fabric - very smooth, slightly more transparent than jusi
+      rough = 0.25;
+      metal = 0.08;
+      bumpScale = 0.02;
+    } else {
+      // Default (wool)
+      rough = 0.9;
+      metal = 0.0;
+      bumpScale = 0.07;
+    }
+    
     const transparent = garment === 'barong';
     const opacity = garment === 'barong' ? Math.max(0.15, Math.min(0.85, style.transparency || 0.35)) : 1;
-    const bumpScale = fabric === 'silk' ? 0.02 : fabric === 'linen' ? 0.08 : fabric === 'cotton' ? 0.06 : 0.07;
-    return { roughness: rough, metalness: metal, map, color: fabricColor, transparent, opacity, sheen: 1, sheenColor: fabricColor, bumpMap: bump, bumpScale };
+    
+    // Calculate brightness for sheen adjustment
+    const brightness = (0.299 * fabricColor.r + 0.587 * fabricColor.g + 0.114 * fabricColor.b);
+    // Reduce sheen more for darker colors to prevent high contrast
+    const adjustedSheen = brightness < 0.3 ? 0.2 : brightness < 0.5 ? 0.4 : 1.0;
+    
+    return { 
+      roughness: rough, 
+      metalness: metal, 
+      map, 
+      color: fabricColor, 
+      transparent, 
+      opacity, 
+      sheen: adjustedSheen, 
+      sheenColor: fabricColor, 
+      bumpMap: bump, 
+      bumpScale 
+    };
   }, [fabric, fabricColor, map, garment, style, bump]);
 
   const chestS = measurements.chest / 38;

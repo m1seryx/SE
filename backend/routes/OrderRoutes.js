@@ -42,6 +42,7 @@ router.put('/dry-cleaning/items/:id', orderController.updateDryCleaningOrderItem
 router.get('/rental/orders', orderController.getRentalOrders);
 router.get('/rental/orders/status/:status', orderController.getRentalOrdersByStatus);
 router.put('/rental/items/:id', orderController.updateRentalOrderItem);
+router.post('/rental/items/:id/payment', orderController.recordRentalPayment);
 
 // Price confirmation routes (user only)
 router.post('/:itemId/accept-price', orderPriceController.acceptPrice);

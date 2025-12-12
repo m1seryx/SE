@@ -609,13 +609,6 @@ export default function RentalLanding() {
                 <View style={styles.costBreakdown}>
                   <Text style={styles.costBreakdownTitle}>Payment Summary</Text>
                   
-                  <View style={styles.costWarning}>
-                    <Ionicons name="warning-outline" size={18} color="#F59E0B" />
-                    <Text style={styles.costWarningText}>
-                      Note: Final cost may vary based on actual rental duration and item condition upon return.
-                    </Text>
-                  </View>
-
                   {selectedItems.map((item, idx) => {
                     const itemCost = calculateItemCost(item, bundleDuration);
                     return (
@@ -631,7 +624,7 @@ export default function RentalLanding() {
                   <View style={styles.costDivider} />
                   
                   <View style={styles.costTotalRow}>
-                    <Text style={styles.costTotalLabel}>Total Downpayment (Due Now):</Text>
+                    <Text style={styles.costTotalLabel}>Total Downpayment (Due Upon Pickup):</Text>
                     <Text style={styles.costTotalValue}>
                       ₱{calculateBundleDownpayment().toLocaleString()}
                     </Text>

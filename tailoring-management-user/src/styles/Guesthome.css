@@ -834,10 +834,12 @@ body {
   width: 100%;
   max-width: 480px;
   max-height: 90vh;
-  overflow-y: auto;
   border-radius: 28px;
   box-shadow: 0 30px 100px rgba(139, 69, 19, 0.35);
   animation: popIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 @keyframes popIn {
@@ -867,6 +869,21 @@ body {
   padding: 50px 40px;
   text-align: center;
   background: linear-gradient(135deg, #fdfaf7 0%, #f8f4f0 100%);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  overflow: hidden;
+}
+
+.auth-container .auth-header {
+  flex-shrink: 0;
+}
+
+.auth-container > div:last-child {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 20px;
+  padding-right: 4px;
 }
 
 .auth-header h2 {

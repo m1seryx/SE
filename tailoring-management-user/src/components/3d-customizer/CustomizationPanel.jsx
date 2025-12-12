@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import styles from './CustomizationPanel.module.css';
 
-export default function CustomizationPanel({ garment, setGarment, size, setSize, fit, setFit, modelSize, setModelSize, colors, setColors, fabric, setFabric, patterns, pattern, setPattern, fabrics, designImage, setDesignImage, notes, setNotes, buttons, setButtons, accessories, setAccessories, pantsType, setPantsType, onReview }) {
+export default function CustomizationPanel({ garment, setGarment, size, setSize, fit, setFit, modelSize, setModelSize, colors, setColors, fabric, setFabric, patterns, pattern, setPattern, fabrics, designImage, setDesignImage, notes, setNotes, buttons, setButtons, accessories, setAccessories, pantsType, setPantsType, style, setStyle, onReview }) {
   const [selectedButtonModel, setSelectedButtonModel] = useState('/orange button 3d model.glb');
   const [selectedAccessoryModel, setSelectedAccessoryModel] = useState('/accessories/gold lion pendant 3d model.glb');
   const [selectedButtonId, setSelectedButtonId] = useState(null);
@@ -301,7 +301,11 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
                   <button
                     onClick={() => setColors({ ...colors, fabric: color.value })}
                     className={`${styles.presetColorButton} ${colors.fabric === color.value ? styles.selected : styles.unselected}`}
-                    style={{ backgroundColor: color.value }}
+                    style={{ 
+                      '--preset-color': color.value,
+                      backgroundColor: color.value,
+                      background: color.value
+                    }}
                     title={color.name}
                   />
                   <span className={styles.presetColorName}>{color.name}</span>
@@ -319,9 +323,47 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
       {expandedSections.fabric && (
         <div className={styles.sectionContent}>
           <div className="row">
-            <label>Fabric<select value={fabric} onChange={e => setFabric(e.target.value)}>{fabrics.map(f => <option key={f} value={f}>{f}</option>)}</select></label>
+            <label>Fabric
+              <select value={fabric} onChange={e => setFabric(e.target.value)}>
+                {fabrics
+                  .filter(f => {
+                    // Show jusi and Piña only for barong
+                    if (f === 'jusi' || f === 'Piña') {
+                      return garment === 'barong';
+                    }
+                    // For barong, hide regular fabrics; for others, show regular fabrics
+                    if (garment === 'barong') {
+                      return f === 'jusi' || f === 'Piña';
+                    }
+                    return f !== 'jusi' && f !== 'Piña';
+                  })
+                  .map(f => <option key={f} value={f}>{f}</option>)
+                }
+              </select>
+            </label>
             <label>Pattern<select value={pattern} onChange={e => setPattern(e.target.value)}>{patterns.map(p => <option key={p} value={p}>{p}</option>)}</select></label>
           </div>
+          {garment === 'barong' && (
+            <div className="row" style={{ marginTop: '16px' }}>
+              <label style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                Transparency: {Math.round((style?.transparency || 0.35) * 100)}%
+                <input 
+                  type="range" 
+                  min="0.15" 
+                  max="0.85" 
+                  step="0.05" 
+                  value={style?.transparency || 0.35} 
+                  onChange={e => {
+                    const newTransparency = parseFloat(e.target.value);
+                    if (setStyle) {
+                      setStyle({ ...style, transparency: newTransparency });
+                    }
+                  }}
+                  style={{ width: '100%' }}
+                />
+              </label>
+            </div>
+          )}
         </div>
       )}
 

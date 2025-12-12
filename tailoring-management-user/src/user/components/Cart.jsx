@@ -692,7 +692,15 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                   <span>{formatPrice(
                     cartItems
                       .filter(item => selectedItems.includes(item.cart_id))
-                      .reduce((total, item) => total + (parseFloat(item.final_price) * (item.quantity || 1)), 0)
+                      .reduce((total, item) => {
+                        // For bundle rentals, final_price already includes all items, so don't multiply by quantity
+                        const isBundleRental = item.service_type === 'rental' && 
+                          (item.specific_data?.is_bundle || item.pricing_factors?.is_bundle);
+                        if (isBundleRental) {
+                          return total + parseFloat(item.final_price || 0);
+                        }
+                        return total + (parseFloat(item.final_price || 0) * (item.quantity || 1));
+                      }, 0)
                   )}</span>
                 </div>
                 

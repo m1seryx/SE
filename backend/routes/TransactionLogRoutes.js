@@ -18,5 +18,8 @@ router.get('/all', requireAdmin, transactionLogController.getAllTransactionLogs)
 // Get transaction summary for an order item
 router.get('/summary/:orderItemId', transactionLogController.getTransactionSummary);
 
+// Make a payment for an order item (allows custom amounts)
+router.post('/payment/:orderItemId', transactionLogController.makePayment);
+
 module.exports = router;
 

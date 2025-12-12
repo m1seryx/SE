@@ -377,7 +377,8 @@ exports.updateTrackingStatus = (req, res) => {
               });
             } else if (['in_progress', 'ready_to_pickup', 'completed', 'rented', 'returned'].includes(status)) {
               console.log('Creating status update notification');
-              Notification.createStatusUpdateNotification(userId, orderItemID, status, notes, (notifErr) => {
+              const serviceType = (orderItem.service_type || 'customize').toLowerCase().trim();
+              Notification.createStatusUpdateNotification(userId, orderItemID, status, notes, serviceType, (notifErr) => {
                 if (notifErr) {
                   console.error('Failed to create status update notification:', notifErr);
                 } else {

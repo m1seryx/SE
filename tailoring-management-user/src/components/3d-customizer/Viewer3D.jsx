@@ -36,10 +36,11 @@ export default function Viewer3D({ garment, size, fit, modelSize, colors, fabric
         camera={{ position: [0, 1.6, 5], fov: 50 }} 
         shadows 
         dpr={[1, 2]} 
-        gl={{ 
-          toneMapping: THREE.ACESFilmicToneMapping,
-          preserveDrawingBuffer: true  // Required for screenshot capture
-        }}
+          gl={{ 
+            toneMapping: THREE.ACESFilmicToneMapping,
+            toneMappingExposure: 1.4, // Higher exposure to show dark colors better
+            preserveDrawingBuffer: true  // Required for screenshot capture
+          }}
       >
         <color attach="background" args={[1, 1, 1]} />
         <fog attach="fog" args={[0xffffff, 10, 30]} />
@@ -48,9 +49,11 @@ export default function Viewer3D({ garment, size, fit, modelSize, colors, fabric
             <GarmentModel garment={garment} size={size} fit={fit} modelSize={modelSize} colors={colors} fabric={fabric} pattern={pattern} style={style} measurements={measurements} personalization={personalization} pantsType={pantsType} />
           </Suspense>
         </Stage>
-        <directionalLight position={[4, 6, -3]} intensity={0.6} color={garment === 'pants' ? '#b0c7ff' : '#bcd0ff'} />
-        <directionalLight position={[-5, 3, 5]} intensity={0.3} color={garment === 'pants' ? '#ffd6b3' : '#ffddb7'} />
-        <ambientLight intensity={0.4} />
+        {/* Enhanced lighting to show dark colors accurately */}
+        <directionalLight position={[4, 6, -3]} intensity={0.8} color="#ffffff" />
+        <directionalLight position={[-5, 3, 5]} intensity={0.5} color="#ffffff" />
+        <directionalLight position={[0, 5, 0]} intensity={0.3} color="#ffffff" />
+        <ambientLight intensity={0.6} />
 
         <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={10} blur={2.6} far={4.5} />
         <OrbitControls enablePan={false} enabled={!isAnyButtonMoving && !isAnyAccessoryMoving} />

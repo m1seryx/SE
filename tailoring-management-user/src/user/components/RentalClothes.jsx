@@ -965,22 +965,6 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
               }}>
                 <h4 style={{ marginBottom: '15px', color: '#1a1a2e' }}>Payment Summary</h4>
                 
-                <div className="cost-disclaimer" style={{
-                  backgroundColor: '#fff3cd',
-                  border: '1px solid #ffc107',
-                  borderRadius: '8px',
-                  padding: '10px 15px',
-                  marginBottom: '15px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px'
-                }}>
-                  <span style={{ fontSize: '18px' }}>⚠️</span>
-                  <span style={{ fontSize: '13px', color: '#856404' }}>
-                    Note: Final cost may vary based on actual rental duration and item condition upon return.
-                  </span>
-                </div>
-                
                 {/* Individual item costs */}
                 <div style={{ marginBottom: '15px' }}>
                   {selectedItems.map((item, idx) => {
@@ -1239,23 +1223,8 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                   {totalCost > 0 && startDate && (
                     <div className="cost-breakdown">
                       <h4>Payment Details</h4>
-                      <div className="cost-disclaimer" style={{
-                        backgroundColor: '#fff3cd',
-                        border: '1px solid #ffc107',
-                        borderRadius: '8px',
-                        padding: '10px 15px',
-                        marginBottom: '15px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px'
-                      }}>
-                        <span style={{ fontSize: '18px' }}>⚠️</span>
-                        <span style={{ fontSize: '13px', color: '#856404' }}>
-                          Note: Final cost may vary based on actual rental duration and item condition upon return.
-                        </span>
-                      </div>
                       <div className="cost-item">
-                        <span>Downpayment (Due Now - 50%):</span>
+                        <span>Downpayment (Due Upon Pickup - 50%):</span>
                         <span>₱{(totalCost * 0.5).toFixed(2)}</span>
                       </div>
                       <div className="cost-item">

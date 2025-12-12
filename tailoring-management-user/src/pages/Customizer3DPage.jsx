@@ -55,7 +55,7 @@ const Customizer3DPage = () => {
   const [isRNWebView, setIsRNWebView] = useState(false);
   const [rnAuthData, setRnAuthData] = useState(null);
 
-  const fabrics = ['silk', 'linen', 'cotton', 'wool'];
+  const fabrics = ['silk', 'linen', 'cotton', 'wool', 'jusi', 'Piña'];
   const patterns = ['none', 'minimal-stripe', 'minimal-check', 'embroidery-1', 'embroidery-2'];
 
   const coatStyle = { lapel: 'notch', buttons: 2, pocket: 'flap', vents: 'single' };
@@ -454,6 +454,8 @@ const Customizer3DPage = () => {
           setAccessories={setAccessories}
           pantsType={pantsType}
           setPantsType={setPantsType}
+          style={style}
+          setStyle={setStyle}
         />
       </div>
 
