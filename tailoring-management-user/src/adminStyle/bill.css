@@ -476,8 +476,8 @@ tbody td {
 
 .icon-btn[title]:hover::after,
 .icon-btn[title]:hover::before {
-  opacity: 1;
-  visibility: visible;
+  opacity: 0;
+  visibility: hidden;
 }
 
 /* ============ STATUS BADGE ============ */

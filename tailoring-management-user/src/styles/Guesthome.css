@@ -52,6 +52,9 @@ body {
   z-index: 1000;
   height: auto;
   min-height: 70px;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .logo {
@@ -66,11 +69,12 @@ body {
   border-radius: 50%;
   object-fit: cover;
   cursor: pointer;
-  transition: transform 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .logo-img:hover {
-  transform: scale(1.1);
+  transform: scale(1.15) rotate(5deg);
+  box-shadow: 0 8px 20px rgba(139, 69, 19, 0.3);
 }
 
 .logo-text {
@@ -213,23 +217,47 @@ body {
   border-radius: 18px;
   overflow: hidden;
   box-shadow: 0 10px 30px rgba(139, 69, 19, 0.14);
-  transition: all 0.4s ease;
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   background: white;
   height: 100px;           /* Smaller height */
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+.service-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  transition: left 0.6s;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.service-card:hover::before {
+  left: 100%;
 }
 
 .service-card:hover {
-  transform: translateY(-12px);
-  box-shadow: 0 20px 45px rgba(139, 69, 19, 0.22);
+  transform: translateY(-15px) scale(1.02);
+  box-shadow: 0 25px 50px rgba(139, 69, 19, 0.3);
 }
 
 .service-img {
   height: 170px;           /* Smaller image area */
   background-size: cover;
   background-position: center;
-  transition: transform 0.6s ease;
+  transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  z-index: 0;
+}
+
+.service-card:hover .service-img {
+  transform: scale(1.15);
 }
 
 
@@ -320,15 +348,35 @@ body {
   font-size: 1.2rem;
   font-weight: bold;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   position: relative;
   z-index: 2;
+  overflow: hidden;
+}
+
+.btn-book::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(139, 69, 19, 0.2);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn-book:hover::before {
+  width: 300px;
+  height: 300px;
 }
 
 .btn-book:hover {
   background: #8B4513;
   color: white;
-  transform: scale(1.05);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 10px 30px rgba(139, 69, 19, 0.4);
 }
 
 /* Rental */
@@ -381,26 +429,46 @@ body {
   border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 10px 30px rgba(139, 69, 19, 0.12);
-  transition: all 0.4s ease;
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   display: flex;
   flex-direction: column;
   height: 430px;           /* Smaller total height */
+  position: relative;
+}
+
+.rental-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  transition: left 0.6s;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.rental-card:hover::before {
+  left: 100%;
 }
 
 .rental-card:hover {
-  transform: translateY(-12px);
-  box-shadow: 0 20px 45px rgba(139, 69, 19, 0.22);
+  transform: translateY(-15px) scale(1.02);
+  box-shadow: 0 25px 50px rgba(139, 69, 19, 0.3);
 }
 
 .rental-card img {
   width: 100%;
   height: 220px;           /* Smaller image */
   object-fit: cover;
-  transition: transform 0.6s ease;
+  transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  z-index: 0;
 }
 
 .rental-card:hover img {
-  transform: scale(1.1);
+  transform: scale(1.15);
 }
 
 /* Perfectly centered content */
@@ -440,15 +508,42 @@ body {
   cursor: pointer;
   font-weight: 600;
   font-size: 0.95rem;
-  transition: all 0.4s ease;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   min-width: 130px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-view::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(139, 69, 19, 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+  z-index: 0;
+}
+
+.btn-view:hover::before {
+  width: 300px;
+  height: 300px;
 }
 
 .btn-view:hover {
   background: #8B4513;
   color: white;
-  transform: translateY(-3px);
+  transform: translateY(-3px) scale(1.05);
   box-shadow: 0 10px 25px rgba(139, 69, 19, 0.3);
+  z-index: 1;
+}
+
+.btn-view span {
+  position: relative;
+  z-index: 1;
 }
 
 /* Customization */
@@ -824,8 +919,10 @@ body {
   justify-content: center;
   z-index: 9999;
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   padding: 20px;
   overflow-y: auto;
+  animation: fadeIn 0.3s ease-out;
 }
 
 .auth-modal {
@@ -836,15 +933,22 @@ body {
   max-height: 90vh;
   border-radius: 28px;
   box-shadow: 0 30px 100px rgba(139, 69, 19, 0.35);
-  animation: popIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transform-origin: center;
 }
 
 @keyframes popIn {
-  0% { transform: scale(0.7); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+  0% { 
+    transform: scale(0.7) translateY(20px); 
+    opacity: 0; 
+  }
+  100% { 
+    transform: scale(1) translateY(0); 
+    opacity: 1; 
+  }
 }
 
 .auth-close {

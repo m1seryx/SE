@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/Guesthome.css';
+import '../styles/Transitions.css';
+import { initScrollAnimations, initHeaderScroll } from '../utils/scrollAnimations';
 import logo from "../assets/logo.png";
 import dp from "../assets/dp.png";
 import dryCleanBg from "../assets/dryclean.png";
@@ -34,11 +36,17 @@ const App = ({ setIsLoggedIn }) => {
   const [authError, setAuthError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  
+  // Initialize scroll animations
+  useEffect(() => {
+    const scrollObserver = initScrollAnimations();
+    const headerCleanup = initHeaderScroll();
+    
+    return () => {
+      if (scrollObserver) scrollObserver.disconnect();
+      if (headerCleanup) headerCleanup();
+    };
+  }, []);
 
-  
-
-  
   const openAuthModal = () => {
     setIsAuthModalOpen(true);
   };
@@ -157,11 +165,11 @@ const App = ({ setIsLoggedIn }) => {
         </div>
       </section>
 
-       <section className="services">
-        <h2>Jackman's Services</h2>
-        <div className="services-grid">
+       <section className="services fade-in-up">
+        <h2 className="fade-in-up">Jackman's Services</h2>
+        <div className="services-grid stagger-children">
           {services.map(({ name, img }) => (
-            <div key={name} className="service-card">
+            <div key={name} className="service-card glow-on-hover">
               <div
                 className="service-img"
                 style={{ backgroundImage: `url(${img})` }}
@@ -175,14 +183,14 @@ const App = ({ setIsLoggedIn }) => {
       </section>
 
       {/* Appointment */}
-      <section className="appointment" id="Appointment">
-        <h2>Appointment</h2>
-        <div className="appointment-content">
+      <section className="appointment fade-in-up" id="Appointment">
+        <h2 className="fade-in-up">Appointment</h2>
+        <div className="appointment-content scale-in">
           <img src={appointmentBg} alt="Tailor" className="appointment-img" />
           <div className="appointment-overlay">
-            <h3>Ready to experience our services?</h3>
-            <p>Book your appointment now!</p>
-            <button className="btn-book" onClick={() => setServiceModalOpen(true)}>Book Appointment</button>
+            <h3 className="fade-in-up">Ready to experience our services?</h3>
+            <p className="fade-in-up">Book your appointment now!</p>
+            <button className="btn-book glow-on-hover" onClick={() => setServiceModalOpen(true)}>Book Appointment</button>
           </div>
         </div>
       </section>
@@ -191,44 +199,44 @@ const App = ({ setIsLoggedIn }) => {
       <RentalClothes openAuthModal={openAuthModal} />
 
       {/* Customization */}
-      <section className="customization" 
+      <section className="customization fade-in-up" 
           id="Customize" 
           style={{ 
             background: "(background: linear-gradient(to bottom, #fffff5 0%, #f0e9e2 100%))" 
           }}
         >
-        <div className="custom-text">
+        <div className="custom-text fade-in-left">
           <h2>Customization</h2>
           <p>Got a style in mind?</p>
           <p>Personalize it and turn your vision into reality!</p>
         </div>
-        <div className="custom-image" style={{ backgroundImage: `url('/src/assets/background.jpg'), url(${customizeBg})` }}>
-          <button className="btn-customize" onClick={openAuthModal}>Customize now!</button>
+        <div className="custom-image fade-in-right scale-in" style={{ backgroundImage: `url('/src/assets/background.jpg'), url(${customizeBg})` }}>
+          <button className="btn-customize glow-on-hover" onClick={openAuthModal}>Customize now!</button>
         </div>
       </section>
 
       {/* Repair Section */}
-      <section className="repair" id="Repair">
-        <h2>Repair Service</h2>
-        <div className="repair-bg" style={{ backgroundImage: `url(${repairBg})` }}>
+      <section className="repair fade-in-up" id="Repair">
+        <h2 className="fade-in-up">Repair Service</h2>
+        <div className="repair-bg scale-in" style={{ backgroundImage: `url(${repairBg})` }}>
           <div className="repair-overlay"></div>
           <div className="repair-content">
-            <h3>Need reliable repair services?</h3>
-            <p>Get in touch with us today!</p>
-            <button className="repair-book" onClick={openAuthModal}>Book Repair!</button>
+            <h3 className="fade-in-up">Need reliable repair services?</h3>
+            <p className="fade-in-up">Get in touch with us today!</p>
+            <button className="repair-book glow-on-hover" onClick={openAuthModal}>Book Repair!</button>
           </div>
         </div>
       </section>
 
       {/* Dry Cleaning Section */}
-      <section className="clean" id="DryCleaning">
-        <h2>Dry Cleaning Service</h2>
-        <div className="clean-bg" style={{ backgroundImage: `url(${dryCleanBg})` }}>
+      <section className="clean fade-in-up" id="DryCleaning">
+        <h2 className="fade-in-up">Dry Cleaning Service</h2>
+        <div className="clean-bg scale-in" style={{ backgroundImage: `url(${dryCleanBg})` }}>
           <div className="clean-overlay"></div>
           <div className="clean-content">
-            <h3>Keep your garments fresh and spotless</h3>
-            <p>Premium care for suits, gowns, and more</p>
-            <button className="clean-book" onClick={openAuthModal}>Book Dry Cleaning</button>
+            <h3 className="fade-in-up">Keep your garments fresh and spotless</h3>
+            <p className="fade-in-up">Premium care for suits, gowns, and more</p>
+            <button className="clean-book glow-on-hover" onClick={openAuthModal}>Book Dry Cleaning</button>
           </div>
         </div>
       </section>

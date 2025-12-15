@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/UserHomePage.css';
+import '../styles/Transitions.css';
+import { initScrollAnimations, initHeaderScroll } from '../utils/scrollAnimations';
 import logo from "../assets/logo.png";
 import dp from "../assets/dp.png";
 import appointmentBg from "../assets/background.jpg";
@@ -76,6 +78,17 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
     fetchNotifications();
     fetchUnreadCount();
     fetchCartCount();
+  }, []);
+
+  // Initialize scroll animations
+  useEffect(() => {
+    const scrollObserver = initScrollAnimations();
+    const headerCleanup = initHeaderScroll();
+    
+    return () => {
+      if (scrollObserver) scrollObserver.disconnect();
+      if (headerCleanup) headerCleanup();
+    };
   }, []);
 
   // Refetch cart count when cart modal opens/closes
@@ -339,11 +352,11 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
                 <p>Your Perfect Fit Awaits.</p>
               </div>
             </section>
-      <section className="services">
-        <h2>Jackman's Services</h2>
-        <div className="services-grid">
+      <section className="services fade-in-up">
+        <h2 className="fade-in-up">Jackman's Services</h2>
+        <div className="services-grid stagger-children">
           {services.map(({ name, img }) => (
-            <div key={name} className="service-card">
+            <div key={name} className="service-card glow-on-hover">
               <div
                 className="service-img"
                 style={{ backgroundImage: `url(${img})` }}

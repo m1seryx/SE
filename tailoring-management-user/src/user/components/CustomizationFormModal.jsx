@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../../styles/CustomizationFormModal.css';
+import '../../styles/SharedModal.css';
 import { uploadCustomizationImage, addCustomizationToCart } from '../../api/CustomizationApi';
 
 const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
@@ -459,51 +460,51 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="customization-form-modal-overlay" onClick={handleClose}>
-      <div className="customization-form-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay-shared" onClick={handleClose}>
+      <div className="modal-container-shared" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
-        <div className="customization-form-header">
-          <h2>🧥 Customization Service</h2>
-          <button className="customization-form-close" onClick={handleClose}>
-            ✕
+        <div className="modal-header-shared">
+          <h2 className="modal-title-shared">🧥 Customization Service</h2>
+          <button className="modal-close-shared" onClick={handleClose} aria-label="Close modal">
+            ×
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="customization-form-content">
+        <div className="modal-content-shared">
           {/* Message Display */}
           {message && (
-            <div className={`message ${loading ? 'info' : 'success'}`}>
+            <div className={`message-shared ${loading ? 'info' : 'success'}`}>
               {message}
             </div>
           )}
 
           {/* 1. Image Upload Section */}
-          <div className="form-group">
-            <label className="form-label">
+          <div className="form-group-shared">
+            <label className="form-label-shared">
               📷 Upload Reference Image
-              <span className="required">*</span>
+              <span className="required-indicator">*</span>
             </label>
-            <div className="image-upload-wrapper">
+            <div className="image-upload-wrapper-shared">
               <input
                 type="file"
                 id="imageUpload"
                 accept="image/*"
                 onChange={handleImageUpload}
-                className="file-input"
+                className="file-input-shared"
                 disabled={loading}
               />
-              <label htmlFor="imageUpload" className="upload-button">
+              <label htmlFor="imageUpload" className="upload-button-shared">
                 {imagePreview ? '📷 Change Image' : '📁 Choose Image'}
               </label>
             </div>
 
             {imagePreview && (
-              <div className="image-preview">
+              <div className="image-preview-shared">
                 <img src={imagePreview} alt="Preview" />
                 <button
                   type="button"
-                  className="remove-image-btn"
+                  className="remove-image-btn-shared"
                   onClick={() => {
                     setFormData(prev => ({
                       ...prev,
@@ -518,22 +519,22 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               </div>
             )}
             {errors.image && (
-              <span className="error-message">{errors.image}</span>
+              <span className="error-message-shared">{errors.image}</span>
             )}
           </div>
 
           {/* 2. Fabric Type Dropdown */}
-          <div className="form-group">
-            <label htmlFor="fabricType" className="form-label">
+          <div className="form-group-shared">
+            <label htmlFor="fabricType" className="form-label-shared">
               🧵 Fabric Type
-              <span className="required">*</span>
+              <span className="required-indicator">*</span>
             </label>
             <select
               id="fabricType"
               name="fabricType"
               value={formData.fabricType}
               onChange={handleInputChange}
-              className={`form-input ${errors.fabricType ? 'error' : ''}`}
+              className={`form-select-shared ${errors.fabricType ? 'error' : ''}`}
               disabled={loading}
             >
               <option value="">-- Select Fabric Type --</option>
@@ -544,22 +545,22 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               ))}
             </select>
             {errors.fabricType && (
-              <span className="error-message">{errors.fabricType}</span>
+              <span className="error-message-shared">{errors.fabricType}</span>
             )}
           </div>
 
           {/* 3. Garment Type Dropdown */}
-          <div className="form-group">
-            <label htmlFor="garmentType" className="form-label">
+          <div className="form-group-shared">
+            <label htmlFor="garmentType" className="form-label-shared">
               👔 Garment Type
-              <span className="required">*</span>
+              <span className="required-indicator">*</span>
             </label>
             <select
               id="garmentType"
               name="garmentType"
               value={formData.garmentType}
               onChange={handleInputChange}
-              className={`form-input ${errors.garmentType ? 'error' : ''}`}
+              className={`form-select-shared ${errors.garmentType ? 'error' : ''}`}
               disabled={loading}
             >
               <option value="">-- Select Garment Type --</option>
@@ -570,15 +571,15 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               ))}
             </select>
             {errors.garmentType && (
-              <span className="error-message">{errors.garmentType}</span>
+              <span className="error-message-shared">{errors.garmentType}</span>
             )}
           </div>
 
           {/* 4. Preferred Date Picker */}
-          <div className="form-group">
-            <label htmlFor="preferredDate" className="form-label">
+          <div className="form-group-shared">
+            <label htmlFor="preferredDate" className="form-label-shared">
               📅 Preferred Date for Sizing in Store
-              <span className="required">*</span>
+              <span className="required-indicator">*</span>
             </label>
             <input
               type="date"
@@ -587,11 +588,11 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               value={formData.preferredDate}
               onChange={handleInputChange}
               min={new Date().toISOString().split('T')[0]}
-              className={`form-input ${errors.preferredDate ? 'error' : ''}`}
+              className={`form-input-shared ${errors.preferredDate ? 'error' : ''}`}
               disabled={loading}
             />
             {errors.preferredDate && (
-              <span className="error-message">{errors.preferredDate}</span>
+              <span className="error-message-shared">{errors.preferredDate}</span>
             )}
           </div>
 
@@ -657,8 +658,8 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
           )}
 
           {/* 6. Notes */}
-          <div className="form-group">
-            <label htmlFor="notes" className="form-label">
+          <div className="form-group-shared">
+            <label htmlFor="notes" className="form-label-shared">
               📝 Additional Notes
             </label>
             <textarea
@@ -668,20 +669,20 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               onChange={handleInputChange}
               placeholder="Add any special requests or notes..."
               rows="3"
-              className="form-input textarea"
+              className="form-textarea-shared"
               disabled={loading}
             />
           </div>
 
           {/* 7. Estimated Price */}
           {estimatedPrice > 0 && formData.fabricType && formData.garmentType && (
-            <div className="form-group" style={{ backgroundColor: '#f0f0f0', padding: '15px', borderRadius: '5px', marginTop: '10px' }}>
-              <h4 style={{ margin: '0 0 10px 0', color: '#333' }}>Estimated Price: ₱{estimatedPrice}</h4>
-              <p style={{ margin: '5px 0', fontSize: '14px', color: '#666' }}>
+            <div className="price-estimate-shared">
+              <h4>Estimated Price: ₱{estimatedPrice}</h4>
+              <p>
                 Fabric: {formData.fabricType} (₱{fabricTypes[formData.fabricType]}) + 
                 Garment: {formData.garmentType} (₱{garmentTypes[formData.garmentType]})
               </p>
-              <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#888', fontStyle: 'italic' }}>
+              <p className="help-text-shared" style={{ marginTop: '12px', fontStyle: 'italic' }}>
                 Note: Estimated price is based on the selected garment and fabric type. Final price may vary depending on sizes and other accessories.
               </p>
             </div>
@@ -689,10 +690,10 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
         </div>
 
         {/* Modal Footer - Actions */}
-        <div className="customization-form-actions">
+        <div className="modal-footer-shared">
           <button
             type="button"
-            className="customization-form-btn customization-form-btn-secondary"
+            className="btn-shared btn-cancel-shared"
             onClick={handleClose}
             disabled={loading}
           >
@@ -700,7 +701,7 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
           </button>
           <button
             type="button"
-            className="customization-form-btn customization-form-btn-3d"
+            className="btn-shared btn-secondary-shared"
             onClick={handleOpen3DCustomizer}
             disabled={loading}
           >
@@ -708,7 +709,7 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
           </button>
           <button
             type="button"
-            className="customization-form-btn customization-form-btn-primary"
+            className="btn-shared btn-primary-shared"
             onClick={handleAddToCart}
             disabled={loading}
           >

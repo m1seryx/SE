@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { addRepairToCart, uploadRepairImage } from '../../api/RepairApi';
 import { getAvailableSlots, bookSlot } from '../../api/AppointmentSlotApi';
 import '../../styles/RepairFormModal.css';
+import '../../styles/SharedModal.css';
 
 const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const [formData, setFormData] = useState({
@@ -324,22 +325,25 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="repair-form-modal-overlay" onClick={handleClose}>
-      <div className="repair-form-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="repair-form-header">
-          <h2>Repair Service</h2>
-          <button className="repair-form-close" onClick={handleClose}>×</button>
+    <div className="modal-overlay-shared" onClick={handleClose}>
+      <div className="modal-container-shared" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header-shared">
+          <h2 className="modal-title-shared">🔧 Repair Service</h2>
+          <button className="modal-close-shared" onClick={handleClose} aria-label="Close modal">×</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="repair-form-content">
+        <form onSubmit={handleSubmit} className="modal-content-shared">
           {/* Damage Level */}
-          <div className="form-group">
-            <label htmlFor="damageLevel">Damage Level *</label>
+          <div className="form-group-shared">
+            <label htmlFor="damageLevel" className="form-label-shared">
+              Damage Level <span className="required-indicator">*</span>
+            </label>
             <select
               id="damageLevel"
               name="damageLevel"
               value={formData.damageLevel}
               onChange={handleInputChange}
+              className="form-select-shared"
               required
             >
               <option value="">Select damage level</option>
@@ -350,9 +354,9 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               ))}
             </select>
             {/* Show all damage level descriptions */}
-            <div style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
+            <div className="help-text-shared" style={{ marginTop: '12px' }}>
               {damageLevels.map(level => (
-                <div key={level.value} style={{ marginBottom: '5px' }}>
+                <div key={level.value} style={{ marginBottom: '8px' }}>
                   <strong>{level.label}:</strong> {level.description}
                 </div>
               ))}
@@ -360,13 +364,16 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
           </div>
 
           {/* Garment Type */}
-          <div className="form-group">
-            <label htmlFor="garmentType">Garment Type *</label>
+          <div className="form-group-shared">
+            <label htmlFor="garmentType" className="form-label-shared">
+              Garment Type <span className="required-indicator">*</span>
+            </label>
             <select
               id="garmentType"
               name="garmentType"
               value={formData.garmentType}
               onChange={handleInputChange}
+              className="form-select-shared"
               required
             >
               <option value="">Select garment type</option>
@@ -377,8 +384,10 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
           </div>
 
           {/* Notes */}
-          <div className="form-group">
-            <label htmlFor="notes">Detailed Description *</label>
+          <div className="form-group-shared">
+            <label htmlFor="notes" className="form-label-shared">
+              Detailed Description <span className="required-indicator">*</span>
+            </label>
             <textarea
               id="notes"
               name="notes"
@@ -386,29 +395,36 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               onChange={handleInputChange}
               placeholder="Please describe the damage in detail (size, location, extent of damage)..."
               rows={4}
+              className="form-textarea-shared"
               required
             />
-            <small>Examples: 2-inch hole in left sleeve, broken zipper on jacket back, torn seam on pants</small>
+            <span className="help-text-shared">Examples: 2-inch hole in left sleeve, broken zipper on jacket back, torn seam on pants</span>
           </div>
 
           {/* Image Upload */}
-          <div className="form-group">
-            <label htmlFor="image">Upload Damage Photo (Recommended)</label>
-            <input
-              type="file"
-              id="image"
-              name="image"
-              accept="image/*"
-              onChange={handleImageChange}
-            />
+          <div className="form-group-shared">
+            <label htmlFor="image" className="form-label-shared">Upload Damage Photo (Recommended)</label>
+            <div className="image-upload-wrapper-shared">
+              <input
+                type="file"
+                id="image"
+                name="image"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="file-input-shared"
+              />
+              <label htmlFor="image" className="upload-button-shared">
+                📷 Choose Photo
+              </label>
+            </div>
             
             {/* Image Preview */}
             {imagePreview && (
-              <div className="image-preview">
-                <img src={imagePreview} alt="Damage preview" className="preview-image" />
+              <div className="image-preview-shared">
+                <img src={imagePreview} alt="Damage preview" />
                 <button 
                   type="button" 
-                  className="remove-image-btn"
+                  className="remove-image-btn-shared"
                   onClick={() => {
                     setImageFile(null);
                     setImagePreview('');
@@ -421,16 +437,18 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
             )}
             
             {imageFile && !imagePreview && (
-              <div className="file-info">
-                <span>📎 {imageFile.name}</span>
+              <div className="help-text-shared" style={{ marginTop: '8px' }}>
+                📎 {imageFile.name}
               </div>
             )}
-            <small>Photos help us provide accurate pricing and better service</small>
+            <span className="help-text-shared">Photos help us provide accurate pricing and better service</span>
           </div>
 
           {/* Date */}
-          <div className="form-group">
-            <label htmlFor="date">Drop off date *</label>
+          <div className="form-group-shared">
+            <label htmlFor="date" className="form-label-shared">
+              Drop off date <span className="required-indicator">*</span>
+            </label>
             <input
               type="date"
               id="date"
@@ -438,23 +456,27 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               value={formData.date}
               onChange={handleDateChange}
               min={getMinDate()}
+              className="form-input-shared"
               required
             />
-            <small>Available Monday to Saturday only</small>
+            <span className="help-text-shared">Available Monday to Saturday only</span>
           </div>
 
           {/* Time Slot */}
           {formData.date && (
-            <div className="form-group">
-              <label htmlFor="time">Available Time Slots *</label>
+            <div className="form-group-shared">
+              <label htmlFor="time" className="form-label-shared">
+                Available Time Slots <span className="required-indicator">*</span>
+              </label>
               {loadingSlots ? (
-                <div>Loading available time slots...</div>
+                <div className="help-text-shared">Loading available time slots...</div>
               ) : availableTimeSlots.length > 0 ? (
                 <select
                   id="time"
                   name="time"
                   value={formData.time}
                   onChange={handleInputChange}
+                  className="form-select-shared"
                   required
                 >
                   <option value="">-- Select Time Slot --</option>
@@ -465,7 +487,7 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                   ))}
                 </select>
               ) : (
-                <div style={{ color: '#d32f2f' }}>
+                <div className="error-message-shared">
                   No available time slots for this date. Please select another date.
                 </div>
               )}
@@ -474,7 +496,7 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
 
           {/* Price Estimate */}
           {estimatedPrice > 0 && (
-            <div className="price-estimate">
+            <div className="price-estimate-shared">
               <h4>Estimated Price: ₱{estimatedPrice}</h4>
               <p>Based on damage level: {formData.damageLevel} • Garment type: {formData.garmentType}</p>
               <p className="estimated-pickup">Drop off item date: {formData.date && formData.time ? formatDropOffDate(`${formData.date}T${formData.time}`) : 'Not set'}</p>
@@ -483,16 +505,16 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
           )}
 
           {message && (
-            <div className={`message ${message.includes('✅') ? 'success' : 'error'}`}>
+            <div className={`message-shared ${message.includes('✅') ? 'success' : 'error'}`}>
               {message}
             </div>
           )}
 
-          <div className="form-actions">
-            <button type="button" className="btn-cancel" onClick={handleClose}>
+          <div className="modal-footer-shared">
+            <button type="button" className="btn-shared btn-cancel-shared" onClick={handleClose}>
               Cancel
             </button>
-            <button type="submit" className="btn-submit" disabled={loading || !estimatedPrice}>
+            <button type="submit" className="btn-shared btn-primary-shared" disabled={loading || !estimatedPrice}>
               {loading ? 'Adding...' : `Add to Cart - ₱${estimatedPrice}`}
             </button>
           </div>
