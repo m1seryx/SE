@@ -37,10 +37,53 @@ const AppointmentSlot = {
       AND status = 'booked'
     `;
     db.query(sql, [serviceType, date], (err, results) => {
-      if (err) return callback(err, null);
+      if (err) {
+        console.error('Database query error in getAvailableSlots:', err);
+        return callback(err, null);
+      }
 
-      const bookedTimes = results.map(row => row.appointment_time.toString());
-      const availableSlots = timeSlots.filter(slot => !bookedTimes.includes(slot));
+      // Handle case where results might be empty or null
+      if (!results || !Array.isArray(results)) {
+        console.warn('Unexpected results format:', results);
+        return callback(null, timeSlots); // Return all slots as available if query fails
+      }
+
+      // Handle case where appointment_time might be in different formats
+      const bookedTimes = results.map(row => {
+        const time = row.appointment_time;
+        if (!time) return null;
+        
+        // If it's already a string in HH:MM:SS format
+        if (typeof time === 'string') {
+          return time;
+        }
+        
+        // If it's a TIME object from MySQL, convert to string
+        if (time && typeof time === 'object') {
+          // MySQL TIME objects can be converted to string
+          const timeStr = time.toString();
+          // Ensure it's in HH:MM:SS format
+          if (timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
+            return timeStr;
+          }
+          // If it's in HH:MM format, add :00
+          if (timeStr.match(/^\d{2}:\d{2}$/)) {
+            return timeStr + ':00';
+          }
+        }
+        
+        return null;
+      }).filter(Boolean);
+      
+      // Filter out booked slots - compare time strings
+      const availableSlots = timeSlots.filter(slot => {
+        // Normalize slot time (remove seconds if needed for comparison)
+        const slotTime = slot.substring(0, 8); // HH:MM:SS
+        return !bookedTimes.some(booked => {
+          const bookedTime = booked.substring(0, 8); // HH:MM:SS
+          return bookedTime === slotTime;
+        });
+      });
 
       callback(null, availableSlots);
     });

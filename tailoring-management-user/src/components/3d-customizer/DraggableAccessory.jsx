@@ -1,15 +1,12 @@
 import { useGLTF } from '@react-three/drei';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, Suspense, useMemo } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
-export default function DraggableAccessory({ id, modelPath, position, color, scale = 0.2, onPositionChange, onSelect, isSelected, onMovingChange }) {
+// Component to load accessory model with error handling
+function AccessoryModel({ modelPath, color }) {
     const { scene: accessoryModel } = useGLTF(modelPath);
-    const groupRef = useRef();
-    const clonedScene = accessoryModel.clone();
-    const [isMoving, setIsMoving] = useState(false);
-    const [isHovered, setIsHovered] = useState(false);
-    const { camera, raycaster, pointer, gl, scene } = useThree();
+    const clonedScene = useMemo(() => accessoryModel ? accessoryModel.clone() : null, [accessoryModel]);
 
     useLayoutEffect(() => {
         if (clonedScene) {
@@ -29,6 +26,24 @@ export default function DraggableAccessory({ id, modelPath, position, color, sca
             });
         }
     }, [clonedScene, color]);
+
+    if (!clonedScene) {
+        return (
+            <mesh>
+                <boxGeometry args={[0.5, 0.5, 0.5]} />
+                <meshStandardMaterial color="#ff0000" />
+            </mesh>
+        );
+    }
+
+    return <primitive object={clonedScene} />;
+}
+
+export default function DraggableAccessory({ id, modelPath, position, color, scale = 0.2, onPositionChange, onSelect, isSelected, onMovingChange }) {
+    const groupRef = useRef();
+    const [isMoving, setIsMoving] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
+    const { camera, raycaster, pointer, gl, scene } = useThree();
 
     // Helper function to check if an object is a child of the accessory group
     const isPartOfAccessory = (object) => {
@@ -98,6 +113,32 @@ export default function DraggableAccessory({ id, modelPath, position, color, sca
         }
     };
 
+    // Construct full URL if it's a relative path
+    const fullModelPath = useMemo(() => {
+        if (!modelPath) {
+            console.warn('DraggableAccessory: No modelPath provided');
+            return modelPath;
+        }
+        
+        // If already a full URL, use it
+        if (modelPath.startsWith('http')) {
+            console.log('DraggableAccessory: Using full URL:', modelPath);
+            return modelPath;
+        }
+        
+        // If it starts with /, it's a path from root - construct full URL
+        const baseUrl = window.location.origin.includes('localhost') 
+            ? 'http://localhost:5000'
+            : window.location.origin.replace(/:\d+$/, ':5000');
+        
+        const fullPath = modelPath.startsWith('/') 
+            ? `${baseUrl}${modelPath}`
+            : `${baseUrl}/${modelPath}`;
+        
+        console.log('DraggableAccessory: Constructed URL:', fullPath, 'from:', modelPath);
+        return fullPath;
+    }, [modelPath]);
+
     return (
         <group
             ref={groupRef}
@@ -107,7 +148,14 @@ export default function DraggableAccessory({ id, modelPath, position, color, sca
             onPointerEnter={handlePointerEnter}
             onPointerLeave={handlePointerLeave}
         >
-            <primitive object={clonedScene} />
+            <Suspense fallback={
+                <mesh>
+                    <boxGeometry args={[0.5, 0.5, 0.5]} />
+                    <meshStandardMaterial color="#cccccc" />
+                </mesh>
+            }>
+                <AccessoryModel modelPath={fullModelPath} color={color} />
+            </Suspense>
 
             {/* Visual feedback */}
             {(isSelected || isHovered || isMoving) && (

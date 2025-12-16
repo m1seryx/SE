@@ -1,4 +1,37 @@
 const AppointmentSlot = require('../model/AppointmentSlotModel');
+const db = require('../config/db');
+
+// Function to ensure appointment_slots table exists
+const ensureTableExists = (callback) => {
+  const createTableSQL = `
+    CREATE TABLE IF NOT EXISTS appointment_slots (
+      slot_id INT AUTO_INCREMENT PRIMARY KEY,
+      service_type ENUM('dry_cleaning', 'repair', 'customization') NOT NULL,
+      appointment_date DATE NOT NULL,
+      appointment_time TIME NOT NULL,
+      user_id INT NOT NULL,
+      order_item_id INT NULL COMMENT 'Reference to the order item when order is created',
+      cart_item_id INT NULL COMMENT 'Reference to cart item if still in cart',
+      status ENUM('booked', 'completed', 'cancelled') DEFAULT 'booked',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      
+      UNIQUE KEY unique_slot (service_type, appointment_date, appointment_time),
+      INDEX idx_service_date (service_type, appointment_date),
+      INDEX idx_user_id (user_id),
+      INDEX idx_status (status),
+      INDEX idx_appointment_datetime (appointment_date, appointment_time)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `;
+  
+  db.query(createTableSQL, (err) => {
+    if (err) {
+      console.error('Error creating appointment_slots table:', err);
+      return callback(err);
+    }
+    callback(null);
+  });
+};
 
 // Get available time slots for a date and service type
 exports.getAvailableSlots = (req, res) => {
@@ -27,12 +60,38 @@ exports.getAvailableSlots = (req, res) => {
     });
   }
 
-  AppointmentSlot.getAvailableSlots(serviceType, date, (err, slots) => {
+  // Ensure table exists before querying
+  ensureTableExists((err) => {
     if (err) {
       return res.status(500).json({
         success: false,
+        message: 'Database error. Please contact administrator.'
+      });
+    }
+    
+    AppointmentSlot.getAvailableSlots(serviceType, date, (err, slots) => {
+    if (err) {
+      console.error('Error fetching available slots:', err);
+      console.error('Error details:', {
+        code: err.code,
+        errno: err.errno,
+        sqlMessage: err.sqlMessage,
+        sqlState: err.sqlState
+      });
+      
+      // Check if table doesn't exist
+      if (err.code === 'ER_NO_SUCH_TABLE') {
+        return res.status(500).json({
+          success: false,
+          message: "Database table 'appointment_slots' does not exist. Please run the migration script to create it.",
+          error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
+      }
+      
+      return res.status(500).json({
+        success: false,
         message: "Error fetching available slots",
-        error: err
+        error: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
     }
 
@@ -48,10 +107,11 @@ exports.getAvailableSlots = (req, res) => {
       };
     });
 
-    res.json({
-      success: true,
-      message: "Available slots retrieved successfully",
-      slots: formattedSlots
+      res.json({
+        success: true,
+        message: "Available slots retrieved successfully",
+        slots: formattedSlots
+      });
     });
   });
 };
@@ -67,18 +127,28 @@ exports.checkSlotAvailability = (req, res) => {
     });
   }
 
-  AppointmentSlot.isSlotAvailable(serviceType, date, time, (err, isAvailable) => {
+  // Ensure table exists before querying
+  ensureTableExists((err) => {
     if (err) {
       return res.status(500).json({
         success: false,
-        message: "Error checking slot availability",
-        error: err
+        message: 'Database error. Please contact administrator.'
       });
     }
+    
+    AppointmentSlot.isSlotAvailable(serviceType, date, time, (err, isAvailable) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Error checking slot availability",
+          error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
+      }
 
-    res.json({
-      success: true,
-      available: isAvailable
+      res.json({
+        success: true,
+        available: isAvailable
+      });
     });
   });
 };
@@ -118,8 +188,17 @@ exports.bookSlot = (req, res) => {
     });
   }
 
-  // Check if slot is available
-  AppointmentSlot.isSlotAvailable(serviceType, date, time, (err, isAvailable) => {
+  // Ensure table exists before querying
+  ensureTableExists((err) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: 'Database error. Please contact administrator.'
+      });
+    }
+    
+    // Check if slot is available
+    AppointmentSlot.isSlotAvailable(serviceType, date, time, (err, isAvailable) => {
     if (err) {
       return res.status(500).json({
         success: false,
@@ -158,6 +237,7 @@ exports.bookSlot = (req, res) => {
         slotId: result.insertId
       });
     });
+  });
   });
 };
 
@@ -200,19 +280,29 @@ exports.getUserSlots = (req, res) => {
     });
   }
 
-  AppointmentSlot.getUserSlots(userId, (err, slots) => {
+  // Ensure table exists before querying
+  ensureTableExists((err) => {
     if (err) {
       return res.status(500).json({
         success: false,
-        message: "Error fetching user slots",
-        error: err
+        message: 'Database error. Please contact administrator.'
       });
     }
+    
+    AppointmentSlot.getUserSlots(userId, (err, slots) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Error fetching user slots",
+          error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
+      }
 
-    res.json({
-      success: true,
-      message: "User slots retrieved successfully",
-      slots: slots
+      res.json({
+        success: true,
+        message: "User slots retrieved successfully",
+        slots: slots
+      });
     });
   });
 };

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import styles from './CustomizationPanel.module.css';
 
-export default function CustomizationPanel({ garment, setGarment, size, setSize, fit, setFit, modelSize, setModelSize, colors, setColors, fabric, setFabric, patterns, pattern, setPattern, fabrics, designImage, setDesignImage, notes, setNotes, buttons, setButtons, accessories, setAccessories, pantsType, setPantsType, style, setStyle, onReview }) {
+export default function CustomizationPanel({ garment, setGarment, size, setSize, fit, setFit, modelSize, setModelSize, colors, setColors, fabric, setFabric, patterns, pattern, setPattern, fabrics, designImage, setDesignImage, notes, setNotes, buttons, setButtons, accessories, setAccessories, pantsType, setPantsType, style, setStyle, onReview, customModels = [] }) {
   const [selectedButtonModel, setSelectedButtonModel] = useState('/orange button 3d model.glb');
   const [selectedAccessoryModel, setSelectedAccessoryModel] = useState('/accessories/gold lion pendant 3d model.glb');
   const [selectedButtonId, setSelectedButtonId] = useState(null);
@@ -28,6 +28,11 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
     { name: 'Brooch', path: '/accessories/flower brooch 3d model.glb' },
     { name: 'Flower', path: '/accessories/fabric rose 3d model.glb' },
   ];
+
+  // Get custom models by type
+  const customGarmentModels = customModels.filter(m => m.is_active && m.model_type === 'garment');
+  const customButtonModels = customModels.filter(m => m.is_active && m.model_type === 'button');
+  const customAccessoryModels = customModels.filter(m => m.is_active && m.model_type === 'accessory');
 
   const addButton = () => {
     const newButton = {
@@ -149,9 +154,29 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
     { name: 'Wine Red', value: '#722F37' },
   ];
 
+  // Helper function to check if a garment is a custom model with a specific category
+  const isCustomModelWithCategory = (categoryPrefix) => {
+    if (!garment.startsWith('custom-')) return false;
+    const modelId = garment.replace('custom-', '');
+    const model = customGarmentModels.find(m => String(m.model_id) === modelId);
+    return model && model.garment_category && model.garment_category.startsWith(categoryPrefix);
+  };
+
+  // Check if current garment is a coat type (built-in or custom with coat category)
+  const isCoatType = garment.startsWith('coat-') || isCustomModelWithCategory('coat');
+  
+  // Check if current garment is a suit type (built-in or custom with suit category)
+  const isSuitType = (garment === 'suit-1' || garment === 'suit-2') || isCustomModelWithCategory('suit');
+  
+  // Check if current garment is a barong type (built-in or custom with barong category)
+  const isBarongType = garment === 'barong' || isCustomModelWithCategory('barong');
+  
+  // Check if current garment is a pants type (built-in or custom with pants category)
+  const isPantsType = garment === 'pants' || isCustomModelWithCategory('pants');
+
   return (
     <div className="group">
-      {(garment.startsWith('coat-')) && (
+      {(garment.startsWith('coat-') || isCoatType) && (
         <>
           <h3 onClick={() => toggleSection('garmentType')} className={styles.collapsibleHeader}>
             <span>Coat Type</span>
@@ -167,6 +192,31 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
                     <option value="coat-women">Blazer (Women)</option>
                     <option value="coat-women-plain">Blazer Coat (Women) Plain</option>
                     <option value="coat-teal">Teal Long Coat</option>
+                    {/* Custom garment models - ONLY show if category EXACTLY matches coat types */}
+                    {customGarmentModels
+                      .filter((model, index, self) => {
+                        // Remove duplicates by name
+                        const isUnique = index === self.findIndex(m => 
+                          m.model_name.toLowerCase() === model.model_name.toLowerCase()
+                        );
+                        if (!isUnique) return false;
+                        
+                        // STRICT: Only show if category EXACTLY matches coat types
+                        const category = model.garment_category || '';
+                        return category === 'coat-men' || 
+                               category === 'coat-women' ||
+                               (category.startsWith('coat-') && category.length > 5);
+                      })
+                      .map(model => {
+                        // Use custom-{id} format to ensure it's recognized as a custom model
+                        const value = `custom-${model.model_id}`;
+                        console.log('Adding custom model to coat dropdown:', model.model_name, 'with value:', value);
+                        return (
+                          <option key={model.model_id} value={value}>
+                            {model.model_name}
+                          </option>
+                        );
+                      })}
                   </select>
                 </label>
               </div>
@@ -201,7 +251,7 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
         </>
       )}
 
-      {(garment === 'suit-1' || garment === 'suit-2') && (
+      {(garment === 'suit-1' || garment === 'suit-2' || isSuitType) && (
         <>
           <h3 onClick={() => toggleSection('garmentType')} className={styles.collapsibleHeader}>
             <span>Suit Type</span>
@@ -214,6 +264,28 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
                   <select value={garment} onChange={e => setGarment(e.target.value)}>
                     <option value="suit-1">Business Suit Style 1</option>
                     <option value="suit-2">Business Suit Style 2</option>
+                    {/* Custom garment models - ONLY show if category EXACTLY matches suit types */}
+                    {customGarmentModels
+                      .filter((model, index, self) => {
+                        // Remove duplicates by name
+                        const isUnique = index === self.findIndex(m => 
+                          m.model_name.toLowerCase() === model.model_name.toLowerCase()
+                        );
+                        if (!isUnique) return false;
+                        
+                        // STRICT: Only show if category EXACTLY matches suit types
+                        const category = model.garment_category || '';
+                        return category === 'suit-1' || category === 'suit-2';
+                      })
+                      .map(model => {
+                        // Use custom-{id} format to ensure it's recognized as a custom model
+                        const value = `custom-${model.model_id}`;
+                        return (
+                          <option key={model.model_id} value={value}>
+                            {model.model_name}
+                          </option>
+                        );
+                      })}
                   </select>
                 </label>
               </div>
@@ -240,6 +312,35 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
           {expandedSections.garmentType && (
             <div className={styles.sectionContent}>
               <div className="row">
+                <label>Select Type
+                  <select value={garment} onChange={e => setGarment(e.target.value)}>
+                    <option value="barong">Barong Tagalog (Default)</option>
+                    {/* Custom garment models - ONLY show if category EXACTLY matches barong */}
+                    {customGarmentModels
+                      .filter((model, index, self) => {
+                        // Remove duplicates by name
+                        const isUnique = index === self.findIndex(m => 
+                          m.model_name.toLowerCase() === model.model_name.toLowerCase()
+                        );
+                        if (!isUnique) return false;
+                        
+                        // STRICT: Only show if category EXACTLY matches barong
+                        const category = model.garment_category || '';
+                        return category === 'barong';
+                      })
+                      .map(model => {
+                        // Use custom-{id} format to ensure it's recognized as a custom model
+                        const value = `custom-${model.model_id}`;
+                        return (
+                          <option key={model.model_id} value={value}>
+                            {model.model_name}
+                          </option>
+                        );
+                      })}
+                  </select>
+                </label>
+              </div>
+              <div className="row">
                 <label>Fit
                   <select value={fit} onChange={e => setFit(e.target.value)}>
                     <option value="regular">Regular</option>
@@ -253,7 +354,7 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
         </>
       )}
 
-      {garment === 'pants' && (
+      {(garment === 'pants' || isPantsType) && (
         <>
           <h3 onClick={() => toggleSection('garmentType')} className={styles.collapsibleHeader}>
             <span>Pants Type</span>
@@ -267,6 +368,28 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
                     <option value="casual-men">Pants (Men Casual)</option>
                     <option value="formal-men">Pants (Men Formal)</option>
                     <option value="formal-women">Pants (Women Formal)</option>
+                    {/* Custom garment models - ONLY show if category EXACTLY matches pants */}
+                    {customGarmentModels
+                      .filter((model, index, self) => {
+                        // Remove duplicates by name
+                        const isUnique = index === self.findIndex(m => 
+                          m.model_name.toLowerCase() === model.model_name.toLowerCase()
+                        );
+                        if (!isUnique) return false;
+                        
+                        // STRICT: Only show if category EXACTLY matches pants
+                        const category = model.garment_category || '';
+                        return category === 'pants';
+                      })
+                      .map(model => {
+                        // Use custom-{id} format to ensure it's recognized as a custom model
+                        const value = `custom-${model.model_id}`;
+                        return (
+                          <option key={model.model_id} value={value}>
+                            {model.model_name}
+                          </option>
+                        );
+                      })}
                   </select>
                 </label>
               </div>
@@ -379,6 +502,11 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
                 {availableButtonModels.map(model => (
                   <option key={model.path} value={model.path}>{model.name}</option>
                 ))}
+                {customButtonModels.map(model => (
+                  <option key={model.model_id} value={model.file_url.startsWith('http') ? model.file_url : `http://localhost:5000${model.file_url}`}>
+                    {model.model_name} (Custom)
+                  </option>
+                ))}
               </select>
             </label>
             <button onClick={addButton} className={styles.premiumButton} style={{ marginLeft: 8 }}>Add Button</button>
@@ -433,6 +561,19 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
                 {availableAccessoryModels.map(model => (
                   <option key={model.path} value={model.path}>{model.name}</option>
                 ))}
+                {customAccessoryModels.map(model => {
+                  // Construct full URL for custom models
+                  const modelUrl = model.file_url.startsWith('http') 
+                    ? model.file_url 
+                    : model.file_url.startsWith('/')
+                    ? `http://localhost:5000${model.file_url}`
+                    : `http://localhost:5000/${model.file_url}`;
+                  return (
+                    <option key={model.model_id} value={modelUrl}>
+                      {model.model_name} (Custom)
+                    </option>
+                  );
+                })}
               </select>
             </label>
             <button onClick={addAccessory} className={styles.premiumButton} style={{ marginLeft: 8 }}>Add Accessory</button>

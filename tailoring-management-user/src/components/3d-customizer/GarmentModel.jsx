@@ -1,6 +1,7 @@
 import { RoundedBox, Capsule, Text, Edges, useGLTF } from '@react-three/drei';
-import { useMemo, useLayoutEffect } from 'react';
+import { useMemo, useLayoutEffect, Suspense } from 'react';
 import * as THREE from 'three';
+import CustomModelLoader from './CustomModelLoader';
 
 function makePattern(type, base, accent) {
   const c = document.createElement('canvas');
@@ -46,7 +47,7 @@ function makeBump() {
   return tex;
 }
 
-export default function GarmentModel({ garment, size, fit, modelSize, colors, fabric, pattern, style, measurements, personalization, pantsType }) {
+export default function GarmentModel({ garment, size, fit, modelSize, colors, fabric, pattern, style, measurements, personalization, pantsType, customModels = [] }) {
   const baseColor = colors.fabric;
   const accent = colors.stitching;
   const map = useMemo(() => makePattern(pattern, baseColor, accent), [pattern, baseColor, accent]);
@@ -175,9 +176,71 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
   const blazerWomenPlainShort = useGLTF('/short3d/blazer woman short plain model.glb');
   const tealCoatShort = useGLTF('/short3d/trench coat 3d  short model.glb');
 
+  // Find matching custom model for current garment
+  // Only show custom model if explicitly selected (by ID or exact category match)
+  // IMPORTANT: Built-in garments (coat-men, barong, suit-1, etc.) should NEVER match custom models
+  const matchingCustomModel = useMemo(() => {
+    if (!customModels || customModels.length === 0) {
+      return null;
+    }
+    
+    // List of built-in garment values - these should NEVER use custom models
+    const builtInGarments = [
+      'coat-men', 'coat-men-plain', 'coat-women', 'coat-women-plain', 'coat-teal',
+      'suit-1', 'suit-2',
+      'barong',
+      'pants'
+    ];
+    
+    // If this is a built-in garment, NEVER use custom models
+    if (builtInGarments.includes(garment)) {
+      console.log('Built-in garment detected:', garment, '- Using built-in model, not custom');
+      return null;
+    }
+    
+    // Check if garment is a custom model ID (custom-{id})
+    if (garment.startsWith('custom-')) {
+      const modelId = garment.replace('custom-', '');
+      const match = customModels.find(model => 
+        model.is_active && 
+        model.model_type === 'garment' &&
+        String(model.model_id) === modelId
+      );
+      if (match) {
+        console.log('Found custom model by ID:', match.model_name);
+        return match;
+      }
+    }
+    
+    // Check for exact category match (only if garment_category is set and garment is NOT a built-in)
+    const match = customModels.find(model => 
+      model.is_active && 
+      model.model_type === 'garment' &&
+      model.garment_category &&
+      model.garment_category === garment &&
+      !builtInGarments.includes(garment) // Double check it's not a built-in
+    );
+    
+    if (match) {
+      console.log('Found custom model by category:', match.model_name);
+      return match;
+    }
+    
+    // No match - return null so built-in models are used
+    return null;
+  }, [customModels, garment]);
+
   // Determine which model to use based on garment type and modelSize
   let selectedModel = null;
   let use3DModel = false;
+  let isCustomModel = false;
+
+  // Check if there's a custom model for this garment first
+  if (matchingCustomModel) {
+    use3DModel = true;
+    isCustomModel = true;
+    // Custom model will be loaded via CustomModelLoader component
+  } else {
 
   if (garment === 'coat-men') {
     use3DModel = true;
@@ -203,6 +266,7 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
   } else if (garment === 'suit-2') {
     use3DModel = true;
     selectedModel = suit2.scene;
+  }
   }
 
   const modelScene = useMemo(() => selectedModel ? selectedModel.clone() : null, [selectedModel]);
@@ -321,7 +385,101 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
 
 
 
-  if (garment.startsWith('coat')) {
+  // Check for custom models first - either by ID or by category match
+  // IMPORTANT: Built-in garments should NEVER use custom models
+  const customModelToRender = useMemo(() => {
+    // List of built-in garment values - these should NEVER use custom models
+    const builtInGarments = [
+      'coat-men', 'coat-men-plain', 'coat-women', 'coat-women-plain', 'coat-teal',
+      'suit-1', 'suit-2',
+      'barong',
+      'pants'
+    ];
+    
+    console.log('=== CHECKING FOR CUSTOM MODEL ===');
+    console.log('Current garment:', garment);
+    console.log('Available custom models:', customModels);
+    
+    // If this is a built-in garment, NEVER use custom models
+    if (builtInGarments.includes(garment)) {
+      console.log('✓ Built-in garment detected:', garment, '- Using built-in model, NOT custom');
+      return null;
+    }
+    
+    // If garment is a custom model ID (custom-{id})
+    if (garment.startsWith('custom-')) {
+      const modelId = garment.replace('custom-', '');
+      const match = customModels.find(m => 
+        m.is_active && 
+        m.model_type === 'garment' && 
+        String(m.model_id) === modelId
+      );
+      if (match) {
+        console.log('✓ Found custom model by ID:', match.model_name);
+        return match;
+      }
+    }
+    
+    // If garment matches a custom model's category exactly (and it's not a built-in)
+    if (matchingCustomModel) {
+      console.log('✓ Found custom model by category:', matchingCustomModel.model_name);
+      return matchingCustomModel;
+    }
+    
+    console.log('✗ No custom model match found - will use built-in model');
+    return null;
+  }, [garment, customModels, matchingCustomModel]);
+  
+  // Render custom model if explicitly selected
+  if (customModelToRender && customModelToRender.file_url) {
+    // Construct full URL - handle both relative and absolute URLs
+    let modelUrl = customModelToRender.file_url;
+    if (!modelUrl.startsWith('http')) {
+      // If it's a relative URL, prepend the API base URL (without /api)
+      const baseUrl = window.location.origin.includes('localhost') 
+        ? 'http://localhost:5000'
+        : window.location.origin.replace(/:\d+$/, ':5000'); // Replace port with 5000
+      modelUrl = `${baseUrl}${modelUrl.startsWith('/') ? '' : '/'}${modelUrl}`;
+    }
+    
+    console.log('=== RENDERING CUSTOM MODEL ===');
+    console.log('Model name:', customModelToRender.model_name);
+    console.log('Model URL:', modelUrl);
+    console.log('Garment value:', garment);
+    console.log('Model category:', customModelToRender.garment_category);
+    console.log('Size scale:', sizeScale);
+    
+    // Apply size and fit adjustments to custom models for consistency
+    // sizeScale already includes size and fit adjustments from earlier calculations
+    return (
+      <group position={[0, 0, 0]} scale={sizeScale}>
+        <Suspense fallback={
+          <mesh>
+            <boxGeometry args={[1, 2, 0.5]} />
+            <meshStandardMaterial color="#cccccc" />
+          </mesh>
+        }>
+          <CustomModelLoader 
+            modelUrl={modelUrl}
+            materialProps={materialProps}
+            fabricColor={fabricColor}
+            onLoad={() => {
+              console.log('✓ Custom model loaded successfully:', customModelToRender.model_name);
+            }}
+          />
+        </Suspense>
+        {personalization.initials && (
+          <Text position={[0, 1.5, 0.3]} fontSize={personalization.size * 0.25} color={colors.stitching}>
+            {personalization.initials}
+          </Text>
+        )}
+      </group>
+    );
+  }
+
+  // Render built-in models for coat, suit, barong, pants
+  if (garment.startsWith('coat') || garment.startsWith('suit') || garment === 'barong' || garment === 'pants') {
+    // Use default model if no custom model
     if (!modelScene) return null;
     return (
       <group position={[0, 0, 0]} scale={sizeScale}>
@@ -338,6 +496,7 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
 
   // Render Barong with 3D model
   if (garment === 'barong') {
+    // Only render built-in barong, custom models are handled above
     if (!modelScene) return null;
     return (
       <group position={[0, 0, 0]} scale={sizeScale}>
@@ -352,12 +511,58 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
   }
 
   // Render Suit with 3D model
-  if (garment.startsWith('suit')) {
+  if (garment.startsWith('suit') || (garment.startsWith('custom-') && matchingCustomModel && matchingCustomModel.garment_category && matchingCustomModel.garment_category.startsWith('suit'))) {
+    // Check if there's a custom model for suit
+    if (matchingCustomModel && matchingCustomModel.file_url) {
+      const modelUrl = matchingCustomModel.file_url.startsWith('http') 
+        ? matchingCustomModel.file_url 
+        : `http://localhost:5000${matchingCustomModel.file_url}`;
+      
+      return (
+        <group position={[0, 0, 0]} scale={sizeScale}>
+          <CustomModelLoader 
+            modelUrl={modelUrl}
+            materialProps={materialProps}
+            fabricColor={fabricColor}
+            onLoad={() => {}}
+          />
+          {personalization.initials && (
+            <Text position={[0, 1.5, 0.3]} fontSize={personalization.size * 0.25} color={colors.stitching}>
+              {personalization.initials}
+            </Text>
+          )}
+        </group>
+      );
+    }
+    
     if (!modelScene) return null;
     return (
       <group position={[0, 0, 0]} scale={sizeScale}>
         <primitive object={modelScene} />
         {/* Default buttons removed - use 3D Buttons panel to add custom buttons */}
+        {personalization.initials && (
+          <Text position={[0, 1.5, 0.3]} fontSize={personalization.size * 0.25} color={colors.stitching}>
+            {personalization.initials}
+          </Text>
+        )}
+      </group>
+    );
+  }
+
+  // Render custom models that don't match any specific category
+  if (garment.startsWith('custom-') && matchingCustomModel && matchingCustomModel.file_url) {
+    const modelUrl = matchingCustomModel.file_url.startsWith('http') 
+      ? matchingCustomModel.file_url 
+      : `http://localhost:5000${matchingCustomModel.file_url}`;
+    
+    return (
+      <group position={[0, 0, 0]} scale={sizeScale}>
+        <CustomModelLoader 
+          modelUrl={modelUrl}
+          materialProps={materialProps}
+          fabricColor={fabricColor}
+          onLoad={() => {}}
+        />
         {personalization.initials && (
           <Text position={[0, 1.5, 0.3]} fontSize={personalization.size * 0.25} color={colors.stitching}>
             {personalization.initials}

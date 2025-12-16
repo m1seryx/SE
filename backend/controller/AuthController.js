@@ -91,8 +91,10 @@ exports.login = async (req, res) => {
       const isMatch = bcrypt.compareSync(password, admin.password);
       if (!isMatch) return res.status(401).json({message: "Invalid credentials"});
       
+   // Include admin ID in token - check for both admin_id and id fields
+   const adminId = admin.admin_id || admin.id;
    const token = jwt.sign(
-  { role: 'admin', username: admin.username },
+  { id: adminId, role: 'admin', username: admin.username },
   process.env.JWT_SECRET || "secret",
   { expiresIn: '24h' }
 );
@@ -101,6 +103,7 @@ exports.login = async (req, res) => {
   role: 'admin', 
   message: "Admin login successful",
   admin: {
+    id: adminId,
     username: admin.username
   }
 });

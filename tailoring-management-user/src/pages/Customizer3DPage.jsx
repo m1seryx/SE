@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Viewer3D from '../components/3d-customizer/Viewer3D';
 import CustomizationPanel from '../components/3d-customizer/CustomizationPanel';
+import { getAllCustom3DModels } from '../api/CustomizationApi';
 import '../styles/3d-App.css';
 import './Customizer3DPage.css';
 
@@ -54,8 +55,11 @@ const Customizer3DPage = () => {
   const [pantsType, setPantsType] = useState('casual-men');
   const [isRNWebView, setIsRNWebView] = useState(false);
   const [rnAuthData, setRnAuthData] = useState(null);
+  const [customModels, setCustomModels] = useState([]);
 
-  const fabrics = ['silk', 'linen', 'cotton', 'wool', 'jusi', 'Piña'];
+  // Default fabric types - these will always be available
+  const defaultFabrics = ['silk', 'linen', 'cotton', 'wool', 'jusi', 'Piña'];
+  const [fabrics, setFabrics] = useState(defaultFabrics);
   const patterns = ['none', 'minimal-stripe', 'minimal-check', 'embroidery-1', 'embroidery-2'];
 
   const coatStyle = { lapel: 'notch', buttons: 2, pocket: 'flap', vents: 'single' };
@@ -145,6 +149,57 @@ const Customizer3DPage = () => {
     const s = garment.startsWith('coat') ? coatStyle : garment === 'barong' ? barongStyle : garment.startsWith('suit') ? suitStyle : pantsStyle;
     setStyle(s);
   }, [garment]);
+
+  // Load custom 3D models
+  useEffect(() => {
+    const loadCustomModels = async () => {
+      try {
+        const result = await getAllCustom3DModels();
+        console.log('Custom 3D models loaded:', result);
+        if (result.success && result.models) {
+          console.log('Setting custom models:', result.models);
+          setCustomModels(result.models);
+        } else {
+          console.warn('No custom models found or failed to load:', result);
+        }
+      } catch (error) {
+        console.error('Error loading custom 3D models:', error);
+      }
+    };
+    loadCustomModels();
+  }, []);
+
+  // Load fabric types from API - merge with defaults (keep defaults, add new ones)
+  useEffect(() => {
+    const loadFabricTypes = async () => {
+      try {
+        const result = await getAllFabricTypes();
+        // Start with default fabrics (always keep these)
+        const fabricNames = [...defaultFabrics];
+        
+        if (result.success && result.fabrics && result.fabrics.length > 0) {
+          // Add API fabrics to defaults (convert to lowercase for compatibility)
+          result.fabrics.forEach(fabric => {
+            const fabricNameLower = fabric.fabric_name.toLowerCase();
+            // Only add if not already in defaults (avoid duplicates)
+            if (!fabricNames.includes(fabricNameLower)) {
+              fabricNames.push(fabricNameLower);
+            }
+          });
+          console.log('✅ Merged fabric types (defaults + API):', fabricNames);
+          setFabrics(fabricNames);
+        } else {
+          console.warn('⚠️ No fabric types found from API, using defaults only');
+          setFabrics(defaultFabrics);
+        }
+      } catch (error) {
+        console.error('❌ Error loading fabric types:', error);
+        // Keep defaults if API fails
+        setFabrics(defaultFabrics);
+      }
+    };
+    loadFabricTypes();
+  }, []);
 
   const handleSaveDesign = async () => {
     const summary = {
@@ -376,11 +431,12 @@ const Customizer3DPage = () => {
     navigate('/user-home');
   };
 
+
   return (
     <div className="app">
       <div className="nav">
         <button 
-          className={garment.startsWith('coat') ? 'active' : ''} 
+          className={garment.startsWith('coat') && !garment.startsWith('custom-') ? 'active' : ''} 
           onClick={() => setGarment('coat-men')}
         >
           Blazer
@@ -392,7 +448,7 @@ const Customizer3DPage = () => {
           Barong
         </button>
         <button 
-          className={garment.startsWith('suit') ? 'active' : ''} 
+          className={garment.startsWith('suit') && !garment.startsWith('custom-') ? 'active' : ''} 
           onClick={() => setGarment('suit-1')}
         >
           Suit
@@ -456,6 +512,7 @@ const Customizer3DPage = () => {
           setPantsType={setPantsType}
           style={style}
           setStyle={setStyle}
+          customModels={customModels}
         />
       </div>
 
@@ -476,6 +533,7 @@ const Customizer3DPage = () => {
           accessories={accessories}
           setAccessories={setAccessories}
           pantsType={pantsType}
+          customModels={customModels}
         />
       </div>
     </div>

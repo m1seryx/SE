@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import '../../styles/CustomizationFormModal.css';
 import '../../styles/SharedModal.css';
 import { uploadCustomizationImage, addCustomizationToCart } from '../../api/CustomizationApi';
+import { getAllFabricTypes } from '../../api/FabricTypeApi';
 
 const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const navigate = useNavigate();
@@ -20,13 +21,15 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const [estimatedPrice, setEstimatedPrice] = useState(0);
   const [designDetails, setDesignDetails] = useState(null);
 
-  // Fabric types with prices
-  const fabricTypes = {
+  // Default fabric types - these will always be available
+  const defaultFabricTypes = {
     'Cotton': 200,
     'Silk': 300,
     'Linen': 400,
     'Wool': 200
   };
+
+  const [fabricTypes, setFabricTypes] = useState(defaultFabricTypes);
 
   // Garment types with prices
   const garmentTypes = {
@@ -167,6 +170,46 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     };
     return accessoryMap[modelPath] || modelPath.split('/').pop().replace('.glb', '').replace(/\d+/g, '').trim();
   };
+
+  // Load fabric types from API - reload every time modal opens to get latest data
+  // Merge with default fabric types (defaults are kept, API fabrics are added)
+  useEffect(() => {
+    if (isOpen) {
+      const loadFabricTypes = async () => {
+        try {
+          console.log('🔄 Loading fabric types from API...');
+          const result = await getAllFabricTypes();
+          console.log('✅ Fabric types API result:', result);
+          
+          // Start with default fabric types (always keep these)
+          const fabricTypesObj = { ...defaultFabricTypes };
+          
+          if (result.success && result.fabrics && result.fabrics.length > 0) {
+            // Add API fabrics to the defaults (API fabrics will override defaults if same name)
+            result.fabrics.forEach(fabric => {
+              fabricTypesObj[fabric.fabric_name] = parseFloat(fabric.fabric_price);
+            });
+            console.log('✅ Merged fabric types (defaults + API):', fabricTypesObj);
+            console.log('✅ Total fabric types:', Object.keys(fabricTypesObj).length);
+            setFabricTypes(fabricTypesObj);
+          } else {
+            console.warn('⚠️ No fabric types found from API, using defaults only');
+            // Keep default values if API fails
+            setFabricTypes(defaultFabricTypes);
+          }
+        } catch (error) {
+          console.error('❌ Error loading fabric types:', error);
+          // Keep default values if API fails
+          setFabricTypes(defaultFabricTypes);
+        }
+      };
+      // Small delay to ensure modal is fully rendered
+      const timer = setTimeout(() => {
+        loadFabricTypes();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   // Load 3D customization data when modal opens
   useEffect(() => {
@@ -538,11 +581,15 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               disabled={loading}
             >
               <option value="">-- Select Fabric Type --</option>
-              {Object.keys(fabricTypes).map(fabric => (
-                <option key={fabric} value={fabric}>
-                  {fabric} - ₱{fabricTypes[fabric]}
-                </option>
-              ))}
+              {Object.keys(fabricTypes).length > 0 ? (
+                Object.keys(fabricTypes).sort().map(fabric => (
+                  <option key={fabric} value={fabric}>
+                    {fabric} - ₱{fabricTypes[fabric].toFixed(2)}
+                  </option>
+                ))
+              ) : (
+                <option value="" disabled>Loading fabric types...</option>
+              )}
             </select>
             {errors.fabricType && (
               <span className="error-message-shared">{errors.fabricType}</span>

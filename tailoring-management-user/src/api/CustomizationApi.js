@@ -171,3 +171,109 @@ export async function addCustomizationToCart(customizationData) {
     };
   }
 }
+
+// Upload GLB file (admin)
+export async function uploadGLBFile(file, modelData) {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error('No token found in localStorage');
+      return {
+        success: false,
+        message: 'Authentication required. Please log in again.'
+      };
+    }
+
+    console.log('Uploading GLB file:', {
+      fileName: file.name,
+      fileSize: file.size,
+      modelName: modelData.model_name,
+      hasToken: !!token
+    });
+
+    const formData = new FormData();
+    formData.append('glbFile', file);
+    formData.append('model_name', modelData.model_name);
+    formData.append('model_type', modelData.model_type || 'garment');
+    if (modelData.garment_category) formData.append('garment_category', modelData.garment_category);
+    if (modelData.description) formData.append('description', modelData.description);
+
+    const response = await axios.post(`${BASE_URL}/customization/upload-glb`, formData, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+        // Don't set Content-Type - axios will set it automatically with boundary for FormData
+      },
+      // Increase timeout for large files
+      timeout: 60000 // 60 seconds
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Upload GLB file error:", error);
+    console.error("Error response:", error.response?.data);
+    console.error("Error status:", error.response?.status);
+    
+    // Handle authentication errors
+    if (error.response?.status === 401) {
+      return {
+        success: false,
+        message: 'Authentication failed. Please log in again.',
+        requiresAuth: true
+      };
+    }
+    
+    return {
+      success: false,
+      message: error.response?.data?.message || error.message || "Error uploading GLB file"
+    };
+  }
+}
+
+// Get all custom 3D models
+export async function getAllCustom3DModels() {
+  try {
+    const response = await axios.get(`${BASE_URL}/customization/custom-models`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Get custom 3D models error:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Error fetching custom 3D models",
+      models: []
+    };
+  }
+}
+
+// Get custom 3D models by type
+export async function getCustom3DModelsByType(type) {
+  try {
+    const response = await axios.get(`${BASE_URL}/customization/custom-models/type/${type}`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Get custom 3D models by type error:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Error fetching custom 3D models",
+      models: []
+    };
+  }
+}
+
+// Delete custom 3D model
+export async function deleteCustom3DModel(modelId) {
+  try {
+    const response = await axios.delete(`${BASE_URL}/customization/custom-models/${modelId}`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Delete custom 3D model error:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Error deleting custom 3D model"
+    };
+  }
+}
