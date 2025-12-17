@@ -355,7 +355,7 @@ exports.getDashboardOverview = async (req, res) => {
     const revenueInfo =
       yesterdayRevenue === 0
         ? ''
-        : `${revenueDiff >= 0 ? '+' : ''}₱${Math.abs(revenueDiff).toFixed(2)} vs yesterday`;
+        : `${revenueDiff >= 0 ? '+' : ''}₱${Math.abs(revenueDiff).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} vs yesterday`;
 
     const currentMonthRevenue = Number(currentMonthRevenueRows[0]?.total || 0);
     const previousMonthRevenue = Number(previousMonthRevenueRows[0]?.total || 0);
@@ -363,6 +363,14 @@ exports.getDashboardOverview = async (req, res) => {
     if (previousMonthRevenue > 0) {
       growthPercent = ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100;
     }
+
+    // Helper function to format money with 2 decimal places and commas
+    const formatMoney = (amount) => {
+      return amount.toLocaleString('en-PH', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    };
 
     const stats = [
       {
@@ -382,7 +390,7 @@ exports.getDashboardOverview = async (req, res) => {
       },
       {
         title: 'Daily Revenue',
-        number: `₱${todayRevenue.toFixed(2)}`,
+        number: `₱${formatMoney(todayRevenue)}`,
         info: revenueInfo
       },
       {
@@ -392,7 +400,7 @@ exports.getDashboardOverview = async (req, res) => {
       },
       {
         title: 'Monthly Revenue',
-        number: `₱${currentMonthRevenue.toFixed(2)}`,
+        number: `₱${formatMoney(currentMonthRevenue)}`,
         info: 'Current month total'
       }
     ];

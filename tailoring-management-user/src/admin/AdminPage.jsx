@@ -106,101 +106,6 @@ function AdminPage() {
           <h2>Dashboard Overview</h2>
         </div>
 
-        {/* Filters */}
-        <div style={{ 
-          display: 'flex', 
-          gap: '15px', 
-          marginBottom: '20px',
-          flexWrap: 'wrap',
-          alignItems: 'center'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label style={{ fontWeight: '500', fontSize: '14px' }}>Service:</label>
-            <select 
-              value={serviceFilter} 
-              onChange={(e) => setServiceFilter(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '5px',
-                border: '1px solid #ddd',
-                fontSize: '14px',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="all">All Services</option>
-              <option value="repair">Repair</option>
-              <option value="dry">Dry Cleaning</option>
-              <option value="custom">Customization</option>
-              <option value="rental">Rental</option>
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label style={{ fontWeight: '500', fontSize: '14px' }}>Status:</label>
-            <select 
-              value={statusFilter} 
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '5px',
-                border: '1px solid #ddd',
-                fontSize: '14px',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="all">All Statuses</option>
-              <option value="payment">💳 Payments</option>
-              <option value="pending">Pending</option>
-              <option value="accepted">Accepted</option>
-              <option value="in-progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label style={{ fontWeight: '500', fontSize: '14px' }}>Date:</label>
-            <select 
-              value={dateFilter} 
-              onChange={(e) => setDateFilter(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '5px',
-                border: '1px solid #ddd',
-                fontSize: '14px',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="all">All Time</option>
-              <option value="today">Today</option>
-              <option value="week">Last 7 Days</option>
-              <option value="month">Last 30 Days</option>
-            </select>
-          </div>
-
-          {(serviceFilter !== 'all' || statusFilter !== 'all' || dateFilter !== 'all') && (
-            <button
-              onClick={() => {
-                setServiceFilter('all');
-                setStatusFilter('all');
-                setDateFilter('all');
-              }}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '5px',
-                border: '1px solid #dc3545',
-                backgroundColor: '#fff',
-                color: '#dc3545',
-                fontSize: '14px',
-                cursor: 'pointer',
-                fontWeight: '500'
-              }}
-            >
-              Clear Filters
-            </button>
-          )}
-        </div>
-
         {error && (
           <div className="error-message">
             <p>Error: {error}</p>
@@ -220,6 +125,29 @@ function AdminPage() {
                 {stat.info && <small>{stat.info}</small>}
               </div>
             ))
+          )}
+        </div>
+
+        {/* Filter Tabs - Single Horizontal Line */}
+        <div className="filter-tabs-inline">
+          <button className={`filter-tab-sm ${serviceFilter === 'all' ? 'active' : ''}`} onClick={() => setServiceFilter('all')}>All</button>
+          <button className={`filter-tab-sm ${serviceFilter === 'repair' ? 'active' : ''}`} onClick={() => setServiceFilter('repair')}>Repair</button>
+          <button className={`filter-tab-sm ${serviceFilter === 'dry' ? 'active' : ''}`} onClick={() => setServiceFilter('dry')}>Dry Clean</button>
+          <button className={`filter-tab-sm ${serviceFilter === 'custom' ? 'active' : ''}`} onClick={() => setServiceFilter('custom')}>Custom</button>
+          <button className={`filter-tab-sm ${serviceFilter === 'rental' ? 'active' : ''}`} onClick={() => setServiceFilter('rental')}>Rental</button>
+          <span className="filter-divider">|</span>
+          <button className={`filter-tab-sm ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>All Status</button>
+          <button className={`filter-tab-sm ${statusFilter === 'payment' ? 'active' : ''}`} onClick={() => setStatusFilter('payment')}>💳 Paid</button>
+          <button className={`filter-tab-sm ${statusFilter === 'pending' ? 'active' : ''}`} onClick={() => setStatusFilter('pending')}>Pending</button>
+          <button className={`filter-tab-sm ${statusFilter === 'in-progress' ? 'active' : ''}`} onClick={() => setStatusFilter('in-progress')}>In Progress</button>
+          <button className={`filter-tab-sm ${statusFilter === 'completed' ? 'active' : ''}`} onClick={() => setStatusFilter('completed')}>Completed</button>
+          <span className="filter-divider">|</span>
+          <button className={`filter-tab-sm ${dateFilter === 'all' ? 'active' : ''}`} onClick={() => setDateFilter('all')}>All Time</button>
+          <button className={`filter-tab-sm ${dateFilter === 'today' ? 'active' : ''}`} onClick={() => setDateFilter('today')}>Today</button>
+          <button className={`filter-tab-sm ${dateFilter === 'week' ? 'active' : ''}`} onClick={() => setDateFilter('week')}>7 Days</button>
+          <button className={`filter-tab-sm ${dateFilter === 'month' ? 'active' : ''}`} onClick={() => setDateFilter('month')}>30 Days</button>
+          {(serviceFilter !== 'all' || statusFilter !== 'all' || dateFilter !== 'all') && (
+            <button className="clear-btn-sm" onClick={() => { setServiceFilter('all'); setStatusFilter('all'); setDateFilter('all'); }}>✕</button>
           )}
         </div>
 
