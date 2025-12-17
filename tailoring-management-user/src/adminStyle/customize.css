@@ -1023,7 +1023,7 @@ tbody tr.clickable-row:active {
 
 .btn-save {
   padding: 10px 20px;
-  background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+  background: #2196f3;
   color: white;
   border: none;
   border-radius: 8px;
@@ -1031,11 +1031,11 @@ tbody tr.clickable-row:active {
   font-size: 14px;
   font-weight: 600;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.3);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
 }
 
 .btn-save:hover {
-  background: linear-gradient(135deg, #A0522D 0%, #8B4513 100%);
+  background: #1976d2;
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(139, 69, 19, 0.4);
 }

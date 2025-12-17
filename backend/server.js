@@ -93,6 +93,7 @@ const customerRoutes = require('./routes/CustomerRoutes');
 const appointmentSlotRoutes = require('./routes/AppointmentSlotRoutes');
 const transactionLogRoutes = require('./routes/TransactionLogRoutes');
 const fabricTypeRoutes = require('./routes/FabricTypeRoutes');
+const garmentTypeRoutes = require('./routes/GarmentTypeRoutes');
 
 app.use('/api', authRoutes);
 app.use('/api/rentals', rentalRoutes);
@@ -111,6 +112,9 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/appointments', appointmentSlotRoutes);
 app.use('/api/transaction-logs', transactionLogRoutes);
 app.use('/api/fabric-types', fabricTypeRoutes);
+app.use('/api/garment-types', garmentTypeRoutes);
+const repairGarmentTypeRoutes = require('./routes/RepairGarmentTypeRoutes');
+app.use('/api/repair-garment-types', repairGarmentTypeRoutes);
 
 
 // Initialize date reminder service (runs on startup and can be scheduled)

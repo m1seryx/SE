@@ -643,6 +643,7 @@
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   padding: 16px;
+  text-align: center;
 }
 
 .service-details h4 {
@@ -651,13 +652,15 @@
   font-size: 1.1rem;
   border-bottom: 2px solid #8B4513;
   padding-bottom: 8px;
+  text-align: center;
 }
 
 .detail-row {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
   margin-bottom: 12px;
+  gap: 4px;
 }
 
 .detail-row:last-child {
@@ -667,14 +670,12 @@
 .detail-label {
   font-weight: 600;
   color: #333;
-  min-width: 120px;
-  flex-shrink: 0;
+  text-align: center;
 }
 
 .detail-value {
   color: #666;
-  text-align: right;
-  flex: 1;
+  text-align: center;
   word-break: break-word;
 }
 

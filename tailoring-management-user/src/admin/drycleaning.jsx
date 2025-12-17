@@ -5,6 +5,7 @@ import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
 import { getAllDryCleaningOrders, updateDryCleaningOrderItem } from '../api/DryCleaningOrderApi';
 import { getUserRole } from '../api/AuthApi';
+import { getAllGarmentTypesAdmin, createGarmentType, updateGarmentType, deleteGarmentType } from '../api/GarmentTypeApi';
 
 // Helper to check if user is authenticated
 const isAuthenticated = () => {
@@ -36,6 +37,18 @@ const DryCleaning = () => {
  
   // Toast notification state
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  // Garment type management state
+  const [garmentTypes, setGarmentTypes] = useState([]);
+  const [loadingGarmentTypes, setLoadingGarmentTypes] = useState(false);
+  const [showGarmentTypeModal, setShowGarmentTypeModal] = useState(false);
+  const [editingGarmentType, setEditingGarmentType] = useState(null);
+  const [garmentTypeForm, setGarmentTypeForm] = useState({
+    garment_name: '',
+    garment_price: '',
+    description: '',
+    is_active: 1
+  });
 
 
   const showToast = (message, type = 'success') => {
@@ -71,7 +84,102 @@ const DryCleaning = () => {
       navigate('/');
       return;
     }
+    loadGarmentTypes();
   }, [navigate]);
+
+  // Load garment types
+  const loadGarmentTypes = async () => {
+    setLoadingGarmentTypes(true);
+    try {
+      const result = await getAllGarmentTypesAdmin();
+      if (result.success) {
+        setGarmentTypes(result.garments || []);
+      } else {
+        showToast(result.message || 'Failed to load garment types', 'error');
+      }
+    } catch (err) {
+      console.error("Load garment types error:", err);
+      showToast('Failed to load garment types', 'error');
+    } finally {
+      setLoadingGarmentTypes(false);
+    }
+  };
+
+  // Handle garment type form submit
+  const handleGarmentTypeSubmit = async () => {
+    if (!garmentTypeForm.garment_name.trim()) {
+      showToast('Please enter a garment name', 'error');
+      return;
+    }
+    if (!garmentTypeForm.garment_price || isNaN(parseFloat(garmentTypeForm.garment_price))) {
+      showToast('Please enter a valid price', 'error');
+      return;
+    }
+
+    try {
+      let result;
+      if (editingGarmentType) {
+        result = await updateGarmentType(editingGarmentType.garment_id, garmentTypeForm);
+      } else {
+        result = await createGarmentType(garmentTypeForm);
+      }
+      
+      if (result.success) {
+        showToast(editingGarmentType ? 'Garment type updated successfully!' : 'Garment type created successfully!', 'success');
+        setShowGarmentTypeModal(false);
+        setGarmentTypeForm({ garment_name: '', garment_price: '', description: '', is_active: 1 });
+        setEditingGarmentType(null);
+        await loadGarmentTypes();
+      } else {
+        showToast(result.message || 'Failed to save garment type', 'error');
+      }
+    } catch (err) {
+      console.error("Save garment type error:", err);
+      showToast('Failed to save garment type', 'error');
+    }
+  };
+
+  // Handle delete garment type
+  const handleDeleteGarmentType = async (garmentId) => {
+    openConfirmModal("Are you sure you want to delete this garment type? This action cannot be undone.", async () => {
+      try {
+        const result = await deleteGarmentType(garmentId);
+        if (result.success) {
+          showToast('Garment type deleted successfully', 'success');
+          // Immediately remove from list (optimistic update)
+          setGarmentTypes(prevGarments => prevGarments.filter(garment => garment.garment_id !== garmentId));
+          // Also reload from server to ensure consistency
+          await loadGarmentTypes();
+        } else {
+          showToast(result.message || 'Failed to delete garment type', 'error');
+        }
+      } catch (err) {
+        console.error("Delete garment type error:", err);
+        showToast('Failed to delete garment type', 'error');
+        // Reload on error to restore correct state
+        await loadGarmentTypes();
+      }
+    });
+  };
+
+  // Open garment type modal for editing
+  const openEditGarmentType = (garment) => {
+    setEditingGarmentType(garment);
+    setGarmentTypeForm({
+      garment_name: garment.garment_name,
+      garment_price: garment.garment_price,
+      description: garment.description || '',
+      is_active: garment.is_active
+    });
+    setShowGarmentTypeModal(true);
+  };
+
+  // Open garment type modal for creating new
+  const openNewGarmentType = () => {
+    setEditingGarmentType(null);
+    setGarmentTypeForm({ garment_name: '', garment_price: '', description: '', is_active: 1 });
+    setShowGarmentTypeModal(true);
+  };
 
 
   // Helper function for status styling
@@ -401,6 +509,23 @@ const DryCleaning = () => {
             <h2>Dry Cleaning Management</h2>
             <p>Track and manage all dry cleaning orders</p>
           </div>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <button
+              onClick={openNewGarmentType}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#2196f3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              + Add Garment Type
+            </button>
+          </div>
           {error && <div className="error-message" style={{ color: 'red', marginBottom: '20px' }}>{error}</div>}
         </div>
 
@@ -692,7 +817,7 @@ const DryCleaning = () => {
 
       {/* Confirmation Modal */}
       {showConfirmModal && (
-        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowConfirmModal(false)}>
+        <div className="modal-overlay confirm-overlay active" onClick={(e) => e.target === e.currentTarget && setShowConfirmModal(false)}>
           <div className="confirm-modal">
             <div className="confirm-icon">
               <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E74C3C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -728,6 +853,164 @@ const DryCleaning = () => {
             </svg>
           )}
           <span>{toast.message}</span>
+        </div>
+      )}
+
+      {/* Garment Type Modal */}
+      {showGarmentTypeModal && (
+        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowGarmentTypeModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-header">
+              <h2>{editingGarmentType ? 'Edit Garment Type' : 'Add Garment Type'}</h2>
+              <span className="close-modal" onClick={() => {
+                setShowGarmentTypeModal(false);
+                setEditingGarmentType(null);
+                setGarmentTypeForm({ garment_name: '', garment_price: '', description: '', is_active: 1 });
+              }}>×</span>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Garment Name *</label>
+                <input
+                  type="text"
+                  value={garmentTypeForm.garment_name}
+                  onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, garment_name: e.target.value })}
+                  placeholder="e.g., Barong, Suits, Coat, Trousers"
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Price (₱) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={garmentTypeForm.garment_price}
+                  onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, garment_price: e.target.value })}
+                  placeholder="0.00"
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Description</label>
+                <textarea
+                  value={garmentTypeForm.description}
+                  onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, description: e.target.value })}
+                  placeholder="Optional description..."
+                  rows={3}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={garmentTypeForm.is_active === 1}
+                    onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, is_active: e.target.checked ? 1 : 0 })}
+                    style={{ marginRight: '8px' }}
+                  />
+                  Active (Show in dropdowns)
+                </label>
+              </div>
+
+              {/* List of existing garment types */}
+              {garmentTypes.length > 0 && (
+                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee' }}>
+                  <h3 style={{ fontSize: '16px', marginBottom: '15px' }}>Existing Garment Types ({garmentTypes.length})</h3>
+                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    {garmentTypes.map(garment => (
+                      <div 
+                        key={garment.garment_id} 
+                        style={{ 
+                          padding: '10px', 
+                          marginBottom: '8px', 
+                          backgroundColor: garment.is_active ? '#f9f9f9' : '#ffebee', 
+                          borderRadius: '4px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          border: garment.is_active ? '1px solid #ddd' : '1px solid #ffcdd2'
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <strong>{garment.garment_name}</strong>
+                          <div style={{ fontSize: '0.85em', color: '#666', marginTop: '4px' }}>
+                            Price: ₱{parseFloat(garment.garment_price).toFixed(2)}
+                            {garment.description && ` | ${garment.description}`}
+                            {!garment.is_active && <span style={{ color: '#f44336', marginLeft: '8px' }}>(Inactive)</span>}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => openEditGarmentType(garment)}
+                            className="garment-edit-btn"
+                            style={{
+                              padding: '6px 12px',
+                              backgroundColor: '#2196f3',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '500',
+                              boxShadow: 'none'
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteGarmentType(garment.garment_id)}
+                            className="garment-delete-btn"
+                            style={{
+                              padding: '6px 12px',
+                              backgroundColor: '#f44336',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '500',
+                              boxShadow: 'none'
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => {
+                setShowGarmentTypeModal(false);
+                setEditingGarmentType(null);
+                setGarmentTypeForm({ garment_name: '', garment_price: '', description: '', is_active: 1 });
+              }}>Cancel</button>
+              <button
+                onClick={handleGarmentTypeSubmit}
+                disabled={!garmentTypeForm.garment_name.trim() || !garmentTypeForm.garment_price || isNaN(parseFloat(garmentTypeForm.garment_price))}
+                style={{ 
+                  opacity: (!garmentTypeForm.garment_name.trim() || !garmentTypeForm.garment_price || isNaN(parseFloat(garmentTypeForm.garment_price))) ? 0.6 : 1,
+                  padding: '10px 20px',
+                  backgroundColor: '#2196f3',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  boxShadow: 'none'
+                }}
+              >
+                {editingGarmentType ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

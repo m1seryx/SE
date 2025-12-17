@@ -821,7 +821,16 @@ const Profile = () => {
 
         const cleaningServiceName = specific_data.serviceName || 'N/A';
         const cleaningQuantity = specific_data.quantity || 1;
-        const dryCleaningEstimatedPrice = specific_data.finalPrice || getDryCleaningEstimatedPrice(cleaningServiceName, cleaningQuantity);
+        // Use the actual final_price from the item, or calculate from pricePerItem, or fallback to old formula
+        let dryCleaningPrice = parseFloat(item.final_price) || 0;
+        if (!dryCleaningPrice && specific_data?.pricePerItem) {
+          const pricePerItem = parseFloat(specific_data.pricePerItem) || 0;
+          const quantity = parseInt(cleaningQuantity) || 1;
+          dryCleaningPrice = pricePerItem * quantity;
+        }
+        if (!dryCleaningPrice) {
+          dryCleaningPrice = specific_data.finalPrice || getDryCleaningEstimatedPrice(cleaningServiceName, cleaningQuantity);
+        }
         const dryCleaningEstimatedTime = specific_data.estimatedTime || getDryCleaningEstimatedTime(cleaningServiceName);
 
         return (
@@ -852,6 +861,10 @@ const Profile = () => {
               <span className="detail-value">{formatServiceName(cleaningServiceName)}</span>
             </div>
             <div className="detail-row">
+              <span className="detail-label">Garment Type:</span>
+              <span className="detail-value">{specific_data.garmentType ? (specific_data.garmentType.charAt(0).toUpperCase() + specific_data.garmentType.slice(1)) : 'N/A'}</span>
+            </div>
+            <div className="detail-row">
               <span className="detail-label">Brand:</span>
               <span className="detail-value">{specific_data.brand || 'N/A'}</span>
             </div>
@@ -868,8 +881,10 @@ const Profile = () => {
               <span className="detail-value">{formatDateTo12Hour(specific_data.pickupDate)}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">Estimated Price:</span>
-              <span className="detail-value">₱{dryCleaningEstimatedPrice}</span>
+              <span className="detail-label">
+                {specific_data?.isEstimatedPrice === true ? 'Estimated Price:' : 'Final Price:'}
+              </span>
+              <span className="detail-value">₱{dryCleaningPrice.toFixed(2)}</span>
             </div>
           </div>
         );
@@ -1014,10 +1029,21 @@ const Profile = () => {
       };
       return prices[damageLevel] || 0;
     } else if (serviceType === 'dry_cleaning') {
-      // Calculate estimated price for dry cleaning
-      // Formula: base_price + (price_per_item * quantity)
+      // First check if finalPrice is stored (this is the actual price from garment type)
+      if (specificData?.finalPrice) {
+        return parseFloat(specificData.finalPrice) || 0;
+      }
+      
+      // If pricePerItem is stored, calculate: pricePerItem * quantity
+      if (specificData?.pricePerItem) {
+        const pricePerItem = parseFloat(specificData.pricePerItem) || 0;
+        const quantity = parseInt(specificData?.quantity) || 1;
+        return pricePerItem * quantity;
+      }
+      
+      // Fallback to old formula only if neither exists (for backward compatibility)
       const serviceName = specificData?.serviceName || '';
-      const quantity = specificData?.quantity || 1;
+      const quantity = parseInt(specificData?.quantity) || 1;
 
       const basePrices = {
         'Basic Dry Cleaning': 200,
@@ -1149,27 +1175,14 @@ const Profile = () => {
       });
     });
 
-    // Sort: pending orders first, then by order date (newest first)
+    // Sort by most recently updated or newly booked (newest first)
     allItems.sort((a, b) => {
-      // Priority order for statuses (lower number = higher priority)
-      const statusPriority = {
-        'pending': 0,
-        'price_confirmation': 1,
-        'in_progress': 2,
-        'ready_to_pickup': 3,
-        'completed': 4,
-        'cancelled': 5
-      };
+      // Use status_updated_at if available (most recent updates), otherwise use order_date (new bookings)
+      const dateA = a.status_updated_at ? new Date(a.status_updated_at) : new Date(a.order_date);
+      const dateB = b.status_updated_at ? new Date(b.status_updated_at) : new Date(b.order_date);
       
-      const priorityA = statusPriority[a.status] ?? 99;
-      const priorityB = statusPriority[b.status] ?? 99;
-      
-      if (priorityA !== priorityB) {
-        return priorityA - priorityB;
-      }
-      
-      // If same status, sort by date (newest first)
-      return new Date(b.order_date) - new Date(a.order_date);
+      // Sort by most recent first (newest at top)
+      return dateB - dateA;
     });
 
     return allItems;
@@ -1302,60 +1315,92 @@ const Profile = () => {
 
         <h2 className="section-title">Order Tracking</h2>
 
-        {/* Filters Row with Dropdowns */}
-        <div className="filters-row" style={{ display: 'flex', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' }}>
-          {/* Service Filter Dropdown */}
-          <div className="filter-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <label htmlFor="service-filter" style={{ fontWeight: 'bold', color: '#333' }}>Service:</label>
-            <select
-              id="service-filter"
-              value={serviceFilter}
-              onChange={(e) => setServiceFilter(e.target.value)}
-              className="filter-dropdown"
-              style={{
-                padding: '10px 15px',
-                borderRadius: '8px',
-                border: '1px solid #ddd',
-                backgroundColor: '#fff',
-                fontSize: '14px',
-                cursor: 'pointer',
-                minWidth: '180px'
-              }}
-            >
-              <option value="all">All Services ({getServiceCounts().all})</option>
-              <option value="repair">Repair ({getServiceCounts().repair})</option>
-              <option value="customize">Customize ({getServiceCounts().customize})</option>
-              <option value="dry_cleaning">Dry Cleaning ({getServiceCounts().dry_cleaning})</option>
-              <option value="rental">Rental ({getServiceCounts().rental})</option>
-            </select>
+        {/* Filter Tabs */}
+        <div style={{ marginBottom: '30px' }}>
+          {/* Service Filter Tabs */}
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '10px', fontWeight: 'bold', color: '#333', fontSize: '14px' }}>Service Type:</div>
+            <div className="status-filters">
+              <button
+                className={`filter-btn ${serviceFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setServiceFilter('all')}
+              >
+                All ({getServiceCounts().all})
+              </button>
+              <button
+                className={`filter-btn ${serviceFilter === 'repair' ? 'active' : ''}`}
+                onClick={() => setServiceFilter('repair')}
+              >
+                Repair ({getServiceCounts().repair})
+              </button>
+              <button
+                className={`filter-btn ${serviceFilter === 'customize' ? 'active' : ''}`}
+                onClick={() => setServiceFilter('customize')}
+              >
+                Customize ({getServiceCounts().customize})
+              </button>
+              <button
+                className={`filter-btn ${serviceFilter === 'dry_cleaning' ? 'active' : ''}`}
+                onClick={() => setServiceFilter('dry_cleaning')}
+              >
+                Dry Cleaning ({getServiceCounts().dry_cleaning})
+              </button>
+              <button
+                className={`filter-btn ${serviceFilter === 'rental' ? 'active' : ''}`}
+                onClick={() => setServiceFilter('rental')}
+              >
+                Rental ({getServiceCounts().rental})
+              </button>
+            </div>
           </div>
 
-          {/* Status Filter Dropdown */}
-          <div className="filter-group" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <label htmlFor="status-filter" style={{ fontWeight: 'bold', color: '#333' }}>Status:</label>
-            <select
-              id="status-filter"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="filter-dropdown"
-              style={{
-                padding: '10px 15px',
-                borderRadius: '8px',
-                border: '1px solid #ddd',
-                backgroundColor: '#fff',
-                fontSize: '14px',
-                cursor: 'pointer',
-                minWidth: '200px'
-              }}
-            >
-              <option value="all">All Status ({getStatusCounts().all})</option>
-              <option value="pending">Pending ({getStatusCounts().pending})</option>
-              <option value="price_confirmation">Price Confirmation ({getStatusCounts().price_confirmation})</option>
-              <option value="in_progress">In Progress ({getStatusCounts().in_progress})</option>
-              <option value="ready_to_pickup">Ready to Pickup ({getStatusCounts().ready_to_pickup})</option>
-              <option value="completed">Completed ({getStatusCounts().completed})</option>
-              <option value="cancelled">Cancelled ({getStatusCounts().cancelled})</option>
-            </select>
+          {/* Status Filter Tabs */}
+          <div>
+            <div style={{ marginBottom: '10px', fontWeight: 'bold', color: '#333', fontSize: '14px' }}>Status:</div>
+            <div className="status-filters">
+              <button
+                className={`filter-btn ${statusFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('all')}
+              >
+                All ({getStatusCounts().all})
+              </button>
+              <button
+                className={`filter-btn ${statusFilter === 'pending' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('pending')}
+              >
+                Pending ({getStatusCounts().pending})
+              </button>
+              <button
+                className={`filter-btn ${statusFilter === 'price_confirmation' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('price_confirmation')}
+              >
+                Price Confirmation ({getStatusCounts().price_confirmation})
+              </button>
+              <button
+                className={`filter-btn ${statusFilter === 'in_progress' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('in_progress')}
+              >
+                In Progress ({getStatusCounts().in_progress})
+              </button>
+              <button
+                className={`filter-btn ${statusFilter === 'ready_to_pickup' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('ready_to_pickup')}
+              >
+                Ready to Pickup ({getStatusCounts().ready_to_pickup})
+              </button>
+              <button
+                className={`filter-btn ${statusFilter === 'completed' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('completed')}
+              >
+                Completed ({getStatusCounts().completed})
+              </button>
+              <button
+                className={`filter-btn ${statusFilter === 'cancelled' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('cancelled')}
+              >
+                Cancelled ({getStatusCounts().cancelled})
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1453,13 +1498,38 @@ const Profile = () => {
                             </div>
                           </>
                         ) : item.status === 'pending' ? (
-                          // For pending status, only show estimated price if available
-                          estimatedPrice > 0 ? (
-                            <div className="price-row">
-                              <span className="price-label">Estimated Price:</span>
-                              <span className="price-value estimated">₱{estimatedPrice.toFixed(2)}</span>
-                            </div>
-                          ) : null
+                          // For pending status, check if it's an estimated price (for dry cleaning with "others" option)
+                          (() => {
+                            const isDryCleaning = item.service_type === 'dry_cleaning' || item.service_type === 'drycleaning';
+                            const isEstimated = item.specific_data?.isEstimatedPrice === true;
+                            
+                            // For dry cleaning: show "Estimated Price" if isEstimatedPrice is true, otherwise "Final Price"
+                            if (isDryCleaning) {
+                              if (isEstimated) {
+                                return (
+                                  <div className="price-row">
+                                    <span className="price-label">Estimated Price:</span>
+                                    <span className="price-value estimated">₱{estimatedPrice.toFixed(2)}</span>
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <div className="price-row">
+                                    <span className="price-label">Final Price:</span>
+                                    <span className="price-value final">₱{parseFloat(item.final_price).toFixed(2)}</span>
+                                  </div>
+                                );
+                              }
+                            }
+                            
+                            // For other services, show estimated price if available
+                            return estimatedPrice > 0 ? (
+                              <div className="price-row">
+                                <span className="price-label">Estimated Price:</span>
+                                <span className="price-value estimated">₱{estimatedPrice.toFixed(2)}</span>
+                              </div>
+                            ) : null;
+                          })()
                         ) : item.status === 'price_confirmation' && estimatedPrice > 0 ? (
                           // For price_confirmation status, show both estimated and final price
                           <>
@@ -1482,11 +1552,29 @@ const Profile = () => {
                             )}
                           </>
                         ) : (
-                          // For other statuses (accepted, in_progress, etc.), show final price
-                          <div className="price-row">
-                            <span className="price-label">Final Price:</span>
-                            <span className="price-value final">₱{parseFloat(item.final_price).toFixed(2)}</span>
-                          </div>
+                          // For other statuses (accepted, in_progress, etc.)
+                          (() => {
+                            const isDryCleaning = item.service_type === 'dry_cleaning' || item.service_type === 'drycleaning';
+                            const isEstimated = item.specific_data?.isEstimatedPrice === true;
+                            
+                            // For dry cleaning: show "Estimated Price" if isEstimatedPrice is true, otherwise "Final Price"
+                            if (isDryCleaning && isEstimated) {
+                              return (
+                                <div className="price-row">
+                                  <span className="price-label">Estimated Price:</span>
+                                  <span className="price-value estimated">₱{parseFloat(item.final_price).toFixed(2)}</span>
+                                </div>
+                              );
+                            }
+                            
+                            // For other services or dry cleaning with specific garment type, show final price
+                            return (
+                              <div className="price-row">
+                                <span className="price-label">Final Price:</span>
+                                <span className="price-value final">₱{parseFloat(item.final_price).toFixed(2)}</span>
+                              </div>
+                            );
+                          })()
                         )}
                       </div>
                     )}

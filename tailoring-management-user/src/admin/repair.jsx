@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import { getAllRepairOrders, getRepairOrdersByStatus, updateRepairOrderItem } from '../api/RepairOrderApi';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 import { useAlert } from '../context/AlertContext';
+import { getAllRepairGarmentTypesAdmin, createRepairGarmentType, updateRepairGarmentType, deleteRepairGarmentType } from '../api/RepairGarmentTypeApi';
 
 const Repair = () => {
   const { alert, confirm } = useAlert();
@@ -28,6 +29,17 @@ const Repair = () => {
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState('');
   const [previewImageAlt, setPreviewImageAlt] = useState('');
+
+  // Repair garment type management state
+  const [repairGarmentTypes, setRepairGarmentTypes] = useState([]);
+  const [loadingRepairGarmentTypes, setLoadingRepairGarmentTypes] = useState(false);
+  const [showRepairGarmentTypeModal, setShowRepairGarmentTypeModal] = useState(false);
+  const [editingRepairGarmentType, setEditingRepairGarmentType] = useState(null);
+  const [repairGarmentTypeForm, setRepairGarmentTypeForm] = useState({
+    garment_name: '',
+    description: '',
+    is_active: 1
+  });
 
   const openImagePreview = (url, alt) => {
     setPreviewImageUrl(url);
@@ -129,7 +141,95 @@ const Repair = () => {
   // Load repair orders on component mount
   useEffect(() => {
     loadRepairOrders();
+    loadRepairGarmentTypes();
   }, []);
+
+  // Load repair garment types
+  const loadRepairGarmentTypes = async () => {
+    setLoadingRepairGarmentTypes(true);
+    try {
+      const result = await getAllRepairGarmentTypesAdmin();
+      if (result.success) {
+        setRepairGarmentTypes(result.garments || []);
+      } else {
+        alert(result.message || 'Failed to load repair garment types', 'Error');
+      }
+    } catch (err) {
+      console.error("Load repair garment types error:", err);
+      alert('Failed to load repair garment types', 'Error');
+    } finally {
+      setLoadingRepairGarmentTypes(false);
+    }
+  };
+
+  // Handle repair garment type form submit
+  const handleRepairGarmentTypeSubmit = async () => {
+    if (!repairGarmentTypeForm.garment_name.trim()) {
+      alert('Please enter a garment name', 'Error');
+      return;
+    }
+
+    try {
+      let result;
+      if (editingRepairGarmentType) {
+        result = await updateRepairGarmentType(editingRepairGarmentType.repair_garment_id, repairGarmentTypeForm);
+      } else {
+        result = await createRepairGarmentType(repairGarmentTypeForm);
+      }
+      
+      if (result.success) {
+        alert(editingRepairGarmentType ? 'Repair garment type updated successfully!' : 'Repair garment type created successfully!', 'Success');
+        setShowRepairGarmentTypeModal(false);
+        setRepairGarmentTypeForm({ garment_name: '', description: '', is_active: 1 });
+        setEditingRepairGarmentType(null);
+        await loadRepairGarmentTypes();
+      } else {
+        alert(result.message || 'Failed to save repair garment type', 'Error');
+      }
+    } catch (err) {
+      console.error("Save repair garment type error:", err);
+      alert('Failed to save repair garment type', 'Error');
+    }
+  };
+
+  // Handle delete repair garment type
+  const handleDeleteRepairGarmentType = async (garmentId) => {
+    const confirmed = await confirm("Are you sure you want to delete this repair garment type? This action cannot be undone.");
+    if (!confirmed) return;
+
+    try {
+      const result = await deleteRepairGarmentType(garmentId);
+      if (result.success) {
+        alert('Repair garment type deleted successfully', 'Success');
+        setRepairGarmentTypes(prevGarments => prevGarments.filter(garment => garment.repair_garment_id !== garmentId));
+        await loadRepairGarmentTypes();
+      } else {
+        alert(result.message || 'Failed to delete repair garment type', 'Error');
+      }
+    } catch (err) {
+      console.error("Delete repair garment type error:", err);
+      alert('Failed to delete repair garment type', 'Error');
+      await loadRepairGarmentTypes();
+    }
+  };
+
+  // Open repair garment type modal for editing
+  const openEditRepairGarmentType = (garment) => {
+    setEditingRepairGarmentType(garment);
+    setRepairGarmentTypeForm({
+      garment_name: garment.garment_name,
+      description: garment.description || '',
+      is_active: garment.is_active
+    });
+    setShowRepairGarmentTypeModal(true);
+  };
+
+  // Open repair garment type modal for creating new
+  const openNewRepairGarmentType = () => {
+    setEditingRepairGarmentType(null);
+    setRepairGarmentTypeForm({ garment_name: '', description: '', is_active: 1 });
+    setShowRepairGarmentTypeModal(true);
+  };
 
   const loadRepairOrders = async () => {
     setLoading(true);
@@ -349,6 +449,23 @@ const Repair = () => {
           <div>
             <h2>Repair Services Management</h2>
             <p>Manage garment repair requests and ongoing fixes</p>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <button
+              onClick={openNewRepairGarmentType}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#2196f3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              + Add Repair Garment Type
+            </button>
           </div>
           {error && <div className="error-message" style={{ color: 'red', marginBottom: '20px' }}>{error}</div>}
         </div>
@@ -685,6 +802,150 @@ const Repair = () => {
         altText={previewImageAlt}
         onClose={closeImagePreview}
       />
+
+      {/* Repair Garment Type Modal */}
+      {showRepairGarmentTypeModal && (
+        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowRepairGarmentTypeModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-header">
+              <h2>{editingRepairGarmentType ? 'Edit Repair Garment Type' : 'Add Repair Garment Type'}</h2>
+              <span className="close-modal" onClick={() => {
+                setShowRepairGarmentTypeModal(false);
+                setEditingRepairGarmentType(null);
+                setRepairGarmentTypeForm({ garment_name: '', description: '', is_active: 1 });
+              }}>×</span>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Garment Name *</label>
+                <input
+                  type="text"
+                  value={repairGarmentTypeForm.garment_name}
+                  onChange={(e) => setRepairGarmentTypeForm({ ...repairGarmentTypeForm, garment_name: e.target.value })}
+                  placeholder="e.g., Shirt, Pants, Jacket, Coat, Dress, Suit"
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Description</label>
+                <textarea
+                  value={repairGarmentTypeForm.description}
+                  onChange={(e) => setRepairGarmentTypeForm({ ...repairGarmentTypeForm, description: e.target.value })}
+                  placeholder="Optional description..."
+                  rows={3}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={repairGarmentTypeForm.is_active === 1}
+                    onChange={(e) => setRepairGarmentTypeForm({ ...repairGarmentTypeForm, is_active: e.target.checked ? 1 : 0 })}
+                    style={{ marginRight: '8px' }}
+                  />
+                  Active (Show in dropdowns)
+                </label>
+              </div>
+
+              {/* List of existing repair garment types */}
+              {repairGarmentTypes.length > 0 && (
+                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee' }}>
+                  <h3 style={{ fontSize: '16px', marginBottom: '15px' }}>Existing Repair Garment Types ({repairGarmentTypes.length})</h3>
+                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    {repairGarmentTypes.map(garment => (
+                      <div 
+                        key={garment.repair_garment_id} 
+                        style={{ 
+                          padding: '10px', 
+                          marginBottom: '8px', 
+                          backgroundColor: garment.is_active ? '#f9f9f9' : '#ffebee', 
+                          borderRadius: '4px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          border: garment.is_active ? '1px solid #ddd' : '1px solid #ffcdd2'
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <strong>{garment.garment_name}</strong>
+                          <div style={{ fontSize: '0.85em', color: '#666', marginTop: '4px' }}>
+                            {garment.description && `${garment.description}`}
+                            {!garment.is_active && <span style={{ color: '#f44336', marginLeft: '8px' }}>(Inactive)</span>}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => openEditRepairGarmentType(garment)}
+                            className="repair-garment-edit-btn"
+                            style={{
+                              padding: '6px 12px',
+                              backgroundColor: '#2196f3',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '500',
+                              boxShadow: 'none'
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteRepairGarmentType(garment.repair_garment_id)}
+                            className="repair-garment-delete-btn"
+                            style={{
+                              padding: '6px 12px',
+                              backgroundColor: '#f44336',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '500',
+                              boxShadow: 'none'
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => {
+                setShowRepairGarmentTypeModal(false);
+                setEditingRepairGarmentType(null);
+                setRepairGarmentTypeForm({ garment_name: '', description: '', is_active: 1 });
+              }}>Cancel</button>
+              <button
+                onClick={handleRepairGarmentTypeSubmit}
+                disabled={!repairGarmentTypeForm.garment_name.trim()}
+                style={{ 
+                  opacity: (!repairGarmentTypeForm.garment_name.trim()) ? 0.6 : 1,
+                  padding: '10px 20px',
+                  backgroundColor: '#2196f3',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  boxShadow: 'none'
+                }}
+              >
+                {editingRepairGarmentType ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

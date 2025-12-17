@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { addRepairToCart, uploadRepairImage } from '../../api/RepairApi';
 import { getAvailableSlots, bookSlot } from '../../api/AppointmentSlotApi';
+import { getAllRepairGarmentTypes } from '../../api/RepairGarmentTypeApi';
 import '../../styles/RepairFormModal.css';
 import '../../styles/SharedModal.css';
 
@@ -20,6 +21,7 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const [message, setMessage] = useState('');
   const [estimatedPrice, setEstimatedPrice] = useState(0);
   const [priceLoading, setPriceLoading] = useState(false);
+  const [repairGarmentTypes, setRepairGarmentTypes] = useState([]);
 
   // Damage levels with base prices
   const damageLevels = [
@@ -29,16 +31,56 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     { value: 'severe', label: 'Severe', basePrice: 1500, description: 'Complete reconstruction, multiple major issues' }
   ];
 
-  const garmentTypes = [
-    'Shirt', 'Pants', 'Jacket', 'Coat', 'Dress', 'Skirt', 'Suit', 'Blouse', 'Sweater', 'Other'
-  ];
+  // Load repair garment types on mount
+  useEffect(() => {
+    loadRepairGarmentTypes();
+  }, []);
+
+  // Load repair garment types from API
+  const loadRepairGarmentTypes = async () => {
+    try {
+      const result = await getAllRepairGarmentTypes();
+      if (result.success && result.garments) {
+        setRepairGarmentTypes(result.garments.filter(g => g.is_active === 1));
+      } else {
+        // Fallback to default values if API fails
+        setRepairGarmentTypes([
+          { repair_garment_id: 1, garment_name: 'Shirt' },
+          { repair_garment_id: 2, garment_name: 'Pants' },
+          { repair_garment_id: 3, garment_name: 'Jacket' },
+          { repair_garment_id: 4, garment_name: 'Coat' },
+          { repair_garment_id: 5, garment_name: 'Dress' },
+          { repair_garment_id: 6, garment_name: 'Skirt' },
+          { repair_garment_id: 7, garment_name: 'Suit' },
+          { repair_garment_id: 8, garment_name: 'Blouse' },
+          { repair_garment_id: 9, garment_name: 'Sweater' },
+          { repair_garment_id: 10, garment_name: 'Other' }
+        ]);
+      }
+    } catch (err) {
+      console.error("Load repair garment types error:", err);
+      // Fallback to default values
+      setRepairGarmentTypes([
+        { repair_garment_id: 1, garment_name: 'Shirt' },
+        { repair_garment_id: 2, garment_name: 'Pants' },
+        { repair_garment_id: 3, garment_name: 'Jacket' },
+        { repair_garment_id: 4, garment_name: 'Coat' },
+        { repair_garment_id: 5, garment_name: 'Dress' },
+        { repair_garment_id: 6, garment_name: 'Skirt' },
+        { repair_garment_id: 7, garment_name: 'Suit' },
+        { repair_garment_id: 8, garment_name: 'Blouse' },
+        { repair_garment_id: 9, garment_name: 'Sweater' },
+        { repair_garment_id: 10, garment_name: 'Other' }
+      ]);
+    }
+  };
 
   // Calculate estimated price when damage level or garment type changes
   useEffect(() => {
     if (formData.damageLevel) {
       calculateEstimatedPrice();
     }
-  }, [formData.damageLevel, formData.garmentType]);
+  }, [formData.damageLevel, formData.garmentType, repairGarmentTypes]);
 
   // Load available time slots when date changes
   useEffect(() => {
@@ -81,15 +123,8 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       const damageLevel = damageLevels.find(level => level.value === formData.damageLevel);
       let basePrice = damageLevel ? damageLevel.basePrice : 500;
       
-      // Add garment type complexity factor
-      let garmentMultiplier = 1.0;
-      if (formData.garmentType === 'Suit' || formData.garmentType === 'Coat') {
-        garmentMultiplier = 1.3;
-      } else if (formData.garmentType === 'Dress') {
-        garmentMultiplier = 1.2;
-      }
-
-      const finalPrice = Math.round(basePrice * garmentMultiplier);
+      // Price is based only on damage level, no garment type multiplier
+      const finalPrice = basePrice;
       setEstimatedPrice(finalPrice);
 
       // Also try to get price from API if available
@@ -377,8 +412,10 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               required
             >
               <option value="">Select garment type</option>
-              {garmentTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
+              {repairGarmentTypes.map(garment => (
+                <option key={garment.repair_garment_id} value={garment.garment_name}>
+                  {garment.garment_name}
+                </option>
               ))}
             </select>
           </div>

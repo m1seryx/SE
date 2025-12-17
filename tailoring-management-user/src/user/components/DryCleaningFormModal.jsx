@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { addDryCleaningToCart, uploadDryCleaningImage } from '../../api/DryCleaningApi';
 import { getAvailableSlots, bookSlot } from '../../api/AppointmentSlotApi';
+import { getAllGarmentTypes } from '../../api/GarmentTypeApi';
 import '../../styles/DryCleaningFormModal.css';
 import '../../styles/SharedModal.css';
 
 const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
-  // Garment types with their prices
-  const garmentTypes = {
-    'barong': 200,
-    'suits': 200,
-    'coat': 300,
-    'trousers': 200
-  };
+  // Garment types - will be loaded from API
+  const [garmentTypes, setGarmentTypes] = useState({});
+  const [garmentTypesList, setGarmentTypesList] = useState([]);
 
   const [formData, setFormData] = useState({
     serviceName: '',
@@ -33,6 +30,38 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const [isEstimatedPrice, setIsEstimatedPrice] = useState(false);
   const [priceLoading, setPriceLoading] = useState(false);
   const [services, setServices] = useState([]);
+
+  // Load garment types on mount
+  useEffect(() => {
+    loadGarmentTypes();
+  }, []);
+
+  // Load garment types from API
+  const loadGarmentTypes = async () => {
+    try {
+      const result = await getAllGarmentTypes();
+      if (result.success && result.garments) {
+        // Create object for quick price lookup
+        const typesObj = {};
+        result.garments.forEach(garment => {
+          if (garment.is_active === 1) {
+            typesObj[garment.garment_name.toLowerCase()] = parseFloat(garment.garment_price);
+          }
+        });
+        setGarmentTypes(typesObj);
+        setGarmentTypesList(result.garments.filter(g => g.is_active === 1));
+      }
+    } catch (err) {
+      console.error("Load garment types error:", err);
+      // Fallback to default values if API fails
+      setGarmentTypes({
+        'barong': 200,
+        'suits': 200,
+        'coat': 300,
+        'trousers': 200
+      });
+    }
+  };
 
   // Load dry cleaning services on mount
   useEffect(() => {
@@ -145,7 +174,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       setEstimatedPrice(0);
       setIsEstimatedPrice(false);
     }
-  }, [formData.quantity, formData.garmentType, formData.customGarmentType]);
+  }, [formData.quantity, formData.garmentType, formData.customGarmentType, garmentTypesList]);
 
   const calculatePrice = () => {
     if (!formData.quantity || !formData.garmentType) {
@@ -164,7 +193,9 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       setIsEstimatedPrice(true);
     } else {
       // For dropdown choices, use final price: quantity × garment price
-      const pricePerItem = garmentTypes[formData.garmentType] || 200;
+      // Find the garment type from the list
+      const selectedGarment = garmentTypesList.find(g => g.garment_name.toLowerCase() === formData.garmentType);
+      const pricePerItem = selectedGarment ? parseFloat(selectedGarment.garment_price) : (garmentTypes[formData.garmentType] || 200);
       const totalPrice = pricePerItem * quantity;
       setEstimatedPrice(totalPrice);
       setIsEstimatedPrice(false);
@@ -268,9 +299,11 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
         : formData.garmentType;
       
       // Get price per item based on garment type
-      const pricePerItem = formData.garmentType === 'others' 
-        ? 350 
-        : (garmentTypes[formData.garmentType] || 200);
+      let pricePerItem = 350; // Default for "others"
+      if (formData.garmentType !== 'others') {
+        const selectedGarment = garmentTypesList.find(g => g.garment_name.toLowerCase() === formData.garmentType);
+        pricePerItem = selectedGarment ? parseFloat(selectedGarment.garment_price) : (garmentTypes[formData.garmentType] || 200);
+      }
 
       // Combine date and time for pickupDate
       const pickupDateTime = `${formData.date}T${formData.time}`;
@@ -372,10 +405,11 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                 required
               >
                 <option value="">Select garment type...</option>
-                <option value="barong">Barong - ₱200</option>
-                <option value="suits">Suits - ₱200</option>
-                <option value="coat">Coat - ₱300</option>
-                <option value="trousers">Trousers - ₱200</option>
+                {garmentTypesList.map(garment => (
+                  <option key={garment.garment_id} value={garment.garment_name.toLowerCase()}>
+                    {garment.garment_name} - ₱{parseFloat(garment.garment_price).toFixed(2)}
+                  </option>
+                ))}
                 <option value="others">Others</option>
               </select>
               {formData.garmentType === 'others' && (

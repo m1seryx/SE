@@ -6,6 +6,37 @@
   box-sizing: border-box;
 }
 
+/* Repair garment type edit/delete buttons - override any conflicting styles */
+.repair-garment-edit-btn {
+  background-color: #2196f3 !important;
+  background: #2196f3 !important;
+  background-image: none !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.repair-garment-edit-btn:hover {
+  background-color: #1976d2 !important;
+  background: #1976d2 !important;
+  background-image: none !important;
+}
+
+.repair-garment-delete-btn {
+  background-color: #f44336 !important;
+  background: #f44336 !important;
+  background-image: none !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.repair-garment-delete-btn:hover {
+  background-color: #d32f2f !important;
+  background: #d32f2f !important;
+  background-image: none !important;
+}
+
 body {
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
   background: linear-gradient(135deg, #F8F9FA 0%, #F5F6FA 100%);

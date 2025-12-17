@@ -6,6 +6,81 @@
   box-sizing: border-box;
 }
 
+.garment-edit-button {
+  padding: 6px 12px;
+  background-color: #2196f3 !important;
+  background: #2196f3 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: none !important;
+}
+
+/* Override any button styles in modal-body for Edit/Delete buttons */
+.garment-edit-btn {
+  background-color: #2196f3 !important;
+  background: #2196f3 !important;
+  background-image: none !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.garment-edit-btn:hover {
+  background-color: #1976d2 !important;
+  background: #1976d2 !important;
+  background-image: none !important;
+}
+
+.garment-delete-btn {
+  background-color: #f44336 !important;
+  background: #f44336 !important;
+  background-image: none !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.garment-delete-btn:hover {
+  background-color: #d32f2f !important;
+  background: #d32f2f !important;
+  background-image: none !important;
+}
+
+/* Repair garment type buttons - same styles since repair.jsx uses dryclean.css */
+.repair-garment-edit-btn {
+  background-color: #2196f3 !important;
+  background: #2196f3 !important;
+  background-image: none !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.repair-garment-edit-btn:hover {
+  background-color: #1976d2 !important;
+  background: #1976d2 !important;
+  background-image: none !important;
+}
+
+.repair-garment-delete-btn {
+  background-color: #f44336 !important;
+  background: #f44336 !important;
+  background-image: none !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.repair-garment-delete-btn:hover {
+  background-color: #d32f2f !important;
+  background: #d32f2f !important;
+  background-image: none !important;
+}
+
 body {
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
   background: linear-gradient(135deg, #F8F9FA 0%, #F5F6FA 100%);
@@ -740,6 +815,11 @@ tbody td {
 }
 
 /* ============ CONFIRMATION MODAL ============ */
+/* Confirmation modal overlay - higher z-index to appear above other modals */
+.modal-overlay.confirm-overlay {
+  z-index: 2000;
+}
+
 .confirm-modal {
   background: linear-gradient(135deg, #FFFFFF 0%, #FAFAFA 100%);
   padding: 0;
