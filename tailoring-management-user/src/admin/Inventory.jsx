@@ -203,7 +203,7 @@ const Inventory = () => {
               <div className="stat-icon" style={{ background: '#e8f5e9', color: '#4caf50' }}>💰</div>
             </div>
             <div className="stat-number" style={{ fontSize: '24px' }}>
-              ₱{inventoryStats.totalValue.toLocaleString()}
+              ₱{inventoryStats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
         </div>
@@ -268,7 +268,7 @@ const Inventory = () => {
                       </td>
                       <td>{item.date}</td>
                       <td style={{ fontWeight: '600', color: '#2e7d32' }}>
-                        ₱{item.price.toLocaleString()}
+                        ₱{parseFloat(item.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td>
                         <span style={{
@@ -342,7 +342,7 @@ const Inventory = () => {
               <div className="detail-row">
                 <strong>Price:</strong>
                 <span style={{ color: '#2e7d32', fontWeight: 'bold', fontSize: '18px' }}>
-                  ₱{selectedItem.price.toLocaleString()}
+                  ₱{parseFloat(selectedItem.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="detail-row">

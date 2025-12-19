@@ -352,8 +352,28 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   };
 
   // Handle input changes
-  const handleInputChange = (e) => {
+  const handleInputChange = async (e) => {
     const { name, value } = e.target;
+    
+    // Validate date if it's preferredDate
+    if (name === 'preferredDate' && value) {
+      try {
+        const { checkDateOpen } = await import('../../api/ShopScheduleApi');
+        const result = await checkDateOpen(value);
+        if (!result.success || !result.is_open) {
+          setErrors(prev => ({ ...prev, preferredDate: 'Appointments are not available on this date. Please select another date.' }));
+          setFormData(prev => ({
+            ...prev,
+            [name]: '',
+          }));
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking date availability:', error);
+        // Continue with the date if check fails
+      }
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: value,
@@ -634,7 +654,13 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               name="preferredDate"
               value={formData.preferredDate}
               onChange={handleInputChange}
-              min={new Date().toISOString().split('T')[0]}
+              min={(() => {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+              })()}
               className={`form-input-shared ${errors.preferredDate ? 'error' : ''}`}
               disabled={loading}
             />

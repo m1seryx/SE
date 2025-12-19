@@ -429,6 +429,37 @@ html {
   box-shadow: 0 8px 25px rgba(139, 69, 19, 0.08), 0 2px 10px rgba(0, 0, 0, 0.04);
   padding: 24px;
   border: 1px solid rgba(139, 69, 19, 0.08);
+  position: relative;
+}
+
+.recent-activity.scrollable {
+  max-height: 600px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  padding-right: 0;
+}
+
+.recent-activity.scrollable .activity-table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.recent-activity.scrollable::-webkit-scrollbar {
+  width: 8px;
+}
+
+.recent-activity.scrollable::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.recent-activity.scrollable::-webkit-scrollbar-thumb {
+  background: #8B4513;
+  border-radius: 10px;
+}
+
+.recent-activity.scrollable::-webkit-scrollbar-thumb:hover {
+  background: #A0522D;
 }
 
 .activity-table {
@@ -441,22 +472,40 @@ html {
   background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
 }
 
+.recent-activity.scrollable .activity-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: table-header-group;
+}
+
 .activity-table th {
   color: #FFFFFF;
   font-weight: 600;
   text-transform: uppercase;
-  font-size: 13px;
-  padding: 16px 24px;
+  font-size: 12px;
+  padding: 12px 16px;
   text-align: left;
   border-bottom: none;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.5px;
   font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+}
+
+
+
+.recent-activity.scrollable .activity-table th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .activity-table td {
-  padding: 20px 24px;
+  padding: 12px 16px;
   border-bottom: 1px solid #F1F3F5;
   color: #2D3436;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .activity-table tbody tr {

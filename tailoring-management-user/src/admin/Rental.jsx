@@ -129,7 +129,7 @@ function Rental() {
     try {
       console.log('[DECLINE] Button clicked for rental:', rental.item_id, rental);
       
-      const reason = await prompt('Please enter reason for declining this rental:', 'Decline Rental', 'Enter reason...');
+    const reason = await prompt('Please enter reason for declining this rental:', 'Decline Rental', 'Enter reason...');
       console.log('[DECLINE] Prompt returned:', reason);
       
       if (reason === null || reason === undefined) {
@@ -301,7 +301,7 @@ function Rental() {
     // For rental service type, use simplified flow
     if (serviceType === 'rental') {
       // Handle null/undefined/empty status
-      if (!currentStatus || currentStatus === 'pending_review' || currentStatus === 'pending') {
+    if (!currentStatus || currentStatus === 'pending_review' || currentStatus === 'pending') {
         return 'ready_to_pickup';
       }
       
@@ -309,8 +309,8 @@ function Rental() {
       let normalizedStatus = currentStatus;
       if (currentStatus === 'ready_for_pickup' || currentStatus === 'accepted') {
         normalizedStatus = 'ready_to_pickup';
-      }
-      
+    }
+    
       // Rental flow: pending → ready_to_pickup → rented → returned
       if (normalizedStatus === 'ready_to_pickup') {
         return 'rented';
@@ -509,75 +509,95 @@ function Rental() {
                           </span>
                         </td>
                         <td onClick={(e) => e.stopPropagation()}>
-                          <div className="action-buttons">
-                            {/* Show move to next status button for all statuses */}
-                            {(() => {
-                              const currentStatus = rental.approval_status || 'pending';
-                              const nextStatus = getNextStatus(currentStatus, 'rental');
-                              if (!nextStatus) return null;
-                              const nextStatusLabel = getNextStatusLabel(currentStatus, 'rental');
-                              return (
-                                <button 
-                                  className="icon-btn next-status" 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStatusUpdate(rental.item_id, nextStatus);
-                                  }} 
-                                  title={`Move to ${nextStatusLabel}`}
-                                  style={{ backgroundColor: '#4CAF50', color: 'white', zIndex: 10 }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="9 18 15 12 9 6"></polyline>
-                                  </svg>
-                                </button>
-                              );
-                            })()}
-                            {/* Show decline button only for pending rentals */}
-                            {isPending && (
-                              <button 
-                                className="icon-btn decline" 
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  console.log('[DECLINE] Button clicked, isPending:', isPending, 'rental:', rental);
-                                  handleDecline(rental).catch(err => {
-                                    console.error('[DECLINE] Unhandled error:', err);
-                                    alert('An unexpected error occurred while declining the rental', 'Error', 'error');
-                                  });
-                                }} 
-                                title="Decline"
-                                type="button"
-                                style={{ cursor: 'pointer', zIndex: 10, position: 'relative' }}
-                              >
+                          {(() => {
+                            const isCompleted = rental.approval_status === 'completed';
+                            const isRejected = rental.approval_status === 'cancelled';
+                            
+                            // Hide all action icons if status is completed or rejected
+                            if (isCompleted || isRejected) {
+                              return null;
+                            }
+                            
+                            return (
+                            <div className="action-buttons">
+                                {/* Show move to next status button for all statuses */}
+                                {(() => {
+                                  const currentStatus = rental.approval_status || 'pending';
+                                  const nextStatus = getNextStatus(currentStatus, 'rental');
+                                  if (!nextStatus) return null;
+                                  const nextStatusLabel = getNextStatusLabel(currentStatus, 'rental');
+                                  return (
+                                    <button 
+                                      className="icon-btn next-status" 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStatusUpdate(rental.item_id, nextStatus);
+                                      }} 
+                                      title={`Move to ${nextStatusLabel}`}
+                                      style={{ backgroundColor: '#4CAF50', color: 'white', zIndex: 10 }}
+                                    >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                              </button>
+                                  );
+                                })()}
+                                {/* Show decline button only for pending rentals */}
+                                {isPending && (
+                                  <button 
+                                    className="icon-btn decline" 
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      console.log('[DECLINE] Button clicked, isPending:', isPending, 'rental:', rental);
+                                      handleDecline(rental).catch(err => {
+                                        console.error('[DECLINE] Unhandled error:', err);
+                                        alert('An unexpected error occurred while declining the rental', 'Error', 'error');
+                                      });
+                                    }} 
+                                    title="Decline"
+                                    type="button"
+                                    style={{ cursor: 'pointer', zIndex: 10, position: 'relative' }}
+                                  >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <line x1="18" y1="6" x2="6" y2="18"></line>
                                   <line x1="6" y1="6" x2="18" y2="18"></line>
                                 </svg>
                               </button>
-                            )}
-                            {/* Show record payment button only if not rejected/cancelled */}
-                            {rental.approval_status !== 'cancelled' && (
-                              <button 
-                                className="icon-btn" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedRental(rental);
-                                  setPaymentAmount('');
-                                  setShowPaymentModal(true);
-                                }} 
-                                title="Record Payment"
-                                style={{ backgroundColor: '#2196F3', color: 'white' }}
-                              >
-                                💰
+                                )}
+                                {/* Show record payment button - disabled if pending, hidden if cancelled */}
+                                {rental.approval_status !== 'cancelled' && (
+                                <button 
+                                    className="icon-btn" 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!isPending) {
+                                        setSelectedRental(rental);
+                                        setPaymentAmount('');
+                                        setShowPaymentModal(true);
+                                      }
+                                    }} 
+                                    title={isPending ? "Record Payment (Disabled - Status is Pending)" : "Record Payment"}
+                                    disabled={isPending}
+                                    style={{ 
+                                      backgroundColor: '#2196F3', 
+                                      color: 'white',
+                                      opacity: isPending ? 0.5 : 1,
+                                      cursor: isPending ? 'not-allowed' : 'pointer'
+                                    }}
+                                  >
+                                    💰
+                                </button>
+                              )}
+                              <button className="icon-btn edit" onClick={() => handleEditClick(rental)} title="Edit">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
                               </button>
-                            )}
-                            <button className="icon-btn edit" onClick={() => handleEditClick(rental)} title="Edit">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                              </svg>
-                            </button>
-                          </div>
+                            </div>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );
@@ -696,8 +716,25 @@ function Rental() {
                 const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
                 const finalPrice = parseFloat(selectedRental.final_price || 0);
                 const remaining = finalPrice - amountPaid;
+                const penalty = parseFloat(pricingFactors.penalty || 0);
+                const penaltyDays = parseInt(pricingFactors.penaltyDays || 0);
+                
                 return (
                   <>
+                    {penalty > 0 && penaltyDays > 0 && (
+                      <div className="detail-row" style={{ 
+                        backgroundColor: '#fff3cd', 
+                        padding: '12px', 
+                        borderRadius: '6px', 
+                        border: '1px solid #ffc107',
+                        marginBottom: '10px'
+                      }}>
+                        <strong style={{ color: '#856404' }}>⚠️ Late Return Penalty:</strong>
+                        <span style={{ color: '#856404', fontWeight: 'bold' }}>
+                          ₱{penalty.toLocaleString()} ({penaltyDays} day{penaltyDays > 1 ? 's' : ''} exceeded)
+                        </span>
+                      </div>
+                    )}
                     <div className="detail-row">
                       <strong>Amount Paid:</strong>
                       <span style={{ color: '#4caf50', fontWeight: 'bold' }}>
@@ -831,14 +868,31 @@ function Rental() {
                 const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
                 const finalPrice = parseFloat(selectedRental.final_price || 0);
                 const remaining = finalPrice - amountPaid;
+                const penalty = parseFloat(pricingFactors.penalty || 0);
+                const penaltyDays = parseInt(pricingFactors.penaltyDays || 0);
+                
                 return (
                   <>
-                    <div className="detail-row">
+                    {penalty > 0 && penaltyDays > 0 && (
+                      <div className="detail-row" style={{ 
+                        backgroundColor: '#fff3cd', 
+                        padding: '12px', 
+                        borderRadius: '6px', 
+                        border: '1px solid #ffc107',
+                        marginBottom: '10px'
+                      }}>
+                        <strong style={{ color: '#856404' }}>⚠️ Late Return Penalty:</strong>
+                        <span style={{ color: '#856404', fontWeight: 'bold' }}>
+                          ₱{penalty.toLocaleString()} ({penaltyDays} day{penaltyDays > 1 ? 's' : ''} exceeded)
+                        </span>
+                      </div>
+                    )}
+              <div className="detail-row">
                       <strong>Amount Paid:</strong>
                       <span style={{ color: '#4caf50', fontWeight: 'bold' }}>
                         ₱{amountPaid.toLocaleString()}
-                      </span>
-                    </div>
+                </span>
+              </div>
                     <div className="detail-row">
                       <strong>Remaining Balance:</strong>
                       <span style={{ color: remaining > 0 ? '#ff9800' : '#4caf50', fontWeight: 'bold' }}>

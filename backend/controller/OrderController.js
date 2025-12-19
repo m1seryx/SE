@@ -277,6 +277,17 @@ exports.cancelOrderItem = (req, res) => {
           }
         });
 
+        // Cancel the associated appointment slot to free up the time slot
+        const AppointmentSlot = require('../model/AppointmentSlotModel');
+        AppointmentSlot.cancelSlotByOrderItem(itemId, (slotErr) => {
+          if (slotErr) {
+            console.error('Error cancelling appointment slot:', slotErr);
+            // Don't fail the request if slot cancellation fails
+          } else {
+            console.log(`Appointment slot cancelled for order item ${itemId}`);
+          }
+        });
+
         res.json({
           success: true,
           message: "Order item cancelled successfully"
@@ -629,6 +640,19 @@ exports.updateRepairOrderItem = (req, res) => {
         console.error('Skipping action log: user_id is null or undefined');
       }
 
+      // Cancel appointment slot if order is rejected/cancelled
+      if (updateData.approvalStatus && (updateData.approvalStatus === 'cancelled' || updateData.approvalStatus === 'rejected')) {
+        console.log(`[REPAIR] Cancelling appointment slot for order item ${itemId} with status: ${updateData.approvalStatus}`);
+        const AppointmentSlot = require('../model/AppointmentSlotModel');
+        AppointmentSlot.cancelSlotByOrderItem(itemId, (slotErr, cancelResult) => {
+          if (slotErr) {
+            console.error('[REPAIR] Error cancelling appointment slot:', slotErr);
+          } else {
+            console.log(`[REPAIR] Appointment slot cancellation result for item ${itemId}:`, cancelResult?.affectedRows || 0, 'slots cancelled');
+          }
+        });
+      }
+
       // Update billing status if status changed
       const billingHelper = require('../utils/billingHelper');
       if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
@@ -904,6 +928,19 @@ exports.updateDryCleaningOrderItem = (req, res) => {
         console.error('Skipping action log: user_id is null or undefined');
       }
 
+      // Cancel appointment slot if order is rejected/cancelled
+      if (updateData.approvalStatus && (updateData.approvalStatus === 'cancelled' || updateData.approvalStatus === 'rejected')) {
+        console.log(`[DRY CLEANING] Cancelling appointment slot for order item ${itemId} with status: ${updateData.approvalStatus}`);
+        const AppointmentSlot = require('../model/AppointmentSlotModel');
+        AppointmentSlot.cancelSlotByOrderItem(itemId, (slotErr, cancelResult) => {
+          if (slotErr) {
+            console.error('[DRY CLEANING] Error cancelling appointment slot:', slotErr);
+          } else {
+            console.log(`[DRY CLEANING] Appointment slot cancellation result for item ${itemId}:`, cancelResult?.affectedRows || 0, 'slots cancelled');
+          }
+        });
+      }
+
       // Update billing status if status changed
       const billingHelper = require('../utils/billingHelper');
       if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
@@ -1118,6 +1155,44 @@ exports.updateRentalOrderItem = (req, res) => {
 
     const previousStatus = item.approval_status || 'pending';
 
+    // Calculate penalty if status is being changed to 'returned'
+    let penaltyAmount = 0;
+    let penaltyDays = 0;
+    if (updateData.approvalStatus === 'returned' && previousStatus !== 'returned') {
+      if (item.rental_end_date) {
+        const endDate = new Date(item.rental_end_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+        endDate.setHours(0, 0, 0, 0);
+        
+        // Calculate days exceeded (if today is after end date)
+        if (today > endDate) {
+          const diffTime = today - endDate;
+          penaltyDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // Convert to days
+          penaltyAmount = penaltyDays * 100; // 100 per day
+          
+          console.log(`[RENTAL PENALTY] Item ${itemId}: End date: ${item.rental_end_date}, Today: ${today.toISOString().split('T')[0]}, Days exceeded: ${penaltyDays}, Penalty: ₱${penaltyAmount}`);
+          
+          // Add penalty to pricing_factors
+          const currentPricingFactors = item.pricing_factors ? (typeof item.pricing_factors === 'string' ? JSON.parse(item.pricing_factors) : item.pricing_factors) : {};
+          currentPricingFactors.penalty = penaltyAmount;
+          currentPricingFactors.penaltyDays = penaltyDays;
+          currentPricingFactors.penaltyAppliedDate = today.toISOString().split('T')[0];
+          
+          // Update final_price to include penalty
+          const originalPrice = parseFloat(item.final_price || 0);
+          const newFinalPrice = originalPrice + penaltyAmount;
+          
+          updateData.finalPrice = newFinalPrice;
+          updateData.penaltyData = currentPricingFactors;
+          
+          console.log(`[RENTAL PENALTY] Original price: ₱${originalPrice}, Penalty: ₱${penaltyAmount}, New final price: ₱${newFinalPrice}`);
+        } else {
+          console.log(`[RENTAL PENALTY] Item ${itemId}: Returned on time, no penalty applied`);
+        }
+      }
+    }
+
     Order.updateRentalOrderItem(itemId, updateData, (err, result) => {
       if (err) {
         return res.status(500).json({
@@ -1142,6 +1217,9 @@ exports.updateRentalOrderItem = (req, res) => {
       
       if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
         actionNotes.push(`Status: ${previousStatus} → ${updateData.approvalStatus}`);
+      }
+      if (penaltyAmount > 0 && penaltyDays > 0) {
+        actionNotes.push(`Penalty applied: ₱${penaltyAmount} (${penaltyDays} day${penaltyDays > 1 ? 's' : ''} exceeded)`);
       }
       if (updateData.adminNotes) {
         actionNotes.push(`Admin notes: ${updateData.adminNotes}`);
@@ -1401,6 +1479,13 @@ exports.recordRentalPayment = (req, res) => {
         });
       }
 
+      // Get customer name for action log
+      const getUserSql = `SELECT first_name, last_name FROM user WHERE user_id = ?`;
+      db.query(getUserSql, [item.user_id], (userErr, userResults) => {
+        const customerName = userResults && userResults.length > 0 
+          ? `${userResults[0].first_name} ${userResults[0].last_name}`
+          : 'Customer';
+
       // Create action log for dashboard
       const ActionLog = require('../model/ActionLogModel');
       const previousPaymentStatus = item.payment_status || 'unpaid';
@@ -1412,13 +1497,14 @@ exports.recordRentalPayment = (req, res) => {
         previous_status: previousPaymentStatus,
         new_status: newPaymentStatus,
         reason: null,
-        notes: `Admin recorded payment of ₱${amount.toFixed(2)}. Total paid: ₱${newAmountPaid.toFixed(2)}. Status: ${previousPaymentStatus} → ${newPaymentStatus}`
+          notes: `Admin recorded payment of ₱${amount.toFixed(2)}. Total paid: ₱${newAmountPaid.toFixed(2)}. Customer: ${customerName}`
       }, (actionLogErr) => {
         if (actionLogErr) {
           console.error('Error creating payment action log:', actionLogErr);
         } else {
           console.log('Payment action log created successfully');
         }
+        });
       });
 
       // Create payment success notification

@@ -32,18 +32,18 @@ const PostRent = () => {
     care_instructions: '',
     status: 'available',
     measurements: {
-      // Top measurements
-      chest: '',
-      shoulders: '',
-      sleeveLength: '',
-      neck: '',
-      waist: '',
-      length: '',
+      // Top measurements - each measurement has both inch and cm
+      chest: { inch: '', cm: '' },
+      shoulders: { inch: '', cm: '' },
+      sleeveLength: { inch: '', cm: '' },
+      neck: { inch: '', cm: '' },
+      waist: { inch: '', cm: '' },
+      length: { inch: '', cm: '' },
       // Bottom measurements
-      hips: '',
-      inseam: '',
-      thigh: '',
-      outseam: ''
+      hips: { inch: '', cm: '' },
+      inseam: { inch: '', cm: '' },
+      thigh: { inch: '', cm: '' },
+      outseam: { inch: '', cm: '' }
     }
   });
 
@@ -85,14 +85,41 @@ const PostRent = () => {
       if (item) {
         // Parse measurements if stored as JSON string
         let measurements = {
-          chest: '', shoulders: '', sleeveLength: '', neck: '', waist: '', length: '',
-          hips: '', inseam: '', thigh: '', outseam: ''
+          chest: { inch: '', cm: '' },
+          shoulders: { inch: '', cm: '' },
+          sleeveLength: { inch: '', cm: '' },
+          neck: { inch: '', cm: '' },
+          waist: { inch: '', cm: '' },
+          length: { inch: '', cm: '' },
+          hips: { inch: '', cm: '' },
+          inseam: { inch: '', cm: '' },
+          thigh: { inch: '', cm: '' },
+          outseam: { inch: '', cm: '' }
         };
         if (item.size) {
           try {
             const parsed = typeof item.size === 'string' ? JSON.parse(item.size) : item.size;
             if (parsed && typeof parsed === 'object') {
-              measurements = { ...measurements, ...parsed };
+              // Handle both old format (just numbers) and new format (objects with inch/cm)
+              Object.keys(measurements).forEach(key => {
+                if (parsed[key]) {
+                  if (typeof parsed[key] === 'object' && (parsed[key].inch !== undefined || parsed[key].cm !== undefined)) {
+                    // New format with inch/cm
+                    measurements[key] = {
+                      inch: parsed[key].inch || '',
+                      cm: parsed[key].cm || ''
+                    };
+                  } else if (typeof parsed[key] === 'string' || typeof parsed[key] === 'number') {
+                    // Old format - convert to new format, assume it's inches
+                    const inchValue = String(parsed[key]);
+                    const cmValue = inchValue ? (parseFloat(inchValue) * 2.54).toFixed(2) : '';
+                    measurements[key] = {
+                      inch: inchValue,
+                      cm: cmValue
+                    };
+                  }
+                }
+              });
             }
           } catch (e) {
             // If not JSON, keep as is (backward compatibility)
@@ -132,8 +159,16 @@ const PostRent = () => {
         care_instructions: '',
         status: 'available',
         measurements: {
-          chest: '', shoulders: '', sleeveLength: '', neck: '', waist: '', length: '',
-          hips: '', inseam: '', thigh: '', outseam: ''
+          chest: { inch: '', cm: '' },
+          shoulders: { inch: '', cm: '' },
+          sleeveLength: { inch: '', cm: '' },
+          neck: { inch: '', cm: '' },
+          waist: { inch: '', cm: '' },
+          length: { inch: '', cm: '' },
+          hips: { inch: '', cm: '' },
+          inseam: { inch: '', cm: '' },
+          thigh: { inch: '', cm: '' },
+          outseam: { inch: '', cm: '' }
         }
       });
       setImagePreview('');
@@ -185,12 +220,38 @@ const PostRent = () => {
     return ['casual', 'pants', 'trousers'].includes(category);
   };
 
-  const handleMeasurementChange = (field, value) => {
+  // Conversion functions
+  const inchToCm = (inch) => {
+    if (!inch || inch === '') return '';
+    const num = parseFloat(inch);
+    if (isNaN(num)) return '';
+    return (num * 2.54).toFixed(2);
+  };
+
+  const cmToInch = (cm) => {
+    if (!cm || cm === '') return '';
+    const num = parseFloat(cm);
+    if (isNaN(num)) return '';
+    return (num / 2.54).toFixed(2);
+  };
+
+  const handleMeasurementChange = (field, unit, value) => {
+    const currentMeasurement = formData.measurements[field] || { inch: '', cm: '' };
+    let updatedMeasurement = { ...currentMeasurement };
+    
+    if (unit === 'inch') {
+      updatedMeasurement.inch = value;
+      updatedMeasurement.cm = inchToCm(value);
+    } else if (unit === 'cm') {
+      updatedMeasurement.cm = value;
+      updatedMeasurement.inch = cmToInch(value);
+    }
+    
     setFormData({
       ...formData,
       measurements: {
         ...formData.measurements,
-        [field]: value
+        [field]: updatedMeasurement
       }
     });
   };
@@ -207,21 +268,22 @@ const PostRent = () => {
     }
 
     // Prepare form data with measurements as JSON string in size field
+    // Save both inch and cm for each measurement
     const measurementsToSave = {};
     if (isTopCategory(formData.category)) {
-      measurementsToSave.chest = formData.measurements.chest || '';
-      measurementsToSave.shoulders = formData.measurements.shoulders || '';
-      measurementsToSave.sleeveLength = formData.measurements.sleeveLength || '';
-      measurementsToSave.neck = formData.measurements.neck || '';
-      measurementsToSave.waist = formData.measurements.waist || '';
-      measurementsToSave.length = formData.measurements.length || '';
+      measurementsToSave.chest = formData.measurements.chest || { inch: '', cm: '' };
+      measurementsToSave.shoulders = formData.measurements.shoulders || { inch: '', cm: '' };
+      measurementsToSave.sleeveLength = formData.measurements.sleeveLength || { inch: '', cm: '' };
+      measurementsToSave.neck = formData.measurements.neck || { inch: '', cm: '' };
+      measurementsToSave.waist = formData.measurements.waist || { inch: '', cm: '' };
+      measurementsToSave.length = formData.measurements.length || { inch: '', cm: '' };
     } else if (isBottomCategory(formData.category)) {
-      measurementsToSave.waist = formData.measurements.waist || '';
-      measurementsToSave.hips = formData.measurements.hips || '';
-      measurementsToSave.inseam = formData.measurements.inseam || '';
-      measurementsToSave.length = formData.measurements.length || '';
-      measurementsToSave.thigh = formData.measurements.thigh || '';
-      measurementsToSave.outseam = formData.measurements.outseam || '';
+      measurementsToSave.waist = formData.measurements.waist || { inch: '', cm: '' };
+      measurementsToSave.hips = formData.measurements.hips || { inch: '', cm: '' };
+      measurementsToSave.inseam = formData.measurements.inseam || { inch: '', cm: '' };
+      measurementsToSave.length = formData.measurements.length || { inch: '', cm: '' };
+      measurementsToSave.thigh = formData.measurements.thigh || { inch: '', cm: '' };
+      measurementsToSave.outseam = formData.measurements.outseam || { inch: '', cm: '' };
     }
 
     const dataToSave = {
@@ -436,102 +498,145 @@ const PostRent = () => {
                     <thead>
                       <tr style={{ backgroundColor: '#f8f9fa' }}>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Measurement</th>
-                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Value (inches)</th>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Inches</th>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Centimeters</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Chest (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Chest</strong></td>
                         <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
                           <input 
                             type="number" 
-                            step="0.5"
-                            value={formData.measurements.chest} 
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              measurements: { ...formData.measurements, chest: e.target.value }
-                            })} 
-                            placeholder="Enter chest measurement"
+                            step="0.1"
+                            value={formData.measurements.chest?.inch || ''} 
+                            onChange={(e) => handleMeasurementChange('chest', 'inch', e.target.value)} 
+                            placeholder="Inches"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.1"
+                            value={formData.measurements.chest?.cm || ''} 
+                            onChange={(e) => handleMeasurementChange('chest', 'cm', e.target.value)} 
+                            placeholder="Centimeters"
                             style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
                           />
                         </td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Shoulders (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Shoulders</strong></td>
                         <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
                           <input 
                             type="number" 
-                            step="0.5"
-                            value={formData.measurements.shoulders} 
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              measurements: { ...formData.measurements, shoulders: e.target.value }
-                            })} 
-                            placeholder="Enter shoulder measurement"
+                            step="0.1"
+                            value={formData.measurements.shoulders?.inch || ''} 
+                            onChange={(e) => handleMeasurementChange('shoulders', 'inch', e.target.value)} 
+                            placeholder="Inches"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.1"
+                            value={formData.measurements.shoulders?.cm || ''} 
+                            onChange={(e) => handleMeasurementChange('shoulders', 'cm', e.target.value)} 
+                            placeholder="Centimeters"
                             style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
                           />
                         </td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Sleeve Length (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Sleeve Length</strong></td>
                         <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
                           <input 
                             type="number" 
-                            step="0.5"
-                            value={formData.measurements.sleeveLength} 
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              measurements: { ...formData.measurements, sleeveLength: e.target.value }
-                            })} 
-                            placeholder="Enter sleeve length"
+                            step="0.1"
+                            value={formData.measurements.sleeveLength?.inch || ''} 
+                            onChange={(e) => handleMeasurementChange('sleeveLength', 'inch', e.target.value)} 
+                            placeholder="Inches"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.1"
+                            value={formData.measurements.sleeveLength?.cm || ''} 
+                            onChange={(e) => handleMeasurementChange('sleeveLength', 'cm', e.target.value)} 
+                            placeholder="Centimeters"
                             style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
                           />
                         </td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Neck (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Neck</strong></td>
                         <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
                           <input 
                             type="number" 
-                            step="0.5"
-                            value={formData.measurements.neck} 
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              measurements: { ...formData.measurements, neck: e.target.value }
-                            })} 
-                            placeholder="Enter neck measurement"
+                            step="0.1"
+                            value={formData.measurements.neck?.inch || ''} 
+                            onChange={(e) => handleMeasurementChange('neck', 'inch', e.target.value)} 
+                            placeholder="Inches"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.1"
+                            value={formData.measurements.neck?.cm || ''} 
+                            onChange={(e) => handleMeasurementChange('neck', 'cm', e.target.value)} 
+                            placeholder="Centimeters"
                             style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
                           />
                         </td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Waist (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Waist</strong></td>
                         <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
                           <input 
                             type="number" 
-                            step="0.5"
-                            value={formData.measurements.waist} 
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              measurements: { ...formData.measurements, waist: e.target.value }
-                            })} 
-                            placeholder="Enter waist measurement"
+                            step="0.1"
+                            value={formData.measurements.waist?.inch || ''} 
+                            onChange={(e) => handleMeasurementChange('waist', 'inch', e.target.value)} 
+                            placeholder="Inches"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.1"
+                            value={formData.measurements.waist?.cm || ''} 
+                            onChange={(e) => handleMeasurementChange('waist', 'cm', e.target.value)} 
+                            placeholder="Centimeters"
                             style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
                           />
                         </td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '12px', color: '#000' }}><strong style={{ color: '#000' }}>Length (inches)</strong></td>
+                        <td style={{ padding: '12px', color: '#000' }}><strong style={{ color: '#000' }}>Length</strong></td>
                         <td style={{ padding: '12px' }}>
                           <input 
                             type="number" 
-                            step="0.5"
-                            value={formData.measurements.length} 
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              measurements: { ...formData.measurements, length: e.target.value }
-                            })} 
-                            placeholder="Enter length measurement"
+                            step="0.1"
+                            value={formData.measurements.length?.inch || ''} 
+                            onChange={(e) => handleMeasurementChange('length', 'inch', e.target.value)} 
+                            placeholder="Inches"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <input 
+                            type="number" 
+                            step="0.1"
+                            value={formData.measurements.length?.cm || ''} 
+                            onChange={(e) => handleMeasurementChange('length', 'cm', e.target.value)} 
+                            placeholder="Centimeters"
                             style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
                           />
                         </td>
@@ -548,102 +653,145 @@ const PostRent = () => {
                     <thead>
                       <tr style={{ backgroundColor: '#f8f9fa' }}>
                         <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Measurement</th>
-                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Value (inches)</th>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Inches</th>
+                        <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Centimeters</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Waist (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Waist</strong></td>
                         <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
                           <input 
                             type="number" 
-                            step="0.5"
-                            value={formData.measurements.waist} 
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              measurements: { ...formData.measurements, waist: e.target.value }
-                            })} 
-                            placeholder="Enter waist measurement"
+                            step="0.1"
+                            value={formData.measurements.waist?.inch || ''} 
+                            onChange={(e) => handleMeasurementChange('waist', 'inch', e.target.value)} 
+                            placeholder="Inches"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.1"
+                            value={formData.measurements.waist?.cm || ''} 
+                            onChange={(e) => handleMeasurementChange('waist', 'cm', e.target.value)} 
+                            placeholder="Centimeters"
                             style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
                           />
                         </td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Hips (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Hips</strong></td>
                         <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
                           <input 
                             type="number" 
-                            step="0.5"
-                            value={formData.measurements.hips} 
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              measurements: { ...formData.measurements, hips: e.target.value }
-                            })} 
-                            placeholder="Enter hip measurement"
+                            step="0.1"
+                            value={formData.measurements.hips?.inch || ''} 
+                            onChange={(e) => handleMeasurementChange('hips', 'inch', e.target.value)} 
+                            placeholder="Inches"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.1"
+                            value={formData.measurements.hips?.cm || ''} 
+                            onChange={(e) => handleMeasurementChange('hips', 'cm', e.target.value)} 
+                            placeholder="Centimeters"
                             style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
                           />
                         </td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Inseam (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Inseam</strong></td>
                         <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
                           <input 
                             type="number" 
-                            step="0.5"
-                            value={formData.measurements.inseam} 
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              measurements: { ...formData.measurements, inseam: e.target.value }
-                            })} 
-                            placeholder="Enter inseam measurement"
+                            step="0.1"
+                            value={formData.measurements.inseam?.inch || ''} 
+                            onChange={(e) => handleMeasurementChange('inseam', 'inch', e.target.value)} 
+                            placeholder="Inches"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.1"
+                            value={formData.measurements.inseam?.cm || ''} 
+                            onChange={(e) => handleMeasurementChange('inseam', 'cm', e.target.value)} 
+                            placeholder="Centimeters"
                             style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
                           />
                         </td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Length (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Length</strong></td>
                         <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
                           <input 
                             type="number" 
-                            step="0.5"
-                            value={formData.measurements.length} 
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              measurements: { ...formData.measurements, length: e.target.value }
-                            })} 
-                            placeholder="Enter length measurement"
+                            step="0.1"
+                            value={formData.measurements.length?.inch || ''} 
+                            onChange={(e) => handleMeasurementChange('length', 'inch', e.target.value)} 
+                            placeholder="Inches"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.1"
+                            value={formData.measurements.length?.cm || ''} 
+                            onChange={(e) => handleMeasurementChange('length', 'cm', e.target.value)} 
+                            placeholder="Centimeters"
                             style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
                           />
                         </td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Thigh (inches)</strong></td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}><strong style={{ color: '#000' }}>Thigh</strong></td>
                         <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
                           <input 
                             type="number" 
-                            step="0.5"
-                            value={formData.measurements.thigh} 
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              measurements: { ...formData.measurements, thigh: e.target.value }
-                            })} 
-                            placeholder="Enter thigh measurement"
+                            step="0.1"
+                            value={formData.measurements.thigh?.inch || ''} 
+                            onChange={(e) => handleMeasurementChange('thigh', 'inch', e.target.value)} 
+                            placeholder="Inches"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                          <input 
+                            type="number" 
+                            step="0.1"
+                            value={formData.measurements.thigh?.cm || ''} 
+                            onChange={(e) => handleMeasurementChange('thigh', 'cm', e.target.value)} 
+                            placeholder="Centimeters"
                             style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
                           />
                         </td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '12px', color: '#000' }}><strong style={{ color: '#000' }}>Outseam (inches)</strong></td>
+                        <td style={{ padding: '12px', color: '#000' }}><strong style={{ color: '#000' }}>Outseam</strong></td>
                         <td style={{ padding: '12px' }}>
                           <input 
                             type="number" 
-                            step="0.5"
-                            value={formData.measurements.outseam} 
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              measurements: { ...formData.measurements, outseam: e.target.value }
-                            })} 
-                            placeholder="Enter outseam measurement"
+                            step="0.1"
+                            value={formData.measurements.outseam?.inch || ''} 
+                            onChange={(e) => handleMeasurementChange('outseam', 'inch', e.target.value)} 
+                            placeholder="Inches"
+                            style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
+                          />
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <input 
+                            type="number" 
+                            step="0.1"
+                            value={formData.measurements.outseam?.cm || ''} 
+                            onChange={(e) => handleMeasurementChange('outseam', 'cm', e.target.value)} 
+                            placeholder="Centimeters"
                             style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', color: '#000' }}
                           />
                         </td>
@@ -809,12 +957,48 @@ const PostRent = () => {
                             <div>
                               <strong>Top Measurements:</strong>
                               <div style={{ marginLeft: '15px', marginTop: '5px' }}>
-                                {measurements.chest && <div>Chest: {measurements.chest}"</div>}
-                                {measurements.shoulders && <div>Shoulders: {measurements.shoulders}"</div>}
-                                {measurements.sleeveLength && <div>Sleeve Length: {measurements.sleeveLength}"</div>}
-                                {measurements.neck && <div>Neck: {measurements.neck}"</div>}
-                                {measurements.waist && <div>Waist: {measurements.waist}"</div>}
-                                {measurements.length && <div>Length: {measurements.length}"</div>}
+                                {measurements.chest && (
+                                  <div>Chest: {
+                                    typeof measurements.chest === 'object' && measurements.chest.inch 
+                                      ? `${measurements.chest.inch}" (${measurements.chest.cm} cm)`
+                                      : `${measurements.chest}"`
+                                  }</div>
+                                )}
+                                {measurements.shoulders && (
+                                  <div>Shoulders: {
+                                    typeof measurements.shoulders === 'object' && measurements.shoulders.inch 
+                                      ? `${measurements.shoulders.inch}" (${measurements.shoulders.cm} cm)`
+                                      : `${measurements.shoulders}"`
+                                  }</div>
+                                )}
+                                {measurements.sleeveLength && (
+                                  <div>Sleeve Length: {
+                                    typeof measurements.sleeveLength === 'object' && measurements.sleeveLength.inch 
+                                      ? `${measurements.sleeveLength.inch}" (${measurements.sleeveLength.cm} cm)`
+                                      : `${measurements.sleeveLength}"`
+                                  }</div>
+                                )}
+                                {measurements.neck && (
+                                  <div>Neck: {
+                                    typeof measurements.neck === 'object' && measurements.neck.inch 
+                                      ? `${measurements.neck.inch}" (${measurements.neck.cm} cm)`
+                                      : `${measurements.neck}"`
+                                  }</div>
+                                )}
+                                {measurements.waist && (
+                                  <div>Waist: {
+                                    typeof measurements.waist === 'object' && measurements.waist.inch 
+                                      ? `${measurements.waist.inch}" (${measurements.waist.cm} cm)`
+                                      : `${measurements.waist}"`
+                                  }</div>
+                                )}
+                                {measurements.length && (
+                                  <div>Length: {
+                                    typeof measurements.length === 'object' && measurements.length.inch 
+                                      ? `${measurements.length.inch}" (${measurements.length.cm} cm)`
+                                      : `${measurements.length}"`
+                                  }</div>
+                                )}
                               </div>
                             </div>
                           );
@@ -823,12 +1007,48 @@ const PostRent = () => {
                             <div>
                               <strong>Bottom Measurements:</strong>
                               <div style={{ marginLeft: '15px', marginTop: '5px' }}>
-                                {measurements.waist && <div>Waist: {measurements.waist}"</div>}
-                                {measurements.hips && <div>Hips: {measurements.hips}"</div>}
-                                {measurements.inseam && <div>Inseam: {measurements.inseam}"</div>}
-                                {measurements.length && <div>Length: {measurements.length}"</div>}
-                                {measurements.thigh && <div>Thigh: {measurements.thigh}"</div>}
-                                {measurements.outseam && <div>Outseam: {measurements.outseam}"</div>}
+                                {measurements.waist && (
+                                  <div>Waist: {
+                                    typeof measurements.waist === 'object' && measurements.waist.inch 
+                                      ? `${measurements.waist.inch}" (${measurements.waist.cm} cm)`
+                                      : `${measurements.waist}"`
+                                  }</div>
+                                )}
+                                {measurements.hips && (
+                                  <div>Hips: {
+                                    typeof measurements.hips === 'object' && measurements.hips.inch 
+                                      ? `${measurements.hips.inch}" (${measurements.hips.cm} cm)`
+                                      : `${measurements.hips}"`
+                                  }</div>
+                                )}
+                                {measurements.inseam && (
+                                  <div>Inseam: {
+                                    typeof measurements.inseam === 'object' && measurements.inseam.inch 
+                                      ? `${measurements.inseam.inch}" (${measurements.inseam.cm} cm)`
+                                      : `${measurements.inseam}"`
+                                  }</div>
+                                )}
+                                {measurements.length && (
+                                  <div>Length: {
+                                    typeof measurements.length === 'object' && measurements.length.inch 
+                                      ? `${measurements.length.inch}" (${measurements.length.cm} cm)`
+                                      : `${measurements.length}"`
+                                  }</div>
+                                )}
+                                {measurements.thigh && (
+                                  <div>Thigh: {
+                                    typeof measurements.thigh === 'object' && measurements.thigh.inch 
+                                      ? `${measurements.thigh.inch}" (${measurements.thigh.cm} cm)`
+                                      : `${measurements.thigh}"`
+                                  }</div>
+                                )}
+                                {measurements.outseam && (
+                                  <div>Outseam: {
+                                    typeof measurements.outseam === 'object' && measurements.outseam.inch 
+                                      ? `${measurements.outseam.inch}" (${measurements.outseam.cm} cm)`
+                                      : `${measurements.outseam}"`
+                                  }</div>
+                                )}
                               </div>
                             </div>
                           );

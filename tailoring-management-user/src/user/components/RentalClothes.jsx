@@ -6,13 +6,13 @@ import suitSample from "../../assets/suits.png";
 import { useAlert } from '../../context/AlertContext';
 
 // Measurements Dropdown Component
-const MeasurementsDropdown = ({ measurements, item, isInModal = false }) => {
+const MeasurementsDropdown = ({ measurements, item, isInModal = false, measurementUnit = 'inch', onUnitChange }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div style={{ marginTop: isInModal ? '0' : '8px', marginBottom: isInModal ? '0' : '8px' }}>
-      <div style={{ marginBottom: isInModal ? '10px' : '0' }}>
-        {isInModal && <strong style={{ display: 'block', marginBottom: '10px' }}>Measurements:</strong>}
+    <div style={{ marginTop: isInModal ? '0' : '8px', marginBottom: isInModal ? '0' : '8px', width: '100%' }}>
+      <div style={{ marginBottom: isInModal ? '0' : '10px' }}>
+        {!isInModal && <strong style={{ display: 'block', marginBottom: '10px' }}>Measurements:</strong>}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -20,7 +20,7 @@ const MeasurementsDropdown = ({ measurements, item, isInModal = false }) => {
           }}
           style={{
             width: '100%',
-            padding: isInModal ? '8px 12px' : '6px 10px',
+            padding: isInModal ? '10px 12px' : '6px 10px',
             backgroundColor: '#f8f9fa',
             border: '1px solid #dee2e6',
             borderRadius: '4px',
@@ -31,7 +31,8 @@ const MeasurementsDropdown = ({ measurements, item, isInModal = false }) => {
             alignItems: 'center',
             justifyContent: 'space-between',
             transition: 'all 0.2s ease',
-            fontWeight: isInModal ? '500' : 'normal'
+            fontWeight: isInModal ? '500' : 'normal',
+            textAlign: 'left'
           }}
           onMouseEnter={(e) => e.target.style.backgroundColor = '#e9ecef'}
           onMouseLeave={(e) => e.target.style.backgroundColor = '#f8f9fa'}
@@ -56,6 +57,58 @@ const MeasurementsDropdown = ({ measurements, item, isInModal = false }) => {
           overflowY: 'auto',
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}>
+          {/* Unit toggle button inside the dropdown */}
+          {isInModal && onUnitChange && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'flex-end', 
+              alignItems: 'center', 
+              marginBottom: '15px',
+              paddingBottom: '15px',
+              borderBottom: '1px solid #e0e0e0'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#f5f5f5', padding: '2px', borderRadius: '20px' }}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUnitChange('inch');
+                  }}
+                  style={{
+                    padding: '4px 12px',
+                    border: 'none',
+                    borderRadius: '15px',
+                    backgroundColor: measurementUnit === 'inch' ? '#2196F3' : '#666',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: measurementUnit === 'inch' ? '600' : '400',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Inch
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUnitChange('cm');
+                  }}
+                  style={{
+                    padding: '4px 12px',
+                    border: 'none',
+                    borderRadius: '15px',
+                    backgroundColor: measurementUnit === 'cm' ? '#2196F3' : '#666',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: measurementUnit === 'cm' ? '600' : '400',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  CM
+                </button>
+              </div>
+            </div>
+          )}
           {measurements.map((measurement, idx) => (
             <div key={idx} style={{ 
               padding: isInModal ? '6px 0' : '4px 0',
@@ -83,6 +136,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
   const [totalCost, setTotalCost] = useState(0);
   const [cartMessage, setCartMessage] = useState('');
   const [addingToCart, setAddingToCart] = useState(false);
+  const [measurementUnit, setMeasurementUnit] = useState('inch'); // 'inch' or 'cm'
   const navigate = useNavigate();
 
   // Calculate end date from start date and duration
@@ -119,6 +173,35 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
     return ['casual', 'pants', 'trousers'].includes(category);
   };
 
+  // Helper function to get measurement value based on selected unit
+  const getMeasurementValue = (measurement, unit) => {
+    if (!measurement) return null;
+    
+    // Handle new format with inch/cm objects
+    if (typeof measurement === 'object' && measurement.inch !== undefined) {
+      if (unit === 'inch') {
+        return measurement.inch ? `${measurement.inch}"` : null;
+      } else {
+        return measurement.cm ? `${measurement.cm} cm` : null;
+      }
+    }
+    
+    // Handle old format (just a number/string) - assume it's inches
+    if (typeof measurement === 'string' || typeof measurement === 'number') {
+      const inchValue = String(measurement);
+      if (unit === 'inch') {
+        return `${inchValue}"`;
+      } else {
+        // Convert to cm
+        const num = parseFloat(inchValue);
+        if (isNaN(num)) return null;
+        return `${(num * 2.54).toFixed(2)} cm`;
+      }
+    }
+    
+    return null;
+  };
+
   // Get measurements summary for card display (compact format)
   const getMeasurementsSummary = (item) => {
     if (!item || !item.size) return null;
@@ -151,8 +234,15 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
       // Filter out empty values and create summary - only show measurements with actual values
       const parts = Object.entries(measurements)
         .filter(([key, value]) => {
-          // Only include if value exists, is not empty string, not '0', and not null/undefined
+          // Check if value exists (handle both old and new format)
+          if (typeof value === 'object' && value !== null) {
+            // New format with inch/cm
+            return (value.inch && value.inch !== '' && value.inch !== '0') || 
+                   (value.cm && value.cm !== '' && value.cm !== '0');
+          } else {
+            // Old format
           return value !== null && value !== undefined && value !== '' && value !== '0' && String(value).trim() !== '';
+          }
         })
         .map(([key, value]) => {
           // Format key names properly
@@ -164,8 +254,12 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
           // Handle specific cases
           label = label.replace('sleeve length', 'Sleeve Length');
           label = label.replace('sleevelength', 'Sleeve Length');
-          return `${label}: ${value}"`;
-        });
+          
+          // Get value based on selected unit
+          const displayValue = getMeasurementValue(value, measurementUnit);
+          return displayValue ? `${label}: ${displayValue}` : null;
+        })
+        .filter(part => part !== null);
 
       return parts.length > 0 ? parts : null;
     } catch (e) {
@@ -201,24 +295,38 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
       
       if (isTopCategory(category)) {
         const parts = [];
-        // Check for truthy values (not empty string, null, undefined, or 0)
-        if (measurements.chest && measurements.chest !== '' && measurements.chest !== '0') {
-          parts.push({ label: 'Chest', value: measurements.chest });
+        // Check for truthy values (handle both old and new format)
+        const checkValue = (val) => {
+          if (typeof val === 'object' && val !== null) {
+            return (val.inch && val.inch !== '' && val.inch !== '0') || 
+                   (val.cm && val.cm !== '' && val.cm !== '0');
+          }
+          return val && val !== '' && val !== '0';
+        };
+        
+        if (checkValue(measurements.chest)) {
+          const value = getMeasurementValue(measurements.chest, measurementUnit);
+          if (value) parts.push({ label: 'Chest', value });
         }
-        if (measurements.shoulders && measurements.shoulders !== '' && measurements.shoulders !== '0') {
-          parts.push({ label: 'Shoulders', value: measurements.shoulders });
+        if (checkValue(measurements.shoulders)) {
+          const value = getMeasurementValue(measurements.shoulders, measurementUnit);
+          if (value) parts.push({ label: 'Shoulders', value });
         }
-        if (measurements.sleeveLength && measurements.sleeveLength !== '' && measurements.sleeveLength !== '0') {
-          parts.push({ label: 'Sleeve Length', value: measurements.sleeveLength });
+        if (checkValue(measurements.sleeveLength)) {
+          const value = getMeasurementValue(measurements.sleeveLength, measurementUnit);
+          if (value) parts.push({ label: 'Sleeve Length', value });
         }
-        if (measurements.neck && measurements.neck !== '' && measurements.neck !== '0') {
-          parts.push({ label: 'Neck', value: measurements.neck });
+        if (checkValue(measurements.neck)) {
+          const value = getMeasurementValue(measurements.neck, measurementUnit);
+          if (value) parts.push({ label: 'Neck', value });
         }
-        if (measurements.waist && measurements.waist !== '' && measurements.waist !== '0') {
-          parts.push({ label: 'Waist', value: measurements.waist });
+        if (checkValue(measurements.waist)) {
+          const value = getMeasurementValue(measurements.waist, measurementUnit);
+          if (value) parts.push({ label: 'Waist', value });
         }
-        if (measurements.length && measurements.length !== '' && measurements.length !== '0') {
-          parts.push({ label: 'Length', value: measurements.length });
+        if (checkValue(measurements.length)) {
+          const value = getMeasurementValue(measurements.length, measurementUnit);
+          if (value) parts.push({ label: 'Length', value });
         }
         
         return parts.length > 0 ? (
@@ -228,14 +336,14 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
               <thead>
                 <tr style={{ backgroundColor: '#f8f9fa' }}>
                   <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333', fontSize: '0.9rem' }}>Measurement</th>
-                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333', fontSize: '0.9rem' }}>Value (inches)</th>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333', fontSize: '0.9rem' }}>Value ({measurementUnit === 'inch' ? 'inches' : 'centimeters'})</th>
                 </tr>
               </thead>
               <tbody>
                 {parts.map((part, idx) => (
                   <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
                     <td style={{ padding: '10px', borderBottom: '1px solid #f0f0f0', fontWeight: '500' }}>{part.label}</td>
-                    <td style={{ padding: '10px', borderBottom: '1px solid #f0f0f0' }}>{part.value}"</td>
+                    <td style={{ padding: '10px', borderBottom: '1px solid #f0f0f0' }}>{part.value}</td>
                   </tr>
                 ))}
               </tbody>
@@ -244,23 +352,37 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
         ) : 'No measurements available';
       } else if (isBottomCategory(category)) {
         const parts = [];
-        if (measurements.waist && measurements.waist !== '' && measurements.waist !== '0') {
-          parts.push({ label: 'Waist', value: measurements.waist });
+        const checkValue = (val) => {
+          if (typeof val === 'object' && val !== null) {
+            return (val.inch && val.inch !== '' && val.inch !== '0') || 
+                   (val.cm && val.cm !== '' && val.cm !== '0');
+          }
+          return val && val !== '' && val !== '0';
+        };
+        
+        if (checkValue(measurements.waist)) {
+          const value = getMeasurementValue(measurements.waist, measurementUnit);
+          if (value) parts.push({ label: 'Waist', value });
         }
-        if (measurements.hips && measurements.hips !== '' && measurements.hips !== '0') {
-          parts.push({ label: 'Hips', value: measurements.hips });
+        if (checkValue(measurements.hips)) {
+          const value = getMeasurementValue(measurements.hips, measurementUnit);
+          if (value) parts.push({ label: 'Hips', value });
         }
-        if (measurements.inseam && measurements.inseam !== '' && measurements.inseam !== '0') {
-          parts.push({ label: 'Inseam', value: measurements.inseam });
+        if (checkValue(measurements.inseam)) {
+          const value = getMeasurementValue(measurements.inseam, measurementUnit);
+          if (value) parts.push({ label: 'Inseam', value });
         }
-        if (measurements.length && measurements.length !== '' && measurements.length !== '0') {
-          parts.push({ label: 'Length', value: measurements.length });
+        if (checkValue(measurements.length)) {
+          const value = getMeasurementValue(measurements.length, measurementUnit);
+          if (value) parts.push({ label: 'Length', value });
         }
-        if (measurements.thigh && measurements.thigh !== '' && measurements.thigh !== '0') {
-          parts.push({ label: 'Thigh', value: measurements.thigh });
+        if (checkValue(measurements.thigh)) {
+          const value = getMeasurementValue(measurements.thigh, measurementUnit);
+          if (value) parts.push({ label: 'Thigh', value });
         }
-        if (measurements.outseam && measurements.outseam !== '' && measurements.outseam !== '0') {
-          parts.push({ label: 'Outseam', value: measurements.outseam });
+        if (checkValue(measurements.outseam)) {
+          const value = getMeasurementValue(measurements.outseam, measurementUnit);
+          if (value) parts.push({ label: 'Outseam', value });
         }
         
         return parts.length > 0 ? (
@@ -270,14 +392,14 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
               <thead>
                 <tr style={{ backgroundColor: '#f8f9fa' }}>
                   <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333', fontSize: '0.9rem' }}>Measurement</th>
-                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333', fontSize: '0.9rem' }}>Value (inches)</th>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333', fontSize: '0.9rem' }}>Value ({measurementUnit === 'inch' ? 'inches' : 'centimeters'})</th>
                 </tr>
               </thead>
               <tbody>
                 {parts.map((part, idx) => (
                   <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
                     <td style={{ padding: '10px', borderBottom: '1px solid #f0f0f0', fontWeight: '500' }}>{part.label}</td>
-                    <td style={{ padding: '10px', borderBottom: '1px solid #f0f0f0' }}>{part.value}"</td>
+                    <td style={{ padding: '10px', borderBottom: '1px solid #f0f0f0' }}>{part.value}</td>
                   </tr>
                 ))}
               </tbody>
@@ -288,15 +410,28 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
         // For other categories, try to display if it's a valid object
         if (measurements && typeof measurements === 'object') {
           const parts = Object.entries(measurements)
-            .filter(([key, value]) => value && value !== '' && value !== '0')
-            .map(([key, value]) => ({ label: key.charAt(0).toUpperCase() + key.slice(1), value }));
+            .filter(([key, value]) => {
+              const checkValue = (val) => {
+                if (typeof val === 'object' && val !== null) {
+                  return (val.inch && val.inch !== '' && val.inch !== '0') || 
+                         (val.cm && val.cm !== '' && val.cm !== '0');
+                }
+                return val && val !== '' && val !== '0';
+              };
+              return checkValue(value);
+            })
+            .map(([key, value]) => {
+              const displayValue = getMeasurementValue(value, measurementUnit);
+              return displayValue ? { label: key.charAt(0).toUpperCase() + key.slice(1), value: displayValue } : null;
+            })
+            .filter(part => part !== null);
           
           return parts.length > 0 ? (
             <div>
               <div style={{ marginLeft: '10px' }}>
                 {parts.map((part, idx) => (
                   <div key={idx} style={{ marginBottom: '4px', fontSize: '0.9rem' }}>
-                    <span style={{ fontWeight: '500' }}>{part.label}:</span> {part.value}"
+                    <span style={{ fontWeight: '500' }}>{part.label}:</span> {part.value}
                   </div>
                 ))}
               </div>
@@ -626,7 +761,43 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
       <section className="rental" id="Rentals">
         <div className="section-header">
           <h2>Rental Clothes</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#f5f5f5', padding: '6px 12px', borderRadius: '20px' }}>
+              <button
+                onClick={() => setMeasurementUnit('inch')}
+                style={{
+                  padding: '6px 16px',
+                  border: 'none',
+                  borderRadius: '15px',
+                  backgroundColor: measurementUnit === 'inch' ? '#2196F3' : 'transparent',
+                  color: measurementUnit === 'inch' ? 'white' : '#666',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: measurementUnit === 'inch' ? '600' : '400',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Inch
+              </button>
+              <button
+                onClick={() => setMeasurementUnit('cm')}
+                style={{
+                  padding: '6px 16px',
+                  border: 'none',
+                  borderRadius: '15px',
+                  backgroundColor: measurementUnit === 'cm' ? '#2196F3' : 'transparent',
+                  color: measurementUnit === 'cm' ? 'white' : '#666',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: measurementUnit === 'cm' ? '600' : '400',
+                  transition: 'all 0.2s'
+                }}
+              >
+                CM
+              </button>
+            </div>
           {!showAll && <a onClick={handleSeeMore} className="see-more">See more →</a>}
+          </div>
         </div>
         <div className="rental-grid">
           {[1, 2, 3].map((i) => (
@@ -1110,21 +1281,35 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                         <strong>Category:</strong> {selectedItem.category || 'N/A'}
                       </div>
                     </div>
-                    <div className="detail-row">
-                      <div className="detail-item" style={{ width: '100%' }}>
+                    <div className="detail-row" style={{ display: 'block', flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <div className="detail-item" style={{ 
+                        width: '100%', 
+                        display: 'block', 
+                        flexDirection: 'column', 
+                        alignItems: 'flex-start',
+                        justifyContent: 'flex-start',
+                        textAlign: 'left',
+                        maxWidth: '100%'
+                      }}>
+                        <strong style={{ display: 'block', marginBottom: '10px', width: '100%' }}>Measurements:</strong>
                         {(() => {
                           const measurementsSummary = getMeasurementsSummary(selectedItem);
                           if (measurementsSummary && measurementsSummary.length > 0) {
                             return (
-                              <MeasurementsDropdown measurements={measurementsSummary} item={selectedItem} isInModal={true} />
+                              <div style={{ width: '100%' }}>
+                                <MeasurementsDropdown 
+                                  measurements={measurementsSummary} 
+                                  item={selectedItem} 
+                                  isInModal={true}
+                                  measurementUnit={measurementUnit}
+                                  onUnitChange={setMeasurementUnit}
+                                />
+                              </div>
                             );
                           }
                           return (
-                            <div>
-                              <strong style={{ display: 'block', marginBottom: '10px' }}>Measurements:</strong> 
-                              <div style={{ marginTop: '5px', fontSize: '0.9rem', color: '#666' }}>
+                            <div style={{ marginTop: '5px', fontSize: '0.9rem', color: '#666', width: '100%' }}>
                                 {formatMeasurements(selectedItem)}
-                              </div>
                             </div>
                           );
                         })()}
@@ -1234,6 +1419,18 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                       <div className="cost-total">
                         <span>Total Rental Cost (Due on Return):</span>
                         <span>₱{totalCost.toFixed(2)}</span>
+                      </div>
+                      <div style={{
+                        marginTop: '15px',
+                        padding: '12px',
+                        backgroundColor: '#fff3cd',
+                        border: '1px solid #ffc107',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        color: '#856404'
+                      }}>
+                        <strong>⚠️ Late Return Penalty:</strong> If you exceed the rental period, an additional ₱100 per day will be charged. 
+                        For example, if you exceed by 1 day, you will pay ₱100; if you exceed by 2 days, you will pay ₱200.
                       </div>
                     </div>
                   )}

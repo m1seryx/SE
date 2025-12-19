@@ -63,24 +63,101 @@ const Order = {
           return callback(itemErr, null);
         }
 
-        // Initialize tracking for each order item
-        const OrderTracking = require('./OrderTrackingModel');
-        const orderItems = cartItems.map((item, index) => ({
-          order_item_id: itemResult.insertId + index, // This is approximate, better to get actual IDs
-          service_type: item.service_type
-        }));
-
-        // Initialize tracking (async, don't wait for completion)
-        OrderTracking.initializeOrderTracking(orderItems, (trackingErr) => {
-          if (trackingErr) {
-            console.error('Error initializing order tracking:', trackingErr);
+        // Get the actual order item IDs that were just inserted
+        // We need to fetch them to link appointment slots properly
+        const getOrderItemsSql = `
+          SELECT item_id, service_type, appointment_date, specific_data
+          FROM order_items
+          WHERE order_id = ?
+          ORDER BY item_id ASC
+        `;
+        
+        db.query(getOrderItemsSql, [orderId], (getItemsErr, orderItems) => {
+          if (getItemsErr) {
+            console.error('Error fetching order items for slot linking:', getItemsErr);
+            // Continue even if this fails
+          } else {
+            // Link appointment slots from cart_item_id to order_item_id
+            const AppointmentSlot = require('./AppointmentSlotModel');
+            
+            // Link slots for each cart item to its corresponding order item
+            // Match by index (cart items and order items should be in the same order)
+            let linkedCount = 0;
+            const totalAppointmentItems = cartItems.filter(item => 
+              ['dry_cleaning', 'repair', 'customization'].includes(item.service_type)
+            ).length;
+            
+            cartItems.forEach((cartItem, index) => {
+              if (!cartItem || !cartItem.cart_id) return;
+              
+              const orderItem = orderItems[index];
+              if (!orderItem) return;
+              
+              // Only link for appointment-based services
+              if (['dry_cleaning', 'repair', 'customization'].includes(cartItem.service_type)) {
+                // Find slot by cart_item_id and link it to order_item_id
+                AppointmentSlot.getSlotByCartItem(cartItem.cart_id, (slotErr, slots) => {
+                  if (slotErr) {
+                    console.error('Error getting slot by cart item:', slotErr);
+                    return;
+                  }
+                  
+                  if (!slots || slots.length === 0) {
+                    console.log(`[ORDER] No slot found for cart_item_id ${cartItem.cart_id}`);
+                    return;
+                  }
+                  
+                  const slot = slots[0];
+                  
+                  // Before linking, verify the slot is still available (check capacity)
+                  AppointmentSlot.isSlotAvailable(
+                    orderItem.service_type,
+                    slot.appointment_date,
+                    slot.appointment_time,
+                    (availErr, isAvailable) => {
+                      if (availErr || !isAvailable) {
+                        console.warn(`[ORDER] Slot ${slot.slot_id} is no longer available. Date: ${slot.appointment_date}, Time: ${slot.appointment_time}`);
+                        // Still link it, but log the warning (race condition occurred)
+                      }
+                      
+                      // Link the slot to order item
+                      AppointmentSlot.updateSlotWithOrder(slot.slot_id, orderItem.item_id, (linkErr) => {
+                        if (linkErr) {
+                          console.error('Error linking slot to order item:', linkErr);
+                        } else {
+                          linkedCount++;
+                          console.log(`[ORDER] Linked slot ${slot.slot_id} to order item ${orderItem.item_id} (from cart_item_id ${cartItem.cart_id})`);
+                        }
+                      });
+                    }
+                  );
+                });
+              }
+            });
           }
-        });
 
-        callback(null, {
-          orderId: orderId,
-          orderResult: orderResult,
-          itemResult: itemResult
+          // Initialize tracking for each order item
+          const OrderTracking = require('./OrderTrackingModel');
+          const trackingItems = orderItems ? orderItems.map((item) => ({
+            order_item_id: item.item_id,
+            service_type: item.service_type
+          })) : cartItems.map((item, index) => ({
+            order_item_id: itemResult.insertId + index, // Fallback if orderItems not available
+            service_type: item.service_type
+          }));
+
+          // Initialize tracking (async, don't wait for completion)
+          OrderTracking.initializeOrderTracking(trackingItems, (trackingErr) => {
+            if (trackingErr) {
+              console.error('Error initializing order tracking:', trackingErr);
+            }
+          });
+
+          callback(null, {
+            orderId: orderId,
+            orderResult: orderResult,
+            itemResult: itemResult
+          });
         });
       });
     });
@@ -670,7 +747,7 @@ Order.getRentalOrdersByStatus = (status, callback) => {
 
 // Update rental order item status (rental has different status flow)
 Order.updateRentalOrderItem = (itemId, updateData, callback) => {
-  const { finalPrice, approvalStatus, adminNotes } = updateData;
+  const { finalPrice, approvalStatus, adminNotes, penaltyData } = updateData;
 
   console.log("Model - Updating rental item:", itemId, updateData);
 
@@ -689,10 +766,26 @@ Order.updateRentalOrderItem = (itemId, updateData, callback) => {
     console.log("Adding adminNotes update:", adminNotes);
   }
 
-  // If final price is being updated, set adminPriceUpdated flag
+  // If penalty data is provided, update pricing_factors with penalty information
+  if (penaltyData !== undefined) {
+    // Use JSON_MERGE_PATCH or multiple JSON_SET calls to update all penalty fields
+    updates.push('pricing_factors = JSON_SET(COALESCE(pricing_factors, \'{}\'), \'$.penalty\', CAST(? AS DECIMAL(10,2)))');
+    values.push(penaltyData.penalty || 0);
+    updates.push('pricing_factors = JSON_SET(pricing_factors, \'$.penaltyDays\', ?)');
+    values.push(penaltyData.penaltyDays || 0);
+    if (penaltyData.penaltyAppliedDate) {
+      updates.push('pricing_factors = JSON_SET(pricing_factors, \'$.penaltyAppliedDate\', ?)');
+      values.push(penaltyData.penaltyAppliedDate);
+    }
+    console.log("Adding penalty data to pricing_factors:", penaltyData);
+  }
+
+  // If final price is being updated (including penalty), update it
   if (finalPrice !== undefined) {
-    updates.push('pricing_factors = JSON_SET(pricing_factors, \'$.adminPriceUpdated\', true)');
-    console.log("Setting adminPriceUpdated flag");
+    updates.push('final_price = ?');
+    values.push(finalPrice);
+    updates.push('pricing_factors = JSON_SET(COALESCE(pricing_factors, \'{}\'), \'$.adminPriceUpdated\', true)');
+    console.log("Updating final_price to:", finalPrice);
   }
 
   if (updates.length === 0) {
@@ -795,7 +888,12 @@ Order.updateRentalOrderItem = (itemId, updateData, callback) => {
         };
 
         const trackingStatus = statusMap[approvalStatus] || 'pending';
-        const notes = getRentalStatusNote(approvalStatus);
+        let notes = getRentalStatusNote(approvalStatus);
+        
+        // Add penalty information to notes if penalty was applied
+        if (updateData.penaltyData && updateData.penaltyData.penalty > 0) {
+          notes += ` | Penalty: ₱${updateData.penaltyData.penalty} (${updateData.penaltyData.penaltyDays} day${updateData.penaltyData.penaltyDays > 1 ? 's' : ''} exceeded)`;
+        }
 
         console.log("Syncing to tracking table:", itemId, "from", approvalStatus, "to", trackingStatus);
 

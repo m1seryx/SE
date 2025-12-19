@@ -464,22 +464,22 @@ const Profile = () => {
             ) : (
               /* Show single rental image if available */
               specific_data.image_url && specific_data.image_url !== 'no-image' && (
-                <div className="detail-row">
-                  <span className="detail-label">Item Photo:</span>
-                  <div className="detail-value">
-                    <img
-                      src={specific_data.image_url}
-                      alt="Rental item"
+              <div className="detail-row">
+                <span className="detail-label">Item Photo:</span>
+                <div className="detail-value">
+                  <img
+                    src={specific_data.image_url}
+                    alt="Rental item"
                       className="damage-photo clickable-image"
                       onClick={() => openImagePreview(specific_data.image_url, specific_data.item_name || 'Rental Item')}
                       title="Click to enlarge"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        console.log('Rental image failed to load:', specific_data.image_url);
-                      }}
-                    />
-                  </div>
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      console.log('Rental image failed to load:', specific_data.image_url);
+                    }}
+                  />
                 </div>
+              </div>
               )
             )}
 
@@ -573,6 +573,32 @@ const Profile = () => {
                 })()}
               </span>
             </div>
+            {/* Display penalty if applied */}
+            {(() => {
+              const pricingFactors = typeof item.pricing_factors === 'string' 
+                ? JSON.parse(item.pricing_factors || '{}') 
+                : (item.pricing_factors || {});
+              const penalty = parseFloat(pricingFactors.penalty || 0);
+              const penaltyDays = parseInt(pricingFactors.penaltyDays || 0);
+              
+              if (penalty > 0 && penaltyDays > 0) {
+                return (
+                  <div className="detail-row" style={{ 
+                    backgroundColor: '#fff3cd', 
+                    padding: '12px', 
+                    borderRadius: '6px', 
+                    border: '1px solid #ffc107',
+                    marginTop: '10px'
+                  }}>
+                    <span className="detail-label" style={{ color: '#856404', fontWeight: '600' }}>⚠️ Late Return Penalty:</span>
+                    <span className="detail-value" style={{ color: '#856404', fontWeight: '600' }}>
+                      ₱{penalty.toFixed(2)} ({penaltyDays} day{penaltyDays > 1 ? 's' : ''} exceeded)
+                    </span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
             {specific_data.notes && (
               <div className="detail-row">
                 <span className="detail-label">Notes:</span>
@@ -1114,23 +1140,14 @@ const Profile = () => {
     const isPriceConfirmationStatus = item.status === 'price_confirmation';
     console.log('Is price confirmation status:', isPriceConfirmationStatus);
     
-    // For customization orders, show price confirmation if status is price_confirmation
-    // The status itself indicates admin has made changes
-    if ((item.service_type === 'customization' || item.service_type === 'customize') && isPriceConfirmationStatus) {
-      console.log('Customization order with price_confirmation status - showing buttons');
+    // Show price confirmation whenever status is 'price_confirmation'
+    // This ensures users always see the confirmation step, even if the estimated price is correct
+    if (isPriceConfirmationStatus) {
+      console.log('Price confirmation status detected - showing buttons');
       return true;
     }
     
-    const priceChanged = hasPriceChanged(item.specific_data, parseFloat(item.final_price), item.service_type, item.pricing_factors);
-    console.log('Price changed result:', priceChanged);
-    
-    // Show price confirmation only if:
-    // 1. Status is 'price_confirmation'
-    // 2. Price has actually been changed by admin (not just set)
-    const result = isPriceConfirmationStatus && priceChanged;
-    console.log('Should show price confirmation:', result);
-    
-    return result;
+    return false;
   };
 
   // Filter orders based on status
@@ -1569,10 +1586,10 @@ const Profile = () => {
                             
                             // For other services or dry cleaning with specific garment type, show final price
                             return (
-                              <div className="price-row">
-                                <span className="price-label">Final Price:</span>
-                                <span className="price-value final">₱{parseFloat(item.final_price).toFixed(2)}</span>
-                              </div>
+                          <div className="price-row">
+                            <span className="price-label">Final Price:</span>
+                            <span className="price-value final">₱{parseFloat(item.final_price).toFixed(2)}</span>
+                          </div>
                             );
                           })()
                         )}
@@ -1927,10 +1944,10 @@ const Profile = () => {
                     >
                       Cancel Order
                     </button>
-                  )}
-                  <button className="btn-secondary" onClick={closeDetailsModal}>
-                    Close
-                  </button>
+                )}
+                <button className="btn-secondary" onClick={closeDetailsModal}>
+                  Close
+                </button>
                 </div>
               </div>
             </div>

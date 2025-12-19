@@ -271,6 +271,14 @@ exports.makePayment = (req, res) => {
       }, (logErr, logResult) => {
         // Create action log for dashboard
         if (!logErr) {
+          // Get customer name for action log
+          const db = require('../config/db');
+          const getUserSql = `SELECT first_name, last_name FROM user WHERE user_id = ?`;
+          db.query(getUserSql, [item.user_id], (userErr, userResults) => {
+            const customerName = userResults && userResults.length > 0 
+              ? `${userResults[0].first_name} ${userResults[0].last_name}`
+              : 'Customer';
+            
           const ActionLog = require('../model/ActionLogModel');
           const paymentMethodLabel = payment_method === 'cash' ? 'Cash' : 
                                      payment_method === 'card' ? 'Card' : 
@@ -284,13 +292,14 @@ exports.makePayment = (req, res) => {
             previous_status: item.payment_status || 'unpaid',
             new_status: newPaymentStatus,
             reason: null,
-            notes: `Payment of ₱${paymentAmount.toFixed(2)} via ${paymentMethodLabel}. Status: ${item.payment_status || 'unpaid'} → ${newPaymentStatus}`
+              notes: `Payment of ₱${paymentAmount.toFixed(2)} via ${paymentMethodLabel}. Customer: ${customerName}`
           }, (actionLogErr) => {
             if (actionLogErr) {
               console.error('Error creating payment action log:', actionLogErr);
             } else {
               console.log('Payment action log created successfully');
             }
+            });
           });
         }
         

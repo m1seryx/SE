@@ -3,11 +3,13 @@ import Sidebar from './Sidebar';
 import '../adminStyle/admin.css';
 import AdminHeader from './AdminHeader';
 import { getAdminDashboardOverview } from '../api/AdminDashboardApi';
+import { getAllTransactionLogs } from '../api/TransactionLogApi';
 
 function AdminPage() {
   const [stats, setStats] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
   const [allActivities, setAllActivities] = useState([]);
+  const [allPayments, setAllPayments] = useState([]); // Store all payment activities
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -15,6 +17,7 @@ function AdminPage() {
   const [serviceFilter, setServiceFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all'); // all, today, week, month
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all'); // all, down-payment, paid, partial-payment
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -40,8 +43,160 @@ function AdminPage() {
     fetchDashboard();
   }, []);
 
-  // Filter activities based on selected filters
+  // Fetch all payment history when payment filter is selected
   useEffect(() => {
+    const fetchAllPayments = async () => {
+      if (statusFilter === 'payment') {
+        try {
+          setLoading(true);
+          const result = await getAllTransactionLogs();
+          if (result.success && result.logs) {
+            // First, sort all logs by order_item_id and created_at to calculate cumulative totals
+            const sortedLogs = [...result.logs].sort((a, b) => {
+              if (a.order_item_id !== b.order_item_id) {
+                return a.order_item_id - b.order_item_id;
+              }
+              return new Date(a.created_at) - new Date(b.created_at);
+            });
+
+            // Calculate cumulative totals for each order item
+            const cumulativeTotals = {};
+            sortedLogs.forEach(tx => {
+              const itemId = tx.order_item_id;
+              if (!cumulativeTotals[itemId]) {
+                cumulativeTotals[itemId] = 0;
+              }
+              cumulativeTotals[itemId] += parseFloat(tx.amount || 0);
+            });
+
+            // Create a map to track running totals for each order item
+            const runningTotals = {};
+            
+            // Format transaction logs as activities
+            const paymentActivities = sortedLogs.map(tx => {
+              const orderDate = tx.created_at instanceof Date 
+                ? tx.created_at 
+                : new Date(tx.created_at);
+              
+              const formatDate = (date) => {
+                const d = date instanceof Date ? date : new Date(date);
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const hours = String(d.getHours()).padStart(2, '0');
+                const minutes = String(d.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day} ${hours}:${minutes}`;
+              };
+
+              const mapService = (serviceType) => {
+                const serviceMap = {
+                  'rental': 'Rental',
+                  'dry_cleaning': 'Dry Cleaning',
+                  'dry-cleaning': 'Dry Cleaning',
+                  'drycleaning': 'Dry Cleaning',
+                  'repair': 'Repair',
+                  'customization': 'Customization',
+                  'customize': 'Customization'
+                };
+                return serviceMap[serviceType?.toLowerCase()] || serviceType || 'Other';
+              };
+
+              const customerName = `${tx.first_name || ''} ${tx.last_name || ''}`.trim() || 'Customer';
+              const paymentAmount = parseFloat(tx.amount || 0);
+              
+              // Calculate running total up to this transaction
+              const itemId = tx.order_item_id;
+              if (!runningTotals[itemId]) {
+                runningTotals[itemId] = 0;
+              }
+              runningTotals[itemId] += paymentAmount;
+              const totalPaid = runningTotals[itemId];
+              
+              const paymentMethod = tx.payment_method === 'system_auto' ? 'cash' : (tx.payment_method || 'cash');
+              
+              return {
+                customer: customerName,
+                service: mapService(tx.service_type),
+                status: tx.new_payment_status || 'paid',
+                statusText: tx.new_payment_status === 'paid' ? 'Paid' : 
+                           tx.new_payment_status === 'fully_paid' ? 'Fully Paid' :
+                           tx.new_payment_status === 'down-payment' ? 'Down Payment' :
+                           tx.new_payment_status === 'partial_payment' ? 'Partial Payment' : 'Payment',
+                time: formatDate(orderDate),
+                reason: null,
+                actionType: 'payment',
+                actionBy: tx.created_by || 'admin',
+                notes: `Admin recorded payment of ₱${paymentAmount.toFixed(2)}. Total paid: ₱${totalPaid.toFixed(2)}. Customer: ${customerName}`,
+                isPayment: true,
+                paymentInfo: {
+                  amount: paymentAmount,
+                  payment_method: paymentMethod,
+                  payment_status: tx.new_payment_status || 'paid',
+                  total_paid: totalPaid
+                }
+              };
+            });
+            
+            // Re-sort by created_at descending for display
+            paymentActivities.sort((a, b) => new Date(b.time) - new Date(a.time));
+            
+            // Store all payment activities
+            setAllPayments(paymentActivities);
+          }
+        } catch (err) {
+          console.error('Error fetching all payments:', err);
+          setError('Failed to load payment history');
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // Reset to regular activities when payment filter is cleared
+        setRecentActivities(allActivities);
+        setAllPayments([]);
+        setPaymentStatusFilter('all'); // Reset payment status filter
+      }
+    };
+
+    fetchAllPayments();
+  }, [statusFilter, allActivities]);
+
+  // Filter payment activities by payment status
+  useEffect(() => {
+    if (statusFilter === 'payment' && allPayments.length > 0) {
+      let filtered = [...allPayments];
+      
+      if (paymentStatusFilter !== 'all') {
+        filtered = filtered.filter(activity => {
+          const paymentStatus = activity.paymentInfo?.payment_status || activity.status || '';
+          const normalizedStatus = paymentStatus.toLowerCase();
+          const filter = paymentStatusFilter.toLowerCase();
+          
+          // Map filter values to actual payment statuses
+          if (filter === 'paid') {
+            return normalizedStatus === 'paid' || normalizedStatus === 'fully_paid';
+          } else if (filter === 'down-payment') {
+            return normalizedStatus === 'down-payment' || normalizedStatus === 'down_payment';
+          } else if (filter === 'partial-payment') {
+            return normalizedStatus === 'partial_payment' || normalizedStatus === 'partial-payment';
+          }
+          return false;
+        });
+      }
+      
+      setRecentActivities(filtered);
+    } else if (statusFilter === 'payment' && allPayments.length === 0) {
+      // If payment filter is active but no payments loaded yet, show empty
+      setRecentActivities([]);
+    }
+  }, [paymentStatusFilter, statusFilter, allPayments]);
+
+  // Filter activities based on selected filters (when not showing all payments)
+  useEffect(() => {
+    if (statusFilter === 'payment') {
+      // Don't filter if showing all payments - already handled in fetchAllPayments
+      return;
+    }
+
     let filtered = [...allActivities];
 
     // Filter by service type
@@ -58,9 +213,6 @@ function AdminPage() {
     // Filter by status
     if (statusFilter !== 'all') {
       filtered = filtered.filter(activity => {
-        if (statusFilter === 'payment') {
-          return activity.isPayment === true || activity.actionType === 'payment';
-        }
         const status = activity.status?.toLowerCase() || '';
         const statusText = activity.statusText?.toLowerCase() || '';
         const filter = statusFilter.toLowerCase();
@@ -71,23 +223,30 @@ function AdminPage() {
     // Filter by date
     if (dateFilter !== 'all') {
       const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const monthAgo = new Date(today);
+      monthAgo.setDate(monthAgo.getDate() - 30);
+      
       filtered = filtered.filter(activity => {
-        // Parse time string (e.g., "2 hours ago", "3 days ago")
+        // Parse date string (e.g., "2024-12-19 14:30")
         const timeStr = activity.time || '';
-        if (timeStr.includes('Just now') || timeStr.includes('minute')) {
-          return dateFilter === 'today';
-        }
-        if (timeStr.includes('hour')) {
-          return dateFilter === 'today' || dateFilter === 'week';
-        }
-        if (timeStr.includes('day')) {
-          const daysMatch = timeStr.match(/(\d+)\s+day/);
-          if (daysMatch) {
-            const days = parseInt(daysMatch[1]);
-            if (dateFilter === 'today') return days === 0;
-            if (dateFilter === 'week') return days <= 7;
-            if (dateFilter === 'month') return days <= 30;
+        if (!timeStr) return false;
+        
+        try {
+          const activityDate = new Date(timeStr);
+          const activityDateOnly = new Date(activityDate.getFullYear(), activityDate.getMonth(), activityDate.getDate());
+          
+          if (dateFilter === 'today') {
+            return activityDateOnly.getTime() === today.getTime();
+          } else if (dateFilter === 'week') {
+            return activityDate >= weekAgo;
+          } else if (dateFilter === 'month') {
+            return activityDate >= monthAgo;
           }
+        } catch (e) {
+          console.error('Error parsing date:', timeStr, e);
         }
         return true;
       });
@@ -146,20 +305,37 @@ function AdminPage() {
           <button className={`filter-tab-sm ${dateFilter === 'today' ? 'active' : ''}`} onClick={() => setDateFilter('today')}>Today</button>
           <button className={`filter-tab-sm ${dateFilter === 'week' ? 'active' : ''}`} onClick={() => setDateFilter('week')}>7 Days</button>
           <button className={`filter-tab-sm ${dateFilter === 'month' ? 'active' : ''}`} onClick={() => setDateFilter('month')}>30 Days</button>
-          {(serviceFilter !== 'all' || statusFilter !== 'all' || dateFilter !== 'all') && (
-            <button className="clear-btn-sm" onClick={() => { setServiceFilter('all'); setStatusFilter('all'); setDateFilter('all'); }}>✕</button>
+          
+          {/* Payment Status Filter - Only show when payment filter is active */}
+          {statusFilter === 'payment' && (
+            <>
+              <span className="filter-divider">|</span>
+              <button className={`filter-tab-sm ${paymentStatusFilter === 'all' ? 'active' : ''}`} onClick={() => setPaymentStatusFilter('all')}>All Payments</button>
+              <button className={`filter-tab-sm ${paymentStatusFilter === 'paid' ? 'active' : ''}`} onClick={() => setPaymentStatusFilter('paid')}>Paid</button>
+              <button className={`filter-tab-sm ${paymentStatusFilter === 'down-payment' ? 'active' : ''}`} onClick={() => setPaymentStatusFilter('down-payment')}>Down Payment</button>
+              <button className={`filter-tab-sm ${paymentStatusFilter === 'partial-payment' ? 'active' : ''}`} onClick={() => setPaymentStatusFilter('partial-payment')}>Partial Payment</button>
+            </>
+          )}
+          
+          {(serviceFilter !== 'all' || statusFilter !== 'all' || dateFilter !== 'all' || paymentStatusFilter !== 'all') && (
+            <button className="clear-btn-sm" onClick={() => { 
+              setServiceFilter('all'); 
+              setStatusFilter('all'); 
+              setDateFilter('all');
+              setPaymentStatusFilter('all');
+            }}>✕</button>
           )}
         </div>
 
         <div className="recent-activity">
           <table className="activity-table">
             <thead>
-              <tr>
+              <tr className="tr-activity">
                 <th>Customer</th>
                 <th>Type of Service</th>
                 <th>Status / Payment</th>
                 <th>Details / Payment Record</th>
-                <th>Time</th>
+                <th>Date</th>
               </tr>
             </thead>
             <tbody>
@@ -201,7 +377,7 @@ function AdminPage() {
                           </span>
                           {activity.paymentInfo?.amount && (
                             <span style={{ fontSize: '11px', color: '#28a745', fontWeight: 'bold' }}>
-                              Amount: ₱{parseFloat(activity.paymentInfo.amount).toFixed(2)}
+                              Amount: ₱{parseFloat(activity.paymentInfo.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           )}
                         </div>
@@ -224,8 +400,8 @@ function AdminPage() {
                             <div style={{ marginBottom: '4px' }}>{activity.notes}</div>
                           )}
                           {activity.paymentInfo?.payment_method && (
-                            <div style={{ fontSize: '11px', color: '#666' }}>
-                              Method: {activity.paymentInfo.payment_method}
+                            <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+                              Method: {activity.paymentInfo.payment_method === 'system_auto' ? 'cash' : activity.paymentInfo.payment_method}
                             </div>
                           )}
                         </div>

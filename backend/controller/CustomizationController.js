@@ -222,6 +222,19 @@ exports.updateCustomizationOrderItem = (req, res) => {
         console.error('Skipping action log: user_id is null or undefined');
       }
 
+      // Cancel appointment slot if order is rejected/cancelled
+      if (updateData.approvalStatus && (updateData.approvalStatus === 'cancelled' || updateData.approvalStatus === 'rejected')) {
+        console.log(`[CUSTOMIZATION] Cancelling appointment slot for order item ${itemId} with status: ${updateData.approvalStatus}`);
+        const AppointmentSlot = require('../model/AppointmentSlotModel');
+        AppointmentSlot.cancelSlotByOrderItem(itemId, (slotErr, cancelResult) => {
+          if (slotErr) {
+            console.error('[CUSTOMIZATION] Error cancelling appointment slot:', slotErr);
+          } else {
+            console.log(`[CUSTOMIZATION] Appointment slot cancellation result for item ${itemId}:`, cancelResult?.affectedRows || 0, 'slots cancelled');
+          }
+        });
+      }
+
       // Auto-update billing payment_status
       const billingHelper = require('../utils/billingHelper');
       if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {

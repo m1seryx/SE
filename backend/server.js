@@ -115,7 +115,142 @@ app.use('/api/fabric-types', fabricTypeRoutes);
 app.use('/api/garment-types', garmentTypeRoutes);
 const repairGarmentTypeRoutes = require('./routes/RepairGarmentTypeRoutes');
 app.use('/api/repair-garment-types', repairGarmentTypeRoutes);
+const shopScheduleRoutes = require('./routes/ShopScheduleRoutes');
+app.use('/api/shop-schedule', shopScheduleRoutes);
 
+
+// Initialize database tables (time_slots and appointment_slots)
+try {
+  const appointmentSlotController = require('./controller/AppointmentSlotController');
+  // Access the internal ensureTableExists function
+  const db = require('./config/db');
+  
+  // Create time_slots table
+  const createTimeSlotsSQL = `
+    CREATE TABLE IF NOT EXISTS time_slots (
+      slot_id INT AUTO_INCREMENT PRIMARY KEY,
+      time_slot TIME NOT NULL UNIQUE COMMENT 'Time in HH:MM:SS format (e.g., 10:30:00)',
+      capacity INT NOT NULL DEFAULT 5 COMMENT 'Maximum number of appointments allowed at this time',
+      is_active TINYINT(1) DEFAULT 1 COMMENT 'Whether this time slot is active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      
+      INDEX idx_time_slot (time_slot),
+      INDEX idx_is_active (is_active)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `;
+  
+  db.query(createTimeSlotsSQL, (err) => {
+    if (err) {
+      console.error('[SERVER] Error creating time_slots table:', err.message);
+    } else {
+      console.log('[SERVER] ✅ time_slots table ready');
+      
+      // Insert default time slots if they don't exist
+      const insertDefaultSlotsSQL = `
+        INSERT IGNORE INTO time_slots (time_slot, capacity, is_active) VALUES
+        ('08:00:00', 5, 1), ('08:30:00', 5, 1), ('09:00:00', 5, 1), ('09:30:00', 5, 1),
+        ('10:00:00', 5, 1), ('10:30:00', 5, 1), ('11:00:00', 5, 1), ('11:30:00', 5, 1),
+        ('12:00:00', 5, 1), ('12:30:00', 5, 1), ('13:00:00', 5, 1), ('13:30:00', 5, 1),
+        ('14:00:00', 5, 1), ('14:30:00', 5, 1), ('15:00:00', 5, 1), ('15:30:00', 5, 1),
+        ('16:00:00', 5, 1), ('16:30:00', 5, 1), ('17:00:00', 5, 1)
+      `;
+      
+      db.query(insertDefaultSlotsSQL, (err) => {
+        if (err) {
+          console.error('[SERVER] Error inserting default time slots:', err.message);
+        } else {
+          console.log('[SERVER] ✅ Default time slots initialized');
+        }
+      });
+    }
+    
+    // Create/update appointment_slots table (without unique constraint)
+    const createAppointmentSlotsSQL = `
+      CREATE TABLE IF NOT EXISTS appointment_slots (
+        slot_id INT AUTO_INCREMENT PRIMARY KEY,
+        service_type ENUM('dry_cleaning', 'repair', 'customization') NOT NULL,
+        appointment_date DATE NOT NULL,
+        appointment_time TIME NOT NULL,
+        user_id INT NOT NULL,
+        order_item_id INT NULL COMMENT 'Reference to the order item when order is created',
+        cart_item_id INT NULL COMMENT 'Reference to cart item if still in cart',
+        status ENUM('booked', 'completed', 'cancelled') DEFAULT 'booked',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        
+        INDEX idx_service_date (service_type, appointment_date),
+        INDEX idx_user_id (user_id),
+        INDEX idx_status (status),
+        INDEX idx_appointment_datetime (appointment_date, appointment_time),
+        INDEX idx_service_date_time (service_type, appointment_date, appointment_time, status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `;
+    
+    db.query(createAppointmentSlotsSQL, (err) => {
+      if (err) {
+        console.error('[SERVER] Error creating appointment_slots table:', err.message);
+      } else {
+        console.log('[SERVER] ✅ appointment_slots table ready');
+        
+        // Try to drop unique constraint if it exists (for existing tables)
+        db.query(`ALTER TABLE appointment_slots DROP INDEX unique_slot`, (err) => {
+          if (err && err.code !== 'ER_CANT_DROP_FIELD_OR_KEY') {
+            console.warn('[SERVER] Warning: Could not drop unique_slot index:', err.message);
+          } else if (!err) {
+            console.log('[SERVER] ✅ Removed unique constraint from appointment_slots');
+          }
+        });
+      }
+    });
+
+    // Create shop_schedule table
+    const createShopScheduleSQL = `
+      CREATE TABLE IF NOT EXISTS shop_schedule (
+        schedule_id INT AUTO_INCREMENT PRIMARY KEY,
+        day_of_week TINYINT NOT NULL UNIQUE COMMENT '0 = Sunday, 1 = Monday, ..., 6 = Saturday',
+        is_open TINYINT(1) DEFAULT 1 COMMENT '1 = Open, 0 = Closed',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        
+        INDEX idx_day_of_week (day_of_week),
+        INDEX idx_is_open (is_open)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `;
+    
+    db.query(createShopScheduleSQL, (err) => {
+      if (err) {
+        console.error('[SERVER] Error creating shop_schedule table:', err.message);
+      } else {
+        console.log('[SERVER] ✅ shop_schedule table ready');
+        
+        // Insert default schedule if table is empty
+        const checkDataSQL = `SELECT COUNT(*) as count FROM shop_schedule`;
+        db.query(checkDataSQL, (err, results) => {
+          if (err) {
+            console.error('[SERVER] Error checking shop_schedule data:', err.message);
+          } else if (results[0].count === 0) {
+            const insertDefaultSQL = `
+              INSERT INTO shop_schedule (day_of_week, is_open) VALUES
+              (0, 0), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1)
+            `;
+            
+            db.query(insertDefaultSQL, (err) => {
+              if (err) {
+                console.error('[SERVER] Error inserting default schedule:', err.message);
+              } else {
+                console.log('[SERVER] ✅ Default shop schedule initialized');
+              }
+            });
+          }
+        });
+      }
+    });
+  });
+} catch (err) {
+  console.error('[SERVER] Error initializing time slots tables:', err.message);
+  // Don't crash the server if table creation fails
+}
 
 // Initialize date reminder service (runs on startup and can be scheduled)
 try {

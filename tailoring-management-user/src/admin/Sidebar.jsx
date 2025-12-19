@@ -40,6 +40,9 @@ function Sidebar() {
         <NavLink to="/customers" className={({ isActive }) => isActive ? 'active' : ''}>
           Customer List
         </NavLink>
+        <NavLink to="/shop-schedule" className={({ isActive }) => isActive ? 'active' : ''}>
+          Shop Schedule
+        </NavLink>
       </nav>
     </aside>
   );

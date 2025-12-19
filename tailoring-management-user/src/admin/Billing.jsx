@@ -196,7 +196,7 @@ const Billing = () => {
   // Get rental price display
   const getRentalPriceDisplay = (bill) => {
     if ((bill.serviceType || '').toLowerCase() !== 'rental') {
-      return `₱${bill.price.toLocaleString()}`;
+      return `₱${parseFloat(bill.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
     // For rental, show down payment and full price
@@ -210,8 +210,8 @@ const Billing = () => {
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <span style={{ fontSize: '14px' }}>Down Payment: ₱{parseFloat(downPayment).toLocaleString()}</span>
-        <span style={{ fontSize: '14px' }}>Full Price: ₱{parseFloat(fullPrice).toLocaleString()}</span>
+        <span style={{ fontSize: '14px' }}>Down Payment: ₱{parseFloat(downPayment).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        <span style={{ fontSize: '14px' }}>Full Price: ₱{parseFloat(fullPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
       </div>
     );
   };
@@ -286,7 +286,7 @@ const Billing = () => {
               <div className="stat-icon" style={{ background: '#e8f5e9', color: '#4caf50' }}>💰</div>
             </div>
             <div className="stat-number" style={{ fontSize: '28px' }}>
-              ₱{(billingStats.totalRevenue || localStats.totalRevenue).toLocaleString()}
+              ₱{(billingStats.totalRevenue || localStats.totalRevenue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
 
@@ -296,7 +296,7 @@ const Billing = () => {
               <div className="stat-icon" style={{ background: '#fff3e0', color: '#ff9800' }}>⏳</div>
             </div>
             <div className="stat-number" style={{ fontSize: '28px' }}>
-              ₱{(billingStats.pendingRevenue || localStats.pendingRevenue).toLocaleString()}
+              ₱{(billingStats.pendingRevenue || localStats.pendingRevenue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
         </div>

@@ -41,6 +41,11 @@ const Repair = () => {
     is_active: 1
   });
 
+  // Price confirmation modal state
+  const [showPriceConfirmationModal, setShowPriceConfirmationModal] = useState(false);
+  const [priceConfirmationItem, setPriceConfirmationItem] = useState(null);
+  const [priceConfirmationPrice, setPriceConfirmationPrice] = useState('');
+
   const openImagePreview = (url, alt) => {
     setPreviewImageUrl(url);
     setPreviewImageAlt(alt);
@@ -88,13 +93,7 @@ const Repair = () => {
   // Get next status in workflow
   const getNextStatus = (currentStatus, serviceType = 'repair', item = null) => {
     if (!currentStatus || currentStatus === 'pending_review' || currentStatus === 'pending') {
-      return 'accepted';
-    }
-    
-    // If status is 'accepted', skip 'price_confirmation' and go directly to 'confirmed'
-    // Price confirmation should only appear if admin explicitly sets status to 'price_confirmation' when editing price
-    if (currentStatus === 'accepted') {
-      return 'confirmed';
+      return 'price_confirmation';
     }
     
     // If status is 'price_confirmation', next is 'accepted' (after user confirms the price)
@@ -102,10 +101,15 @@ const Repair = () => {
       return 'accepted';
     }
     
+    // If status is 'accepted', next is 'confirmed' (in progress)
+    if (currentStatus === 'accepted') {
+      return 'confirmed';
+    }
+    
     const statusFlow = {
-      'repair': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed'],
-      'customization': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed'],
-      'dry_cleaning': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed'],
+      'repair': ['pending', 'price_confirmation', 'accepted', 'confirmed', 'ready_for_pickup', 'completed'],
+      'customization': ['pending', 'price_confirmation', 'accepted', 'confirmed', 'ready_for_pickup', 'completed'],
+      'dry_cleaning': ['pending', 'price_confirmation', 'accepted', 'confirmed', 'ready_for_pickup', 'completed'],
       'rental': ['pending', 'ready_for_pickup', 'picked_up', 'rented', 'returned', 'completed']
     };
     
@@ -313,18 +317,43 @@ const Repair = () => {
     return items;
   };
 
-  const handleAccept = async (itemId) => {
-    console.log("Accepting item:", itemId);
+  const handleAccept = (itemId) => {
+    const item = allItems.find(i => i.item_id === itemId);
+    if (!item) {
+      alert("Order not found", "Error", "error");
+      return;
+    }
+    
+    const estimatedPrice = getEstimatedPrice(item) || parseFloat(item.final_price || 0);
+    setPriceConfirmationItem(item);
+    setPriceConfirmationPrice(estimatedPrice.toFixed(2));
+    setShowPriceConfirmationModal(true);
+  };
+
+  const handlePriceConfirmationSubmit = async () => {
+    if (!priceConfirmationItem) return;
+    
+    const finalPrice = parseFloat(priceConfirmationPrice);
+    if (isNaN(finalPrice) || finalPrice <= 0) {
+      await alert("Please enter a valid price", "Error", "error");
+      return;
+    }
+
     try {
-      const result = await updateRepairOrderItem(itemId, {
-        approvalStatus: 'accepted'  // Use 'accepted' instead of 'confirmed'
+      const result = await updateRepairOrderItem(priceConfirmationItem.item_id, {
+        approvalStatus: 'price_confirmation',
+        finalPrice: finalPrice
       });
-      console.log("Accept result:", result);
       if (result.success) {
-        console.log("Refreshing data...");
-        await loadRepairOrders(); // Refresh data
-        console.log("Data refreshed");
-        await alert("Repair request accepted!", "Success", "success");
+        await loadRepairOrders();
+        // Only switch to price-confirmation tab if user is not viewing "all"
+        if (viewFilter !== 'all') {
+          setViewFilter('price-confirmation');
+        }
+        await alert("Repair request moved to price confirmation!", "Success", "success");
+        setShowPriceConfirmationModal(false);
+        setPriceConfirmationItem(null);
+        setPriceConfirmationPrice('');
       } else {
         await alert(result.message || "Failed to accept repair request", "Error", "error");
       }
@@ -356,6 +385,18 @@ const Repair = () => {
   };
 
   const updateStatus = async (itemId, status) => {
+    const item = allItems.find(i => i.item_id === itemId);
+    const statusLabel = getStatusText(status);
+    const currentStatusLabel = item ? getStatusText(item.approval_status) : 'current';
+    
+    const confirmed = await confirm(
+      `Are you sure you want to move this order from "${currentStatusLabel}" to "${statusLabel}"?`,
+      'Update Status',
+      'warning'
+    );
+    
+    if (!confirmed) return;
+    
     try {
       const result = await updateRepairOrderItem(itemId, {
         approvalStatus: status
@@ -363,23 +404,25 @@ const Repair = () => {
       if (result.success) {
         await loadRepairOrders(); // Refresh data
         
-        // Automatically switch to the correct tab based on the new status
-        if (status === 'accepted') {
-          setViewFilter('accepted');
-        } else if (status === 'confirmed') {
-          setViewFilter('in-progress');
-        } else if (status === 'ready_for_pickup') {
-          setViewFilter('to-pickup');
-        } else if (status === 'completed') {
-          setViewFilter('completed');
-        } else if (status === 'cancelled') {
-          setViewFilter('rejected');
+        // Only switch tab if user is not viewing "all" - preserve their current view
+        if (viewFilter !== 'all') {
+          // Automatically switch to the correct tab based on the new status
+          if (status === 'accepted') {
+            setViewFilter('accepted');
+          } else if (status === 'price_confirmation') {
+            setViewFilter('price-confirmation');
+          } else if (status === 'confirmed') {
+            setViewFilter('in-progress');
+          } else if (status === 'ready_for_pickup') {
+            setViewFilter('to-pickup');
+          } else if (status === 'completed') {
+            setViewFilter('completed');
+          } else if (status === 'cancelled') {
+            setViewFilter('rejected');
+          }
         }
         
-        const item = allItems.find(o => o.item_id === itemId);
-        if (item) {
-          await alert(`Order #${item.order_id} status updated!`, "Success", "success");
-        }
+        await alert(`Status updated to "${statusLabel}"!`, "Success", "success");
       } else {
         await alert(result.message || "Failed to update status", "Error", "error");
       }
@@ -942,6 +985,58 @@ const Repair = () => {
               >
                 {editingRepairGarmentType ? 'Update' : 'Create'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Price Confirmation Modal */}
+      {showPriceConfirmationModal && priceConfirmationItem && (
+        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowPriceConfirmationModal(false)}>
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>Price Confirmation</h2>
+              <span className="close-modal" onClick={() => setShowPriceConfirmationModal(false)}>×</span>
+            </div>
+            <div className="modal-body">
+              <div className="detail-row"><strong>Order ID:</strong> #{priceConfirmationItem.order_id}</div>
+              <div className="detail-row"><strong>Garment Type:</strong> {priceConfirmationItem.specific_data?.garmentType || 'N/A'}</div>
+              <div className="detail-row"><strong>Damage Level:</strong> {priceConfirmationItem.specific_data?.damageLevel || 'N/A'}</div>
+              
+              <div className="form-group" style={{ marginTop: '20px' }}>
+                <label>Final Price (₱)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={priceConfirmationPrice}
+                  onChange={(e) => setPriceConfirmationPrice(e.target.value)}
+                  placeholder="Enter final price"
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '16px' }}
+                />
+                {(() => {
+                  const estimatedPrice = getEstimatedPrice(priceConfirmationItem);
+                  if (estimatedPrice && priceConfirmationPrice) {
+                    const priceDiff = parseFloat(priceConfirmationPrice) - estimatedPrice;
+                    if (Math.abs(priceDiff) > 0.01) {
+                      return (
+                        <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '0.9em' }}>
+                          <strong>⚠️ Price Changed:</strong> Estimated: ₱{estimatedPrice.toFixed(2)} → New: ₱{parseFloat(priceConfirmationPrice).toFixed(2)}
+                        </div>
+                      );
+                    }
+                  }
+                  return null;
+                })()}
+              </div>
+              
+              <div style={{ marginTop: '15px', padding: '12px', backgroundColor: '#e3f2fd', borderRadius: '4px', fontSize: '0.9em', color: '#1976d2' }}>
+                ℹ️ Customer will be notified to confirm the price before proceeding.
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setShowPriceConfirmationModal(false)}>Cancel</button>
+              <button className="btn-save" onClick={handlePriceConfirmationSubmit}>Confirm & Move to Price Confirmation</button>
             </div>
           </div>
         </div>

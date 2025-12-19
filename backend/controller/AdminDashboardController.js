@@ -9,18 +9,14 @@ function query(sql, params = []) {
   });
 }
 
-function formatTimeAgo(date) {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSeconds = Math.floor(diffMs / 1000);
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMinutes < 1) return 'Just now';
-  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
-  return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+function formatDate(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
 function mapStatus(status, orderStatus) {
@@ -460,7 +456,7 @@ exports.getDashboardOverview = async (req, res) => {
         service: mapService(row.service_type),
         status: mappedStatus.status,
         statusText: mappedStatus.statusText,
-        time: formatTimeAgo(orderDate),
+        time: formatDate(orderDate),
         reason: row.reason || null,
         actionType: row.action_type || null,
         actionBy: row.action_by || null,

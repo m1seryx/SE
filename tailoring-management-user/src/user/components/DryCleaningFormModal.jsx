@@ -108,14 +108,25 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const loadAvailableSlots = async (date) => {
     if (!date) return;
     
-    // Check if date is Monday-Saturday
-    const selectedDate = new Date(date);
-    const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-    
-    if (dayOfWeek === 0) {
-      setMessage('Appointments are only available Monday to Saturday');
-      setAvailableTimeSlots([]);
-      return;
+    // Check if date is on an open day using shop schedule
+    try {
+      const { checkDateOpen } = await import('../../api/ShopScheduleApi');
+      const result = await checkDateOpen(date);
+      if (!result.success || !result.is_open) {
+        setMessage('Appointments are not available on this date. Please select another date.');
+        setAvailableTimeSlots([]);
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking date availability:', error);
+      // Fallback to basic check
+      const selectedDate = new Date(date);
+      const dayOfWeek = selectedDate.getDay();
+      if (dayOfWeek === 0) {
+        setMessage('Appointments are not available on this date. Please select another date.');
+        setAvailableTimeSlots([]);
+        return;
+      }
     }
 
     setLoadingSlots(true);
@@ -145,20 +156,35 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     if (dayOfWeek === 0) {
       today.setDate(today.getDate() + 1);
     }
-    return today.toISOString().split('T')[0];
+    // Use local date to avoid timezone issues
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
-  // Filter out Sundays from date input
-  const handleDateChange = (e) => {
+  // Filter out closed days from date input
+  const handleDateChange = async (e) => {
     const selectedDate = e.target.value;
     if (selectedDate) {
-      const date = new Date(selectedDate);
-      const dayOfWeek = date.getDay();
-      
-      if (dayOfWeek === 0) {
-        setMessage('Appointments are only available Monday to Saturday. Please select another date.');
-        setFormData(prev => ({ ...prev, date: '', time: '' }));
-        return;
+      try {
+        const { checkDateOpen } = await import('../../api/ShopScheduleApi');
+        const result = await checkDateOpen(selectedDate);
+        if (!result.success || !result.is_open) {
+          setMessage('Appointments are not available on this date. Please select another date.');
+          setFormData(prev => ({ ...prev, date: '', time: '' }));
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking date availability:', error);
+        // Fallback to basic check
+        const date = new Date(selectedDate);
+        const dayOfWeek = date.getDay();
+        if (dayOfWeek === 0) {
+          setMessage('Appointments are not available on this date. Please select another date.');
+          setFormData(prev => ({ ...prev, date: '', time: '' }));
+          return;
+        }
       }
     }
     
@@ -490,7 +516,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                 className="form-input-shared"
                 required
               />
-              <span className="help-text-shared">Available Monday to Saturday only</span>
+              <span className="help-text-shared">Select a date when the shop is open</span>
             </div>
 
             {formData.date && (

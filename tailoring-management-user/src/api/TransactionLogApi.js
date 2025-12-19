@@ -51,3 +51,16 @@ export const getTransactionSummary = async (orderItemId) => {
   }
 };
 
+// Get all transaction logs (admin only)
+export const getAllTransactionLogs = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/transaction-logs/all`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Get all transaction logs error:', error);
+    throw error;
+  }
+};
+

@@ -49,6 +49,11 @@ const Customize = () => {
   // Toast notification state
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
+  // Price confirmation modal state
+  const [showPriceConfirmationModal, setShowPriceConfirmationModal] = useState(false);
+  const [priceConfirmationItem, setPriceConfirmationItem] = useState(null);
+  const [priceConfirmationPrice, setPriceConfirmationPrice] = useState('');
+
   // Image preview modal state
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState('');
@@ -163,13 +168,7 @@ const Customize = () => {
   // Get next status in workflow
   const getNextStatus = (currentStatus, serviceType = 'customization', item = null) => {
     if (!currentStatus || currentStatus === 'pending_review' || currentStatus === 'pending') {
-      return 'accepted';
-    }
-    
-    // If status is 'accepted', skip 'price_confirmation' and go directly to 'confirmed'
-    // Price confirmation should only appear if admin explicitly sets status to 'price_confirmation' when editing price
-    if (currentStatus === 'accepted') {
-      return 'confirmed';
+      return 'price_confirmation';
     }
     
     // If status is 'price_confirmation', next is 'accepted' (after user confirms the price)
@@ -177,10 +176,15 @@ const Customize = () => {
       return 'accepted';
     }
     
+    // If status is 'accepted', next is 'confirmed' (in progress)
+    if (currentStatus === 'accepted') {
+      return 'confirmed';
+    }
+    
     const statusFlow = {
-      'repair': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed'],
-      'customization': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed'],
-      'dry_cleaning': ['pending', 'accepted', 'price_confirmation', 'confirmed', 'ready_for_pickup', 'completed'],
+      'repair': ['pending', 'price_confirmation', 'accepted', 'confirmed', 'ready_for_pickup', 'completed'],
+      'customization': ['pending', 'price_confirmation', 'accepted', 'confirmed', 'ready_for_pickup', 'completed'],
+      'dry_cleaning': ['pending', 'price_confirmation', 'accepted', 'confirmed', 'ready_for_pickup', 'completed'],
       'rental': ['pending', 'ready_for_pickup', 'picked_up', 'rented', 'returned', 'completed']
     };
     
@@ -553,14 +557,43 @@ const Customize = () => {
   };
 
 
-  const handleAccept = async (itemId) => {
+  const handleAccept = (itemId) => {
+    const item = allItems.find(i => i.item_id === itemId);
+    if (!item) {
+      showToast("Order not found", "error");
+      return;
+    }
+    
+    const estimatedPrice = getEstimatedPrice(item) || parseFloat(item.final_price || 0);
+    setPriceConfirmationItem(item);
+    setPriceConfirmationPrice(estimatedPrice.toFixed(2));
+    setShowPriceConfirmationModal(true);
+  };
+
+  const handlePriceConfirmationSubmit = async () => {
+    if (!priceConfirmationItem) return;
+    
+    const finalPrice = parseFloat(priceConfirmationPrice);
+    if (isNaN(finalPrice) || finalPrice <= 0) {
+      showToast("Please enter a valid price", "error");
+      return;
+    }
+
     try {
-      const result = await updateCustomizationOrderItem(itemId, {
-        approvalStatus: 'accepted'
+      const result = await updateCustomizationOrderItem(priceConfirmationItem.item_id, {
+        approvalStatus: 'price_confirmation',
+        finalPrice: finalPrice
       });
       if (result.success) {
         await loadCustomizationOrders();
-        showToast("Customization request accepted!", "success");
+        // Only switch to price-confirmation tab if user is not viewing "all"
+        if (viewFilter !== 'all') {
+          setViewFilter('price-confirmation');
+        }
+        showToast("Customization request moved to price confirmation!", "success");
+        setShowPriceConfirmationModal(false);
+        setPriceConfirmationItem(null);
+        setPriceConfirmationPrice('');
       } else {
         showToast(result.message || "Failed to accept request", "error");
       }
@@ -592,38 +625,47 @@ const Customize = () => {
 
 
   const updateStatus = async (itemId, status) => {
-    try {
-      const result = await updateCustomizationOrderItem(itemId, {
-        approvalStatus: status
-      });
-      if (result.success) {
-        await loadCustomizationOrders();
+    const item = allItems.find(i => i.item_id === itemId);
+    const statusLabel = getStatusText(status);
+    const currentStatusLabel = item ? getStatusText(item.approval_status) : 'current';
+    
+    openConfirmModal(
+      `Are you sure you want to move this order from "${currentStatusLabel}" to "${statusLabel}"?`,
+      async () => {
+        try {
+          const result = await updateCustomizationOrderItem(itemId, {
+            approvalStatus: status
+          });
+          if (result.success) {
+            await loadCustomizationOrders();
 
+            // Only switch tab if user is not viewing "all" - preserve their current view
+            if (viewFilter !== 'all') {
+              // Automatically switch to the correct tab based on the new status
+              if (status === 'accepted') {
+                setViewFilter('accepted');
+              } else if (status === 'price_confirmation') {
+                setViewFilter('price-confirmation');
+              } else if (status === 'confirmed') {
+                setViewFilter('in-progress');
+              } else if (status === 'ready_for_pickup') {
+                setViewFilter('to-pickup');
+              } else if (status === 'completed') {
+                setViewFilter('completed');
+              } else if (status === 'cancelled') {
+                setViewFilter('rejected');
+              }
+            }
 
-        // Automatically switch to the correct tab based on the new status
-        if (status === 'accepted') {
-          setViewFilter('accepted');
-        } else if (status === 'confirmed') {
-          setViewFilter('in-progress');
-        } else if (status === 'ready_for_pickup') {
-          setViewFilter('to-pickup');
-        } else if (status === 'completed') {
-          setViewFilter('completed');
-        } else if (status === 'cancelled') {
-          setViewFilter('rejected');
+            showToast(`Status updated to "${statusLabel}"!`, "success");
+          } else {
+            showToast(result.message || "Failed to update status", "error");
+          }
+        } catch (err) {
+          showToast("Failed to update status", "error");
         }
-
-
-        const item = allItems.find(o => o.item_id === itemId);
-        if (item) {
-          showToast(`Order #${item.order_id} status updated!`, "success");
-        }
-      } else {
-        showToast(result.message || "Failed to update status", "error");
       }
-    } catch (err) {
-      showToast("Failed to update status", "error");
-    }
+    );
   };
 
 
@@ -1112,6 +1154,58 @@ const Customize = () => {
             <div className="confirm-buttons">
               <button className="confirm-btn cancel" onClick={() => setShowConfirmModal(false)}>Cancel</button>
               <button className="confirm-btn confirm" onClick={handleConfirm}>Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Price Confirmation Modal */}
+      {showPriceConfirmationModal && priceConfirmationItem && (
+        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowPriceConfirmationModal(false)}>
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>Price Confirmation</h2>
+              <span className="close-modal" onClick={() => setShowPriceConfirmationModal(false)}>×</span>
+            </div>
+            <div className="modal-body">
+              <div className="detail-row"><strong>Order ID:</strong> #{priceConfirmationItem.order_id}</div>
+              <div className="detail-row"><strong>Service:</strong> Customization</div>
+              <div className="detail-row"><strong>Fabric:</strong> {priceConfirmationItem.specific_data?.fabricType || 'N/A'}</div>
+              
+              <div className="form-group" style={{ marginTop: '20px' }}>
+                <label>Final Price (₱)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={priceConfirmationPrice}
+                  onChange={(e) => setPriceConfirmationPrice(e.target.value)}
+                  placeholder="Enter final price"
+                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '16px' }}
+                />
+                {(() => {
+                  const estimatedPrice = getEstimatedPrice(priceConfirmationItem);
+                  if (estimatedPrice && priceConfirmationPrice) {
+                    const priceDiff = parseFloat(priceConfirmationPrice) - estimatedPrice;
+                    if (Math.abs(priceDiff) > 0.01) {
+                      return (
+                        <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '0.9em' }}>
+                          <strong>⚠️ Price Changed:</strong> Estimated: ₱{estimatedPrice.toFixed(2)} → New: ₱{parseFloat(priceConfirmationPrice).toFixed(2)}
+                        </div>
+                      );
+                    }
+                  }
+                  return null;
+                })()}
+              </div>
+              
+              <div style={{ marginTop: '15px', padding: '12px', backgroundColor: '#e3f2fd', borderRadius: '4px', fontSize: '0.9em', color: '#1976d2' }}>
+                ℹ️ Customer will be notified to confirm the price before proceeding.
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setShowPriceConfirmationModal(false)}>Cancel</button>
+              <button className="btn-save" onClick={handlePriceConfirmationSubmit}>Confirm & Move to Price Confirmation</button>
             </div>
           </div>
         </div>
