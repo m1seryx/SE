@@ -1497,14 +1497,38 @@ exports.recordRentalPayment = (req, res) => {
         previous_status: previousPaymentStatus,
         new_status: newPaymentStatus,
         reason: null,
-          notes: `Admin recorded payment of ₱${amount.toFixed(2)}. Total paid: ₱${newAmountPaid.toFixed(2)}. Customer: ${customerName}`
+        notes: `Admin recorded payment of ₱${amount.toFixed(2)}. Total paid: ₱${newAmountPaid.toFixed(2)}. Customer: ${customerName}`
       }, (actionLogErr) => {
         if (actionLogErr) {
           console.error('Error creating payment action log:', actionLogErr);
         } else {
           console.log('Payment action log created successfully');
         }
-        });
+      });
+
+      // Create TRANSACTION LOG for financial tracking
+      // This is the ONLY place where transaction logs should be created - when admin explicitly records payment
+      const TransactionLog = require('../model/TransactionLogModel');
+      const transactionType = newPaymentStatus === 'down-payment' ? 'downpayment' : 
+                              newPaymentStatus === 'paid' ? 'final_payment' : 'partial_payment';
+      
+      TransactionLog.create({
+        order_item_id: itemId,
+        user_id: item.user_id,
+        transaction_type: transactionType,
+        amount: amount,
+        previous_payment_status: previousPaymentStatus,
+        new_payment_status: newPaymentStatus,
+        payment_method: 'cash', // Default to cash for admin-recorded payments
+        notes: `Admin recorded ${transactionType.replace('_', ' ')} of ₱${amount.toFixed(2)}. Total paid: ₱${newAmountPaid.toFixed(2)} of ₱${finalPrice.toFixed(2)}`,
+        created_by: 'admin'
+      }, (transLogErr, transLogResult) => {
+        if (transLogErr) {
+          console.error('[TRANSACTION LOG] Error creating transaction log:', transLogErr);
+        } else {
+          console.log(`[TRANSACTION LOG] Created: ${transactionType} - ₱${amount.toFixed(2)} for item ${itemId}`);
+        }
+      });
       });
 
       // Create payment success notification

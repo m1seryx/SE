@@ -169,71 +169,16 @@ exports.updateBillingStatus = (itemId, serviceType, newStatus, previousStatus, c
           }
         });
         
-        // Only create transaction log if amount > 0
-        if (amount > 0) {
-          // Create transaction log entry
-          TransactionLog.create({
-            order_item_id: itemId,
-            user_id: item.user_id,
-            transaction_type: transactionType,
-            amount: amount,
-            previous_payment_status: previousPaymentStatus,
-            new_payment_status: newPaymentStatus,
-            payment_method: 'system_auto',
-            notes: `Auto-updated from status change: ${previousStatus} → ${newStatus} (${serviceType})`,
-            created_by: 'system'
-          }, (logErr, logResult) => {
-            if (logErr) {
-              console.error('Error creating transaction log:', logErr);
-              // Don't fail the whole operation if log creation fails
-            } else {
-              console.log('Transaction log created:', logResult?.insertId);
-              
-              // Create action log for dashboard
-              const ActionLog = require('../model/ActionLogModel');
-              ActionLog.create({
-                order_item_id: itemId,
-                user_id: item.user_id,
-                action_type: 'payment',
-                action_by: 'system',
-                previous_status: previousPaymentStatus,
-                new_status: newPaymentStatus,
-                reason: null,
-                notes: `Automatic payment of ₱${amount.toFixed(2)} from status change (${previousStatus} → ${newStatus}). Payment status: ${previousPaymentStatus} → ${newPaymentStatus}`
-              }, (actionLogErr) => {
-                if (actionLogErr) {
-                  console.error('Error creating payment action log:', actionLogErr);
-                } else {
-                  console.log('Payment action log created successfully');
-                }
-              });
-              
-              // Create payment success notification for automatic payments
-              if (item.user_id && (newPaymentStatus === 'paid' || newPaymentStatus === 'fully_paid')) {
-                const Notification = require('../model/NotificationModel');
-                Notification.createPaymentSuccessNotification(
-                  item.user_id,
-                  itemId,
-                  amount,
-                  'system_auto',
-                  normalizedServiceTypeForAmount,
-                  (notifErr) => {
-                    if (notifErr) {
-                      console.error('[NOTIFICATION] Failed to create payment success notification:', notifErr);
-                    } else {
-                      console.log('[NOTIFICATION] Payment success notification created');
-                    }
-                  }
-                );
-              }
-            }
-          });
-        }
+        // NOTE: Transaction logs are NO LONGER created automatically on status change.
+        // Transaction logs are ONLY created when admin explicitly records a payment
+        // through the payment modal. This ensures accurate financial records.
+        console.log(`[BILLING HELPER] Payment status updated to '${newPaymentStatus}' - No automatic transaction log created`);
+        console.log(`[BILLING HELPER] Transaction logs will only be created when admin records payment via payment modal`);
         
         callback(null, { 
           payment_status: newPaymentStatus, 
           affectedRows: result.affectedRows,
-          amount: amount,
+          amount: 0, // No automatic amount charged
           transaction_type: transactionType
         });
       });

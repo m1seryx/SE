@@ -126,8 +126,14 @@
   color: white;
 }
 
-.transaction-type-badge.down_payment {
+.transaction-type-badge.down_payment,
+.transaction-type-badge.downpayment {
   background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  color: white;
+}
+
+.transaction-type-badge.partial_payment {
+  background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);
   color: white;
 }
 

@@ -47,7 +47,9 @@ const TransactionLogModal = ({ isOpen, onClose, orderItemId }) => {
     const typeMap = {
       'payment': 'Payment',
       'down_payment': 'Down Payment',
+      'downpayment': 'Down Payment',
       'final_payment': 'Final Payment',
+      'partial_payment': 'Partial Payment',
       'refund': 'Refund',
       'adjustment': 'Adjustment'
     };
@@ -93,50 +95,15 @@ const TransactionLogModal = ({ isOpen, onClose, orderItemId }) => {
                       </span>
                     </div>
                     <div className="transaction-log-amount">
-                      <span className="amount-label">Amount:</span>
-                      <span className="amount-value">₱{parseFloat(log.amount || 0).toFixed(2)}</span>
+                      <span className="amount-value">₱{parseFloat(log.amount || 0).toLocaleString()}</span>
                     </div>
                   </div>
                   
                   <div className="transaction-log-details">
                     <div className="transaction-detail-row">
-                      <span className="detail-label">Payment Status:</span>
-                      <span className="detail-value">
-                        {log.previous_payment_status ? (
-                          <span>
-                            {formatPaymentStatus(log.previous_payment_status)} → {formatPaymentStatus(log.new_payment_status)}
-                          </span>
-                        ) : (
-                          formatPaymentStatus(log.new_payment_status)
-                        )}
-                      </span>
-                    </div>
-                    
-                    {log.payment_method && (
-                      <div className="transaction-detail-row">
-                        <span className="detail-label">Payment Method:</span>
-                        <span className="detail-value">{log.payment_method === 'system_auto' ? 'System Auto' : log.payment_method}</span>
-                      </div>
-                    )}
-                    
-                    {log.notes && (
-                      <div className="transaction-detail-row">
-                        <span className="detail-label">Notes:</span>
-                        <span className="detail-value">{log.notes}</span>
-                      </div>
-                    )}
-                    
-                    <div className="transaction-detail-row">
                       <span className="detail-label">Date:</span>
                       <span className="detail-value">{formatDate(log.created_at)}</span>
                     </div>
-                    
-                    {log.created_by && (
-                      <div className="transaction-detail-row">
-                        <span className="detail-label">Created By:</span>
-                        <span className="detail-value">{log.created_by}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}
