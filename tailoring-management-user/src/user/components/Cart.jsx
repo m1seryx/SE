@@ -562,6 +562,69 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                             <p>Notes: {item.specific_data.notes}</p>
                           )}
                           
+                          {/* Display all 4 angle images if available */}
+                          {item.specific_data.designData?.angleImages && (
+                            <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+                              <strong style={{ display: 'block', marginBottom: '8px', fontSize: '14px' }}>Design Views:</strong>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                                {['front', 'back', 'right', 'left'].map((angle) => (
+                                  item.specific_data.designData.angleImages[angle] && (
+                                    <div key={angle} style={{ position: 'relative' }}>
+                                      <img 
+                                        src={item.specific_data.designData.angleImages[angle]} 
+                                        alt={`${angle} view`}
+                                        className="clickable-image"
+                                        onClick={() => openImagePreview(item.specific_data.designData.angleImages[angle], `${angle} view`)}
+                                        style={{ 
+                                          width: '100%', 
+                                          height: 'auto', 
+                                          borderRadius: '6px', 
+                                          border: '2px solid #e0e0e0',
+                                          cursor: 'pointer'
+                                        }}
+                                        onError={(e) => {
+                                          e.target.style.display = 'none';
+                                        }}
+                                      />
+                                      <div style={{ 
+                                        position: 'absolute', 
+                                        bottom: '4px', 
+                                        left: '4px', 
+                                        background: 'rgba(0,0,0,0.7)', 
+                                        color: 'white', 
+                                        padding: '2px 6px', 
+                                        borderRadius: '3px',
+                                        fontSize: '10px',
+                                        textTransform: 'capitalize',
+                                        fontWeight: 'bold'
+                                      }}>
+                                        {angle}
+                                      </div>
+                                    </div>
+                                  )
+                                ))}
+                              </div>
+                              <small style={{ display: 'block', fontSize: '11px', color: '#888', marginTop: '4px' }}>Click any image to enlarge</small>
+                            </div>
+                          )}
+                          
+                          {/* Fallback to single image if angleImages not available */}
+                          {!item.specific_data.designData?.angleImages && item.specific_data.imageUrl && item.specific_data.imageUrl !== 'no-image' && (
+                            <div className="cart-item-image" style={{ marginTop: '10px' }}>
+                              <img 
+                                src={`http://localhost:5000${item.specific_data.imageUrl}`} 
+                                alt="Design preview" 
+                                className="cart-damage-photo clickable-image"
+                                onClick={() => openImagePreview(`http://localhost:5000${item.specific_data.imageUrl}`, 'Design Preview')}
+                                title="Click to enlarge"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                              <small>Design preview</small>
+                            </div>
+                          )}
+                          
                           {/* Display 3D customization choices if available */}
                           {item.specific_data.designData && (
                             <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '5px' }}>

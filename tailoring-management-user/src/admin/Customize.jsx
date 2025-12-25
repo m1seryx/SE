@@ -9,6 +9,7 @@ import { getAllFabricTypesAdmin, createFabricType, updateFabricType, deleteFabri
 import ImagePreviewModal from '../components/ImagePreviewModal';
 import { getMeasurements, saveMeasurements } from '../api/CustomerApi';
 import { useAlert } from '../context/AlertContext';
+import { recordPayment } from '../api/PaymentApi';
 
 // Helper to check if user is authenticated
 const isAuthenticated = () => {
@@ -45,6 +46,10 @@ const Customize = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [confirmMessage, setConfirmMessage] = useState('');
+
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
 
   // Toast notification state
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
@@ -195,7 +200,24 @@ const Customize = () => {
       return null; // Already at final status or unknown status
     }
     
-    return flow[currentIndex + 1];
+    const nextStatus = flow[currentIndex + 1];
+    
+    // Check if trying to move to "completed" - require full payment
+    if (nextStatus === 'completed' && item) {
+      const pricingFactors = typeof item.pricing_factors === 'string' 
+        ? JSON.parse(item.pricing_factors || '{}') 
+        : (item.pricing_factors || {});
+      const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
+      const finalPrice = parseFloat(item.final_price || 0);
+      const remainingBalance = finalPrice - amountPaid;
+      
+      // If there's remaining balance, don't allow move to completed
+      if (remainingBalance > 0.01) { // Use 0.01 to account for floating point precision
+        return null;
+      }
+    }
+    
+    return nextStatus;
   };
 
   // Get next status label for display
@@ -629,6 +651,22 @@ const Customize = () => {
     const statusLabel = getStatusText(status);
     const currentStatusLabel = item ? getStatusText(item.approval_status) : 'current';
     
+    // Check if trying to move to "completed" - require full payment
+    if (status === 'completed' && item) {
+      const pricingFactors = typeof item.pricing_factors === 'string' 
+        ? JSON.parse(item.pricing_factors || '{}') 
+        : (item.pricing_factors || {});
+      const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
+      const finalPrice = parseFloat(item.final_price || 0);
+      const remainingBalance = finalPrice - amountPaid;
+      
+      // If there's remaining balance, prevent move to completed
+      if (remainingBalance > 0.01) { // Use 0.01 to account for floating point precision
+        showToast(`Cannot mark as completed. Payment is not complete. Remaining balance: ₱${remainingBalance.toFixed(2)}`, "error");
+        return;
+      }
+    }
+    
     openConfirmModal(
       `Are you sure you want to move this order from "${currentStatusLabel}" to "${statusLabel}"?`,
       async () => {
@@ -669,6 +707,95 @@ const Customize = () => {
   };
 
 
+  // Helper functions for 3D customization choices
+  const getColorName = (hex) => {
+    if (!hex) return 'Not specified';
+    
+    // Handle if it's already a string name
+    if (typeof hex === 'string' && !hex.startsWith('#') && !hex.match(/^[0-9a-fA-F]{3,6}$/)) {
+      return hex.charAt(0).toUpperCase() + hex.slice(1);
+    }
+    
+    // Normalize hex
+    let normalizedHex = String(hex).toLowerCase().trim();
+    if (!normalizedHex.startsWith('#')) {
+      normalizedHex = `#${normalizedHex}`;
+    }
+    
+    // Color mappings
+    const colorMap = {
+      '#1a1a1a': 'Classic Black',
+      '#1e3a5f': 'Navy Blue',
+      '#6b1e3d': 'Burgundy',
+      '#2d5a3d': 'Forest Green',
+      '#4a4a4a': 'Charcoal Gray',
+      '#c9a66b': 'Camel Tan',
+      '#f5e6d3': 'Cream White',
+      '#5d4037': 'Chocolate Brown',
+      '#2a4d8f': 'Royal Blue',
+      '#722f37': 'Wine Red',
+      '#ffffff': 'White',
+      '#000000': 'Black',
+      '#ff0000': 'Red',
+      '#00ff00': 'Green',
+      '#0000ff': 'Blue',
+      '#ffff00': 'Yellow',
+      '#ff00ff': 'Magenta',
+      '#00ffff': 'Cyan',
+      '#808080': 'Gray',
+      '#800000': 'Maroon',
+      '#008000': 'Dark Green',
+      '#000080': 'Navy',
+      '#800080': 'Purple',
+      '#ffa500': 'Orange',
+      '#a52a2a': 'Brown',
+      '#ffc0cb': 'Pink',
+      '#ffd700': 'Gold',
+      '#c0c0c0': 'Silver',
+    };
+    
+    if (colorMap[normalizedHex]) {
+      return colorMap[normalizedHex];
+    }
+    
+    // Try to derive a name from RGB
+    try {
+      const r = parseInt(normalizedHex.slice(1, 3), 16);
+      const g = parseInt(normalizedHex.slice(3, 5), 16);
+      const b = parseInt(normalizedHex.slice(5, 7), 16);
+      
+      if (r > 200 && g > 200 && b > 200) return 'Light';
+      if (r < 50 && g < 50 && b < 50) return 'Dark';
+      if (r > g && r > b) return 'Reddish';
+      if (g > r && g > b) return 'Greenish';
+      if (b > r && b > g) return 'Bluish';
+      if (r === g && g === b) return 'Gray';
+    } catch (e) {
+      // Fall through to return hex
+    }
+    
+    return normalizedHex;
+  };
+
+  const getButtonType = (modelPath) => {
+    if (!modelPath) return '';
+    const buttonMap = {
+      '/orange button 3d model.glb': 'Orange Button',
+      '/four hole button 3d model (1).glb': 'Four Hole Button',
+    };
+    return buttonMap[modelPath] || modelPath.split('/').pop().replace('.glb', '').replace(/\d+/g, '').trim();
+  };
+
+  const getAccessoryName = (modelPath) => {
+    if (!modelPath) return '';
+    const accessoryMap = {
+      '/accessories/gold lion pendant 3d model.glb': 'Pendant',
+      '/accessories/flower brooch 3d model.glb': 'Brooch',
+      '/accessories/fabric rose 3d model.glb': 'Flower',
+    };
+    return accessoryMap[modelPath] || modelPath.split('/').pop().replace('.glb', '').replace(/\d+/g, '').trim();
+  };
+
   const handleViewDetails = (item) => {
     setSelectedOrder(item);
     setShowDetailModal(true);
@@ -683,6 +810,35 @@ const Customize = () => {
       adminNotes: item.pricing_factors?.adminNotes || ''
     });
     setShowEditModal(true);
+  };
+
+  const handleRecordPayment = async () => {
+    if (!selectedOrder || !paymentAmount) {
+      await alert('Please enter a payment amount', 'Error', 'error');
+      return;
+    }
+
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      await alert('Please enter a valid payment amount', 'Error', 'error');
+      return;
+    }
+
+    try {
+      const result = await recordPayment(selectedOrder.item_id, amount);
+      if (result.success) {
+        const remaining = result.payment?.remaining_balance || 0;
+        await alert(`Payment of ₱${amount.toFixed(2)} recorded successfully. ${remaining > 0 ? `Remaining balance: ₱${remaining.toFixed(2)}` : 'Payment complete!'}`, 'Success', 'success');
+        setShowPaymentModal(false);
+        setPaymentAmount('');
+        await loadCustomizationOrders();
+      } else {
+        await alert(result.message || 'Failed to record payment', 'Error', 'error');
+      }
+    } catch (error) {
+      console.error('Error recording payment:', error);
+      await alert('Error recording payment', 'Error', 'error');
+    }
   };
 
   // Helper to get estimated price for comparison
@@ -836,17 +992,27 @@ const Customize = () => {
                 <th>Fabric</th>
                 <th>Date</th>
                 <th>Price</th>
+                <th>Payment Status</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>Loading customization orders...</td></tr>
+                <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px' }}>Loading customization orders...</td></tr>
               ) : getFilteredItems().length === 0 ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>No customization orders found</td></tr>
+                <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px' }}>No customization orders found</td></tr>
               ) : (
-                getFilteredItems().map(item => (
+                getFilteredItems().map(item => {
+                  // Get payment information
+                  const pricingFactors = typeof item.pricing_factors === 'string' 
+                    ? JSON.parse(item.pricing_factors || '{}') 
+                    : (item.pricing_factors || {});
+                  const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
+                  const finalPrice = parseFloat(item.final_price || 0);
+                  const remainingBalance = finalPrice - amountPaid;
+
+                  return (
                   <tr key={item.item_id} className="clickable-row" onClick={() => handleViewDetails(item)}>
                     <td><strong>#{item.order_id}</strong></td>
                     <td>{item.first_name} {item.last_name}</td>
@@ -854,6 +1020,14 @@ const Customize = () => {
                     <td><span style={{ fontSize: '0.9em', color: '#5D4037' }}>{item.specific_data?.fabricType || 'N/A'}</span></td>
                     <td>{new Date(item.order_date).toLocaleDateString()}</td>
                     <td>₱{parseFloat(item.final_price || 0).toLocaleString()}</td>
+                    <td>
+                      <div style={{ fontSize: '12px' }}>
+                        <div>Paid: ₱{amountPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div style={{ color: remainingBalance > 0 ? '#ff9800' : '#4caf50', fontWeight: 'bold' }}>
+                          Remaining: ₱{Math.max(0, remainingBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                    </td>
                     <td onClick={(e) => e.stopPropagation()}>
                       <span className={`status-badge ${getStatusClass(item.approval_status || 'pending')}`}>
                         {getStatusText(item.approval_status || 'pending')}
@@ -873,12 +1047,29 @@ const Customize = () => {
                               <line x1="6" y1="6" x2="18" y2="18"></line>
                             </svg>
                           </button>
-                          <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                          </button>
+                          {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
+                            <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                              </svg>
+                            </button>
+                          )}
+                          {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
+                            <button 
+                              className="icon-btn" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedOrder(item);
+                                setPaymentAmount('');
+                                setShowPaymentModal(true);
+                              }} 
+                              title="Record Payment"
+                              style={{ backgroundColor: '#2196F3', color: 'white' }}
+                            >
+                              💰
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <div className="action-buttons">
@@ -894,17 +1085,35 @@ const Customize = () => {
                               </svg>
                             </button>
                           )}
-                          <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                          </button>
+                          {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
+                            <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                              </svg>
+                            </button>
+                          )}
+                          {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
+                            <button 
+                              className="icon-btn" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedOrder(item);
+                                setPaymentAmount('');
+                                setShowPaymentModal(true);
+                              }} 
+                              title="Record Payment"
+                              style={{ backgroundColor: '#2196F3', color: 'white' }}
+                            >
+                              💰
+                            </button>
+                          )}
                         </div>
                       )}
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -1108,27 +1317,191 @@ const Customize = () => {
                 </div>
               </div>
 
-              {/* Show design preview image */}
-              {selectedOrder.specific_data?.imageUrl && selectedOrder.specific_data.imageUrl !== 'no-image' && (
-                <div className="detail-row">
-                  <strong>Design Preview:</strong>
-                  <div 
-                    className="clickable-image"
-                    style={{ marginTop: '10px', cursor: 'pointer' }}
-                    onClick={() => openImagePreview(`http://localhost:5000${selectedOrder.specific_data.imageUrl}`, 'Design preview')}
-                  >
-                    <img
-                      src={`http://localhost:5000${selectedOrder.specific_data.imageUrl}`}
-                      alt="Design preview"
-                      style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', border: '1px solid #ddd' }}
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                    />
-                    <small className="click-hint" style={{ display: 'block', fontSize: '11px', color: '#888', marginTop: '4px' }}>Click to expand</small>
-                  </div>
-                </div>
-              )}
+              {/* Show design preview images - all 4 angles if available */}
+              {(() => {
+                // Try to get angleImages - handle both parsed and string formats
+                let designData = selectedOrder.specific_data?.designData;
+                let angleImages = null;
+                
+                // If designData is a string, try to parse it
+                if (typeof designData === 'string') {
+                  try {
+                    designData = JSON.parse(designData);
+                  } catch (e) {
+                    console.warn('Failed to parse designData:', e);
+                    designData = null;
+                  }
+                }
+                
+                // Get angleImages from designData
+                if (designData && designData.angleImages) {
+                  angleImages = designData.angleImages;
+                }
+                
+                // If angleImages exist, display all 4 views
+                if (angleImages && (angleImages.front || angleImages.back || angleImages.right || angleImages.left)) {
+                  return (
+                    <div className="detail-row">
+                      <strong>Design Views:</strong>
+                      <div style={{ marginTop: '10px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                          {['front', 'back', 'right', 'left'].map((angle) => (
+                            angleImages[angle] && (
+                              <div key={angle} style={{ position: 'relative' }}>
+                                <div 
+                                  className="clickable-image"
+                                  style={{ cursor: 'pointer' }}
+                                  onClick={() => openImagePreview(angleImages[angle], `${angle} view`)}
+                                >
+                                  <img
+                                    src={angleImages[angle]}
+                                    alt={`${angle} view`}
+                                    style={{ 
+                                      width: '100%', 
+                                      height: 'auto', 
+                                      maxHeight: '200px',
+                                      borderRadius: '8px', 
+                                      border: '2px solid #ddd',
+                                      objectFit: 'contain'
+                                    }}
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                    }}
+                                  />
+                                  <div style={{ 
+                                    position: 'absolute', 
+                                    bottom: '5px', 
+                                    left: '5px', 
+                                    background: 'rgba(0,0,0,0.7)', 
+                                    color: 'white', 
+                                    padding: '4px 8px', 
+                                    borderRadius: '4px',
+                                    fontSize: '12px',
+                                    textTransform: 'capitalize',
+                                    fontWeight: 'bold'
+                                  }}>
+                                    {angle}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          ))}
+                        </div>
+                        <small className="click-hint" style={{ display: 'block', fontSize: '11px', color: '#888', marginTop: '8px' }}>Click any image to expand</small>
+                      </div>
+                    </div>
+                  );
+                }
+                
+                // Fallback to single image if angleImages not available
+                if (selectedOrder.specific_data?.imageUrl && selectedOrder.specific_data.imageUrl !== 'no-image') {
+                  return (
+                    <div className="detail-row">
+                      <strong>Design Preview:</strong>
+                      <div 
+                        className="clickable-image"
+                        style={{ marginTop: '10px', cursor: 'pointer' }}
+                        onClick={() => openImagePreview(`http://localhost:5000${selectedOrder.specific_data.imageUrl}`, 'Design preview')}
+                      >
+                        <img
+                          src={`http://localhost:5000${selectedOrder.specific_data.imageUrl}`}
+                          alt="Design preview"
+                          style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', border: '1px solid #ddd' }}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                        <small className="click-hint" style={{ display: 'block', fontSize: '11px', color: '#888', marginTop: '4px' }}>Click to expand</small>
+                      </div>
+                    </div>
+                  );
+                }
+                
+                return null;
+              })()}
+
+              {/* Display 3D customization choices if available */}
+              {(() => {
+                // Try to get designData - handle both parsed and string formats
+                let designData = selectedOrder.specific_data?.designData;
+                
+                // If designData is a string, try to parse it
+                if (typeof designData === 'string') {
+                  try {
+                    designData = JSON.parse(designData);
+                  } catch (e) {
+                    console.warn('Failed to parse designData:', e);
+                    designData = null;
+                  }
+                }
+                
+                // Display 3D customization choices if designData exists
+                if (designData && (designData.size || designData.fit || designData.colors || designData.pattern || designData.personalization || designData.buttons || designData.accessories)) {
+                  return (
+                    <div className="detail-row" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                      <div style={{ width: '100%' }}>
+                        <h5 style={{ margin: '0 0 15px 0', color: '#333', fontSize: '16px', fontWeight: '600' }}>
+                          🎨 3D Customization Choices
+                        </h5>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', fontSize: '14px' }}>
+                          {designData.size && (
+                            <div className="detail-row">
+                              <strong>Size:</strong> {designData.size.charAt(0).toUpperCase() + designData.size.slice(1)}
+                            </div>
+                          )}
+                          {designData.fit && (
+                            <div className="detail-row">
+                              <strong>Fit:</strong> {designData.fit.charAt(0).toUpperCase() + designData.fit.slice(1)}
+                            </div>
+                          )}
+                          {designData.colors && designData.colors.fabric && (
+                            <div className="detail-row">
+                              <strong>Color:</strong> {getColorName(designData.colors.fabric)}
+                            </div>
+                          )}
+                          {designData.pattern && designData.pattern !== 'none' && (
+                            <div className="detail-row">
+                              <strong>Pattern:</strong> {designData.pattern.charAt(0).toUpperCase() + designData.pattern.slice(1)}
+                            </div>
+                          )}
+                          {designData.personalization && designData.personalization.initials && (
+                            <div className="detail-row" style={{ gridColumn: '1 / -1' }}>
+                              <strong>Personalization:</strong> {designData.personalization.initials}
+                              {designData.personalization.font && ` (${designData.personalization.font} font)`}
+                            </div>
+                          )}
+                          {designData.buttons && designData.buttons.length > 0 && (
+                            <div className="detail-row" style={{ gridColumn: '1 / -1' }}>
+                              <strong>Button Types:</strong>
+                              <div style={{ marginLeft: '10px', marginTop: '5px', fontSize: '13px' }}>
+                                {designData.buttons.map((btn, index) => (
+                                  <div key={btn.id || index} style={{ margin: '5px 0' }}>
+                                    Button {index + 1}: {getButtonType(btn.modelPath)}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {designData.accessories && designData.accessories.length > 0 && (
+                            <div className="detail-row" style={{ gridColumn: '1 / -1' }}>
+                              <strong>Accessories:</strong>
+                              <div style={{ marginLeft: '10px', marginTop: '5px', fontSize: '13px' }}>
+                                {designData.accessories.map((acc, index) => (
+                                  <div key={acc.id || index} style={{ margin: '5px 0' }}>
+                                    {getAccessoryName(acc.modelPath)}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                
+                return null;
+              })()}
             </div>
             <div className="modal-footer">
               <button className="close-btn" onClick={() => setShowDetailModal(false)}>Close</button>
@@ -1757,6 +2130,92 @@ const Customize = () => {
                 style={{ opacity: (!fabricTypeForm.fabric_name.trim() || !fabricTypeForm.fabric_price || isNaN(parseFloat(fabricTypeForm.fabric_price))) ? 0.6 : 1 }}
               >
                 {editingFabricType ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PAYMENT MODAL */}
+      {showPaymentModal && selectedOrder && (
+        <div className="modal-overlay active" onClick={(e) => {
+          if (e.target.classList.contains('modal-overlay')) setShowPaymentModal(false);
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2>Record Payment</h2>
+              <span className="close-modal" onClick={() => setShowPaymentModal(false)}>×</span>
+            </div>
+            <div className="modal-body">
+              <div className="detail-row">
+                <strong>Order ID:</strong>
+                <span>ORD-{selectedOrder.order_id}</span>
+              </div>
+              <div className="detail-row">
+                <strong>Customer:</strong>
+                <span>{selectedOrder.first_name} {selectedOrder.last_name}</span>
+              </div>
+              <div className="detail-row">
+                <strong>Service:</strong>
+                <span>Customization - {selectedOrder.specific_data?.garmentType || 'N/A'}</span>
+              </div>
+              <div className="detail-row">
+                <strong>Total Price:</strong>
+                <span>₱{parseFloat(selectedOrder.final_price || 0).toLocaleString()}</span>
+              </div>
+              {(() => {
+                const pricingFactors = typeof selectedOrder.pricing_factors === 'string' 
+                  ? JSON.parse(selectedOrder.pricing_factors || '{}') 
+                  : (selectedOrder.pricing_factors || {});
+                const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
+                const finalPrice = parseFloat(selectedOrder.final_price || 0);
+                const remaining = finalPrice - amountPaid;
+                
+                if (amountPaid > 0) {
+                  return (
+                    <>
+                      <div className="detail-row">
+                        <strong>Amount Paid:</strong>
+                        <span>₱{amountPaid.toLocaleString()}</span>
+                      </div>
+                      <div className="detail-row">
+                        <strong>Remaining Balance:</strong>
+                        <span style={{ color: remaining > 0 ? '#ff9800' : '#4caf50', fontWeight: 'bold' }}>
+                          ₱{Math.max(0, remaining).toLocaleString()}
+                        </span>
+                      </div>
+                    </>
+                  );
+                }
+                return null;
+              })()}
+              
+              <div className="form-group" style={{ marginTop: '20px' }}>
+                <label>Payment Amount *</label>
+                <input
+                  type="number"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className="form-control"
+                  placeholder="Enter payment amount"
+                  min="0"
+                  step="0.01"
+                  autoFocus
+                />
+                <small style={{ color: '#666', marginTop: '5px', display: 'block' }}>
+                  Enter the amount the customer is paying now
+                </small>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => {
+                setShowPaymentModal(false);
+                setPaymentAmount('');
+              }}>
+                Cancel
+              </button>
+              <button className="btn-save" onClick={handleRecordPayment}>
+                Record Payment
               </button>
             </div>
           </div>

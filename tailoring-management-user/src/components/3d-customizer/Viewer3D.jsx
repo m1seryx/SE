@@ -24,6 +24,76 @@ function ExportButton() {
   return null;
 }
 
+// Camera controller for capturing different angles
+function CameraController() {
+  const { camera, gl, scene } = useThree();
+
+  useEffect(() => {
+    const handleCaptureAngle = async (event) => {
+      const { angle, callbackId } = event.detail;
+      
+      // Set camera position based on angle
+      const distance = 5;
+      const height = 1.6;
+      const target = new THREE.Vector3(0, height, 0);
+      
+      let x = 0, z = distance;
+      
+      switch(angle) {
+        case 'front':
+          x = 0;
+          z = distance;
+          break;
+        case 'back':
+          x = 0;
+          z = -distance;
+          break;
+        case 'right':
+          x = distance;
+          z = 0;
+          break;
+        case 'left':
+          x = -distance;
+          z = 0;
+          break;
+        default:
+          x = 0;
+          z = distance;
+      }
+      
+      // Set camera position and look at target
+      camera.position.set(x, height, z);
+      camera.lookAt(target);
+      camera.updateProjectionMatrix();
+      
+      // Wait for render to complete (multiple frames for stability)
+      await new Promise(resolve => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              resolve();
+            });
+          });
+        });
+      });
+      
+      // Force render and capture
+      gl.render(scene, camera);
+      const imageData = gl.domElement.toDataURL('image/png');
+      
+      // Send the captured image back
+      window.dispatchEvent(new CustomEvent('angle-captured', {
+        detail: { angle, imageData, callbackId }
+      }));
+    };
+
+    window.addEventListener('capture-angle', handleCaptureAngle);
+    return () => window.removeEventListener('capture-angle', handleCaptureAngle);
+  }, [camera, gl, scene]);
+
+  return null;
+}
+
 export default function Viewer3D({ garment, size, fit, modelSize, colors, fabric, pattern, style, measurements, personalization, buttons, setButtons, accessories, setAccessories, pantsType, customModels = [] }) {
   const [selectedButton, setSelectedButton] = useState(null);
   const [selectedAccessory, setSelectedAccessory] = useState(null);
@@ -57,6 +127,7 @@ export default function Viewer3D({ garment, size, fit, modelSize, colors, fabric
 
         <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={10} blur={2.6} far={4.5} />
         <OrbitControls enablePan={false} enabled={!isAnyButtonMoving && !isAnyAccessoryMoving} />
+        <CameraController />
         {buttons && buttons.map((btn) => (
           <DraggableButton
             key={btn.id}

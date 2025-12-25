@@ -2,12 +2,48 @@
   min-height: 100vh;
   background: #f9f5f2;
   padding-top: 100px; /* Account for fixed header */
+  overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 .rental-container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+  overflow-x: hidden; /* Prevent horizontal scroll */
+}
+
+/* Reduce card sizes on rental page */
+.rental-page .rental-card {
+  height: 380px !important; /* Smaller than default 430px */
+}
+
+.rental-page .rental-card img {
+  height: 180px !important; /* Smaller than default 220px */
+}
+
+.rental-page .rental-info {
+  padding: 16px 12px !important;
+}
+
+.rental-page .rental-info h3 {
+  font-size: 1.2rem !important;
+}
+
+.rental-page .price {
+  font-size: 1.2rem !important;
+}
+
+/* Fix double scroll bars */
+.rental-page .rental-grid {
+  overflow: visible !important;
+}
+
+.rental-page section.rental {
+  overflow: visible !important;
+}
+
+.rental-page .rental-container {
+  overflow-y: visible !important;
 }
 
 .rental-actions .date-section {

@@ -689,8 +689,55 @@ const Profile = () => {
           <div className="service-details customize-details">
             <h4>Customization Details</h4>
             
-            {/* Show design preview if available */}
-            {specific_data.imageUrl && specific_data.imageUrl !== 'no-image' && (
+            {/* Show design preview images - all 4 angles if available */}
+            {specific_data.designData?.angleImages ? (
+              <div className="detail-row">
+                <span className="detail-label">Design Views:</span>
+                <div className="detail-value">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginTop: '10px' }}>
+                    {['front', 'back', 'right', 'left'].map((angle) => (
+                      specific_data.designData.angleImages[angle] && (
+                        <div key={angle} style={{ position: 'relative' }}>
+                          <img
+                            src={specific_data.designData.angleImages[angle]}
+                            alt={`${angle} view`}
+                            className="damage-photo clickable-image"
+                            onClick={() => openImagePreview(specific_data.designData.angleImages[angle], `${angle} view`)}
+                            title="Click to enlarge"
+                            style={{
+                              width: '100%',
+                              height: 'auto',
+                              borderRadius: '8px',
+                              border: '2px solid #e0e0e0',
+                              cursor: 'pointer'
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              console.log(`${angle} view image failed to load`);
+                            }}
+                          />
+                          <div style={{ 
+                            position: 'absolute', 
+                            bottom: '5px', 
+                            left: '5px', 
+                            background: 'rgba(0,0,0,0.7)', 
+                            color: 'white', 
+                            padding: '4px 8px', 
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            textTransform: 'capitalize',
+                            fontWeight: 'bold'
+                          }}>
+                            {angle}
+                          </div>
+                        </div>
+                      )
+                    ))}
+                  </div>
+                  <small style={{ display: 'block', fontSize: '11px', color: '#888', marginTop: '8px' }}>Click any image to enlarge</small>
+                </div>
+              </div>
+            ) : specific_data.imageUrl && specific_data.imageUrl !== 'no-image' ? (
               <div className="detail-row">
                 <span className="detail-label">Design Preview:</span>
                 <div className="detail-value">
@@ -707,7 +754,7 @@ const Profile = () => {
                   />
                 </div>
               </div>
-            )}
+            ) : null}
             
             <div className="detail-row">
               <span className="detail-label">Garment Type:</span>
@@ -1169,8 +1216,23 @@ const Profile = () => {
         // Apply Status Filter
         const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
 
-        // Apply Service Filter
-        const matchesService = serviceFilter === 'all' || item.service_type === serviceFilter;
+        // Apply Service Filter (handle variations of service type names)
+        let matchesService = false;
+        if (serviceFilter === 'all') {
+          matchesService = true;
+        } else {
+          const itemServiceType = item.service_type?.toLowerCase();
+          const filterServiceType = serviceFilter.toLowerCase();
+          
+          // Handle customization/customize variations
+          if (filterServiceType === 'customize') {
+            matchesService = itemServiceType === 'customization' || itemServiceType === 'customize';
+          } else if (filterServiceType === 'dry_cleaning') {
+            matchesService = itemServiceType === 'dry_cleaning' || itemServiceType === 'drycleaning' || itemServiceType === 'dry-cleaning';
+          } else {
+            matchesService = itemServiceType === filterServiceType;
+          }
+        }
 
         if (matchesStatus && matchesService) {
           allItems.push({
@@ -1243,14 +1305,19 @@ const Profile = () => {
 
     orders.forEach(order => {
       order.items.forEach(item => {
-        // Only count if it matches the current status filter (optional, but good for UX)
-        // For now, let's count global totals to be consistent with status counts
-        if (counts[item.service_type] !== undefined) {
-          counts[item.service_type]++;
+        // Map service types to count keys
+        let serviceKey = item.service_type;
+        
+        // Handle variations of service type names
+        if (serviceKey === 'customization' || serviceKey === 'customize') {
+          serviceKey = 'customize';
+        } else if (serviceKey === 'drycleaning' || serviceKey === 'dry-cleaning') {
+          serviceKey = 'dry_cleaning';
         }
-        // Handle variations of dry cleaning if necessary, but backend should normalize
-        if (item.service_type === 'drycleaning' || item.service_type === 'dry-cleaning') {
-          counts['dry_cleaning']++;
+        
+        // Increment count if the key exists
+        if (counts[serviceKey] !== undefined) {
+          counts[serviceKey]++;
         }
 
         counts.all++;
@@ -1434,8 +1501,12 @@ const Profile = () => {
                 const estimatedPrice = getEstimatedPrice(item.specific_data, item.service_type);
                 const priceChanged = hasPriceChanged(item.specific_data, item.final_price, item.service_type, item.pricing_factors);
                 
-                // Calculate remaining amount for rental items
+                // Calculate remaining amount for all services
                 const isRental = item.service_type === 'rental';
+                const isRepair = item.service_type === 'repair';
+                const isDryCleaning = item.service_type === 'dry_cleaning' || item.service_type === 'drycleaning';
+                const isCustomization = item.service_type === 'customization' || item.service_type === 'customize';
+                
                 // Get amount paid from pricing_factors (updated when admin records payments)
                 const pricingFactors = typeof item.pricing_factors === 'string' 
                   ? JSON.parse(item.pricing_factors || '{}') 
@@ -1445,7 +1516,8 @@ const Profile = () => {
                 const finalPrice = parseFloat(item.final_price || 0);
                 // Use amount_paid if available (from transaction logs), otherwise fall back to downpayment for display
                 const totalPaid = amountPaid > 0 ? amountPaid : (isRental && item.status === 'rented' ? downpayment : 0);
-                const remainingAmount = isRental ? Math.max(0, finalPrice - totalPaid) : finalPrice;
+                const remainingAmount = Math.max(0, finalPrice - totalPaid);
+                const hasPayment = totalPaid > 0 && (isRental || isRepair || isDryCleaning || isCustomization);
 
                 return (
                   <div key={`${item.order_id}-${item.order_item_id}-${item.service_type}-${item.status_updated_at || Date.now()}`} className="order-card">
@@ -1462,7 +1534,7 @@ const Profile = () => {
                         </span>
                       </div>
                       <div className="order-price">
-                        {isRental && item.status === 'rented' ? (
+                        {hasPayment && remainingAmount > 0 ? (
                           <>
                             <div style={{ fontSize: '14px', color: '#666', textDecoration: 'line-through' }}>
                               ₱{finalPrice.toFixed(2)}
@@ -1567,6 +1639,22 @@ const Profile = () => {
                                 <span className="notes-text">{item.specific_data.adminNotes}</span>
                               </div>
                             )}
+                            {hasPayment && (
+                              <>
+                                <div className="price-row">
+                                  <span className="price-label">Amount Paid:</span>
+                                  <span className="price-value" style={{ color: '#4caf50' }}>₱{totalPaid.toFixed(2)}</span>
+                                </div>
+                                {remainingAmount > 0 && (
+                                  <div className="price-row" style={{ borderTop: '2px solid #e0e0e0', paddingTop: '8px', marginTop: '8px' }}>
+                                    <span className="price-label" style={{ fontWeight: 'bold', fontSize: '16px' }}>Remaining Amount:</span>
+                                    <span className="price-value" style={{ fontWeight: 'bold', fontSize: '18px', color: '#ff9800' }}>
+                                      ₱{remainingAmount.toFixed(2)}
+                                    </span>
+                                  </div>
+                                )}
+                              </>
+                            )}
                           </>
                         ) : (
                           // For other statuses (accepted, in_progress, etc.)
@@ -1577,19 +1665,55 @@ const Profile = () => {
                             // For dry cleaning: show "Estimated Price" if isEstimatedPrice is true, otherwise "Final Price"
                             if (isDryCleaning && isEstimated) {
                               return (
-                                <div className="price-row">
-                                  <span className="price-label">Estimated Price:</span>
-                                  <span className="price-value estimated">₱{parseFloat(item.final_price).toFixed(2)}</span>
-                                </div>
+                                <>
+                                  <div className="price-row">
+                                    <span className="price-label">Estimated Price:</span>
+                                    <span className="price-value estimated">₱{parseFloat(item.final_price).toFixed(2)}</span>
+                                  </div>
+                                  {hasPayment && (
+                                    <>
+                                      <div className="price-row">
+                                        <span className="price-label">Amount Paid:</span>
+                                        <span className="price-value" style={{ color: '#4caf50' }}>₱{totalPaid.toFixed(2)}</span>
+                                      </div>
+                                      {remainingAmount > 0 && (
+                                        <div className="price-row" style={{ borderTop: '2px solid #e0e0e0', paddingTop: '8px', marginTop: '8px' }}>
+                                          <span className="price-label" style={{ fontWeight: 'bold', fontSize: '16px' }}>Remaining Amount:</span>
+                                          <span className="price-value" style={{ fontWeight: 'bold', fontSize: '18px', color: '#ff9800' }}>
+                                            ₱{remainingAmount.toFixed(2)}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                </>
                               );
                             }
                             
                             // For other services or dry cleaning with specific garment type, show final price
                             return (
-                          <div className="price-row">
-                            <span className="price-label">Final Price:</span>
-                            <span className="price-value final">₱{parseFloat(item.final_price).toFixed(2)}</span>
-                          </div>
+                              <>
+                                <div className="price-row">
+                                  <span className="price-label">Final Price:</span>
+                                  <span className="price-value final">₱{parseFloat(item.final_price).toFixed(2)}</span>
+                                </div>
+                                {hasPayment && (
+                                  <>
+                                    <div className="price-row">
+                                      <span className="price-label">Amount Paid:</span>
+                                      <span className="price-value" style={{ color: '#4caf50' }}>₱{totalPaid.toFixed(2)}</span>
+                                    </div>
+                                    {remainingAmount > 0 && (
+                                      <div className="price-row" style={{ borderTop: '2px solid #e0e0e0', paddingTop: '8px', marginTop: '8px' }}>
+                                        <span className="price-label" style={{ fontWeight: 'bold', fontSize: '16px' }}>Remaining Amount:</span>
+                                        <span className="price-value" style={{ fontWeight: 'bold', fontSize: '18px', color: '#ff9800' }}>
+                                          ₱{remainingAmount.toFixed(2)}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </>
                             );
                           })()
                         )}
@@ -1841,6 +1965,10 @@ const Profile = () => {
                     <span className="summary-value">
                       {(() => {
                         const isRental = selectedItem.service_type === 'rental';
+                        const isRepair = selectedItem.service_type === 'repair';
+                        const isDryCleaning = selectedItem.service_type === 'dry_cleaning' || selectedItem.service_type === 'drycleaning';
+                        const isCustomization = selectedItem.service_type === 'customization' || selectedItem.service_type === 'customize';
+                        
                         // Get amount paid from pricing_factors (updated when admin records payments)
                         const pricingFactors = typeof selectedItem.pricing_factors === 'string' 
                           ? JSON.parse(selectedItem.pricing_factors || '{}') 
@@ -1850,9 +1978,10 @@ const Profile = () => {
                         const finalPrice = parseFloat(selectedItem.final_price || 0);
                         // Use amount_paid if available (from transaction logs), otherwise fall back to downpayment for display
                         const totalPaid = amountPaid > 0 ? amountPaid : (isRental && selectedItem.status === 'rented' ? downpayment : 0);
-                        const remainingAmount = isRental ? Math.max(0, finalPrice - totalPaid) : finalPrice;
+                        const remainingAmount = Math.max(0, finalPrice - totalPaid);
+                        const hasPayment = totalPaid > 0 && (isRental || isRepair || isDryCleaning || isCustomization);
                         
-                        if (isRental && selectedItem.status === 'rented') {
+                        if (hasPayment && remainingAmount > 0) {
                           return (
                             <div>
                               <div style={{ fontSize: '14px', color: '#666', textDecoration: 'line-through', marginBottom: '4px' }}>
@@ -1862,7 +1991,7 @@ const Profile = () => {
                                 ₱{remainingAmount.toFixed(2)}
                               </div>
                               <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                                (Remaining after {totalPaid > 0 ? 'payment' : 'downpayment'})
+                                (Remaining after payment)
                               </div>
                             </div>
                           );

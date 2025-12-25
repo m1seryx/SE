@@ -42,7 +42,10 @@ router.put('/dry-cleaning/items/:id', orderController.updateDryCleaningOrderItem
 router.get('/rental/orders', orderController.getRentalOrders);
 router.get('/rental/orders/status/:status', orderController.getRentalOrdersByStatus);
 router.put('/rental/items/:id', orderController.updateRentalOrderItem);
-router.post('/rental/items/:id/payment', orderController.recordRentalPayment);
+router.post('/rental/items/:id/payment', orderController.recordRentalPayment); // Keep for backward compatibility
+
+// Generic payment route for all service types (admin only)
+router.post('/items/:id/payment', orderController.recordRentalPayment); // Reuse same function, now works for all services
 
 // Price confirmation routes (user only)
 router.post('/:itemId/accept-price', orderPriceController.acceptPrice);

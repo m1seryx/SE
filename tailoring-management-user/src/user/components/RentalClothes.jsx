@@ -796,7 +796,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                 CM
               </button>
             </div>
-          {!showAll && <a onClick={handleSeeMore} className="see-more">See more →</a>}
+            {!showAll && <a onClick={handleSeeMore} className="see-more" style={{ display: 'flex', alignItems: 'center' }}>See more →</a>}
           </div>
         </div>
         <div className="rental-grid">
@@ -820,7 +820,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
       <section className="rental" id="Rentals">
         <div className="section-header">
           <h2>{showAll ? 'All Rental Clothes' : 'Rental Clothes'}</h2>
-          <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Multi-select toggle button */}
             <button
               onClick={() => {
@@ -840,13 +840,16 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                 cursor: 'pointer',
                 fontSize: '14px',
                 fontWeight: '600',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                whiteSpace: 'nowrap'
               }}
             >
               {isMultiSelectMode ? '✕ Cancel Selection' : '☑ Select Multiple'}
             </button>
             {!showAll && rentalItems.length > 3 && (
-              <a onClick={handleSeeMore} className="see-more">See more →</a>
+              <a onClick={handleSeeMore} className="see-more" style={{ display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' }}>See more →</a>
             )}
           </div>
         </div>

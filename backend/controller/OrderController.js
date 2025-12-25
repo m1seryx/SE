@@ -1412,13 +1412,8 @@ exports.recordRentalPayment = (req, res) => {
       });
     }
 
-    // Only allow payments for rental items
-    if (item.service_type !== 'rental') {
-      return res.status(400).json({
-        success: false,
-        message: "Payment recording is only available for rental items"
-      });
-    }
+    // Allow payments for all service types (rental, repair, dry_cleaning, customization)
+    // No restriction needed
 
     // Get current pricing_factors
     let pricingFactors = {};
@@ -1448,14 +1443,22 @@ exports.recordRentalPayment = (req, res) => {
 
     // Update payment_status based on amount paid
     let newPaymentStatus = item.payment_status || 'unpaid';
+    const serviceType = (item.service_type || '').toLowerCase().trim();
+    
     if (newAmountPaid >= finalPrice) {
-      newPaymentStatus = 'paid';
+      // Fully paid
+      newPaymentStatus = serviceType === 'rental' ? 'fully_paid' : 'paid';
     } else if (newAmountPaid > 0) {
       // For rental, if paid at least 50%, it's down-payment, otherwise partial
-      const downpaymentAmount = finalPrice * 0.5;
-      if (newAmountPaid >= downpaymentAmount) {
-        newPaymentStatus = 'down-payment';
+      if (serviceType === 'rental') {
+        const downpaymentAmount = finalPrice * 0.5;
+        if (newAmountPaid >= downpaymentAmount) {
+          newPaymentStatus = 'down-payment';
+        } else {
+          newPaymentStatus = 'partial_payment';
+        }
       } else {
+        // For other services (repair, dry_cleaning, customization), just use partial_payment
         newPaymentStatus = 'partial_payment';
       }
     }
@@ -1510,7 +1513,7 @@ exports.recordRentalPayment = (req, res) => {
       // This is the ONLY place where transaction logs should be created - when admin explicitly records payment
       const TransactionLog = require('../model/TransactionLogModel');
       const transactionType = newPaymentStatus === 'down-payment' ? 'downpayment' : 
-                              newPaymentStatus === 'paid' ? 'final_payment' : 'partial_payment';
+                              (newPaymentStatus === 'paid' || newPaymentStatus === 'fully_paid') ? 'final_payment' : 'partial_payment';
       
       TransactionLog.create({
         order_item_id: itemId,

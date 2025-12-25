@@ -220,9 +220,20 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
           const design = JSON.parse(finalDesignData);
           console.log('Loading 3D customization data:', design);
           
-          // Get design image from design object
-          // Check multiple possible locations for the image
+          // Get design images from design object
+          // Check for angle images (front, back, right, left) first, then fallback to single designImage
+          let angleImages = design.design?.angleImages || null;
           let designImage = design.design?.designImage || design.designImage || null;
+          
+          // If we have angle images, use the front view as the main preview
+          if (angleImages && angleImages.front) {
+            designImage = angleImages.front;
+          }
+          
+          // Store design details for display (this includes angleImages if available)
+          if (design.design) {
+            setDesignDetails(design.design);
+          }
           
           if (designImage) {
             // Handle base64 image (with or without data URL prefix)
@@ -235,7 +246,7 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               setImagePreview(`data:image/png;base64,${designImage}`);
             }
             
-            // Convert base64 to blob for file upload
+            // Convert base64 to blob for file upload (use front image)
             try {
               const byteCharacters = atob(imageData);
               const byteNumbers = new Array(byteCharacters.length);
@@ -428,13 +439,15 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
 
       // Prepare designData without the base64 image (to avoid payload size issues)
       // The image is already uploaded separately and stored in imageUrl
+      // BUT keep angleImages as they are needed for display in cart/admin/order tracking
       let cleanDesignData = null;
       if (designDetails) {
-        // Create a deep copy and remove any base64 image data
+        // Create a deep copy and remove only the main designImage, but keep angleImages
         cleanDesignData = JSON.parse(JSON.stringify(designDetails));
         
-        // Remove the base64 image from designData to reduce payload size
-        // The image is already uploaded and we have the imageUrl
+        // Remove the base64 main designImage from designData to reduce payload size
+        // The main image is already uploaded and we have the imageUrl
+        // BUT keep angleImages (front, back, right, left) for multi-view display
         if (cleanDesignData.designImage) {
           delete cleanDesignData.designImage;
         }
@@ -442,6 +455,8 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
         if (cleanDesignData.design && cleanDesignData.design.designImage) {
           delete cleanDesignData.design.designImage;
         }
+        // Keep angleImages - they will be displayed in cart/admin/order tracking
+        // Note: angleImages are base64 strings, but they're needed for display
       }
 
       // Add to cart with backend API
@@ -564,7 +579,38 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
 
             {imagePreview && (
               <div className="image-preview-shared">
-                <img src={imagePreview} alt="Preview" />
+                {/* Display all 4 angle images if available, otherwise show single image */}
+                {designDetails?.angleImages ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '10px' }}>
+                    {['front', 'back', 'right', 'left'].map((angle) => (
+                      designDetails.angleImages[angle] && (
+                        <div key={angle} style={{ position: 'relative' }}>
+                          <img 
+                            src={designDetails.angleImages[angle]} 
+                            alt={`${angle} view`}
+                            style={{ width: '100%', height: 'auto', borderRadius: '8px', border: '2px solid #e0e0e0' }}
+                          />
+                          <div style={{ 
+                            position: 'absolute', 
+                            bottom: '5px', 
+                            left: '5px', 
+                            background: 'rgba(0,0,0,0.7)', 
+                            color: 'white', 
+                            padding: '4px 8px', 
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            textTransform: 'capitalize',
+                            fontWeight: 'bold'
+                          }}>
+                            {angle}
+                          </div>
+                        </div>
+                      )
+                    ))}
+                  </div>
+                ) : (
+                  <img src={imagePreview} alt="Preview" />
+                )}
                 <button
                   type="button"
                   className="remove-image-btn-shared"
@@ -574,6 +620,7 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                       uploadedImage: null,
                     }));
                     setImagePreview('');
+                    setDesignDetails(prev => prev ? { ...prev, angleImages: null } : null);
                   }}
                   disabled={loading}
                 >

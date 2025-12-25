@@ -356,6 +356,51 @@ const Customizer3DPage = () => {
     return null;
   };
 
+  // Capture images from multiple angles
+  const captureMultipleAngles = async () => {
+    const angles = ['front', 'back', 'right', 'left'];
+    const images = {};
+    
+    return new Promise((resolve) => {
+      let capturedCount = 0;
+      const callbackId = `capture-${Date.now()}-${Math.random()}`;
+      
+      // Listen for captured images
+      const handleAngleCaptured = (event) => {
+        const { angle, imageData, callbackId: eventCallbackId } = event.detail;
+        if (eventCallbackId === callbackId) {
+          images[angle] = imageData;
+          capturedCount++;
+          
+          if (capturedCount === angles.length) {
+            window.removeEventListener('angle-captured', handleAngleCaptured);
+            resolve(images);
+          }
+        }
+      };
+      
+      window.addEventListener('angle-captured', handleAngleCaptured);
+      
+      // Trigger captures for each angle with a small delay between each
+      angles.forEach((angle, index) => {
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('capture-angle', {
+            detail: { angle, callbackId }
+          }));
+        }, index * 300); // 300ms delay between each capture
+      });
+      
+      // Fallback timeout in case some captures fail
+      setTimeout(() => {
+        if (capturedCount < angles.length) {
+          console.warn('Some angle captures may have failed');
+          window.removeEventListener('angle-captured', handleAngleCaptured);
+          resolve(images); // Return what we have
+        }
+      }, 5000);
+    });
+  };
+
   const handleApplyDesign = async () => {
     const garmentTypeName = getGarmentTypeName();
     
@@ -369,8 +414,11 @@ const Customizer3DPage = () => {
     };
     const estimatedPrice = priceMap[garmentTypeName] || 2000;
 
-    // Capture the canvas image
-    const designImage = captureCanvasImage();
+    // Capture images from all angles
+    const angleImages = await captureMultipleAngles();
+    
+    // Use front as the main design image (for backward compatibility)
+    const designImage = angleImages.front || captureCanvasImage();
 
     const finalDesign = {
       ...customizationData,
@@ -388,7 +436,8 @@ const Customizer3DPage = () => {
         buttons,
         accessories,
         pantsType,
-        designImage: designImage, // Include the captured image
+        designImage: designImage, // Main image (front view) for backward compatibility
+        angleImages: angleImages, // All 4 angle images: front, back, right, left
       },
       timestamp: new Date().toISOString(),
     };
@@ -400,6 +449,7 @@ const Customizer3DPage = () => {
         garmentType: garmentTypeName,
         fabricType: fabric,
         designImage: designImage,
+        angleImages: angleImages, // Include all angle images
         designData: finalDesign.design,
         notes: notes,
         estimatedPrice: estimatedPrice,

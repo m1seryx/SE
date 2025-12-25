@@ -6,6 +6,7 @@ import Sidebar from './Sidebar';
 import { getAllDryCleaningOrders, updateDryCleaningOrderItem } from '../api/DryCleaningOrderApi';
 import { getUserRole } from '../api/AuthApi';
 import { getAllGarmentTypesAdmin, createGarmentType, updateGarmentType, deleteGarmentType } from '../api/GarmentTypeApi';
+import { recordPayment } from '../api/PaymentApi';
 
 // Helper to check if user is authenticated
 const isAuthenticated = () => {
@@ -39,7 +40,11 @@ const DryCleaning = () => {
   const [showPriceConfirmationModal, setShowPriceConfirmationModal] = useState(false);
   const [priceConfirmationItem, setPriceConfirmationItem] = useState(null);
   const [priceConfirmationPrice, setPriceConfirmationPrice] = useState('');
- 
+
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
+
   // Toast notification state
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
@@ -250,7 +255,24 @@ const DryCleaning = () => {
       return null; // Already at final status or unknown status
     }
     
-    return flow[currentIndex + 1];
+    const nextStatus = flow[currentIndex + 1];
+    
+    // Check if trying to move to "completed" - require full payment
+    if (nextStatus === 'completed' && item) {
+      const pricingFactors = typeof item.pricing_factors === 'string' 
+        ? JSON.parse(item.pricing_factors || '{}') 
+        : (item.pricing_factors || {});
+      const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
+      const finalPrice = parseFloat(item.final_price || 0);
+      const remainingBalance = finalPrice - amountPaid;
+      
+      // If there's remaining balance, don't allow move to completed
+      if (remainingBalance > 0.01) { // Use 0.01 to account for floating point precision
+        return null;
+      }
+    }
+    
+    return nextStatus;
   };
 
   // Get next status label for display
@@ -434,6 +456,22 @@ const DryCleaning = () => {
     const statusLabel = getStatusText(status);
     const currentStatusLabel = item ? getStatusText(item.approval_status) : 'current';
     
+    // Check if trying to move to "completed" - require full payment
+    if (status === 'completed' && item) {
+      const pricingFactors = typeof item.pricing_factors === 'string' 
+        ? JSON.parse(item.pricing_factors || '{}') 
+        : (item.pricing_factors || {});
+      const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
+      const finalPrice = parseFloat(item.final_price || 0);
+      const remainingBalance = finalPrice - amountPaid;
+      
+      // If there's remaining balance, prevent move to completed
+      if (remainingBalance > 0.01) { // Use 0.01 to account for floating point precision
+        showToast(`Cannot mark as completed. Payment is not complete. Remaining balance: ₱${remainingBalance.toFixed(2)}`, "error");
+        return;
+      }
+    }
+    
     openConfirmModal(
       `Are you sure you want to move this order from "${currentStatusLabel}" to "${statusLabel}"?`,
       async () => {
@@ -488,6 +526,35 @@ const DryCleaning = () => {
       adminNotes: item.pricing_factors?.adminNotes || ''
     });
     setShowEditModal(true);
+  };
+
+  const handleRecordPayment = async () => {
+    if (!selectedOrder || !paymentAmount) {
+      showToast('Please enter a payment amount', 'error');
+      return;
+    }
+
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      showToast('Please enter a valid payment amount', 'error');
+      return;
+    }
+
+    try {
+      const result = await recordPayment(selectedOrder.item_id, amount);
+      if (result.success) {
+        const remaining = result.payment?.remaining_balance || 0;
+        showToast(`Payment of ₱${amount.toFixed(2)} recorded successfully. ${remaining > 0 ? `Remaining balance: ₱${remaining.toFixed(2)}` : 'Payment complete!'}`, 'success');
+        setShowPaymentModal(false);
+        setPaymentAmount('');
+        await loadDryCleaningOrders();
+      } else {
+        showToast(result.message || 'Failed to record payment', 'error');
+      }
+    } catch (error) {
+      console.error('Error recording payment:', error);
+      showToast('Error recording payment', 'error');
+    }
   };
 
   // Helper to get estimated price for comparison
@@ -647,17 +714,27 @@ const DryCleaning = () => {
                 <th>Service</th>
                 <th>Date</th>
                 <th>Price</th>
+                <th>Payment Status</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>Loading dry cleaning orders...</td></tr>
+                <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px' }}>Loading dry cleaning orders...</td></tr>
               ) : getFilteredItems().length === 0 ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>No dry cleaning orders found</td></tr>
+                <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px' }}>No dry cleaning orders found</td></tr>
               ) : (
-                getFilteredItems().map(item => (
+                getFilteredItems().map(item => {
+                  // Get payment information
+                  const pricingFactors = typeof item.pricing_factors === 'string' 
+                    ? JSON.parse(item.pricing_factors || '{}') 
+                    : (item.pricing_factors || {});
+                  const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
+                  const finalPrice = parseFloat(item.final_price || 0);
+                  const remainingBalance = finalPrice - amountPaid;
+
+                  return (
                   <tr key={item.item_id} className="clickable-row" onClick={() => handleViewDetails(item)}>
                     <td><strong>#{item.order_id}</strong></td>
                     <td>{item.first_name} {item.last_name}</td>
@@ -665,6 +742,14 @@ const DryCleaning = () => {
                     <td><span style={{ fontSize: '0.9em', color: '#d32f2f' }}>{item.specific_data?.serviceName || 'N/A'}</span></td>
                     <td>{new Date(item.order_date).toLocaleDateString()}</td>
                     <td>₱{parseFloat(item.final_price || 0).toLocaleString()}</td>
+                    <td>
+                      <div style={{ fontSize: '12px' }}>
+                        <div>Paid: ₱{amountPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div style={{ color: remainingBalance > 0 ? '#ff9800' : '#4caf50', fontWeight: 'bold' }}>
+                          Remaining: ₱{Math.max(0, remainingBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                    </td>
                     <td onClick={(e) => e.stopPropagation()}>
                       <span className={`status-badge ${getStatusClass(item.approval_status || 'pending')}`}>
                         {getStatusText(item.approval_status || 'pending')}
@@ -684,12 +769,29 @@ const DryCleaning = () => {
                               <line x1="6" y1="6" x2="18" y2="18"></line>
                             </svg>
                           </button>
-                          <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                          </button>
+                          {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
+                            <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                              </svg>
+                            </button>
+                          )}
+                          {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
+                            <button 
+                              className="icon-btn" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedOrder(item);
+                                setPaymentAmount('');
+                                setShowPaymentModal(true);
+                              }} 
+                              title="Record Payment"
+                              style={{ backgroundColor: '#2196F3', color: 'white' }}
+                            >
+                              💰
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <div className="action-buttons">
@@ -705,17 +807,35 @@ const DryCleaning = () => {
                               </svg>
                             </button>
                           )}
-                          <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                          </button>
+                          {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
+                            <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                              </svg>
+                            </button>
+                          )}
+                          {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
+                            <button 
+                              className="icon-btn" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedOrder(item);
+                                setPaymentAmount('');
+                                setShowPaymentModal(true);
+                              }} 
+                              title="Record Payment"
+                              style={{ backgroundColor: '#2196F3', color: 'white' }}
+                            >
+                              💰
+                            </button>
+                          )}
                         </div>
                       )}
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -1103,6 +1223,92 @@ const DryCleaning = () => {
                 }}
               >
                 {editingGarmentType ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PAYMENT MODAL */}
+      {showPaymentModal && selectedOrder && (
+        <div className="modal-overlay active" onClick={(e) => {
+          if (e.target.classList.contains('modal-overlay')) setShowPaymentModal(false);
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2>Record Payment</h2>
+              <span className="close-modal" onClick={() => setShowPaymentModal(false)}>×</span>
+            </div>
+            <div className="modal-body">
+              <div className="detail-row">
+                <strong>Order ID:</strong>
+                <span>ORD-{selectedOrder.order_id}</span>
+              </div>
+              <div className="detail-row">
+                <strong>Customer:</strong>
+                <span>{selectedOrder.first_name} {selectedOrder.last_name}</span>
+              </div>
+              <div className="detail-row">
+                <strong>Service:</strong>
+                <span>Dry Cleaning - {selectedOrder.specific_data?.garmentType || 'N/A'}</span>
+              </div>
+              <div className="detail-row">
+                <strong>Total Price:</strong>
+                <span>₱{parseFloat(selectedOrder.final_price || 0).toLocaleString()}</span>
+              </div>
+              {(() => {
+                const pricingFactors = typeof selectedOrder.pricing_factors === 'string' 
+                  ? JSON.parse(selectedOrder.pricing_factors || '{}') 
+                  : (selectedOrder.pricing_factors || {});
+                const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
+                const finalPrice = parseFloat(selectedOrder.final_price || 0);
+                const remaining = finalPrice - amountPaid;
+                
+                if (amountPaid > 0) {
+                  return (
+                    <>
+                      <div className="detail-row">
+                        <strong>Amount Paid:</strong>
+                        <span>₱{amountPaid.toLocaleString()}</span>
+                      </div>
+                      <div className="detail-row">
+                        <strong>Remaining Balance:</strong>
+                        <span style={{ color: remaining > 0 ? '#ff9800' : '#4caf50', fontWeight: 'bold' }}>
+                          ₱{Math.max(0, remaining).toLocaleString()}
+                        </span>
+                      </div>
+                    </>
+                  );
+                }
+                return null;
+              })()}
+              
+              <div className="form-group" style={{ marginTop: '20px' }}>
+                <label>Payment Amount *</label>
+                <input
+                  type="number"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className="form-control"
+                  placeholder="Enter payment amount"
+                  min="0"
+                  step="0.01"
+                  autoFocus
+                />
+                <small style={{ color: '#666', marginTop: '5px', display: 'block' }}>
+                  Enter the amount the customer is paying now
+                </small>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => {
+                setShowPaymentModal(false);
+                setPaymentAmount('');
+              }}>
+                Cancel
+              </button>
+              <button className="btn-save" onClick={handleRecordPayment}>
+                Record Payment
               </button>
             </div>
           </div>
