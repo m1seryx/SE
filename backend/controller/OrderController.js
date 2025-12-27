@@ -1108,7 +1108,7 @@ exports.getRentalOrdersByStatus = (req, res) => {
 // Update rental order item (admin only)
 exports.updateRentalOrderItem = (req, res) => {
   const itemId = req.params.id;
-  const { approvalStatus, adminNotes } = req.body;
+  const { approvalStatus, adminNotes, damageNotes } = req.body;
 
   console.log("Controller - Updating rental order item:", itemId, req.body);
 
@@ -1308,6 +1308,42 @@ exports.updateRentalOrderItem = (req, res) => {
               console.error('Error updating rental_inventory status:', rentalUpdateErr);
             } else {
               console.log(`Successfully updated rental_inventory status to 'rented' for item_id: ${rentalItemId}`);
+            }
+          });
+        } else {
+          console.warn('Cannot update rental_inventory: service_id is missing from order item');
+        }
+      }
+
+      // If status changed to "returned" OR damage notes are being updated for a returned item, update rental_inventory status
+      const isStatusChangedToReturned = updateData.approvalStatus === 'returned' && updateData.approvalStatus !== previousStatus;
+      const isReturnedAndDamageNotesUpdated = previousStatus === 'returned' && damageNotes !== undefined;
+      
+      if (isStatusChangedToReturned || isReturnedAndDamageNotesUpdated) {
+        const RentalInventory = require('../model/RentalInventoryModel');
+        const rentalItemId = item.service_id; // service_id is the rental item_id
+        
+        if (rentalItemId) {
+          // If damage notes exist and are not empty, set status to 'maintenance', otherwise set to 'available'
+          const hasDamage = damageNotes && typeof damageNotes === 'string' && damageNotes.trim().length > 0;
+          const newInventoryStatus = hasDamage ? 'maintenance' : 'available';
+          console.log(`Updating rental_inventory status to '${newInventoryStatus}' for item_id: ${rentalItemId}${hasDamage ? ' (damaged)' : ' (no damage)'}`);
+          
+          // Update rental inventory status and damage_notes
+          const db = require('../config/db');
+          const updateSql = hasDamage 
+            ? `UPDATE rental_inventory SET status = ?, damage_notes = ? WHERE item_id = ?`
+            : `UPDATE rental_inventory SET status = ?, damage_notes = NULL WHERE item_id = ?`;
+          
+          const updateParams = hasDamage 
+            ? [newInventoryStatus, damageNotes.trim(), rentalItemId]
+            : [newInventoryStatus, rentalItemId];
+          
+          db.query(updateSql, updateParams, (rentalUpdateErr, rentalUpdateResult) => {
+            if (rentalUpdateErr) {
+              console.error('Error updating rental_inventory status:', rentalUpdateErr);
+            } else {
+              console.log(`Successfully updated rental_inventory status to '${newInventoryStatus}' for item_id: ${rentalItemId}${hasDamage ? ` with damage notes: "${damageNotes.trim()}"` : ''}`);
             }
           });
         } else {

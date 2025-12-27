@@ -18,9 +18,11 @@ function Rental() {
   const [selectedRental, setSelectedRental] = useState(null);
   const [editData, setEditData] = useState({
     approvalStatus: '',
-    adminNotes: ''
+    adminNotes: '',
+    damageNotes: ''
   });
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [pendingRentedStatus, setPendingRentedStatus] = useState(null); // Track if we need to update to rented after payment
 
   // Load rental orders from backend
   useEffect(() => {
@@ -172,7 +174,8 @@ function Rental() {
     setSelectedRental(rental);
     setEditData({
       approvalStatus: rental.approval_status,
-      adminNotes: rental.specific_data?.adminNotes || ''
+      adminNotes: rental.specific_data?.adminNotes || '',
+      damageNotes: rental.specific_data?.damageNotes || ''
     });
     setShowEditModal(true);
   };
@@ -180,14 +183,55 @@ function Rental() {
   const handleSaveEdit = async () => {
     if (!selectedRental) return;
 
+    // If changing to "rented" status, check if payment has been recorded
+    if (editData.approvalStatus === 'rented') {
+      const paidAmount = parseFloat(selectedRental?.specific_data?.paid_amount || selectedRental?.paid_amount || 0);
+      const totalPrice = parseFloat(selectedRental?.specific_data?.total_price || selectedRental?.total_price || 0);
+      const downpayment = totalPrice * 0.5;
+
+      if (paidAmount < downpayment) {
+        const recordPayment = await confirm(
+          `Before marking as "Rented", you need to record the downpayment.\n\nRequired Downpayment: ₱${downpayment.toFixed(2)}\nAmount Paid: ₱${paidAmount.toFixed(2)}\n\nWould you like to record the payment now?`,
+          'Payment Required',
+          'warning',
+          { confirmText: 'Record Payment', cancelText: 'Cancel' }
+        );
+
+        if (recordPayment) {
+          // Close edit modal and open payment modal
+          setShowEditModal(false);
+          setPaymentAmount(downpayment.toFixed(2));
+          setPendingRentedStatus(selectedRental.item_id);
+          setShowPaymentModal(true);
+          return;
+        } else {
+          return; // User cancelled
+        }
+      }
+    }
+
+    // If status is "returned" and damage notes are provided, include them
+    const updateData = {
+      approvalStatus: editData.approvalStatus,
+      adminNotes: editData.adminNotes
+    };
+
+    // If status is "returned", include damage notes if provided
+    if (editData.approvalStatus === 'returned' && editData.damageNotes && editData.damageNotes.trim()) {
+      updateData.damageNotes = editData.damageNotes.trim();
+    } else if (editData.approvalStatus === 'returned' && (!editData.damageNotes || !editData.damageNotes.trim())) {
+      // If status is "returned" but no damage notes, explicitly set to null to clear any existing damage notes
+      updateData.damageNotes = null;
+    }
+
     try {
-      const result = await updateRentalOrderItem(selectedRental.item_id, {
-        approvalStatus: editData.approvalStatus,
-        adminNotes: editData.adminNotes
-      });
+      const result = await updateRentalOrderItem(selectedRental.item_id, updateData);
 
       if (result.success) {
-        await alert(`Rental status updated to "${getStatusLabel(editData.approvalStatus)}"`, 'Success', 'success');
+        const message = editData.approvalStatus === 'returned' && editData.damageNotes && editData.damageNotes.trim()
+          ? `Rental status updated to "${getStatusLabel(editData.approvalStatus)}". Damage noted - item set to maintenance.`
+          : `Rental status updated to "${getStatusLabel(editData.approvalStatus)}"`;
+        await alert(message, 'Success', 'success');
         setShowEditModal(false);
         await loadRentalOrders();
       } else {
@@ -199,17 +243,74 @@ function Rental() {
     }
   };
 
-  const handleStatusUpdate = async (itemId, newStatus) => {
+  const handleStatusUpdate = async (itemId, newStatus, rental = null) => {
+    // If moving to "rented" status, require payment record first
+    if (newStatus === 'rented') {
+      // Check if payment has been recorded (at least the downpayment)
+      const currentRental = rental || rentals.find(r => r.item_id === itemId);
+      const paidAmount = parseFloat(currentRental?.specific_data?.paid_amount || currentRental?.paid_amount || 0);
+      const totalPrice = parseFloat(currentRental?.specific_data?.total_price || currentRental?.total_price || 0);
+      const downpayment = totalPrice * 0.5;
+
+      if (paidAmount < downpayment) {
+        // Show payment modal first
+        const recordPayment = await confirm(
+          `Before marking as "Rented", you need to record the downpayment.\n\nRequired Downpayment: ₱${downpayment.toFixed(2)}\nAmount Paid: ₱${paidAmount.toFixed(2)}\n\nWould you like to record the payment now?`,
+          'Payment Required',
+          'warning',
+          { confirmText: 'Record Payment', cancelText: 'Cancel' }
+        );
+
+        if (recordPayment) {
+          // Open payment modal
+          setSelectedRental(currentRental);
+          setPaymentAmount(downpayment.toFixed(2));
+          setShowPaymentModal(true);
+          setPendingRentedStatus(itemId); // Store the item ID to update after payment
+          return;
+        } else {
+          return; // User cancelled
+        }
+      }
+    }
+
     const confirmed = await confirm(`Update status to "${getStatusLabel(newStatus)}"?`, 'Update Status', 'warning');
     if (!confirmed) return;
 
+    // If status is "returned", ask about damage
+    let damageNotes = null;
+    if (newStatus === 'returned') {
+      const hasDamage = await confirm('Is the returned item damaged?', 'Check for Damage', 'question', { confirmText: 'Yes', cancelText: 'No' });
+      if (hasDamage) {
+        damageNotes = await prompt('Please describe the damage:', 'Damage Notes', 'Enter damage description...');
+        if (damageNotes === null || damageNotes === undefined) {
+          return; // User cancelled
+        }
+        if (!damageNotes || damageNotes.trim() === '') {
+          await alert('Please provide a damage description', 'Warning', 'warning');
+          return;
+        }
+        damageNotes = damageNotes.trim();
+      }
+    }
+
     try {
-      const result = await updateRentalOrderItem(itemId, {
+      const updateData = {
         approvalStatus: newStatus
-      });
+      };
+      
+      // Add damage notes if provided
+      if (damageNotes) {
+        updateData.damageNotes = damageNotes;
+      }
+
+      const result = await updateRentalOrderItem(itemId, updateData);
 
       if (result.success) {
-        await alert(`Status updated to "${getStatusLabel(newStatus)}"`, 'Success', 'success');
+        const message = damageNotes 
+          ? `Status updated to "${getStatusLabel(newStatus)}". Damage noted - item set to maintenance.`
+          : `Status updated to "${getStatusLabel(newStatus)}"`;
+        await alert(message, 'Success', 'success');
         // Reload orders after a brief delay to ensure state updates properly
         setTimeout(() => {
           loadRentalOrders();
@@ -241,6 +342,24 @@ function Rental() {
         await alert(`Payment of ₱${amount.toFixed(2)} recorded successfully. Remaining balance: ₱${result.payment.remaining_balance.toFixed(2)}`, 'Success', 'success');
         setShowPaymentModal(false);
         setPaymentAmount('');
+        
+        // If this payment was triggered from status update to "rented", update the status now
+        if (pendingRentedStatus) {
+          const itemIdToUpdate = pendingRentedStatus;
+          setPendingRentedStatus(null);
+          
+          // Update status to rented
+          const statusResult = await updateRentalOrderItem(itemIdToUpdate, {
+            approvalStatus: 'rented'
+          });
+          
+          if (statusResult.success) {
+            await alert('Payment recorded and status updated to "Rented"', 'Success', 'success');
+          } else {
+            await alert('Payment recorded but failed to update status. Please update manually.', 'Warning', 'warning');
+          }
+        }
+        
         await loadRentalOrders();
       } else {
         await alert(result.message || 'Failed to record payment', 'Error', 'error');
@@ -526,15 +645,32 @@ function Rental() {
                                   const nextStatus = getNextStatus(currentStatus, 'rental');
                                   if (!nextStatus) return null;
                                   const nextStatusLabel = getNextStatusLabel(currentStatus, 'rental');
+                                  
+                                  // Check if moving to "rented" requires payment first
+                                  const isMovingToRented = nextStatus === 'rented';
+                                  const hasNoPayment = amountPaid <= 0;
+                                  const shouldDisable = isMovingToRented && hasNoPayment;
+                                  
                                   return (
                                     <button 
                                       className="icon-btn next-status" 
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleStatusUpdate(rental.item_id, nextStatus);
+                                        if (shouldDisable) {
+                                          // Show message about needing payment first
+                                          return;
+                                        }
+                                        handleStatusUpdate(rental.item_id, nextStatus, rental);
                                       }} 
-                                      title={`Move to ${nextStatusLabel}`}
-                                      style={{ backgroundColor: '#4CAF50', color: 'white', zIndex: 10 }}
+                                      title={shouldDisable ? `Record payment first before moving to ${nextStatusLabel}` : `Move to ${nextStatusLabel}`}
+                                      disabled={shouldDisable}
+                                      style={{ 
+                                        backgroundColor: shouldDisable ? '#ccc' : '#4CAF50', 
+                                        color: 'white', 
+                                        zIndex: 10,
+                                        cursor: shouldDisable ? 'not-allowed' : 'pointer',
+                                        opacity: shouldDisable ? 0.6 : 1
+                                      }}
                                     >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <polyline points="9 18 15 12 9 6"></polyline>
@@ -654,6 +790,21 @@ function Rental() {
                 </select>
               </div>
 
+              {editData.approvalStatus === 'returned' && (
+                <div className="form-group">
+                  <label>Damage Notes (Optional)</label>
+                  <textarea
+                    value={editData.damageNotes}
+                    onChange={(e) => setEditData({ ...editData, damageNotes: e.target.value })}
+                    className="form-control"
+                    rows="3"
+                    placeholder="Describe any damage to the item. If damage is noted, the item will be set to maintenance status..."
+                  />
+                  <small style={{ color: '#666', marginTop: '5px', display: 'block' }}>
+                    If damage is noted, the rental item will be automatically set to "maintenance" status.
+                  </small>
+                </div>
+              )}
               <div className="form-group">
                 <label>Admin Notes (Optional)</label>
                 <textarea
@@ -919,6 +1070,20 @@ function Rental() {
                 <div className="detail-row">
                   <strong>Admin Notes:</strong>
                   <span>{selectedRental.specific_data.adminNotes}</span>
+                </div>
+              )}
+              {selectedRental.specific_data?.damageNotes && (
+                <div className="detail-row" style={{ 
+                  backgroundColor: '#ffebee', 
+                  padding: '12px', 
+                  borderRadius: '6px', 
+                  border: '1px solid #f44336',
+                  marginTop: '10px'
+                }}>
+                  <strong style={{ color: '#c62828' }}>⚠️ Damage Notes:</strong>
+                  <span style={{ color: '#c62828', fontWeight: '500', display: 'block', marginTop: '5px' }}>
+                    {selectedRental.specific_data.damageNotes}
+                  </span>
                 </div>
               )}
             </div>

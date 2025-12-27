@@ -418,11 +418,25 @@ body {
 /* Smaller, tighter grid */
 .rental-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(3, 280px);
   gap: 28px;
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 12px;
+  justify-content: center;
+}
+
+/* Responsive rental grid */
+@media (max-width: 920px) {
+  .rental-grid {
+    grid-template-columns: repeat(2, 280px);
+  }
+}
+
+@media (max-width: 620px) {
+  .rental-grid {
+    grid-template-columns: repeat(1, 280px);
+  }
 }
 
 /* Compact & Beautiful Card */

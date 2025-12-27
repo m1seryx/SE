@@ -747,7 +747,7 @@ Order.getRentalOrdersByStatus = (status, callback) => {
 
 // Update rental order item status (rental has different status flow)
 Order.updateRentalOrderItem = (itemId, updateData, callback) => {
-  const { finalPrice, approvalStatus, adminNotes, penaltyData } = updateData;
+  const { finalPrice, approvalStatus, adminNotes, penaltyData, damageNotes } = updateData;
 
   console.log("Model - Updating rental item:", itemId, updateData);
 
@@ -761,9 +761,22 @@ Order.updateRentalOrderItem = (itemId, updateData, callback) => {
   }
 
   if (adminNotes !== undefined) {
-    updates.push('pricing_factors = JSON_SET(pricing_factors, \'$.adminNotes\', ?)');
+    updates.push('pricing_factors = JSON_SET(COALESCE(pricing_factors, \'{}\'), \'$.adminNotes\', ?)');
     values.push(adminNotes || '');
     console.log("Adding adminNotes update:", adminNotes);
+  }
+
+  // Handle damage notes - store in specific_data
+  if (damageNotes !== undefined) {
+    if (damageNotes === null || damageNotes === '') {
+      // Remove damage notes if null or empty
+      updates.push('specific_data = JSON_REMOVE(COALESCE(specific_data, \'{}\'), \'$.damageNotes\')');
+      console.log("Removing damageNotes from specific_data");
+    } else {
+      updates.push('specific_data = JSON_SET(COALESCE(specific_data, \'{}\'), \'$.damageNotes\', ?)');
+      values.push(damageNotes);
+      console.log("Adding damageNotes update:", damageNotes);
+    }
   }
 
   // If penalty data is provided, update pricing_factors with penalty information

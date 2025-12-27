@@ -10,8 +10,8 @@ const MeasurementsDropdown = ({ measurements, item, isInModal = false, measureme
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div style={{ marginTop: isInModal ? '0' : '8px', marginBottom: isInModal ? '0' : '8px', width: '100%' }}>
-      <div style={{ marginBottom: isInModal ? '0' : '10px' }}>
+    <div style={{ marginTop: isInModal ? '0' : '8px', marginBottom: isInModal ? '0' : '8px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div style={{ marginBottom: isInModal ? '0' : '10px', display: 'flex', justifyContent: 'center' }}>
         {!isInModal && <strong style={{ display: 'block', marginBottom: '10px' }}>Measurements:</strong>}
         <button
           onClick={(e) => {
@@ -19,26 +19,30 @@ const MeasurementsDropdown = ({ measurements, item, isInModal = false, measureme
             setIsOpen(!isOpen);
           }}
           style={{
-            width: '100%',
-            padding: isInModal ? '10px 12px' : '6px 10px',
-            backgroundColor: '#f8f9fa',
-            border: '1px solid #dee2e6',
+            width: '180px',
+            minWidth: '180px',
+            maxWidth: '180px',
+            padding: '6px 12px',
+            backgroundColor: '#8B4513',
+            border: 'none',
             borderRadius: '4px',
-            fontSize: isInModal ? '14px' : '12px',
-            color: '#495057',
+            fontSize: '11px',
+            color: '#fff',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            transition: 'all 0.2s ease',
-            fontWeight: isInModal ? '500' : 'normal',
-            textAlign: 'left'
+            gap: '6px',
+            transition: 'background-color 0.2s ease',
+            fontWeight: '500',
+            textAlign: 'left',
+            boxSizing: 'border-box'
           }}
-          onMouseEnter={(e) => e.target.style.backgroundColor = '#e9ecef'}
-          onMouseLeave={(e) => e.target.style.backgroundColor = '#f8f9fa'}
+          onMouseEnter={(e) => e.target.style.backgroundColor = '#6d370f'}
+          onMouseLeave={(e) => e.target.style.backgroundColor = '#8B4513'}
         >
           <span>Show Measurements</span>
-          <span style={{ fontSize: isInModal ? '12px' : '10px', transition: 'transform 0.2s ease', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+          <span style={{ fontSize: '9px', transition: 'transform 0.2s ease', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
             ▼
           </span>
         </button>
@@ -47,15 +51,16 @@ const MeasurementsDropdown = ({ measurements, item, isInModal = false, measureme
       {isOpen && (
         <div style={{
           marginTop: '8px',
-          padding: isInModal ? '15px' : '10px',
+          padding: isInModal ? '15px 20px' : '12px 15px',
           backgroundColor: '#fff',
           border: '1px solid #dee2e6',
-          borderRadius: '4px',
-          fontSize: isInModal ? '14px' : '11px',
+          borderRadius: '6px',
+          fontSize: isInModal ? '14px' : '12px',
           color: '#333',
-          maxHeight: isInModal ? '300px' : '200px',
+          minWidth: isInModal ? '280px' : '200px',
+          maxHeight: isInModal ? '350px' : '250px',
           overflowY: 'auto',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
         }}>
           {/* Unit toggle button inside the dropdown */}
           {isInModal && onUnitChange && (
@@ -180,7 +185,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
     // Handle new format with inch/cm objects
     if (typeof measurement === 'object' && measurement.inch !== undefined) {
       if (unit === 'inch') {
-        return measurement.inch ? `${measurement.inch}"` : null;
+        return measurement.inch ? `${measurement.inch} inch` : null;
       } else {
         return measurement.cm ? `${measurement.cm} cm` : null;
       }
@@ -190,7 +195,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
     if (typeof measurement === 'string' || typeof measurement === 'number') {
       const inchValue = String(measurement);
       if (unit === 'inch') {
-        return `${inchValue}"`;
+        return `${inchValue} inch`;
       } else {
         // Convert to cm
         const num = parseFloat(inchValue);
@@ -753,8 +758,9 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
     }
   };
 
-  // Show only 3 items on homepage, all items on rental page
-  const displayItems = showAll ? rentalItems : rentalItems.slice(0, 3);
+  // Show only available items, and limit to 3 on homepage
+  const availableItems = rentalItems.filter(item => item.status === 'available');
+  const displayItems = showAll ? availableItems : availableItems.slice(0, 3);
 
   if (loading) {
     return (
@@ -1131,56 +1137,44 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
             
             {/* Cost Breakdown for Bundle */}
             {totalCost > 0 && (
-              <div className="cost-breakdown" style={{
-                backgroundColor: '#f8f9fa',
-                padding: '20px',
-                borderRadius: '10px',
-                marginBottom: '20px'
-              }}>
-                <h4 style={{ marginBottom: '15px', color: '#1a1a2e' }}>Payment Summary</h4>
+              <div className="cost-breakdown">
+                <h4>Payment Details</h4>
                 
                 {/* Individual item costs */}
-                <div style={{ marginBottom: '15px' }}>
+                <div style={{ marginBottom: '10px' }}>
                   {selectedItems.map((item, idx) => {
                     const itemCost = calculateTotalCost(rentalDuration, item);
                     return (
-                      <div key={idx} style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        padding: '8px 0',
-                        borderBottom: '1px solid #eee',
-                        fontSize: '14px'
-                      }}>
-                        <span>{item.item_name || item.name}</span>
+                      <div key={idx} className="cost-item">
+                        <span>{item.item_name || item.name}:</span>
                         <span>₱{itemCost.toFixed(2)}</span>
                       </div>
                     );
                   })}
                 </div>
                 
-                <div className="cost-item" style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '8px 0',
-                  color: '#28a745',
-                  fontWeight: '600'
-                }}>
-                  <span>Total Downpayment (Due upon pick up):</span>
+                <div className="cost-item">
+                  <span>Downpayment (Due Upon Pickup - 50%):</span>
                   <span>₱{(totalCost * 0.5).toFixed(2)}</span>
                 </div>
-                
-                <div className="cost-total" style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '12px 0',
-                  borderTop: '2px solid #1a1a2e',
-                  marginTop: '10px',
-                  fontSize: '16px',
-                  fontWeight: '700',
-                  color: '#1a1a2e'
-                }}>
+                <div className="cost-item">
+                  <span>Rental Price ({rentalDuration} days):</span>
+                  <span>₱{totalCost.toFixed(2)}</span>
+                </div>
+                <div className="cost-total">
                   <span>Total Rental Cost (Due on Return):</span>
                   <span>₱{totalCost.toFixed(2)}</span>
+                </div>
+                <div style={{
+                  marginTop: '15px',
+                  padding: '10px 12px',
+                  backgroundColor: '#fff3cd',
+                  border: '1px solid #ffc107',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  color: '#856404'
+                }}>
+                  <strong>⚠️ Late Return:</strong> ₱100/day penalty for exceeding rental period.
                 </div>
               </div>
             )}
@@ -1257,7 +1251,7 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
             borderRadius: '10px',
             maxWidth: '800px',
             maxHeight: '90vh',
-            overflow: 'auto',
+            overflow: 'hidden',
             position: 'relative'
           }}>
             <span className="close" onClick={closeModal} style={{
@@ -1265,79 +1259,68 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
               top: '10px',
               right: '15px',
               fontSize: '24px',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              zIndex: 10
             }}>×</span>
-            <div className="modal-body">
-              <img src={selectedItem.img || suitSample} alt={selectedItem.name} className="modal-img" />
-              <div className="modal-details">
-                <h2>{selectedItem.item_name || selectedItem.name}</h2>
+            <div className="modal-body" style={{ maxHeight: 'calc(90vh - 40px)', overflow: 'hidden', display: 'flex', gap: '30px' }}>
+              <img src={selectedItem.img || suitSample} alt={selectedItem.name} className="modal-img" style={{ flexShrink: 0, alignSelf: 'flex-start' }} />
+              <div className="modal-details" style={{ overflowY: 'auto', maxHeight: 'calc(90vh - 80px)', paddingRight: '10px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <h2 style={{ textAlign: 'center', width: '100%' }}>{selectedItem.item_name || selectedItem.name}</h2>
                 
-                <div className="detail-grid">
-                  {/* Product Information */}
+                <div className="detail-grid" style={{ width: '100%' }}>
+                
                   <div className="detail-section">
                     <h4>Product Information</h4>
                     <div className="detail-row">
                       <div className="detail-item">
-                        <strong>Brand:</strong> {selectedItem.brand || 'N/A'}
-                      </div>
-                      <div className="detail-item">
-                        <strong>Category:</strong> {selectedItem.category || 'N/A'}
-                      </div>
-                    </div>
-                    <div className="detail-row" style={{ display: 'block', flexDirection: 'column', alignItems: 'flex-start' }}>
-                      <div className="detail-item" style={{ 
-                        width: '100%', 
-                        display: 'block', 
-                        flexDirection: 'column', 
-                        alignItems: 'flex-start',
-                        justifyContent: 'flex-start',
-                        textAlign: 'left',
-                        maxWidth: '100%'
-                      }}>
-                        <strong style={{ display: 'block', marginBottom: '10px', width: '100%' }}>Measurements:</strong>
-                        {(() => {
-                          const measurementsSummary = getMeasurementsSummary(selectedItem);
-                          if (measurementsSummary && measurementsSummary.length > 0) {
-                            return (
-                              <div style={{ width: '100%' }}>
-                                <MeasurementsDropdown 
-                                  measurements={measurementsSummary} 
-                                  item={selectedItem} 
-                                  isInModal={true}
-                                  measurementUnit={measurementUnit}
-                                  onUnitChange={setMeasurementUnit}
-                                />
-                              </div>
-                            );
-                          }
-                          return (
-                            <div style={{ marginTop: '5px', fontSize: '0.9rem', color: '#666', width: '100%' }}>
-                                {formatMeasurements(selectedItem)}
-                            </div>
-                          );
-                        })()}
+                        <strong>Brand:</strong>
+                        <span>{selectedItem.brand || 'N/A'}</span>
                       </div>
                     </div>
                     <div className="detail-row">
                       <div className="detail-item">
-                        <strong>Color:</strong> {selectedItem.color || 'N/A'}
-                      </div>
-                      <div className="detail-item">
-                        <strong>Material:</strong> {selectedItem.material || 'N/A'}
+                        <strong>Category:</strong>
+                        <span>{selectedItem.category || 'N/A'}</span>
                       </div>
                     </div>
                     <div className="detail-row">
                       <div className="detail-item">
-                        <strong>Price:</strong> ₱{selectedItem.price || '0'}
+                        <strong>Color:</strong>
+                        <span>{selectedItem.color || 'N/A'}</span>
                       </div>
+                    </div>
+                    <div className="detail-row">
                       <div className="detail-item">
-                        <strong>Downpayment:</strong> ₱{selectedItem.downpayment || '0'}
+                        <strong>Material:</strong>
+                        <span>{selectedItem.material || 'N/A'}</span>
+                      </div>
+                    </div>
+                    <div className="detail-row">
+                      <div className="detail-item">
+                        <strong>Price:</strong>
+                        <span className="price">{selectedItem.price || '0'} / 3 days</span>
                       </div>
                     </div>
                   </div>
-
-                  {/* Pricing Information */}
-                 
+                </div>
+                
+                {/* Measurements Section - Outside of detail-grid */}
+                <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'center' }}>
+                  {(() => {
+                    const measurementsSummary = getMeasurementsSummary(selectedItem);
+                    if (measurementsSummary && measurementsSummary.length > 0) {
+                      return (
+                        <MeasurementsDropdown 
+                          measurements={measurementsSummary} 
+                          item={selectedItem} 
+                          isInModal={true}
+                          measurementUnit={measurementUnit}
+                          onUnitChange={setMeasurementUnit}
+                        />
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 
                 {selectedItem.description && (
@@ -1425,15 +1408,14 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                       </div>
                       <div style={{
                         marginTop: '15px',
-                        padding: '12px',
+                        padding: '10px 12px',
                         backgroundColor: '#fff3cd',
                         border: '1px solid #ffc107',
                         borderRadius: '6px',
-                        fontSize: '13px',
+                        fontSize: '12px',
                         color: '#856404'
                       }}>
-                        <strong>⚠️ Late Return Penalty:</strong> If you exceed the rental period, an additional ₱100 per day will be charged. 
-                        For example, if you exceed by 1 day, you will pay ₱100; if you exceed by 2 days, you will pay ₱200.
+                        <strong>⚠️ Late Return:</strong> ₱100/day penalty for exceeding rental period.
                       </div>
                     </div>
                   )}

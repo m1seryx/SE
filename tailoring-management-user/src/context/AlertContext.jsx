@@ -64,13 +64,15 @@ export const AlertProvider = ({ children }) => {
     });
   };
 
-  const confirm = (message, title = 'Confirm Action', type = 'warning') => {
+  const confirm = (message, title = 'Confirm Action', type = 'warning', options = {}) => {
     return new Promise((resolve) => {
       setConfirmState({
         isOpen: true,
         type,
         title,
         message,
+        confirmText: options.confirmText || 'Confirm',
+        cancelText: options.cancelText || 'Cancel',
         onConfirm: () => {
           setConfirmState(prev => ({ ...prev, isOpen: false }));
           // Ensure scrolling is restored

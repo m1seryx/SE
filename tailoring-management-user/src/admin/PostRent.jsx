@@ -30,6 +30,7 @@ const PostRent = () => {
     total_available: '1',
     material: '',
     care_instructions: '',
+    damage_notes: '',
     status: 'available',
     measurements: {
       // Top measurements - each measurement has both inch and cm
@@ -138,6 +139,7 @@ const PostRent = () => {
           total_available: item.total_available?.toString() || '1',
           material: item.material || '',
           care_instructions: item.care_instructions || '',
+          damage_notes: item.damage_notes || '',
           status: item.status || 'available',
           measurements: measurements
         });
@@ -157,6 +159,7 @@ const PostRent = () => {
         total_available: '1',
         material: '',
         care_instructions: '',
+        damage_notes: '',
         status: 'available',
         measurements: {
           chest: { inch: '', cm: '' },
@@ -812,18 +815,6 @@ const PostRent = () => {
                   />
                 </div>
                 <div className="input-group">
-                  <label>Downpayment Amount</label>
-                  <input 
-                    type="text" 
-                    value={formData.downpayment} 
-                    onChange={(e) => setFormData({ ...formData, downpayment: e.target.value })} 
-                    placeholder="e.g., 200.00"
-                  />
-                </div>
-              </div>
-
-              <div className="form-grid">
-                <div className="input-group">
                   <label>Total Available</label>
                   <input 
                     type="number" 
@@ -875,6 +866,19 @@ const PostRent = () => {
                   <option value="maintenance">Maintenance</option>
                 </select>
               </div>
+
+              {formData.status === 'maintenance' && (
+                <div className="input-group" style={{ backgroundColor: '#fff3cd', padding: '15px', borderRadius: '8px', border: '1px solid #ffc107' }}>
+                  <label style={{ color: '#856404', fontWeight: '600' }}>⚠️ Damage/Maintenance Notes</label>
+                  <textarea 
+                    rows={3} 
+                    value={formData.damage_notes} 
+                    onChange={(e) => setFormData({ ...formData, damage_notes: e.target.value })} 
+                    placeholder="Describe the damage or reason for maintenance..."
+                    style={{ marginTop: '8px' }}
+                  />
+                </div>
+              )}
 
               <div className="input-group">
                 <label>Description</label>
@@ -931,160 +935,31 @@ const PostRent = () => {
                   </span>
                 </div>
                 
-                <div className="detail-grid">
-                  <div className="detail-item">
-                    <label>Category:</label>
-                    <span>{selectedItem.category || 'N/A'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <label>Brand:</label>
-                    <span>{selectedItem.brand || 'N/A'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <label>Measurements:</label>
-                    <div style={{ marginTop: '8px' }}>
-                      {(() => {
-                        let measurements = {};
-                        try {
-                          measurements = typeof selectedItem.size === 'string' ? JSON.parse(selectedItem.size || '{}') : (selectedItem.size || {});
-                        } catch (e) {
-                          // If not JSON, show as plain text
-                          return <span>{selectedItem.size || 'N/A'}</span>;
-                        }
-                        
-                        if (isTopCategory(selectedItem.category)) {
-                          return (
-                            <div>
-                              <strong>Top Measurements:</strong>
-                              <div style={{ marginLeft: '15px', marginTop: '5px' }}>
-                                {measurements.chest && (
-                                  <div>Chest: {
-                                    typeof measurements.chest === 'object' && measurements.chest.inch 
-                                      ? `${measurements.chest.inch}" (${measurements.chest.cm} cm)`
-                                      : `${measurements.chest}"`
-                                  }</div>
-                                )}
-                                {measurements.shoulders && (
-                                  <div>Shoulders: {
-                                    typeof measurements.shoulders === 'object' && measurements.shoulders.inch 
-                                      ? `${measurements.shoulders.inch}" (${measurements.shoulders.cm} cm)`
-                                      : `${measurements.shoulders}"`
-                                  }</div>
-                                )}
-                                {measurements.sleeveLength && (
-                                  <div>Sleeve Length: {
-                                    typeof measurements.sleeveLength === 'object' && measurements.sleeveLength.inch 
-                                      ? `${measurements.sleeveLength.inch}" (${measurements.sleeveLength.cm} cm)`
-                                      : `${measurements.sleeveLength}"`
-                                  }</div>
-                                )}
-                                {measurements.neck && (
-                                  <div>Neck: {
-                                    typeof measurements.neck === 'object' && measurements.neck.inch 
-                                      ? `${measurements.neck.inch}" (${measurements.neck.cm} cm)`
-                                      : `${measurements.neck}"`
-                                  }</div>
-                                )}
-                                {measurements.waist && (
-                                  <div>Waist: {
-                                    typeof measurements.waist === 'object' && measurements.waist.inch 
-                                      ? `${measurements.waist.inch}" (${measurements.waist.cm} cm)`
-                                      : `${measurements.waist}"`
-                                  }</div>
-                                )}
-                                {measurements.length && (
-                                  <div>Length: {
-                                    typeof measurements.length === 'object' && measurements.length.inch 
-                                      ? `${measurements.length.inch}" (${measurements.length.cm} cm)`
-                                      : `${measurements.length}"`
-                                  }</div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        } else if (isBottomCategory(selectedItem.category)) {
-                          return (
-                            <div>
-                              <strong>Bottom Measurements:</strong>
-                              <div style={{ marginLeft: '15px', marginTop: '5px' }}>
-                                {measurements.waist && (
-                                  <div>Waist: {
-                                    typeof measurements.waist === 'object' && measurements.waist.inch 
-                                      ? `${measurements.waist.inch}" (${measurements.waist.cm} cm)`
-                                      : `${measurements.waist}"`
-                                  }</div>
-                                )}
-                                {measurements.hips && (
-                                  <div>Hips: {
-                                    typeof measurements.hips === 'object' && measurements.hips.inch 
-                                      ? `${measurements.hips.inch}" (${measurements.hips.cm} cm)`
-                                      : `${measurements.hips}"`
-                                  }</div>
-                                )}
-                                {measurements.inseam && (
-                                  <div>Inseam: {
-                                    typeof measurements.inseam === 'object' && measurements.inseam.inch 
-                                      ? `${measurements.inseam.inch}" (${measurements.inseam.cm} cm)`
-                                      : `${measurements.inseam}"`
-                                  }</div>
-                                )}
-                                {measurements.length && (
-                                  <div>Length: {
-                                    typeof measurements.length === 'object' && measurements.length.inch 
-                                      ? `${measurements.length.inch}" (${measurements.length.cm} cm)`
-                                      : `${measurements.length}"`
-                                  }</div>
-                                )}
-                                {measurements.thigh && (
-                                  <div>Thigh: {
-                                    typeof measurements.thigh === 'object' && measurements.thigh.inch 
-                                      ? `${measurements.thigh.inch}" (${measurements.thigh.cm} cm)`
-                                      : `${measurements.thigh}"`
-                                  }</div>
-                                )}
-                                {measurements.outseam && (
-                                  <div>Outseam: {
-                                    typeof measurements.outseam === 'object' && measurements.outseam.inch 
-                                      ? `${measurements.outseam.inch}" (${measurements.outseam.cm} cm)`
-                                      : `${measurements.outseam}"`
-                                  }</div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        } else {
-                          return <span>{selectedItem.size || 'N/A'}</span>;
-                        }
-                      })()}
-                    </div>
-                  </div>
-                  <div className="detail-item">
-                    <label>Color:</label>
-                    <span>{selectedItem.color || 'N/A'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <label>Material:</label>
-                    <span>{selectedItem.material || 'N/A'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <label>Available:</label>
-                    <span>{selectedItem.total_available || '0'}</span>
-                  </div>
-                </div>
-                
                 <div className="detail-pricing">
                   <h4>Pricing</h4>
-                  <div className="price-grid">
+                  <div className="price-grid" style={{ gridTemplateColumns: '1fr' }}>
                     <div className="price-item">
                       <label>Price:</label>
                       <span className="price-value">₱{selectedItem.price || '0'}</span>
                     </div>
-                    <div className="price-item">
-                      <label>Downpayment:</label>
-                      <span className="price-value">₱{selectedItem.downpayment || '0'}</span>
-                    </div>
                   </div>
                 </div>
+                
+                {selectedItem.damage_notes && (
+                  <div className="detail-damage" style={{
+                    marginBottom: '20px',
+                    padding: '15px',
+                    backgroundColor: selectedItem.status === 'maintenance' ? '#fff3cd' : '#e3f2fd',
+                    borderRadius: '8px',
+                    border: `1px solid ${selectedItem.status === 'maintenance' ? '#ffc107' : '#2196f3'}`,
+                    borderLeft: `4px solid ${selectedItem.status === 'maintenance' ? '#ffc107' : '#2196f3'}`
+                  }}>
+                    <h4 style={{ margin: '0 0 10px 0', color: selectedItem.status === 'maintenance' ? '#856404' : '#1565c0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {selectedItem.status === 'maintenance' ? '⚠️' : '📝'} Damage/Maintenance Notes
+                    </h4>
+                    <p style={{ margin: 0, color: selectedItem.status === 'maintenance' ? '#856404' : '#1565c0', lineHeight: '1.5' }}>{selectedItem.damage_notes}</p>
+                  </div>
+                )}
                 
                 {selectedItem.description && (
                   <div className="detail-description">

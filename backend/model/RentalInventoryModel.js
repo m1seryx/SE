@@ -5,8 +5,8 @@ const RentalInventory = {
   create: (itemData, callback) => {
     const sql = `
       INSERT INTO rental_inventory 
-      (item_name, description, brand, size, color, category, price, downpayment, total_available, image_url, material, care_instructions) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (item_name, description, brand, size, color, category, price, downpayment, total_available, image_url, material, care_instructions, damage_notes) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const values = [
       itemData.item_name,
@@ -20,7 +20,8 @@ const RentalInventory = {
       itemData.total_available || 1,
       itemData.image_url || null,
       itemData.material || null,
-      itemData.care_instructions || null
+      itemData.care_instructions || null,
+      itemData.damage_notes || null
     ];
     db.query(sql, values, callback);
   },
@@ -230,7 +231,7 @@ const RentalInventory = {
       UPDATE rental_inventory 
       SET item_name = ?, description = ?, brand = ?, size = ?, color = ?, category = ?, 
           price = ?, downpayment = ?, total_available = ?, 
-          image_url = ?, material = ?, care_instructions = ?, status = ?
+          image_url = ?, material = ?, care_instructions = ?, damage_notes = ?, status = ?
       WHERE item_id = ?
     `;
     const values = [
@@ -246,6 +247,7 @@ const RentalInventory = {
       itemData.image_url || null,
       itemData.material || null,
       itemData.care_instructions || null,
+      itemData.damage_notes || null,
       itemData.status || 'available',
       item_id
     ];

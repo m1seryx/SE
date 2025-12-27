@@ -1029,3 +1029,18 @@ tbody tr.clickable-row:active {
 .icon-btn.edit:hover {
   background: #ffe0b2;
 }
+
+/* Ensure form controls have visible text */
+.form-group textarea,
+.form-control,
+.modal-content textarea,
+.modal-content input[type="text"],
+.modal-content input[type="number"] {
+  color: #2D3436 !important;
+  background-color: #FFFFFF !important;
+}
+
+.form-group textarea::placeholder,
+.form-control::placeholder {
+  color: #95a5a6 !important;
+}

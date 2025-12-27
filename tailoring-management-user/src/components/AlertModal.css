@@ -56,19 +56,28 @@
   font-family: 'Montserrat', 'Poppins', sans-serif;
   font-size: 22px;
   font-weight: 700;
-  color: #2D3436;
+  color: #2D3436 !important;
   margin-bottom: 10px;
   padding: 0 30px;
   letter-spacing: -0.02em;
 }
 
 .alert-modal p {
-  color: #636E72;
+  color: #636E72 !important;
   font-size: 14px;
   margin-bottom: 25px;
   padding: 0 30px;
   line-height: 1.6;
   word-wrap: break-word;
+}
+
+/* Ensure confirm modal text is visible */
+.confirm-modal h3 {
+  color: #2D3436 !important;
+}
+
+.confirm-modal p {
+  color: #636E72 !important;
 }
 
 .alert-buttons {
@@ -116,7 +125,7 @@
 }
 
 .alert-btn.confirm {
-  background: #E74C3C;
+  background: #3498DB;
   color: white;
 }
 
@@ -131,9 +140,9 @@
 }
 
 .alert-btn.confirm:hover:not(:disabled) {
-  background: #c0392b;
+  background: #2980B9;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
 }
 
 /* Type-specific styles */
@@ -153,6 +162,10 @@
   color: #3498DB;
 }
 
+.alert-modal.question .alert-icon svg {
+  color: #3498DB;
+}
+
 /* Input Modal Styles */
 .input-modal .input-field {
   padding: 0 30px 20px;
@@ -166,6 +179,12 @@
   font-size: 14px;
   font-family: inherit;
   transition: border-color 0.3s ease;
+  color: #2D3436 !important;
+  background-color: #FFFFFF !important;
+}
+
+.modal-input::placeholder {
+  color: #95a5a6 !important;
 }
 
 .modal-input:focus {

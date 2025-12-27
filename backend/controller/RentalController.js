@@ -2,7 +2,7 @@ const RentalInventory = require('../model/RentalInventoryModel');
 
 // Create rental item
 exports.createRental = (req, res) => {
-  const { item_name, description, brand, size, color, category, price, downpayment, total_available, image_url, material, care_instructions } = req.body;
+  const { item_name, description, brand, size, color, category, price, downpayment, total_available, image_url, material, care_instructions, damage_notes } = req.body;
 
   // Handle image upload
   let imageUrl = null;
@@ -29,7 +29,8 @@ exports.createRental = (req, res) => {
     total_available,
     image_url: imageUrl, // Use the uploaded image path
     material,
-    care_instructions
+    care_instructions,
+    damage_notes
   };
 
   RentalInventory.create(rentalData, (err, result) => {
@@ -136,7 +137,7 @@ exports.getRentalsByCategory = (req, res) => {
 
 exports.updateRental = (req, res) => {
   const { item_id } = req.params;
-  const { item_name, description, brand, size, color, category, price, downpayment, total_available, image_url, material, care_instructions, status } = req.body;
+  const { item_name, description, brand, size, color, category, price, downpayment, total_available, image_url, material, care_instructions, damage_notes, status } = req.body;
 
   // Handle image upload
   let imageUrl = image_url; // Keep existing image_url if provided
@@ -177,6 +178,7 @@ exports.updateRental = (req, res) => {
       image_url: imageUrl,
       material,
       care_instructions,
+      damage_notes,
       status
     };
 

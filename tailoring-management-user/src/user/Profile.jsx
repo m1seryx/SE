@@ -1514,8 +1514,8 @@ const Profile = () => {
                 const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
                 const downpayment = parseFloat(pricingFactors.downpayment || item.specific_data?.downpayment || 0);
                 const finalPrice = parseFloat(item.final_price || 0);
-                // Use amount_paid if available (from transaction logs), otherwise fall back to downpayment for display
-                const totalPaid = amountPaid > 0 ? amountPaid : (isRental && item.status === 'rented' ? downpayment : 0);
+                // Only show amount_paid from actual payment records - don't assume based on status
+                const totalPaid = amountPaid;
                 const remainingAmount = Math.max(0, finalPrice - totalPaid);
                 const hasPayment = totalPaid > 0 && (isRental || isRepair || isDryCleaning || isCustomization);
 
@@ -1976,8 +1976,8 @@ const Profile = () => {
                         const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
                         const downpayment = parseFloat(pricingFactors.downpayment || selectedItem.specific_data?.downpayment || 0);
                         const finalPrice = parseFloat(selectedItem.final_price || 0);
-                        // Use amount_paid if available (from transaction logs), otherwise fall back to downpayment for display
-                        const totalPaid = amountPaid > 0 ? amountPaid : (isRental && selectedItem.status === 'rented' ? downpayment : 0);
+                        // Only show amount_paid from actual payment records - don't assume based on status
+                        const totalPaid = amountPaid;
                         const remainingAmount = Math.max(0, finalPrice - totalPaid);
                         const hasPayment = totalPaid > 0 && (isRental || isRepair || isDryCleaning || isCustomization);
                         
