@@ -981,29 +981,31 @@ body {
 }
 
 .auth-close:hover {
-  color: #8B4513;
-  transform: rotate(90deg) scale(1.1);
+color: #8B4513;
+transform: rotate(90deg) scale(1.1);
 }
 
 .auth-container {
-  padding: 50px 40px;
-  text-align: center;
-  background: linear-gradient(135deg, #fdfaf7 0%, #f8f4f0 100%);
-  display: flex;
-  flex-direction: column;
-  max-height: 90vh;
-  overflow: hidden;
+padding: 50px 40px;
+text-align: center;
+background: linear-gradient(135deg, #fdfaf7 0%, #f8f4f0 100%);
+display: flex;
+flex-direction: column;
+max-height: 90vh;
+}
+
+/* Only enable scrolling when there are more than 4 input fields (signup mode) */
+.auth-form:has(.input-group:nth-of-type(4)) ~ .auth-footer,
+.auth-form:has(.input-group:nth-of-type(5)) ~ .auth-footer {
+margin-top: auto;
+}
+
+.auth-container:has(.input-group:nth-of-type(4)) {
+overflow-y: auto;
 }
 
 .auth-container .auth-header {
-  flex-shrink: 0;
-}
-
-.auth-container > div:last-child {
-  flex: 1;
-  overflow-y: auto;
-  margin-top: 20px;
-  padding-right: 4px;
+flex-shrink: 0;
 }
 
 .auth-header h2 {

@@ -145,27 +145,27 @@ const Profile = () => {
 
   // Helper function to format size measurements
   const formatSize = (size) => {
-    if (!size) return 'N/A';
+    if (!size) return null;
     
-    // If it's already a string and not JSON, return as is
+    // If it's already a string and not JSON, return as simple array
     if (typeof size === 'string' && !size.trim().startsWith('{')) {
-      return size;
+      return [{ label: 'Size', value: size }];
     }
     
     try {
       // Parse JSON if it's a string
       let measurements = typeof size === 'string' ? JSON.parse(size) : size;
       
-      // If it's not an object, return as is
+      // If it's not an object, return as simple array
       if (!measurements || typeof measurements !== 'object' || Array.isArray(measurements)) {
-        return typeof size === 'string' ? size : JSON.stringify(size);
+        return [{ label: 'Size', value: typeof size === 'string' ? size : JSON.stringify(size) }];
       }
       
       // Format measurements nicely
       const labelMap = {
         'chest': 'Chest',
         'shoulders': 'Shoulders',
-        'sleeveLength': 'Sleeve Length',
+        'sleeveLength': 'Sleeve',
         'neck': 'Neck',
         'waist': 'Waist',
         'length': 'Length'
@@ -175,13 +175,31 @@ const Profile = () => {
         .filter(([key, value]) => value !== null && value !== undefined && value !== '' && value !== '0')
         .map(([key, value]) => {
           const label = labelMap[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1').trim();
-          return `${label}: ${value}"`;
+          // Handle nested objects (e.g., {inch: "1", cm: "2.54"})
+          let displayValue;
+          if (typeof value === 'object' && value !== null) {
+            // Show both inch and cm if available
+            if (value.inch !== undefined && value.cm !== undefined) {
+              displayValue = `${value.inch} in / ${value.cm} cm`;
+            } else if (value.inch !== undefined) {
+              displayValue = `${value.inch} in`;
+            } else if (value.cm !== undefined) {
+              displayValue = `${value.cm} cm`;
+            } else if (value.value !== undefined) {
+              displayValue = `${value.value} in`;
+            } else {
+              displayValue = JSON.stringify(value);
+            }
+          } else {
+            displayValue = `${value} in`;
+          }
+          return { label, value: displayValue };
         });
       
-      return parts.length > 0 ? parts.join(', ') : 'N/A';
+      return parts.length > 0 ? parts : null;
     } catch (e) {
-      // If parsing fails, return as is
-      return typeof size === 'string' ? size : 'N/A';
+      // If parsing fails, return as simple array
+      return [{ label: 'Size', value: typeof size === 'string' ? size : 'N/A' }];
     }
   };
 
@@ -453,10 +471,7 @@ const Profile = () => {
                           />
                         </div>
                       )}
-                      <div><strong>Item {idx + 1}:</strong> {bundleItem.item_name || 'N/A'}</div>
-                      <div><strong>Brand:</strong> {bundleItem.brand || 'N/A'}</div>
-                      <div><strong>Size:</strong> {formatSize(bundleItem.size)}</div>
-                      <div><strong>Category:</strong> {bundleItem.category || 'N/A'}</div>
+                   
                     </div>
                   ))}
                 </div>
@@ -495,7 +510,7 @@ const Profile = () => {
               <span className="detail-label">Category:</span>
               <span className="detail-value">
                 {isBundle && bundleItems.length > 0
-                  ? bundleItems.map(item => item.category || 'rental').join(', ')
+                  ? [...new Set(bundleItems.map(item => item.category || 'rental'))].join(', ')
                   : (specific_data.category || 'N/A')}
               </span>
             </div>
@@ -503,41 +518,75 @@ const Profile = () => {
               <span className="detail-label">Brand:</span>
               <span className="detail-value">
                 {isBundle && bundleItems.length > 0
-                  ? bundleItems.map(item => item.brand || 'N/A').join(', ')
+                  ? [...new Set(bundleItems.map(item => item.brand || 'N/A'))].join(', ')
                   : (specific_data.brand || 'N/A')}
               </span>
             </div>
-            <div className="detail-row" style={{ alignItems: 'flex-start' }}>
-              <span className="detail-label" style={{ minWidth: '120px' }}>Size:</span>
-              <span className="detail-value" style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, textAlign: 'left' }}>
+            <div className="detail-row" style={{ alignItems: 'flex-start', flexDirection: 'column' }}>
+              <span className="detail-label" style={{ marginBottom: '10px', textAlign: 'center', display: 'block', width: '100%' }}>Size:</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', alignItems: 'center' }}>
                 {isBundle && bundleItems.length > 0
-                  ? bundleItems.map((item, idx) => (
-                      <div key={idx} style={{ 
-                        fontSize: '0.9rem', 
-                        lineHeight: '1.5',
-                        padding: '8px 12px',
-                        backgroundColor: '#f5f5f5',
-                        borderRadius: '6px',
-                        border: '1px solid #e0e0e0'
-                      }}>
-                        <strong style={{ color: '#333', marginRight: '8px' }}>Item {idx + 1}:</strong>
-                        <span style={{ color: '#666' }}>{formatSize(item.size)}</span>
-                      </div>
-                    ))
+                  ? bundleItems.map((item, idx) => {
+                      const sizeData = formatSize(item.size);
+                      return (
+                        <div key={idx} style={{ 
+                          fontSize: '0.9rem', 
+                          lineHeight: '1.8',
+                          padding: '12px 16px',
+                          backgroundColor: '#f5f5f5',
+                          borderRadius: '6px',
+                          border: '1px solid #e0e0e0',
+                          width: '100%',
+                          maxWidth: '350px'
+                        }}>
+                          <strong style={{ color: '#333', display: 'block', marginBottom: '10px', borderBottom: '1px solid #ddd', paddingBottom: '8px', textAlign: 'center' }}>
+                            {item.item_name || `Item ${idx + 1}`}:
+                          </strong>
+                          {sizeData && Array.isArray(sizeData) ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '6px 16px', color: '#666' }}>
+                              {sizeData.map((measurement, mIdx) => (
+                                <React.Fragment key={mIdx}>
+                                  <span style={{ fontWeight: '500', textAlign: 'center' }}>{measurement.label}:</span>
+                                  <span style={{ textAlign: 'center' }}>{measurement.value}</span>
+                                </React.Fragment>
+                              ))}
+                            </div>
+                          ) : (
+                            <span style={{ color: '#666', textAlign: 'center', display: 'block' }}>N/A</span>
+                          )}
+                        </div>
+                      );
+                    })
                   : (
                       <div style={{ 
                         fontSize: '0.9rem', 
-                        lineHeight: '1.5',
-                        padding: '8px 12px',
+                        lineHeight: '1.8',
+                        padding: '12px 16px',
                         backgroundColor: '#f5f5f5',
                         borderRadius: '6px',
                         border: '1px solid #e0e0e0',
-                        color: '#666'
+                        width: '100%',
+                        maxWidth: '350px'
                       }}>
-                        {formatSize(specific_data.size)}
+                        {(() => {
+                          const sizeData = formatSize(specific_data.size);
+                          if (sizeData && Array.isArray(sizeData)) {
+                            return (
+                              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '6px 16px', color: '#666', justifyContent: 'center' }}>
+                                {sizeData.map((measurement, mIdx) => (
+                                  <React.Fragment key={mIdx}>
+                                    <span style={{ fontWeight: '500', textAlign: 'center' }}>{measurement.label}:</span>
+                                    <span style={{ textAlign: 'center' }}>{measurement.value}</span>
+                                  </React.Fragment>
+                                ))}
+                              </div>
+                            );
+                          }
+                          return <span style={{ color: '#666', textAlign: 'center', display: 'block' }}>N/A</span>;
+                        })()}
                       </div>
                     )}
-              </span>
+              </div>
             </div>
             <div className="detail-row">
               <span className="detail-label">Rental Period:</span>
@@ -1962,7 +2011,7 @@ const Profile = () => {
                   </div>
                   <div className="summary-item">
                     <span className="summary-label">Price:</span>
-                    <span className="summary-value">
+                  <span className="order-price" style={{ textAlign: 'right', display: 'block' }}>
                       {(() => {
                         const isRental = selectedItem.service_type === 'rental';
                         const isRepair = selectedItem.service_type === 'repair';
@@ -2048,8 +2097,8 @@ const Profile = () => {
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                  {/* Show cancel button for rentals (bundled and single) and other services that are not completed/cancelled/returned */}
-                  {selectedItem.status !== 'cancelled' && selectedItem.status !== 'completed' && selectedItem.status !== 'returned' && (
+                  {/* Show cancel button for rentals (bundled and single) and other services that are not completed/cancelled/returned/rented */}
+                  {selectedItem.status !== 'cancelled' && selectedItem.status !== 'completed' && selectedItem.status !== 'returned' && selectedItem.status !== 'rented' && (
                     <button
                       onClick={() => {
                         setItemToCancel(selectedItem);
