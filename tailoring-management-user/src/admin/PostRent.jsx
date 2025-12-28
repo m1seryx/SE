@@ -957,7 +957,24 @@ const PostRent = () => {
                     <h4 style={{ margin: '0 0 10px 0', color: selectedItem.status === 'maintenance' ? '#856404' : '#1565c0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {selectedItem.status === 'maintenance' ? '⚠️' : '📝'} Damage/Maintenance Notes
                     </h4>
-                    <p style={{ margin: 0, color: selectedItem.status === 'maintenance' ? '#856404' : '#1565c0', lineHeight: '1.5' }}>{selectedItem.damage_notes}</p>
+                    <p style={{ margin: 0, color: selectedItem.status === 'maintenance' ? '#856404' : '#1565c0', lineHeight: '1.5' }}>
+                      {(() => {
+                        try {
+                          // Try to parse as JSON to handle bundled rental damage notes
+                          const parsed = JSON.parse(selectedItem.damage_notes);
+                          if (typeof parsed === 'object' && parsed !== null) {
+                            // Extract just the damage notes values, ignoring the item names for consistency
+                            return Object.values(parsed).join('; ');
+                          } else {
+                            // If parsed but not an object, return as string
+                            return selectedItem.damage_notes;
+                          }
+                        } catch (e) {
+                          // If not JSON, return as is
+                          return selectedItem.damage_notes;
+                        }
+                      })()}
+                    </p>
                   </div>
                 )}
                 

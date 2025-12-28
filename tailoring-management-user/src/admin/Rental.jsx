@@ -3,6 +3,7 @@ import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
 import '../adminStyle/rent.css';
 import { getAllRentalOrders, getRentalOrdersByStatus, updateRentalOrderItem, recordRentalPayment } from '../api/RentalOrderApi';
+import { updateRentalStatus } from '../api/RentalApi';
 import { useAlert } from '../context/AlertContext';
 
 function Rental() {
@@ -277,20 +278,62 @@ function Rental() {
     const confirmed = await confirm(`Update status to "${getStatusLabel(newStatus)}"?`, 'Update Status', 'warning');
     if (!confirmed) return;
 
-    // If status is "returned", ask about damage
+    // If status is "returned", ask about damage for each bundle item
     let damageNotes = null;
+    let itemDamageNotes = {}; // Track damage notes for each bundle item
+    
     if (newStatus === 'returned') {
-      const hasDamage = await confirm('Is the returned item damaged?', 'Check for Damage', 'question', { confirmText: 'Yes', cancelText: 'No' });
-      if (hasDamage) {
-        damageNotes = await prompt('Please describe the damage:', 'Damage Notes', 'Enter damage description...');
-        if (damageNotes === null || damageNotes === undefined) {
-          return; // User cancelled
+      if (rental && rental.specific_data) {
+        const isBundle = rental.specific_data?.is_bundle === true || rental.specific_data?.category === 'rental_bundle';
+        const bundleItems = rental.specific_data?.bundle_items || [];
+        
+        if (isBundle && bundleItems.length > 0) {
+          // Ask about damage for each bundle item
+          for (const bundleItem of bundleItems) {
+            const hasDamage = await confirm(
+              `Is "${bundleItem.item_name}" damaged?`, 
+              'Check for Damage', 
+              'question', 
+              { confirmText: 'Yes', cancelText: 'No' }
+            );
+            
+            if (hasDamage) {
+              const damageDescription = await prompt(
+                `Please describe the damage for "${bundleItem.item_name}":`, 
+                'Damage Notes', 
+                'Enter damage description...'
+              );
+              
+              if (damageDescription === null || damageDescription === undefined) {
+                return; // User cancelled
+              }
+              
+              if (!damageDescription || damageDescription.trim() === '') {
+                await alert('Please provide a damage description', 'Warning', 'warning');
+                return;
+              }
+              
+              itemDamageNotes[bundleItem.item_name] = damageDescription.trim();
+            }
+          }
+          
+          // Convert item damage notes to JSON string for storage
+          damageNotes = Object.keys(itemDamageNotes).length > 0 ? JSON.stringify(itemDamageNotes) : null;
+        } else {
+          // Single item damage check (existing logic)
+          const hasDamage = await confirm('Is the returned item damaged?', 'Check for Damage', 'question', { confirmText: 'Yes', cancelText: 'No' });
+          if (hasDamage) {
+            damageNotes = await prompt('Please describe the damage:', 'Damage Notes', 'Enter damage description...');
+            if (damageNotes === null || damageNotes === undefined) {
+              return; // User cancelled
+            }
+            if (!damageNotes || damageNotes.trim() === '') {
+              await alert('Please provide a damage description', 'Warning', 'warning');
+              return;
+            }
+            damageNotes = damageNotes.trim();
+          }
         }
-        if (!damageNotes || damageNotes.trim() === '') {
-          await alert('Please provide a damage description', 'Warning', 'warning');
-          return;
-        }
-        damageNotes = damageNotes.trim();
       }
     }
 
@@ -311,6 +354,37 @@ function Rental() {
           ? `Status updated to "${getStatusLabel(newStatus)}". Damage noted - item set to maintenance.`
           : `Status updated to "${getStatusLabel(newStatus)}"`;
         await alert(message, 'Success', 'success');
+        
+        // If status is updated to "returned" and this is a bundle, update individual bundle items based on damage
+        if (newStatus === 'returned' && rental && rental.specific_data) {
+          const isBundle = rental.specific_data?.is_bundle === true || rental.specific_data?.category === 'rental_bundle';
+          const bundleItems = rental.specific_data?.bundle_items || [];
+          
+          if (isBundle && bundleItems.length > 0 && damageNotes) {
+            // Parse damage notes to see which items are damaged
+            let damagedItems = {};
+            try {
+              damagedItems = JSON.parse(damageNotes);
+            } catch (e) {
+              console.error('Error parsing damage notes:', e);
+            }
+            
+            // Update each bundle item's status based on damage
+            for (const bundleItem of bundleItems) {
+              try {
+                const isDamaged = damagedItems[bundleItem.item_name];
+                const newStatus = isDamaged ? 'maintenance' : 'available';
+                
+                await updateRentalStatus(bundleItem.item_id || bundleItem.id, newStatus);
+                
+                console.log(`Updated ${bundleItem.item_name} status to ${newStatus} due to ${isDamaged ? 'damage' : 'no damage'}`);
+              } catch (error) {
+                console.warn(`Failed to update rental inventory item status for ${bundleItem.item_name}:`, error);
+              }
+            }
+          }
+        }
+        
         // Reload orders after a brief delay to ensure state updates properly
         setTimeout(() => {
           loadRentalOrders();
@@ -945,19 +1019,98 @@ function Rental() {
               <span className="close-modal" onClick={() => setShowDetailModal(false)}>×</span>
             </div>
             <div className="modal-body">
-              {selectedRental.specific_data?.image_url && (
-                <div className="detail-row">
-                  <strong>Item Photo:</strong>
-                  <img
-                    src={selectedRental.specific_data.image_url}
-                    alt="Rental Item"
-                    className="item-image"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}
+              {/* Check if this is a bundled rental */}
+              {(() => {
+                const isBundle = selectedRental.specific_data?.is_bundle === true || selectedRental.specific_data?.category === 'rental_bundle';
+                const bundleItems = selectedRental.specific_data?.bundle_items || [];
+                
+                if (isBundle && bundleItems.length > 0) {
+                  return (
+                    <>
+                      {/* Display bundle items with images only (like user profile) */}
+                      <div className="detail-row" style={{ marginBottom: '20px' }}>
+                        <strong style={{ display: 'block', marginBottom: '10px' }}>Rental Items:</strong>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                          {bundleItems.map((bundleItem, idx) => (
+                            <div key={idx} style={{ 
+                              border: '1px solid #e0e0e0', 
+                              borderRadius: '8px', 
+                              padding: '15px',
+                              backgroundColor: '#f9f9f9'
+                            }}>
+                              {/* Show image if available */}
+                              {bundleItem.image_url && bundleItem.image_url !== 'no-image' && (
+                                <div style={{ marginBottom: '10px' }}>
+                                  <img
+                                    src={bundleItem.image_url}
+                                    alt={bundleItem.item_name || 'Rental item'}
+                                    style={{ 
+                                      maxWidth: '200px', 
+                                      maxHeight: '200px', 
+                                      cursor: 'pointer', 
+                                      borderRadius: '6px' 
+                                    }}
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                    }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Display combined item details (like user profile) */}
+                      <div className="detail-row">
+                        <strong>Rented Item:</strong>
+                        <span>{bundleItems.map(item => item.item_name).join(', ') || 'N/A'}</span>
+                      </div>
+                      <div className="detail-row">
+                        <strong>Category:</strong>
+                        <span>{[...new Set(bundleItems.map(item => item.category || 'rental'))].join(', ') || 'N/A'}</span>
+                      </div>
+                      <div className="detail-row">
+                        <strong>Brand:</strong>
+                        <span>{[...new Set(bundleItems.map(item => item.brand || 'N/A'))].join(', ') || 'N/A'}</span>
+                      </div>
+                    </>
+                  );
+                } else {
+                  // Single item display
+                  return (
+                    <>
+                      {selectedRental.specific_data?.image_url && (
+                        <div className="detail-row">
+                          <strong>Item Photo:</strong>
+                          <img
+                            src={selectedRental.specific_data.image_url}
+                            alt="Rental Item"
+                            className="item-image"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div className="detail-row">
+                        <strong>Rented Item:</strong>
+                        <span>{selectedRental.specific_data?.item_name || 'N/A'}</span>
+                      </div>
+                      <div className="detail-row">
+                        <strong>Category:</strong>
+                        <span>{selectedRental.specific_data?.category || 'N/A'}</span>
+                      </div>
+                      <div className="detail-row">
+                        <strong>Brand:</strong>
+                        <span>{selectedRental.specific_data?.brand || 'N/A'}</span>
+                      </div>
+                    </>
+                  );
+                }
+              })()}
+              
+              {/* Common fields for both bundle and single items */}
               <div className="detail-row">
                 <strong>Order ID:</strong>
                 <span>ORD-{selectedRental.order_id}</span>
@@ -974,21 +1127,179 @@ function Rental() {
                 <strong>Phone:</strong>
                 <span>{selectedRental.phone_number || 'N/A'}</span>
               </div>
-              <div className="detail-row">
-                <strong>Rented Item:</strong>
-                <span>{selectedRental.specific_data?.item_name || 'N/A'}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Category:</strong>
-                <span>{selectedRental.specific_data?.category || 'N/A'}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Brand:</strong>
-                <span>{selectedRental.specific_data?.brand || 'N/A'}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Size:</strong>
-                <span>{selectedRental.specific_data?.size || 'N/A'}</span>
+              <div className="detail-row" style={{ alignItems: 'flex-start', flexDirection: 'column' }}>
+                <strong style={{ marginBottom: '10px', textAlign: 'center', display: 'block', width: '100%' }}>Size:</strong>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', alignItems: 'center' }}>
+                  {(() => {
+                    const isBundle = selectedRental.specific_data?.is_bundle === true || selectedRental.specific_data?.category === 'rental_bundle';
+                    const bundleItems = selectedRental.specific_data?.bundle_items || [];
+                    
+                    if (isBundle && bundleItems.length > 0) {
+                      return bundleItems.map((item, idx) => {
+                        const formatSize = (size) => {
+                          if (!size) return null;
+                          
+                          if (typeof size === 'string' && !size.trim().startsWith('{')) {
+                            return [{ label: 'Size', value: size }];
+                          }
+                          
+                          try {
+                            let measurements = typeof size === 'string' ? JSON.parse(size) : size;
+                            
+                            if (!measurements || typeof measurements !== 'object' || Array.isArray(measurements)) {
+                              return [{ label: 'Size', value: typeof size === 'string' ? size : JSON.stringify(size) }];
+                            }
+                            
+                            const labelMap = {
+                              'chest': 'Chest',
+                              'shoulders': 'Shoulders',
+                              'sleeveLength': 'Sleeve',
+                              'neck': 'Neck',
+                              'waist': 'Waist',
+                              'length': 'Length'
+                            };
+                            
+                            const parts = Object.entries(measurements)
+                              .filter(([key, value]) => value !== null && value !== undefined && value !== '' && value !== '0')
+                              .map(([key, value]) => {
+                                const label = labelMap[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1').trim();
+                                let displayValue;
+                                if (typeof value === 'object' && value !== null) {
+                                  if (value.inch !== undefined && value.cm !== undefined) {
+                                    displayValue = `${value.inch} in / ${value.cm} cm`;
+                                  } else if (value.inch !== undefined) {
+                                    displayValue = `${value.inch} in`;
+                                  } else if (value.cm !== undefined) {
+                                    displayValue = `${value.cm} cm`;
+                                  } else if (value.value !== undefined) {
+                                    displayValue = `${value.value} in`;
+                                  } else {
+                                    displayValue = JSON.stringify(value);
+                                  }
+                                } else {
+                                  displayValue = `${value} in`;
+                                }
+                                return { label, value: displayValue };
+                              });
+                            
+                            return parts.length > 0 ? parts : null;
+                          } catch (e) {
+                            return [{ label: 'Size', value: typeof size === 'string' ? size : 'N/A' }];
+                          }
+                        };
+                        
+                        const sizeData = formatSize(item.size);
+                        return (
+                          <div key={idx} style={{ 
+                            fontSize: '0.9rem', 
+                            lineHeight: '1.8',
+                            padding: '12px 16px',
+                            backgroundColor: '#f5f5f5',
+                            borderRadius: '6px',
+                            border: '1px solid #e0e0e0',
+                            width: '100%',
+                            maxWidth: '350px'
+                          }}>
+                            <strong style={{ color: '#333', display: 'block', marginBottom: '10px', borderBottom: '1px solid #ddd', paddingBottom: '8px', textAlign: 'center' }}>
+                              {item.item_name || `Item ${idx + 1}`}:
+                            </strong>
+                            {sizeData && Array.isArray(sizeData) ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '6px 16px', color: '#666' }}>
+                                {sizeData.map((measurement, mIdx) => (
+                                  <React.Fragment key={mIdx}>
+                                    <span style={{ fontWeight: '500', textAlign: 'center' }}>{measurement.label}:</span>
+                                    <span style={{ textAlign: 'center' }}>{measurement.value}</span>
+                                  </React.Fragment>
+                                ))}
+                              </div>
+                            ) : (
+                              <span style={{ color: '#666', textAlign: 'center', display: 'block' }}>N/A</span>
+                            )}
+                          </div>
+                        );
+                      });
+                    } else {
+                      // Single item size display
+                      const formatSize = (size) => {
+                        if (!size) return null;
+                        
+                        if (typeof size === 'string' && !size.trim().startsWith('{')) {
+                          return [{ label: 'Size', value: size }];
+                        }
+                        
+                        try {
+                          let measurements = typeof size === 'string' ? JSON.parse(size) : size;
+                          
+                          if (!measurements || typeof measurements !== 'object' || Array.isArray(measurements)) {
+                            return [{ label: 'Size', value: typeof size === 'string' ? size : JSON.stringify(size) }];
+                          }
+                          
+                          const labelMap = {
+                            'chest': 'Chest',
+                            'shoulders': 'Shoulders',
+                            'sleeveLength': 'Sleeve',
+                            'neck': 'Neck',
+                            'waist': 'Waist',
+                            'length': 'Length'
+                          };
+                          
+                          const parts = Object.entries(measurements)
+                            .filter(([key, value]) => value !== null && value !== undefined && value !== '' && value !== '0')
+                            .map(([key, value]) => {
+                              const label = labelMap[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1').trim();
+                              let displayValue;
+                              if (typeof value === 'object' && value !== null) {
+                                if (value.inch !== undefined && value.cm !== undefined) {
+                                  displayValue = `${value.inch} in / ${value.cm} cm`;
+                                } else if (value.inch !== undefined) {
+                                  displayValue = `${value.inch} in`;
+                                } else if (value.cm !== undefined) {
+                                  displayValue = `${value.cm} cm`;
+                                } else if (value.value !== undefined) {
+                                  displayValue = `${value.value} in`;
+                                } else {
+                                  displayValue = JSON.stringify(value);
+                                }
+                              } else {
+                                displayValue = `${value} in`;
+                              }
+                              return { label, value: displayValue };
+                            });
+                          
+                          return parts.length > 0 ? parts : null;
+                        } catch (e) {
+                          return [{ label: 'Size', value: typeof size === 'string' ? size : 'N/A' }];
+                        }
+                      };
+                      
+                      const sizeData = formatSize(selectedRental.specific_data?.size);
+                      if (sizeData && Array.isArray(sizeData)) {
+                        return (
+                          <div style={{ 
+                            fontSize: '0.9rem', 
+                            lineHeight: '1.8',
+                            padding: '12px 16px',
+                            backgroundColor: '#f5f5f5',
+                            borderRadius: '6px',
+                            border: '1px solid #e0e0e0',
+                            width: '100%',
+                            maxWidth: '350px'
+                          }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '6px 16px', color: '#666', justifyContent: 'center' }}>
+                              {sizeData.map((measurement, mIdx) => (
+                                <React.Fragment key={mIdx}>
+                                  <span style={{ fontWeight: '500', textAlign: 'center' }}>{measurement.label}:</span>
+                                  <span style={{ textAlign: 'center' }}>{measurement.value}</span>
+                                </React.Fragment>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return <span style={{ color: '#666', textAlign: 'center', display: 'block' }}>N/A</span>;
+                    }
+                  })()}
+                </div>
               </div>
               <div className="detail-row">
                 <strong>Rental Period:</strong>
