@@ -176,16 +176,31 @@ exports.updateCustomizationOrderItem = (req, res) => {
         console.error('Cannot log action: user_id is missing. userId:', userId, 'item.user_id:', item.user_id);
       }
       
+      // Helper to format status for display
+      const formatStatus = (status) => {
+        const statusMap = {
+          'pending_review': 'Pending Review',
+          'pending': 'Pending',
+          'accepted': 'Accepted',
+          'price_confirmation': 'Price Confirmation',
+          'confirmed': 'In Progress',
+          'ready_for_pickup': 'Ready for Pickup',
+          'completed': 'Completed',
+          'cancelled': 'Cancelled'
+        };
+        return statusMap[status] || status;
+      };
+      
       let actionNotes = [];
       
       if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
-        actionNotes.push(`Status: ${previousStatus} → ${updateData.approvalStatus}`);
+        actionNotes.push(formatStatus(updateData.approvalStatus));
       }
       if (updateData.finalPrice && updateData.finalPrice !== previousPrice) {
-        actionNotes.push(`Price: ₱${previousPrice || 0} → ₱${updateData.finalPrice}`);
+        actionNotes.push(`Price: ₱${parseFloat(previousPrice || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} → ₱${parseFloat(updateData.finalPrice).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
       }
       if (updateData.adminNotes) {
-        actionNotes.push(`Admin notes: ${updateData.adminNotes}`);
+        actionNotes.push(`Notes: ${updateData.adminNotes}`);
       }
 
       // Always log, even if status didn't change (for tracking)
@@ -202,8 +217,8 @@ exports.updateCustomizationOrderItem = (req, res) => {
           new_status: newStatus,
           reason: null,
           notes: actionNotes.length > 0 
-            ? `Admin updated customization order: ${actionNotes.join(', ')}`
-            : `Admin updated customization order (status: ${newStatus})`
+            ? `Customization: ${actionNotes.join(' | ')}`
+            : `Customization: Updated`
         }, (logErr, logResult) => {
           if (logErr) {
             console.error('Error logging customization order action:', logErr);

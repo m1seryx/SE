@@ -661,7 +661,6 @@ const Repair = () => {
                 <th>Customer</th>
                 <th>Garment</th>
                 <th>Damage Type</th>
-                <th>Damage Description</th>
                 <th>Date</th>
                 <th>Price</th>
                 <th>Payment Status</th>
@@ -671,9 +670,9 @@ const Repair = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="10" style={{ textAlign: 'center', padding: '40px' }}>Loading repair orders...</td></tr>
+                <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px' }}>Loading repair orders...</td></tr>
               ) : getFilteredItems().length === 0 ? (
-                <tr><td colSpan="10" style={{ textAlign: 'center', padding: '40px' }}>No repair orders found</td></tr>
+                <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px' }}>No repair orders found</td></tr>
               ) : (
                 getFilteredItems().map(item => {
                   // Get payment information
@@ -690,7 +689,6 @@ const Repair = () => {
                     <td>{item.first_name} {item.last_name}</td>
                     <td>{item.specific_data?.garmentType || 'N/A'}</td>
                     <td><span style={{ fontSize: '0.9em', color: '#d32f2f' }}>{item.specific_data?.serviceName || 'N/A'}</span></td>
-                    <td><span style={{ fontSize: '0.8em' }}>{item.specific_data?.damageDescription?.substring(0, 50) || 'N/A'}...</span></td>
                     <td>{new Date(item.order_date).toLocaleDateString()}</td>
                     <td>₱{parseFloat(item.final_price || 0).toLocaleString()}</td>
                     <td>

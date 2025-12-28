@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Viewer3D from '../components/3d-customizer/Viewer3D';
 import CustomizationPanel from '../components/3d-customizer/CustomizationPanel';
 import { getAllCustom3DModels } from '../api/CustomizationApi';
+import { getAllFabricTypes } from '../api/FabricTypeApi';
 import '../styles/3d-App.css';
 import './Customizer3DPage.css';
 

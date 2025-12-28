@@ -2080,32 +2080,37 @@ const Customize = () => {
                             {!fabric.is_active && <span style={{ color: '#f44336', marginLeft: '8px' }}>(Inactive)</span>}
                           </div>
                         </div>
-                        <div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
                           <button
                             onClick={() => openEditFabricType(fabric)}
+                            className="fabric-edit-btn"
                             style={{
-                              padding: '5px 10px',
-                              backgroundColor: '#007bff',
+                              padding: '6px 12px',
+                              backgroundColor: '#2196f3',
                               color: 'white',
                               border: 'none',
                               borderRadius: '4px',
                               cursor: 'pointer',
                               fontSize: '12px',
-                              marginRight: '5px'
+                              fontWeight: '500',
+                              boxShadow: 'none'
                             }}
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => handleDeleteFabricType(fabric.fabric_id)}
+                            className="fabric-delete-btn"
                             style={{
-                              padding: '5px 10px',
+                              padding: '6px 12px',
                               backgroundColor: '#f44336',
                               color: 'white',
                               border: 'none',
                               borderRadius: '4px',
                               cursor: 'pointer',
-                              fontSize: '12px'
+                              fontSize: '12px',
+                              fontWeight: '500',
+                              boxShadow: 'none'
                             }}
                           >
                             Delete

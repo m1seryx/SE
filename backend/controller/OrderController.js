@@ -594,16 +594,31 @@ exports.updateRepairOrderItem = (req, res) => {
         console.error('Cannot log action: user_id is missing. req.user:', req.user, 'item.user_id:', item.user_id);
       }
       
+      // Helper to format status for display
+      const formatStatus = (status) => {
+        const statusMap = {
+          'pending_review': 'Pending Review',
+          'pending': 'Pending',
+          'accepted': 'Accepted',
+          'price_confirmation': 'Price Confirmation',
+          'confirmed': 'In Progress',
+          'ready_for_pickup': 'Ready for Pickup',
+          'completed': 'Completed',
+          'cancelled': 'Cancelled'
+        };
+        return statusMap[status] || status;
+      };
+      
       let actionNotes = [];
       
       if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
-        actionNotes.push(`Status: ${previousStatus} → ${updateData.approvalStatus}`);
+        actionNotes.push(formatStatus(updateData.approvalStatus));
       }
       if (updateData.finalPrice && updateData.finalPrice !== previousPrice) {
-        actionNotes.push(`Price: ₱${previousPrice || 0} → ₱${updateData.finalPrice}`);
+        actionNotes.push(`Price: ₱${parseFloat(previousPrice || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} → ₱${parseFloat(updateData.finalPrice).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
       }
       if (updateData.adminNotes) {
-        actionNotes.push(`Admin notes: ${updateData.adminNotes}`);
+        actionNotes.push(`Notes: ${updateData.adminNotes}`);
       }
 
       // Always log, even if status didn't change (for tracking)
@@ -620,8 +635,8 @@ exports.updateRepairOrderItem = (req, res) => {
           new_status: newStatus,
           reason: null,
           notes: actionNotes.length > 0 
-            ? `Admin updated repair order: ${actionNotes.join(', ')}`
-            : `Admin updated repair order (status: ${newStatus})`
+            ? `Repair: ${actionNotes.join(' | ')}`
+            : `Repair: Updated`
         }, (logErr, logResult) => {
           if (logErr) {
             console.error('Error logging repair order action:', logErr);
@@ -882,16 +897,31 @@ exports.updateDryCleaningOrderItem = (req, res) => {
         console.error('Cannot log action: user_id is missing. req.user:', req.user, 'item.user_id:', item.user_id);
       }
       
+      // Helper to format status for display
+      const formatStatus = (status) => {
+        const statusMap = {
+          'pending_review': 'Pending Review',
+          'pending': 'Pending',
+          'accepted': 'Accepted',
+          'price_confirmation': 'Price Confirmation',
+          'confirmed': 'In Progress',
+          'ready_for_pickup': 'Ready for Pickup',
+          'completed': 'Completed',
+          'cancelled': 'Cancelled'
+        };
+        return statusMap[status] || status;
+      };
+      
       let actionNotes = [];
       
       if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
-        actionNotes.push(`Status: ${previousStatus} → ${updateData.approvalStatus}`);
+        actionNotes.push(formatStatus(updateData.approvalStatus));
       }
       if (updateData.finalPrice && updateData.finalPrice !== previousPrice) {
-        actionNotes.push(`Price: ₱${previousPrice || 0} → ₱${updateData.finalPrice}`);
+        actionNotes.push(`Price: ₱${parseFloat(previousPrice || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} → ₱${parseFloat(updateData.finalPrice).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
       }
       if (updateData.adminNotes) {
-        actionNotes.push(`Admin notes: ${updateData.adminNotes}`);
+        actionNotes.push(`Notes: ${updateData.adminNotes}`);
       }
 
       // Always log, even if status didn't change (for tracking)
@@ -908,8 +938,8 @@ exports.updateDryCleaningOrderItem = (req, res) => {
           new_status: newStatus,
           reason: null,
           notes: actionNotes.length > 0 
-            ? `Admin updated dry cleaning order: ${actionNotes.join(', ')}`
-            : `Admin updated dry cleaning order (status: ${newStatus})`
+            ? `Dry Cleaning: ${actionNotes.join(' | ')}`
+            : `Dry Cleaning: Updated`
         }, (logErr, logResult) => {
           if (logErr) {
             console.error('Error logging dry cleaning order action:', logErr);
@@ -1213,16 +1243,33 @@ exports.updateRentalOrderItem = (req, res) => {
         console.error('Cannot log action: user_id is missing. req.user:', req.user, 'item.user_id:', item.user_id);
       }
       
+      // Helper to format status for display
+      const formatStatus = (status) => {
+        const statusMap = {
+          'pending_review': 'Pending Review',
+          'pending': 'Pending',
+          'accepted': 'Accepted',
+          'price_confirmation': 'Price Confirmation',
+          'confirmed': 'In Progress',
+          'ready_for_pickup': 'Ready for Pickup',
+          'completed': 'Completed',
+          'cancelled': 'Cancelled',
+          'rented': 'Rented',
+          'returned': 'Returned'
+        };
+        return statusMap[status] || status;
+      };
+      
       let actionNotes = [];
       
       if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
-        actionNotes.push(`Status: ${previousStatus} → ${updateData.approvalStatus}`);
+        actionNotes.push(formatStatus(updateData.approvalStatus));
       }
       if (penaltyAmount > 0 && penaltyDays > 0) {
-        actionNotes.push(`Penalty applied: ₱${penaltyAmount} (${penaltyDays} day${penaltyDays > 1 ? 's' : ''} exceeded)`);
+        actionNotes.push(`Penalty: ₱${penaltyAmount} (${penaltyDays} day${penaltyDays > 1 ? 's' : ''})`);
       }
       if (updateData.adminNotes) {
-        actionNotes.push(`Admin notes: ${updateData.adminNotes}`);
+        actionNotes.push(`Notes: ${updateData.adminNotes}`);
       }
 
       // Always log, even if status didn't change (for tracking)
@@ -1239,8 +1286,8 @@ exports.updateRentalOrderItem = (req, res) => {
           new_status: newStatus,
           reason: null,
           notes: actionNotes.length > 0 
-            ? `Admin updated rental order: ${actionNotes.join(', ')}`
-            : `Admin updated rental order (status: ${newStatus})`
+            ? `Rental: ${actionNotes.join(' | ')}`
+            : `Rental: Updated`
         }, (logErr, logResult) => {
           if (logErr) {
             console.error('Error logging rental order action:', logErr);
