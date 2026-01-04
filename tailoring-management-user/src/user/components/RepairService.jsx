@@ -202,9 +202,8 @@ const RepairService = ({ openAuthModal, showAll = false }) => {
   if (loading) {
     return (
       <section className="repair" id="Repair">
-        <div className="section-header">
-          <h2>Repair Services</h2>
-          {!showAll && <a onClick={() => navigate('/repairs')} className="see-more">See more →</a>}
+        <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0 }}>Repair Services</h2>
         </div>
         <div className="repair-grid">
           {[1, 2, 3].map((i) => (
@@ -223,9 +222,8 @@ const RepairService = ({ openAuthModal, showAll = false }) => {
   return (
     <>
       <section className="repair" id="Repair">
-        <div className="section-header">
-          <h2>Repair Services</h2>
-          {!showAll && <a onClick={() => navigate('/repairs')} className="see-more">See more →</a>}
+        <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0 }}>Repair Services</h2>
         </div>
         
         <div className="repair-grid">
@@ -251,6 +249,42 @@ const RepairService = ({ openAuthModal, showAll = false }) => {
             </div>
           ))}
         </div>
+        
+        {/* See more button below grid, centered */}
+        {!showAll && repairServices.length > 3 && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            marginTop: '20px',
+            marginBottom: '10px'
+          }}>
+            <span 
+              onClick={() => navigate('/repairs')} 
+              style={{ 
+                color: '#888', 
+                cursor: 'pointer', 
+                fontSize: '14px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'color 0.2s ease',
+                padding: '10px 20px',
+                borderRadius: '20px',
+                backgroundColor: '#f5f5f5'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.color = '#666';
+                e.target.style.backgroundColor = '#e8e8e8';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.color = '#888';
+                e.target.style.backgroundColor = '#f5f5f5';
+              }}
+            >
+              See more →
+            </span>
+          </div>
+        )}
       </section>
 
       {/* Repair Modal */}

@@ -115,6 +115,8 @@ app.use('/api/fabric-types', fabricTypeRoutes);
 app.use('/api/garment-types', garmentTypeRoutes);
 const repairGarmentTypeRoutes = require('./routes/RepairGarmentTypeRoutes');
 app.use('/api/repair-garment-types', repairGarmentTypeRoutes);
+const dcGarmentTypeRoutes = require('./routes/DryCleaningGarmentTypeRoutes');
+app.use('/api/dc-garment-types', dcGarmentTypeRoutes);
 const shopScheduleRoutes = require('./routes/ShopScheduleRoutes');
 app.use('/api/shop-schedule', shopScheduleRoutes);
 

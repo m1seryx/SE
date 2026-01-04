@@ -21,7 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
 import { orderStore, Order } from "../../../utils/orderStore";
-import { authService, orderTrackingService, notificationService } from "../../../utils/apiService";
+import { authService, orderTrackingService, notificationService, measurementsService } from "../../../utils/apiService";
 
 const { width, height } = Dimensions.get("window");
 
@@ -29,6 +29,12 @@ interface UserData {
   name: string;
   email: string;
   phone: string;
+}
+
+interface Measurements {
+  top?: { [key: string]: string };
+  bottom?: { [key: string]: string };
+  notes?: string;
 }
 
 export default function ProfileScreen() {
@@ -48,6 +54,11 @@ export default function ProfileScreen() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  
+  // Measurements dropdown state (changed from modal to dropdown)
+  const [measurementsExpanded, setMeasurementsExpanded] = useState(false);
+  const [measurements, setMeasurements] = useState<Measurements | null>(null);
+  const [loadingMeasurements, setLoadingMeasurements] = useState(false);
 
   // Load orders on mount and subscribe to changes
   useEffect(() => {
@@ -502,13 +513,165 @@ export default function ProfileScreen() {
           <Text style={styles.userName}>{user.name}</Text>
           <Text style={styles.userEmail}>{user.email}</Text>
 
+          <View style={styles.profileButtonsRow}>
+            <TouchableOpacity
+              style={styles.editProfileBtn}
+              onPress={openEditModal}
+            >
+              <Ionicons name="pencil" size={16} color="#94665B" />
+              <Text style={styles.editProfileText}>Edit Profile</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* My Measurements Dropdown Section */}
+        <View style={styles.section}>
           <TouchableOpacity
-            style={styles.editProfileBtn}
-            onPress={openEditModal}
+            style={styles.measurementsDropdownHeader}
+            onPress={async () => {
+              const newExpanded = !measurementsExpanded;
+              setMeasurementsExpanded(newExpanded);
+              
+              // Fetch measurements when expanding if not already loaded
+              if (newExpanded && !measurements && !loadingMeasurements) {
+                setLoadingMeasurements(true);
+                try {
+                  const result = await measurementsService.getMyMeasurements();
+                  console.log('Measurements API result:', result);
+                  if (result.success && result.measurements) {
+                    setMeasurements(result.measurements);
+                  } else if (result.data && result.data.measurements) {
+                    setMeasurements(result.data.measurements);
+                  } else if (result.top || result.bottom) {
+                    setMeasurements(result);
+                  } else {
+                    setMeasurements(null);
+                  }
+                } catch (error) {
+                  console.error('Error fetching measurements:', error);
+                  setMeasurements(null);
+                }
+                setLoadingMeasurements(false);
+              }
+            }}
           >
-            <Ionicons name="pencil" size={16} color="#94665B" />
-            <Text style={styles.editProfileText}>Edit Profile</Text>
+            <View style={styles.measurementsDropdownLeft}>
+              <Ionicons name="resize-outline" size={22} color="#94665B" />
+              <Text style={styles.measurementsDropdownTitle}>My Measurements</Text>
+            </View>
+            <Ionicons 
+              name={measurementsExpanded ? "chevron-up" : "chevron-down"} 
+              size={22} 
+              color="#94665B" 
+            />
           </TouchableOpacity>
+
+          {/* Measurements Content (Dropdown) */}
+          {measurementsExpanded && (
+            <View style={styles.measurementsDropdownContent}>
+              {loadingMeasurements ? (
+                <View style={styles.measurementsLoadingContainer}>
+                  <ActivityIndicator size="small" color="#94665B" />
+                  <Text style={styles.measurementsLoadingText}>Loading measurements...</Text>
+                </View>
+              ) : measurements ? (
+                <View style={styles.measurementsContent}>
+                  {/* Top Measurements */}
+                  {measurements.top && Object.keys(measurements.top).length > 0 && (
+                    <View style={styles.measurementSection}>
+                      <Text style={styles.measurementSectionTitle}>Top Measurements</Text>
+                      <View style={styles.measurementTable}>
+                        <View style={styles.measurementTableHeader}>
+                          <Text style={styles.measurementHeaderText}>Measurement</Text>
+                          <Text style={styles.measurementHeaderText}>Value (inches)</Text>
+                        </View>
+                        {Object.entries(measurements.top).map(([key, value], idx) => {
+                          if (!value || value === '' || value === '0') return null;
+                          const labelMap: { [key: string]: string } = {
+                            'chest': 'Chest',
+                            'shoulders': 'Shoulders',
+                            'sleeveLength': 'Sleeve Length',
+                            'neck': 'Neck',
+                            'waist': 'Waist',
+                            'length': 'Length'
+                          };
+                          const label = labelMap[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1').trim();
+                          return (
+                            <View key={idx} style={[styles.measurementRow, idx % 2 === 0 ? styles.measurementRowEven : styles.measurementRowOdd]}>
+                              <Text style={styles.measurementLabel}>{label}</Text>
+                              <Text style={styles.measurementValue}>{value}"</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Bottom Measurements */}
+                  {measurements.bottom && Object.keys(measurements.bottom).length > 0 && (
+                    <View style={styles.measurementSection}>
+                      <Text style={styles.measurementSectionTitle}>Bottom Measurements</Text>
+                      <View style={styles.measurementTable}>
+                        <View style={styles.measurementTableHeader}>
+                          <Text style={styles.measurementHeaderText}>Measurement</Text>
+                          <Text style={styles.measurementHeaderText}>Value (inches)</Text>
+                        </View>
+                        {Object.entries(measurements.bottom).map(([key, value], idx) => {
+                          if (!value || value === '' || value === '0') return null;
+                          const labelMap: { [key: string]: string } = {
+                            'waist': 'Waist',
+                            'hips': 'Hips',
+                            'inseam': 'Inseam',
+                            'length': 'Length',
+                            'thigh': 'Thigh',
+                            'outseam': 'Outseam'
+                          };
+                          const label = labelMap[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1').trim();
+                          return (
+                            <View key={idx} style={[styles.measurementRow, idx % 2 === 0 ? styles.measurementRowEven : styles.measurementRowOdd]}>
+                              <Text style={styles.measurementLabel}>{label}</Text>
+                              <Text style={styles.measurementValue}>{value}"</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Notes */}
+                  {measurements.notes && (
+                    <View style={styles.measurementNotesContainer}>
+                      <Text style={styles.measurementNotesTitle}>Notes:</Text>
+                      <Text style={styles.measurementNotesText}>{measurements.notes}</Text>
+                    </View>
+                  )}
+
+                  {(!measurements.top || Object.keys(measurements.top).length === 0) &&
+                   (!measurements.bottom || Object.keys(measurements.bottom).length === 0) && (
+                    <View style={styles.noMeasurementsContainer}>
+                      <Ionicons name="body-outline" size={40} color="#D1D5DB" />
+                      <Text style={styles.noMeasurementsText}>
+                        No measurements recorded yet.
+                      </Text>
+                      <Text style={styles.noMeasurementsSubtext}>
+                        Contact admin to add your measurements.
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.noMeasurementsContainer}>
+                  <Ionicons name="body-outline" size={40} color="#D1D5DB" />
+                  <Text style={styles.noMeasurementsText}>
+                    No measurements recorded yet.
+                  </Text>
+                  <Text style={styles.noMeasurementsSubtext}>
+                    Contact admin to add your measurements.
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Contact Information */}
@@ -546,7 +709,7 @@ export default function ProfileScreen() {
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>{error}</Text>
             </View>
-          ) : orders.length === 0 ? (
+          ) : !orders || orders.length === 0 ? (
             <View style={styles.emptyOrders}>
               <Ionicons name="receipt-outline" size={60} color="#D1D5DB" />
               <Text style={styles.emptyOrdersText}>No orders found</Text>
@@ -556,8 +719,11 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <View style={styles.orderCards}>
-              {orders?.flatMap((order: any) => 
-                order.items.map((item: any) => {
+              {(orders || []).flatMap((order: any) => {
+                if (!order || !Array.isArray(order.items)) {
+                  return [];
+                }
+                return order.items.map((item: any) => {
                   const estimatedPrice = getEstimatedPrice(item.specific_data, item.service_type);
                   const priceChanged = hasPriceChanged(item.specific_data, parseFloat(item.final_price), item.service_type);
                   
@@ -773,8 +939,8 @@ export default function ProfileScreen() {
                       </View>
                     </View>
                   );
-                })
-              )}
+                });
+              })}
             </View>
           )}
         </View>
@@ -1653,5 +1819,186 @@ const styles = StyleSheet.create({
     backgroundColor: "#FDE68A",
     alignItems: "center",
     justifyContent: "center",
+  },
+
+  // Profile buttons row
+  profileButtonsRow: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+
+  // Measurements Dropdown Styles
+  measurementsDropdownHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  measurementsDropdownLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  measurementsDropdownTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+  },
+  measurementsDropdownContent: {
+    backgroundColor: "#fff",
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+
+  // Measurements Modal Styles (kept for reference but can be removed later)
+  measurementsModalContainer: {
+    width: "100%",
+    maxHeight: "85%",
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: "auto",
+  },
+  measurementsModalContent: {
+    padding: 20,
+    flex: 1,
+  },
+  measurementsLoadingContainer: {
+    padding: 20,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 10,
+  },
+  measurementsLoadingText: {
+    fontSize: 14,
+    color: "#6B7280",
+  },
+  measurementsContent: {
+    paddingHorizontal: 0,
+  },
+  measurementSection: {
+    marginBottom: 20,
+  },
+  measurementSectionTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 10,
+    paddingBottom: 6,
+    borderBottomWidth: 2,
+    borderBottomColor: "#8B4513",
+  },
+  measurementTable: {
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  measurementTableHeader: {
+    flexDirection: "row",
+    backgroundColor: "#F8F9FA",
+    borderBottomWidth: 2,
+    borderBottomColor: "#E0E0E0",
+    padding: 12,
+  },
+  measurementHeaderText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
+  measurementRow: {
+    flexDirection: "row",
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  measurementRowEven: {
+    backgroundColor: "#fff",
+  },
+  measurementRowOdd: {
+    backgroundColor: "#FAFAFA",
+  },
+  measurementLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#333",
+  },
+  measurementValue: {
+    flex: 1,
+    fontSize: 14,
+    color: "#333",
+    textAlign: "right",
+  },
+  measurementNotesContainer: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: "#F8F9FA",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+  measurementNotesTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 8,
+  },
+  measurementNotesText: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
+  },
+  noMeasurementsContainer: {
+    padding: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  noMeasurementsText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+  },
+  noMeasurementsSubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: "#999",
+    textAlign: "center",
+  },
+  measurementsCloseButton: {
+    backgroundColor: "#94665B",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 16,
+  },
+  measurementsCloseButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

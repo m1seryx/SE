@@ -788,6 +788,43 @@ export default function CartScreen() {
                           </Text>
                         </View>
                       )}
+                      
+                      {/* Display all 4 angle images if available */}
+                      {selectedItemDetails.designData?.angleImages && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Design Views</Text>
+                          <View style={styles.angleImagesGrid}>
+                            {['front', 'back', 'right', 'left'].map((angle) => (
+                              selectedItemDetails.designData.angleImages[angle] && (
+                                <View key={angle} style={styles.angleImageContainer}>
+                                  <Image
+                                    source={{ uri: selectedItemDetails.designData.angleImages[angle] }}
+                                    style={styles.angleImage}
+                                    resizeMode="cover"
+                                  />
+                                  <View style={styles.angleLabel}>
+                                    <Text style={styles.angleLabelText}>
+                                      {angle.charAt(0).toUpperCase() + angle.slice(1)}
+                                    </Text>
+                                  </View>
+                                </View>
+                              )
+                            ))}
+                          </View>
+                        </View>
+                      )}
+                      
+                      {/* Fallback to single image if angleImages not available */}
+                      {!selectedItemDetails.designData?.angleImages && selectedItemDetails.image && selectedItemDetails.image !== 'no-image' && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Design Preview</Text>
+                          <Image
+                            source={{ uri: selectedItemDetails.image }}
+                            style={styles.modalImage}
+                            resizeMode="contain"
+                          />
+                        </View>
+                      )}
                     </>
                   )}
 
@@ -829,15 +866,15 @@ export default function CartScreen() {
                        selectedItemDetails.service?.toLowerCase() === 'dry_cleaning' ? 'Final Price' : 'Estimated Price'}
                     </Text>
                     <Text style={styles.detailsPriceValue}>
-                      ₱{selectedItemDetails.price.toLocaleString()}
+                      ₱{(selectedItemDetails.price || 0).toLocaleString()}
                     </Text>
                   </View>
 
-                  {selectedItemDetails.service?.toLowerCase() === 'rental' && selectedItemDetails.downpayment > 0 && (
+                  {selectedItemDetails.service?.toLowerCase() === 'rental' && (selectedItemDetails.downpayment || 0) > 0 && (
                     <View style={styles.detailsSection}>
                       <Text style={styles.detailsLabel}>Downpayment</Text>
                       <Text style={styles.detailsPriceValue}>
-                        ₱{selectedItemDetails.downpayment.toLocaleString()}
+                        ₱{(selectedItemDetails.downpayment || 0).toLocaleString()}
                       </Text>
                     </View>
                   )}
@@ -882,7 +919,11 @@ export default function CartScreen() {
                           setSelectedItemDetails({
                             ...bundleItem,
                             image: fullImageUrl,
-                            service: 'rental'
+                            service: 'rental',
+                            price: bundleItem.individual_cost || bundleItem.price || 0,
+                            downpayment: bundleItem.downpayment || 0,
+                            item: bundleItem.item_name || bundleItem.name || 'Rental Item',
+                            garmentType: bundleItem.item_name || bundleItem.name || '',
                           });
                           setShowBundleModal(false);
                           setShowDetailsModal(true);
@@ -1495,5 +1536,40 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     paddingHorizontal: 12,
     paddingBottom: 12,
+  },
+  // Angle images grid for customization 3D views
+  angleImagesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  angleImageContainer: {
+    width: (width - 100) / 2,
+    aspectRatio: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    position: 'relative',
+  },
+  angleImage: {
+    width: '100%',
+    height: '100%',
+  },
+  angleLabel: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  angleLabelText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'capitalize',
   },
 });

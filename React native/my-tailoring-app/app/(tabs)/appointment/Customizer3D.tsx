@@ -40,6 +40,7 @@ interface CustomizationData {
   garmentType?: string;
   fabricType?: string;
   designImage?: string; // base64 image
+  angleImages?: { front?: string; back?: string; right?: string; left?: string }; // All 4 angle images
   imageData?: string; // base64 image from save
   garmentName?: string;
   designData?: any;
@@ -49,6 +50,75 @@ interface CustomizationData {
   error?: string;
   message?: string;
 }
+
+// Preset colors from 3D customizer - must match exactly
+const presetColors = [
+  { name: 'Classic Black', value: '#1a1a1a' },
+  { name: 'Navy Blue', value: '#1e3a5f' },
+  { name: 'Burgundy', value: '#6b1e3d' },
+  { name: 'Forest Green', value: '#2d5a3d' },
+  { name: 'Charcoal Gray', value: '#4a4a4a' },
+  { name: 'Camel Tan', value: '#c9a66b' },
+  { name: 'Cream White', value: '#f5e6d3' },
+  { name: 'Chocolate Brown', value: '#5D4037' },
+  { name: 'Royal Blue', value: '#2a4d8f' },
+  { name: 'Wine Red', value: '#722F37' },
+];
+
+// Helper function to convert hex color to color name
+const getColorName = (hex: string | undefined): string => {
+  if (!hex) return 'Not specified';
+  
+  if (typeof hex === 'string' && !hex.startsWith('#') && !hex.match(/^[0-9a-fA-F]{3,6}$/)) {
+    return hex.charAt(0).toUpperCase() + hex.slice(1);
+  }
+  
+  let normalizedHex = String(hex).toLowerCase().trim();
+  if (!normalizedHex.startsWith('#')) {
+    normalizedHex = `#${normalizedHex}`;
+  }
+  
+  const presetMatch = presetColors.find(color => color.value.toLowerCase() === normalizedHex);
+  if (presetMatch) return presetMatch.name;
+  
+  return 'Custom Color';
+};
+
+// Helper function to get button type from model path
+const getButtonType = (modelPath: string | undefined): string => {
+  if (!modelPath) return '';
+  const buttonMap: { [key: string]: string } = {
+    '/orange button 3d model.glb': 'Orange Button',
+    '/four hole button 3d model (1).glb': 'Four Hole Button',
+  };
+  return buttonMap[modelPath] || modelPath.split('/').pop()?.replace('.glb', '').replace(/\d+/g, '').trim() || '';
+};
+
+// Helper function to get accessory name from model path
+const getAccessoryName = (modelPath: string | undefined): string => {
+  if (!modelPath) return '';
+  const accessoryMap: { [key: string]: string } = {
+    '/accessories/gold lion pendant 3d model.glb': 'Pendant',
+    '/accessories/flower brooch 3d model.glb': 'Brooch',
+    '/accessories/fabric rose 3d model.glb': 'Flower',
+  };
+  return accessoryMap[modelPath] || modelPath.split('/').pop()?.replace('.glb', '').replace(/\d+/g, '').trim() || '';
+};
+
+// Default values
+const defaultFabricTypes: { [key: string]: number } = {
+  'Cotton': 200,
+  'Silk': 300,
+  'Linen': 400,
+  'Wool': 200
+};
+
+const defaultGarmentTypes: { [key: string]: number } = {
+  'Suit': 5600,
+  'Blazer': 5000,
+  'Barong': 3500,
+  'Pants': 1000
+};
 
 export default function Customizer3DScreen() {
   const router = useRouter();
@@ -68,6 +138,158 @@ export default function Customizer3DScreen() {
   const [preferredDate, setPreferredDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [notes, setNotes] = useState('');
+  
+  // Form state for fabric and garment selection
+  const [fabricTypes, setFabricTypes] = useState<{ [key: string]: number }>(defaultFabricTypes);
+  const [garmentTypes, setGarmentTypes] = useState<{ [key: string]: number }>(defaultGarmentTypes);
+  const [garmentCodeToName, setGarmentCodeToName] = useState<{ [key: string]: string }>({});
+  const [selectedFabric, setSelectedFabric] = useState<string>('');
+  const [selectedGarment, setSelectedGarment] = useState<string>('');
+  const [estimatedPrice, setEstimatedPrice] = useState<number>(0);
+  const [showFabricPicker, setShowFabricPicker] = useState(false);
+  const [showGarmentPicker, setShowGarmentPicker] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+
+  // Load fabric and garment types from API when modal opens
+  useEffect(() => {
+    if (showConfirmModal) {
+      loadFabricTypes();
+      loadGarmentTypes();
+    }
+  }, [showConfirmModal]);
+
+  // Auto-fill garment type when garmentCodeToName is ready
+  useEffect(() => {
+    if (showConfirmModal && pendingCustomization && Object.keys(garmentCodeToName).length > 0) {
+      // Pre-fill fabric from customization data
+      if (pendingCustomization?.fabricType && !selectedFabric) {
+        const fabricName = pendingCustomization.fabricType.charAt(0).toUpperCase() + pendingCustomization.fabricType.slice(1);
+        setSelectedFabric(fabricName);
+      }
+      
+      // Pre-fill garment type using the code-to-name mapping
+      if (pendingCustomization?.garmentType && !selectedGarment) {
+        const garmentCode = pendingCustomization.garmentCode || '';
+        const garmentTypeName = pendingCustomization.garmentType || '';
+        
+        console.log('🎯 Trying to match garment:', { garmentCode, garmentTypeName });
+        
+        let mappedGarment = '';
+        
+        // First try direct match by garment code
+        if (garmentCode && garmentCodeToName[garmentCode.toLowerCase()]) {
+          mappedGarment = garmentCodeToName[garmentCode.toLowerCase()];
+        }
+        // Then try partial matches
+        else if (garmentCode) {
+          for (const [code, name] of Object.entries(garmentCodeToName)) {
+            if (garmentCode.toLowerCase().includes(code) || code.includes(garmentCode.toLowerCase())) {
+              mappedGarment = name;
+              break;
+            }
+          }
+        }
+        // Fallback: try to match by garmentType name
+        if (!mappedGarment && garmentTypeName) {
+          const garmentTypeLower = garmentTypeName.toLowerCase();
+          if (garmentCodeToName[garmentTypeLower]) {
+            mappedGarment = garmentCodeToName[garmentTypeLower];
+          } else {
+            for (const [code, name] of Object.entries(garmentCodeToName)) {
+              const nameLower = name.toLowerCase();
+              if (garmentTypeLower.includes(nameLower) || nameLower.includes(garmentTypeLower)) {
+                mappedGarment = name;
+                break;
+              }
+            }
+          }
+        }
+        
+        console.log('🎯 Mapped garment to:', mappedGarment || '(no match)');
+        
+        if (mappedGarment) {
+          setSelectedGarment(mappedGarment);
+        }
+      }
+    }
+  }, [showConfirmModal, pendingCustomization, garmentCodeToName]);
+
+  // Calculate estimated price when selections change
+  useEffect(() => {
+    if (selectedFabric && selectedGarment) {
+      const fabricPrice = fabricTypes[selectedFabric] || 0;
+      const garmentPrice = garmentTypes[selectedGarment] || 0;
+      setEstimatedPrice(fabricPrice + garmentPrice);
+    } else {
+      setEstimatedPrice(0);
+    }
+  }, [selectedFabric, selectedGarment, fabricTypes, garmentTypes]);
+
+  // Load fabric types from API
+  const loadFabricTypes = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.1.202:5000/api'}/fabric-types`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.fabrics && data.fabrics.length > 0) {
+          const fabricTypesObj: { [key: string]: number } = { ...defaultFabricTypes };
+          data.fabrics.forEach((fabric: { fabric_name: string; fabric_price: string }) => {
+            fabricTypesObj[fabric.fabric_name] = parseFloat(fabric.fabric_price);
+          });
+          setFabricTypes(fabricTypesObj);
+        }
+      }
+    } catch (error) {
+      console.log('Error loading fabric types:', error);
+      // Keep default values
+    }
+  };
+
+  // Load garment types from API
+  const loadGarmentTypes = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.1.202:5000/api'}/garment-types`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.garments && data.garments.length > 0) {
+          const garmentTypesObj: { [key: string]: number } = {};
+          const codeToNameMap: { [key: string]: string } = {};
+          
+          data.garments.forEach((garment: { garment_name: string; garment_price: string; garment_code?: string }) => {
+            garmentTypesObj[garment.garment_name] = parseFloat(garment.garment_price);
+            // Map garment_code to garment_name for auto-fill
+            if (garment.garment_code) {
+              codeToNameMap[garment.garment_code.toLowerCase()] = garment.garment_name;
+            }
+            // Also map by lowercase name
+            codeToNameMap[garment.garment_name.toLowerCase()] = garment.garment_name;
+          });
+          
+          setGarmentTypes(garmentTypesObj);
+          setGarmentCodeToName(codeToNameMap);
+          console.log('✅ Loaded garment types:', garmentTypesObj);
+          console.log('✅ Garment code mapping:', codeToNameMap);
+        }
+      }
+    } catch (error) {
+      console.log('Error loading garment types:', error);
+      // Keep default values
+    }
+  };
 
   // Loading timeout - show error after 15 seconds
   useEffect(() => {
@@ -142,6 +364,44 @@ export default function Customizer3DScreen() {
           }));
         }
       };
+
+      // WebGL context loss recovery
+      window.addEventListener('webglcontextlost', function(e) {
+        e.preventDefault();
+        console.log('WebGL context lost - attempting recovery...');
+      }, false);
+
+      window.addEventListener('webglcontextrestored', function(e) {
+        console.log('WebGL context restored');
+        // Force a page refresh if needed
+        if (window.location.reload) {
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
+        }
+      }, false);
+
+      // Monitor for canvas elements and add context loss handling
+      const observeCanvases = () => {
+        const canvases = document.querySelectorAll('canvas');
+        canvases.forEach(canvas => {
+          if (!canvas._contextLossHandled) {
+            canvas._contextLossHandled = true;
+            canvas.addEventListener('webglcontextlost', function(e) {
+              e.preventDefault();
+              console.log('Canvas WebGL context lost');
+            }, false);
+            canvas.addEventListener('webglcontextrestored', function() {
+              console.log('Canvas WebGL context restored');
+            }, false);
+          }
+        });
+      };
+
+      // Observe for new canvases
+      const observer = new MutationObserver(observeCanvases);
+      observer.observe(document.body, { childList: true, subtree: true });
+      setTimeout(observeCanvases, 1000);
 
       // Helper function for web app to send data to React Native
       window.sendToReactNative = function(data) {
@@ -296,6 +556,21 @@ export default function Customizer3DScreen() {
   const handleAddToCartFromModal = async () => {
     if (!pendingCustomization) return;
 
+    // Validate form
+    const errors: { [key: string]: string } = {};
+    if (!selectedFabric) {
+      errors.fabric = 'Please select a fabric type';
+    }
+    if (!selectedGarment) {
+      errors.garment = 'Please select a garment type';
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
+
     setIsSaving(true);
     setShowConfirmModal(false);
     
@@ -335,15 +610,20 @@ export default function Customizer3DScreen() {
         }
       }
       
-      // Add to cart
+      // Add to cart with selected fabric and garment
+      const designDataWithAngleImages = {
+        ...(pendingCustomization.designData || {}),
+        angleImages: pendingCustomization.angleImages,
+      };
+      
       const cartResponse = await addCustomizationToCart({
-        garmentType: pendingCustomization.garmentType || 'Polo',
-        fabricType: pendingCustomization.fabricType || 'Cotton',
+        garmentType: selectedGarment,
+        fabricType: selectedFabric,
         preferredDate: preferredDate.toISOString().split('T')[0],
         notes: notes || pendingCustomization.notes || '',
         imageUrl: imageUrl,
-        designData: pendingCustomization.designData || {},
-        estimatedPrice: pendingCustomization.estimatedPrice || 500,
+        designData: designDataWithAngleImages,
+        estimatedPrice: estimatedPrice || pendingCustomization.estimatedPrice || 500,
       });
       
       Alert.alert(
@@ -370,7 +650,22 @@ export default function Customizer3DScreen() {
     } finally {
       setIsSaving(false);
       setPendingCustomization(null);
+      // Reset form state
+      setSelectedFabric('');
+      setSelectedGarment('');
+      setNotes('');
+      setFormErrors({});
     }
+  };
+
+  // Reset form when modal closes
+  const handleCloseModal = () => {
+    setShowConfirmModal(false);
+    setPendingCustomization(null);
+    setSelectedFabric('');
+    setSelectedGarment('');
+    setNotes('');
+    setFormErrors({});
   };
 
   // Handle cancel
@@ -505,6 +800,16 @@ export default function Customizer3DScreen() {
         cacheEnabled={true}
         thirdPartyCookiesEnabled={true}
         sharedCookiesEnabled={true}
+        // Android WebGL/3D specific settings
+        androidHardwareAccelerationDisabled={false}
+        androidLayerType="hardware"
+        overScrollMode="never"
+        setBuiltInZoomControls={false}
+        setDisplayZoomControls={false}
+        // Prevent WebGL context loss
+        onContentProcessDidTerminate={() => {
+          webViewRef.current?.reload();
+        }}
         userAgent={Platform.select({
           ios: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1 ReactNativeWebView',
           android: 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36 ReactNativeWebView',
@@ -538,29 +843,49 @@ export default function Customizer3DScreen() {
         visible={showConfirmModal}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setShowConfirmModal(false)}
+        onRequestClose={handleCloseModal}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <ScrollView showsVerticalScrollIndicator={false}>
               {/* Modal Header */}
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Review Your Design</Text>
+                <Text style={styles.modalTitle}>🧥 Customization Service</Text>
                 <TouchableOpacity
-                  onPress={() => {
-                    setShowConfirmModal(false);
-                    setPendingCustomization(null);
-                  }}
+                  onPress={handleCloseModal}
                   style={styles.closeButton}
                 >
                   <Ionicons name="close" size={24} color="#5D4037" />
                 </TouchableOpacity>
               </View>
 
-              {/* Design Image */}
-              {pendingCustomization?.designImage && (
+              {/* Design Images - Show all 4 angle views if available */}
+              {pendingCustomization?.angleImages ? (
                 <View style={styles.imageSection}>
-                  <Text style={styles.sectionLabel}>Your 3D Design</Text>
+                  <Text style={styles.sectionLabel}>📷 Your 3D Design</Text>
+                  <View style={styles.angleImagesGrid}>
+                    {['front', 'back', 'right', 'left'].map((angle) => {
+                      const angleKey = angle as keyof typeof pendingCustomization.angleImages;
+                      const imageUri = pendingCustomization.angleImages?.[angleKey];
+                      if (!imageUri) return null;
+                      return (
+                        <View key={angle} style={styles.angleImageContainer}>
+                          <Image
+                            source={{ uri: imageUri }}
+                            style={styles.angleImage}
+                            resizeMode="contain"
+                          />
+                          <View style={styles.angleLabel}>
+                            <Text style={styles.angleLabelText}>{angle.charAt(0).toUpperCase() + angle.slice(1)}</Text>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : pendingCustomization?.designImage && (
+                <View style={styles.imageSection}>
+                  <Text style={styles.sectionLabel}>📷 Your 3D Design</Text>
                   <Image
                     source={{ uri: pendingCustomization.designImage }}
                     style={styles.designImage}
@@ -569,31 +894,85 @@ export default function Customizer3DScreen() {
                 </View>
               )}
 
-              {/* Design Details */}
-              <View style={styles.detailsSection}>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Garment Type:</Text>
-                  <Text style={styles.detailValue}>
-                    {pendingCustomization?.garmentType || 'N/A'}
+              {/* Fabric Type Dropdown */}
+              <View style={styles.formSection}>
+                <Text style={styles.sectionLabel}>
+                  🧵 Fabric Type <Text style={styles.required}>*</Text>
+                </Text>
+                <TouchableOpacity
+                  style={[styles.dropdownButton, formErrors.fabric && styles.dropdownError]}
+                  onPress={() => setShowFabricPicker(!showFabricPicker)}
+                >
+                  <Text style={selectedFabric ? styles.dropdownText : styles.dropdownPlaceholder}>
+                    {selectedFabric ? `${selectedFabric} - ₱${fabricTypes[selectedFabric]}` : '-- Select Fabric Type --'}
                   </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Fabric Type:</Text>
-                  <Text style={styles.detailValue}>
-                    {pendingCustomization?.fabricType || 'N/A'}
+                  <Ionicons name={showFabricPicker ? "chevron-up" : "chevron-down"} size={20} color="#8D6E63" />
+                </TouchableOpacity>
+                {showFabricPicker && (
+                  <View style={styles.dropdownOptions}>
+                    {Object.keys(fabricTypes).sort().map((fabric) => (
+                      <TouchableOpacity
+                        key={fabric}
+                        style={[styles.dropdownOption, selectedFabric === fabric && styles.dropdownOptionSelected]}
+                        onPress={() => {
+                          setSelectedFabric(fabric);
+                          setShowFabricPicker(false);
+                          setFormErrors(prev => ({ ...prev, fabric: '' }));
+                        }}
+                      >
+                        <Text style={[styles.dropdownOptionText, selectedFabric === fabric && styles.dropdownOptionTextSelected]}>
+                          {fabric} - ₱{fabricTypes[fabric].toFixed(2)}
+                        </Text>
+                        {selectedFabric === fabric && <Ionicons name="checkmark" size={18} color="#5D4037" />}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+                {formErrors.fabric && <Text style={styles.errorText}>{formErrors.fabric}</Text>}
+              </View>
+
+              {/* Garment Type Dropdown */}
+              <View style={styles.formSection}>
+                <Text style={styles.sectionLabel}>
+                  👔 Garment Type <Text style={styles.required}>*</Text>
+                </Text>
+                <TouchableOpacity
+                  style={[styles.dropdownButton, formErrors.garment && styles.dropdownError]}
+                  onPress={() => setShowGarmentPicker(!showGarmentPicker)}
+                >
+                  <Text style={selectedGarment ? styles.dropdownText : styles.dropdownPlaceholder}>
+                    {selectedGarment ? `${selectedGarment} - ₱${garmentTypes[selectedGarment]}` : '-- Select Garment Type --'}
                   </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Estimated Price:</Text>
-                  <Text style={styles.detailValue}>
-                    ₱{pendingCustomization?.estimatedPrice?.toLocaleString() || '500'}
-                  </Text>
-                </View>
+                  <Ionicons name={showGarmentPicker ? "chevron-up" : "chevron-down"} size={20} color="#8D6E63" />
+                </TouchableOpacity>
+                {showGarmentPicker && (
+                  <View style={styles.dropdownOptions}>
+                    {Object.keys(garmentTypes).map((garment) => (
+                      <TouchableOpacity
+                        key={garment}
+                        style={[styles.dropdownOption, selectedGarment === garment && styles.dropdownOptionSelected]}
+                        onPress={() => {
+                          setSelectedGarment(garment);
+                          setShowGarmentPicker(false);
+                          setFormErrors(prev => ({ ...prev, garment: '' }));
+                        }}
+                      >
+                        <Text style={[styles.dropdownOptionText, selectedGarment === garment && styles.dropdownOptionTextSelected]}>
+                          {garment} - ₱{garmentTypes[garment]}
+                        </Text>
+                        {selectedGarment === garment && <Ionicons name="checkmark" size={18} color="#5D4037" />}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+                {formErrors.garment && <Text style={styles.errorText}>{formErrors.garment}</Text>}
               </View>
 
               {/* Preferred Date */}
-              <View style={styles.dateSection}>
-                <Text style={styles.sectionLabel}>Preferred Date</Text>
+              <View style={styles.formSection}>
+                <Text style={styles.sectionLabel}>
+                  📅 Preferred Date for Sizing in Store <Text style={styles.required}>*</Text>
+                </Text>
                 <TouchableOpacity
                   style={styles.datePickerButton}
                   onPress={() => setShowDatePicker(true)}
@@ -611,12 +990,87 @@ export default function Customizer3DScreen() {
                 </TouchableOpacity>
               </View>
 
+              {/* 3D Customization Choices Display */}
+              {pendingCustomization?.designData && (
+                <View style={styles.customizationChoicesSection}>
+                  <Text style={styles.customizationChoicesTitle}>🎨 3D Customization Choices</Text>
+                  <View style={styles.customizationChoicesGrid}>
+                    {pendingCustomization.designData.size && (
+                      <View style={styles.choiceItem}>
+                        <Text style={styles.choiceLabel}>Size:</Text>
+                        <Text style={styles.choiceValue}>
+                          {String(pendingCustomization.designData.size).charAt(0).toUpperCase() + String(pendingCustomization.designData.size).slice(1)}
+                        </Text>
+                      </View>
+                    )}
+                    {pendingCustomization.designData.fit && (
+                      <View style={styles.choiceItem}>
+                        <Text style={styles.choiceLabel}>Fit:</Text>
+                        <Text style={styles.choiceValue}>
+                          {String(pendingCustomization.designData.fit).charAt(0).toUpperCase() + String(pendingCustomization.designData.fit).slice(1)}
+                        </Text>
+                      </View>
+                    )}
+                    {pendingCustomization.designData.colors?.fabric && (
+                      <View style={styles.choiceItem}>
+                        <Text style={styles.choiceLabel}>Color:</Text>
+                        <View style={styles.colorChoice}>
+                          <View style={[styles.colorSwatch, { backgroundColor: pendingCustomization.designData.colors.fabric }]} />
+                          <Text style={styles.choiceValue}>{getColorName(pendingCustomization.designData.colors.fabric)}</Text>
+                        </View>
+                      </View>
+                    )}
+                    {pendingCustomization.designData.pattern && pendingCustomization.designData.pattern !== 'none' && (
+                      <View style={styles.choiceItem}>
+                        <Text style={styles.choiceLabel}>Pattern:</Text>
+                        <Text style={styles.choiceValue}>
+                          {String(pendingCustomization.designData.pattern).charAt(0).toUpperCase() + String(pendingCustomization.designData.pattern).slice(1).replace('-', ' ')}
+                        </Text>
+                      </View>
+                    )}
+                    {pendingCustomization.designData.personalization?.initials && (
+                      <View style={[styles.choiceItem, styles.choiceItemFull]}>
+                        <Text style={styles.choiceLabel}>Personalization:</Text>
+                        <Text style={styles.choiceValue}>
+                          {pendingCustomization.designData.personalization.initials}
+                          {pendingCustomization.designData.personalization.font && ` (${pendingCustomization.designData.personalization.font} font)`}
+                        </Text>
+                      </View>
+                    )}
+                    {pendingCustomization.designData.buttons && pendingCustomization.designData.buttons.length > 0 && (
+                      <View style={[styles.choiceItem, styles.choiceItemFull]}>
+                        <Text style={styles.choiceLabel}>Buttons:</Text>
+                        <View>
+                          {pendingCustomization.designData.buttons.map((btn: any, index: number) => (
+                            <Text key={btn.id || index} style={styles.choiceValue}>
+                              Button {index + 1}: {getButtonType(btn.modelPath)}
+                            </Text>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                    {pendingCustomization.designData.accessories && pendingCustomization.designData.accessories.length > 0 && (
+                      <View style={[styles.choiceItem, styles.choiceItemFull]}>
+                        <Text style={styles.choiceLabel}>Accessories:</Text>
+                        <View>
+                          {pendingCustomization.designData.accessories.map((acc: any, index: number) => (
+                            <Text key={acc.id || index} style={styles.choiceValue}>
+                              {getAccessoryName(acc.modelPath)}
+                            </Text>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              )}
+
               {/* Notes */}
-              <View style={styles.notesSection}>
-                <Text style={styles.sectionLabel}>Additional Notes (Optional)</Text>
+              <View style={styles.formSection}>
+                <Text style={styles.sectionLabel}>📝 Additional Notes</Text>
                 <TextInput
                   style={styles.notesInput}
-                  placeholder="Add any special instructions or notes..."
+                  placeholder="Add any special requests or notes..."
                   placeholderTextColor="#8D6E63"
                   multiline
                   numberOfLines={4}
@@ -626,14 +1080,24 @@ export default function Customizer3DScreen() {
                 />
               </View>
 
+              {/* Estimated Price */}
+              {estimatedPrice > 0 && selectedFabric && selectedGarment && (
+                <View style={styles.priceEstimateSection}>
+                  <Text style={styles.priceEstimateTitle}>Estimated Price: ₱{estimatedPrice.toLocaleString()}</Text>
+                  <Text style={styles.priceBreakdown}>
+                    Fabric: {selectedFabric} (₱{fabricTypes[selectedFabric]}) + Garment: {selectedGarment} (₱{garmentTypes[selectedGarment]})
+                  </Text>
+                  <Text style={styles.priceNote}>
+                    Note: Estimated price is based on the selected garment and fabric type. Final price may vary depending on sizes and other accessories.
+                  </Text>
+                </View>
+              )}
+
               {/* Action Buttons */}
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   style={styles.modalCancelButton}
-                  onPress={() => {
-                    setShowConfirmModal(false);
-                    setPendingCustomization(null);
-                  }}
+                  onPress={handleCloseModal}
                 >
                   <Text style={styles.modalCancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
@@ -646,8 +1110,7 @@ export default function Customizer3DScreen() {
                     <ActivityIndicator color="#FFF" />
                   ) : (
                     <>
-                      <Text style={styles.confirmButtonText}>Add to Cart</Text>
-                      <Ionicons name="cart-outline" size={20} color="#FFF" />
+                      <Text style={styles.confirmButtonText}>🛒 Add to Cart</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -952,5 +1415,187 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  // Angle images grid styles
+  angleImagesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  angleImageContainer: {
+    width: '48%',
+    aspectRatio: 1,
+    position: 'relative',
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#E8D5C4',
+    backgroundColor: '#FFF',
+    marginBottom: 10,
+  },
+  angleImage: {
+    width: '100%',
+    height: '100%',
+  },
+  angleLabel: {
+    position: 'absolute',
+    bottom: 5,
+    left: 5,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  angleLabelText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    textTransform: 'capitalize',
+  },
+  // Form Section Styles
+  formSection: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  required: {
+    color: '#D32F2F',
+    fontSize: 14,
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8D5C4',
+  },
+  dropdownError: {
+    borderColor: '#D32F2F',
+  },
+  dropdownText: {
+    fontSize: 16,
+    color: '#5D4037',
+    flex: 1,
+  },
+  dropdownPlaceholder: {
+    fontSize: 16,
+    color: '#8D6E63',
+    flex: 1,
+  },
+  dropdownOptions: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8D5C4',
+    marginTop: 8,
+    maxHeight: 200,
+    overflow: 'hidden',
+  },
+  dropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0E6DD',
+  },
+  dropdownOptionSelected: {
+    backgroundColor: '#FFF8F0',
+  },
+  dropdownOptionText: {
+    fontSize: 15,
+    color: '#5D4037',
+  },
+  dropdownOptionTextSelected: {
+    fontWeight: '600',
+  },
+  errorText: {
+    color: '#D32F2F',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  // Customization Choices Section
+  customizationChoicesSection: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8D5C4',
+  },
+  customizationChoicesTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  customizationChoicesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  choiceItem: {
+    width: '50%',
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  choiceItemFull: {
+    width: '100%',
+  },
+  choiceLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#5D4037',
+    marginRight: 6,
+  },
+  choiceValue: {
+    fontSize: 13,
+    color: '#666',
+    flex: 1,
+  },
+  colorChoice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  colorSwatch: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: '#E8D5C4',
+  },
+  // Price Estimate Section
+  priceEstimateSection: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    backgroundColor: '#E8F5E9',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+  },
+  priceEstimateTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2E7D32',
+    marginBottom: 8,
+  },
+  priceBreakdown: {
+    fontSize: 13,
+    color: '#388E3C',
+    marginBottom: 8,
+  },
+  priceNote: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    lineHeight: 18,
   },
 });

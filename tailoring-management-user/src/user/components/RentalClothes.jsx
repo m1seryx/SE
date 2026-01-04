@@ -765,8 +765,9 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
   if (loading) {
     return (
       <section className="rental" id="Rentals">
-        <div className="section-header">
-          <h2>Rental Clothes</h2>
+        <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0 }}>Rental Clothes</h2>
+          
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#f5f5f5', padding: '6px 12px', borderRadius: '20px' }}>
               <button
@@ -802,7 +803,6 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
                 CM
               </button>
             </div>
-            {!showAll && <a onClick={handleSeeMore} className="see-more" style={{ display: 'flex', alignItems: 'center' }}>See more →</a>}
           </div>
         </div>
         <div className="rental-grid">
@@ -824,8 +824,9 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
   return (
     <>
       <section className="rental" id="Rentals">
-        <div className="section-header">
-          <h2>{showAll ? 'All Rental Clothes' : 'Rental Clothes'}</h2>
+        <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0 }}>{showAll ? 'All Rental Clothes' : 'Rental Clothes'}</h2>
+          
           <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Multi-select toggle button */}
             <button
@@ -854,9 +855,6 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
             >
               {isMultiSelectMode ? '✕ Cancel Selection' : '☑ Select Multiple'}
             </button>
-            {!showAll && rentalItems.length > 3 && (
-              <a onClick={handleSeeMore} className="see-more" style={{ display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' }}>See more →</a>
-            )}
           </div>
         </div>
         <div className="rental-grid">
@@ -937,6 +935,42 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
             ))
           )}
         </div>
+        
+        {/* See more button below grid, centered */}
+        {!showAll && rentalItems.length > 3 && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            marginTop: '20px',
+            marginBottom: '10px'
+          }}>
+            <span 
+              onClick={handleSeeMore} 
+              style={{ 
+                color: '#888', 
+                cursor: 'pointer', 
+                fontSize: '14px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'color 0.2s ease',
+                padding: '10px 20px',
+                borderRadius: '20px',
+                backgroundColor: '#f5f5f5'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.color = '#666';
+                e.target.style.backgroundColor = '#e8e8e8';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.color = '#888';
+                e.target.style.backgroundColor = '#f5f5f5';
+              }}
+            >
+              See more →
+            </span>
+          </div>
+        )}
       </section>
 
       {/* Floating selection bar for multi-select */}

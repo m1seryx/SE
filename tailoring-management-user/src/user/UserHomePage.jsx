@@ -457,7 +457,7 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
                   </button>
                 )}
               </div>
-              <div style={{ padding: '14px', display: 'grid', gap: '10px' }}>
+              <div style={{ padding: '14px', display: 'grid', gap: '10px', maxHeight: '400px', overflowY: 'auto' }}>
                 {notifications.length === 0 && (
                   <div style={{ textAlign: 'center', color: '#999', padding: '40px 0' }}>
                     No notifications yet

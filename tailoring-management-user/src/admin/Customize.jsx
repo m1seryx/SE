@@ -6,6 +6,7 @@ import Sidebar from './Sidebar';
 import { getAllCustomizationOrders, updateCustomizationOrderItem, uploadGLBFile, getAllCustom3DModels, deleteCustom3DModel } from '../api/CustomizationApi';
 import { getUserRole } from '../api/AuthApi';
 import { getAllFabricTypesAdmin, createFabricType, updateFabricType, deleteFabricType } from '../api/FabricTypeApi';
+import { getAllGarmentTypesAdmin, createGarmentType, updateGarmentType, deleteGarmentType } from '../api/GarmentTypeApi';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 import { getMeasurements, saveMeasurements } from '../api/CustomerApi';
 import { useAlert } from '../context/AlertContext';
@@ -88,6 +89,29 @@ const Customize = () => {
   });
   const [editingFabricType, setEditingFabricType] = useState(null);
   const [loadingFabricTypes, setLoadingFabricTypes] = useState(false);
+
+  // Garment type management state
+  const [showGarmentTypeModal, setShowGarmentTypeModal] = useState(false);
+  const [garmentTypes, setGarmentTypes] = useState([]);
+  const [garmentTypeForm, setGarmentTypeForm] = useState({
+    garment_name: '',
+    garment_price: '',
+    garment_code: '',
+    description: '',
+    is_active: 1
+  });
+  const [editingGarmentType, setEditingGarmentType] = useState(null);
+  const [loadingGarmentTypes, setLoadingGarmentTypes] = useState(false);
+  const [garmentGlbFile, setGarmentGlbFile] = useState(null);
+  const [uploadingGarmentGlb, setUploadingGarmentGlb] = useState(false);
+
+  // Default garment categories (built-in)
+  const defaultGarmentCategories = [
+    { value: 'coat-men', label: 'Blazer' },
+    { value: 'barong', label: 'Barong' },
+    { value: 'suit-1', label: 'Suit' },
+    { value: 'pants', label: 'Pants' }
+  ];
 
   const openImagePreview = (url, alt) => {
     setPreviewImageUrl(url);
@@ -247,6 +271,7 @@ const Customize = () => {
       loadCustomizationOrders();
       loadCustom3DModels();
       loadFabricTypes();
+      loadGarmentTypes();
     }
   }, []);
 
@@ -343,6 +368,170 @@ const Customize = () => {
     setEditingFabricType(null);
     setFabricTypeForm({ fabric_name: '', fabric_price: '', description: '', is_active: 1 });
     setShowFabricTypeModal(true);
+  };
+
+  // Load garment types
+  const loadGarmentTypes = async () => {
+    setLoadingGarmentTypes(true);
+    try {
+      const result = await getAllGarmentTypesAdmin();
+      if (result.success) {
+        setGarmentTypes(result.garments || []);
+      } else {
+        showToast(result.message || 'Failed to load garment types', 'error');
+      }
+    } catch (err) {
+      console.error("Load garment types error:", err);
+      showToast('Failed to load garment types', 'error');
+    } finally {
+      setLoadingGarmentTypes(false);
+    }
+  };
+
+  // Handle garment type form submit
+  const handleGarmentTypeSubmit = async () => {
+    if (!garmentTypeForm.garment_name.trim()) {
+      showToast('Please enter a garment name', 'error');
+      return;
+    }
+    if (!garmentTypeForm.garment_price || isNaN(parseFloat(garmentTypeForm.garment_price))) {
+      showToast('Please enter a valid price', 'error');
+      return;
+    }
+    if (!garmentTypeForm.garment_code.trim()) {
+      showToast('Please enter a garment code', 'error');
+      return;
+    }
+    // Require GLB file for new garment types (not required when editing)
+    if (!editingGarmentType && !garmentGlbFile) {
+      showToast('Please upload a 3D model (GLB file) for this garment type', 'error');
+      return;
+    }
+
+    setUploadingGarmentGlb(true);
+
+    try {
+      let result;
+      if (editingGarmentType) {
+        result = await updateGarmentType(editingGarmentType.garment_id, garmentTypeForm);
+      } else {
+        result = await createGarmentType(garmentTypeForm);
+      }
+      
+      if (result.success) {
+        // If there's a GLB file, upload it as a custom 3D model
+        if (garmentGlbFile) {
+          const glbFormData = {
+            model_name: garmentTypeForm.garment_name,
+            model_type: 'garment',
+            garment_category: garmentTypeForm.garment_code,
+            description: garmentTypeForm.description || `3D model for ${garmentTypeForm.garment_name}`
+          };
+          
+          const uploadResult = await uploadGLBFile(garmentGlbFile, glbFormData);
+          if (!uploadResult.success) {
+            showToast('Garment type saved but failed to upload 3D model: ' + (uploadResult.message || 'Unknown error'), 'warning');
+          } else {
+            await loadCustom3DModels();
+          }
+        }
+        
+        showToast(editingGarmentType ? 'Garment type updated successfully!' : 'Garment type created successfully!', 'success');
+        setShowGarmentTypeModal(false);
+        setGarmentTypeForm({ garment_name: '', garment_price: '', garment_code: '', description: '', is_active: 1 });
+        setGarmentGlbFile(null);
+        setEditingGarmentType(null);
+        await loadGarmentTypes();
+      } else {
+        showToast(result.message || 'Failed to save garment type', 'error');
+      }
+    } catch (err) {
+      console.error("Save garment type error:", err);
+      showToast('Failed to save garment type', 'error');
+    } finally {
+      setUploadingGarmentGlb(false);
+    }
+  };
+
+  // Handle GLB file change for garment type
+  const handleGarmentGlbFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.name.toLowerCase().endsWith('.glb')) {
+        showToast('Please select a valid GLB file', 'error');
+        return;
+      }
+      // Validate file size (max 50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        showToast('File size must be less than 50MB', 'error');
+        return;
+      }
+      setGarmentGlbFile(file);
+    }
+  };
+
+  // Handle delete garment type
+  const handleDeleteGarmentType = async (garmentId) => {
+    openConfirmModal("Are you sure you want to delete this garment type? This action cannot be undone.", async () => {
+      try {
+        const result = await deleteGarmentType(garmentId);
+        if (result.success) {
+          showToast('Garment type deleted successfully', 'success');
+          setGarmentTypes(prevGarments => prevGarments.filter(garment => garment.garment_id !== garmentId));
+          await loadGarmentTypes();
+        } else {
+          showToast(result.message || 'Failed to delete garment type', 'error');
+        }
+      } catch (err) {
+        console.error("Delete garment type error:", err);
+        showToast('Failed to delete garment type', 'error');
+        await loadGarmentTypes();
+      }
+    });
+  };
+
+  // Open garment type modal for editing
+  const openEditGarmentType = (garment) => {
+    setEditingGarmentType(garment);
+    setGarmentTypeForm({
+      garment_name: garment.garment_name,
+      garment_price: garment.garment_price,
+      garment_code: garment.garment_code || '',
+      description: garment.description || '',
+      is_active: garment.is_active
+    });
+    setGarmentGlbFile(null); // Reset GLB file when editing
+    setShowGarmentTypeModal(true);
+  };
+
+  // Open garment type modal for creating new
+  const openNewGarmentType = () => {
+    setEditingGarmentType(null);
+    setGarmentTypeForm({ garment_name: '', garment_price: '', garment_code: '', description: '', is_active: 1 });
+    setGarmentGlbFile(null); // Reset GLB file
+    setShowGarmentTypeModal(true);
+  };
+
+  // Get all garment categories (built-in + custom from API)
+  const getAllGarmentCategories = () => {
+    const categories = [...defaultGarmentCategories];
+    
+    // Add custom garment types from API
+    garmentTypes.forEach(garment => {
+      if (garment.is_active && garment.garment_code) {
+        // Check if not already in defaults
+        const exists = categories.find(c => c.value === garment.garment_code);
+        if (!exists) {
+          categories.push({
+            value: garment.garment_code,
+            label: garment.garment_name
+          });
+        }
+      }
+    });
+    
+    return categories;
   };
 
   const loadCustom3DModels = async () => {
@@ -941,6 +1130,22 @@ const Customize = () => {
             >
               + Add Fabric Type
             </button>
+            <button
+              onClick={openNewGarmentType}
+              style={{
+                marginLeft: '10px',
+                padding: '10px 20px',
+                backgroundColor: '#9c27b0',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              + Add Garment Type
+            </button>
           </div>
           {error && <div className="error-message" style={{ color: 'red', marginBottom: '20px' }}>{error}</div>}
         </div>
@@ -1536,7 +1741,7 @@ const Customize = () => {
 
       {/* Confirmation Modal */}
       {showConfirmModal && (
-        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowConfirmModal(false)}>
+        <div className="modal-overlay active confirm-modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowConfirmModal(false)}>
           <div className="confirm-modal">
             <div className="confirm-icon">
               <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E74C3C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1886,10 +2091,11 @@ const Customize = () => {
               required
             >
               <option value="">-- Select Garment Type --</option>
-              <option value="coat-men">Blazer</option>
-              <option value="barong">Barong</option>
-              <option value="suit-1">Suit</option>
-              <option value="pants">Pants</option>
+              {getAllGarmentCategories().map(category => (
+                <option key={category.value} value={category.value}>
+                  {category.label}
+                </option>
+              ))}
             </select>
             <small>This model will appear in the "Select Type" dropdown for the selected garment type</small>
           </div>
@@ -2038,7 +2244,7 @@ const Customize = () => {
                   <div className="fabric-item-info">
                     <div className="fabric-item-name">{fabric.fabric_name}</div>
                     <div className="fabric-item-details">
-                      <span className="price">Price: ₱{parseFloat(fabric.fabric_price).toFixed(2)}</span>
+                      <span className="price">Price: ₱{parseFloat(fabric.fabric_price).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                       {fabric.description && ` | ${fabric.description}`}
                       {!fabric.is_active && <span className="inactive-badge">(Inactive)</span>}
                     </div>
@@ -2076,6 +2282,170 @@ const Customize = () => {
           disabled={!fabricTypeForm.fabric_name.trim() || !fabricTypeForm.fabric_price || isNaN(parseFloat(fabricTypeForm.fabric_price))}
         >
           {editingFabricType ? 'Update' : 'Create'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+      {/* Garment Type Management Modal */}
+{showGarmentTypeModal && (
+  <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowGarmentTypeModal(false)}>
+    <div className="modal-content" style={{ maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div className="modal-header">
+        <h2>{editingGarmentType ? 'Edit Garment Type' : 'Add Garment Type'}</h2>
+        <span className="close-modal" onClick={() => {
+          setShowGarmentTypeModal(false);
+          setEditingGarmentType(null);
+          setGarmentTypeForm({ garment_name: '', garment_price: '', garment_code: '', description: '', is_active: 1 });
+          setGarmentGlbFile(null);
+        }}>×</span>
+      </div>
+      
+      <div className="customize-modal-body">
+        <div className="customize-form-group">
+          <label>Garment Name *</label>
+          <input
+            type="text"
+            value={garmentTypeForm.garment_name}
+            onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, garment_name: e.target.value })}
+            placeholder="e.g., Polo, Vest, Tuxedo"
+          />
+        </div>
+
+        <div className="customize-form-group">
+          <label>Garment Code *</label>
+          <input
+            type="text"
+            value={garmentTypeForm.garment_code}
+            onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, garment_code: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
+            placeholder="e.g., polo, vest, tuxedo (lowercase, no spaces)"
+          />
+          <small>This code is used internally to identify the garment type. Use lowercase letters and hyphens only.</small>
+        </div>
+
+        <div className="customize-form-group">
+          <label>Price (₱) *</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={garmentTypeForm.garment_price}
+            onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, garment_price: e.target.value })}
+            placeholder="0.00"
+          />
+        </div>
+
+        <div className="customize-form-group">
+          <label>3D Model (GLB File) {!editingGarmentType && '*'}</label>
+          <input
+            type="file"
+            accept=".glb"
+            onChange={handleGarmentGlbFileChange}
+            style={{ marginBottom: '8px' }}
+          />
+          {garmentGlbFile && (
+            <div style={{ 
+              padding: '8px 12px', 
+              backgroundColor: '#e8f5e9', 
+              borderRadius: '4px',
+              fontSize: '13px',
+              color: '#2e7d32',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>✅</span>
+              <span>Selected: {garmentGlbFile.name} ({(garmentGlbFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+            </div>
+          )}
+          <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
+            {editingGarmentType 
+              ? 'Upload a new GLB file to replace the existing 3D model (optional)' 
+              : 'Upload a 3D model file (.glb) that will be displayed in the 3D customizer. Max 50MB.'}
+          </small>
+        </div>
+
+        <div className="customize-form-group">
+          <label>Description</label>
+          <textarea
+            value={garmentTypeForm.description}
+            onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, description: e.target.value })}
+            placeholder="Optional description..."
+            rows={3}
+          />
+        </div>
+
+        <div className="customize-form-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={garmentTypeForm.is_active === 1}
+              onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, is_active: e.target.checked ? 1 : 0 })}
+            />
+            Active (Show in dropdowns)
+          </label>
+        </div>
+
+        {/* List of existing garment types */}
+        {garmentTypes.length > 0 && (
+          <div className="fabric-types-list-header">
+            <h3>Existing Garment Types ({garmentTypes.length})</h3>
+            <div className="fabric-types-scrollable">
+              {garmentTypes.map(garment => (
+                <div 
+                  key={garment.garment_id} 
+                  className={`fabric-item-card ${garment.is_active ? 'active' : 'inactive'}`}
+                >
+                  <div className="fabric-item-info">
+                    <div className="fabric-item-name">{garment.garment_name}</div>
+                    <div className="fabric-item-details">
+                      <span className="price">Price: ₱{parseFloat(garment.garment_price).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                      {garment.garment_code && <span> | Code: {garment.garment_code}</span>}
+                      {garment.description && ` | ${garment.description}`}
+                      {!garment.is_active && <span className="inactive-badge">(Inactive)</span>}
+                    </div>
+                  </div>
+                  <div className="fabric-item-actions">
+                    <button
+                      onClick={() => openEditGarmentType(garment)}
+                      className="fabric-edit-btn"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteGarmentType(garment.garment_id)}
+                      className="fabric-delete-btn"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      
+      <div className="customize-modal-footer">
+        <button className="customize-btn-cancel" onClick={() => {
+          setShowGarmentTypeModal(false);
+          setEditingGarmentType(null);
+          setGarmentTypeForm({ garment_name: '', garment_price: '', garment_code: '', description: '', is_active: 1 });
+          setGarmentGlbFile(null);
+        }} disabled={uploadingGarmentGlb}>Cancel</button>
+        <button
+          className="customize-btn-submit"
+          onClick={handleGarmentTypeSubmit}
+          disabled={
+            uploadingGarmentGlb ||
+            !garmentTypeForm.garment_name.trim() || 
+            !garmentTypeForm.garment_price || 
+            isNaN(parseFloat(garmentTypeForm.garment_price)) ||
+            (!editingGarmentType && !garmentGlbFile) // GLB required for new garment types
+          }
+        >
+          {uploadingGarmentGlb ? 'Uploading...' : (editingGarmentType ? 'Update' : 'Create')}
         </button>
       </div>
     </div>

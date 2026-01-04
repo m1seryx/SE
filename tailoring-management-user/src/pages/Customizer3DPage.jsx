@@ -335,11 +335,40 @@ const Customizer3DPage = () => {
 
   // Helper function to get garment type name
   const getGarmentTypeName = () => {
-    if (garment === 'coat-men') return 'Blazer (Men)';
-    if (garment === 'coat-women') return 'Blazer (Women)';
-    if (garment === 'barong') return 'Barong Tagalog';
-    if (garment === 'suit-1') return 'Business Suit';
+    if (garment === 'coat-men') return 'Blazer';
+    if (garment === 'coat-women') return 'Blazer';
+    if (garment === 'barong') return 'Barong';
+    if (garment === 'suit-1') return 'Suit';
     if (garment === 'pants') return 'Pants';
+    
+    // Handle custom models - extract garment_category
+    if (garment.startsWith('custom-')) {
+      const modelId = parseInt(garment.replace('custom-', ''));
+      const customModel = customModels?.find(m => m.model_id === modelId);
+      if (customModel?.garment_category) {
+        // Return the garment_category which matches the garment_code in database
+        return customModel.garment_category;
+      }
+      if (customModel?.model_name) {
+        return customModel.model_name;
+      }
+    }
+    return garment;
+  };
+  
+  // Helper function to get garment code for auto-fill matching
+  const getGarmentCode = () => {
+    // For built-in garments, return the code directly
+    if (!garment.startsWith('custom-')) {
+      return garment; // e.g., 'coat-men', 'barong', 'suit-1', 'pants'
+    }
+    
+    // For custom models, return the garment_category which matches garment_code in database
+    const modelId = parseInt(garment.replace('custom-', ''));
+    const customModel = customModels?.find(m => m.model_id === modelId);
+    if (customModel?.garment_category) {
+      return customModel.garment_category;
+    }
     return garment;
   };
 
@@ -421,10 +450,13 @@ const Customizer3DPage = () => {
     // Use front as the main design image (for backward compatibility)
     const designImage = angleImages.front || captureCanvasImage();
 
+    // Get the garment code for auto-fill matching
+    const garmentCode = getGarmentCode();
+    
     const finalDesign = {
       ...customizationData,
       design: {
-        garment,
+        garment: garmentCode, // Use the garment code for proper auto-fill matching
         garmentType: garmentTypeName,
         size,
         fit,
@@ -482,6 +514,27 @@ const Customizer3DPage = () => {
     navigate('/user-home');
   };
 
+  // Get unique custom garment models for navigation (exclude buttons/accessories)
+  const getCustomGarmentNavItems = () => {
+    if (!customModels || customModels.length === 0) return [];
+    
+    // Filter to only garment type models and remove duplicates by name
+    const uniqueModels = customModels
+      .filter(model => model.model_type === 'garment')
+      .reduce((acc, model) => {
+        const exists = acc.find(m => m.model_name.toLowerCase() === model.model_name.toLowerCase());
+        if (!exists) acc.push(model);
+        return acc;
+      }, []);
+    
+    return uniqueModels;
+  };
+
+  // Check if a custom model is currently selected
+  const isCustomModelActive = (modelId) => {
+    return garment === `custom-${modelId}`;
+  };
+
 
   return (
     <div className="app">
@@ -510,6 +563,19 @@ const Customizer3DPage = () => {
         >
           Pants
         </button>
+        
+        {/* Custom GLB models uploaded by admin */}
+        {getCustomGarmentNavItems().map(model => (
+          <button
+            key={model.model_id}
+            className={isCustomModelActive(model.model_id) ? 'active custom-model-btn' : 'custom-model-btn'}
+            onClick={() => setGarment(`custom-${model.model_id}`)}
+            title={model.description || model.model_name}
+          >
+            {model.model_name}
+          </button>
+        ))}
+        
         <button 
           className="save-btn"
           onClick={handleSaveDesign}

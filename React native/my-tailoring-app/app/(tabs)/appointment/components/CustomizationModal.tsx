@@ -18,6 +18,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { addCustomizationToCart, uploadCustomizationImage } from '../../../../utils/customizationService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -26,27 +27,44 @@ interface CustomizationModalProps {
   onClose: () => void;
 }
 
-const GARMENT_TYPES = [
-  { id: 'polo', name: 'Polo Shirt', icon: 'shirt-outline', price: 800 },
-  { id: 'pants', name: 'Pants', icon: 'body-outline', price: 900 },
-  { id: 'suit', name: 'Suit', icon: 'business-outline', price: 2500 },
-  { id: 'blazer', name: 'Blazer', icon: 'shirt-outline', price: 1800 },
-  { id: 'barong', name: 'Barong Tagalog', icon: 'shirt-outline', price: 2200 },
-  { id: 'dress', name: 'Dress', icon: 'woman-outline', price: 1500 },
+interface GarmentType {
+  id: string;
+  name: string;
+  icon: string;
+  price: number;
+}
+
+interface FabricType {
+  id: string;
+  name: string;
+  price: number;
+}
+
+// Default garment types (fallback)
+const DEFAULT_GARMENT_TYPES: GarmentType[] = [
+  { id: 'pants', name: 'Pants', icon: 'body-outline', price: 1000 },
+  { id: 'suit', name: 'Suit', icon: 'business-outline', price: 5600 },
+  { id: 'blazer', name: 'Blazer', icon: 'shirt-outline', price: 5000 },
+  { id: 'barong', name: 'Barong', icon: 'shirt-outline', price: 3500 },
 ];
 
-const FABRIC_TYPES = [
-  { id: 'cotton', name: 'Cotton' },
-  { id: 'silk', name: 'Silk' },
-  { id: 'linen', name: 'Linen' },
-  { id: 'wool', name: 'Wool' },
-  { id: 'polyester', name: 'Polyester' },
+// Default fabric types (fallback)
+const DEFAULT_FABRIC_TYPES: FabricType[] = [
+  { id: 'cotton', name: 'Cotton', price: 200 },
+  { id: 'silk', name: 'Silk', price: 300 },
+  { id: 'linen', name: 'Linen', price: 400 },
+  { id: 'wool', name: 'Wool', price: 200 },
 ];
 
 export default function CustomizationModal({ visible, onClose }: CustomizationModalProps) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [loadingTypes, setLoadingTypes] = useState(false);
+  
+  // Dynamic types loaded from API
+  const [garmentTypes, setGarmentTypes] = useState<GarmentType[]>(DEFAULT_GARMENT_TYPES);
+  const [fabricTypes, setFabricTypes] = useState<FabricType[]>(DEFAULT_FABRIC_TYPES);
   
   // Form state
   const [selectedGarment, setSelectedGarment] = useState<string>('');
@@ -54,6 +72,77 @@ export default function CustomizationModal({ visible, onClose }: CustomizationMo
   const [image, setImage] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [measurements, setMeasurements] = useState('');
+
+  // Load garment and fabric types from API
+  const loadTypesFromAPI = async () => {
+    setLoadingTypes(true);
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.1.202:5000/api';
+      
+      // Load garment types
+      const garmentResponse = await fetch(`${baseUrl}/garment-types`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (garmentResponse.ok) {
+        const garmentData = await garmentResponse.json();
+        if (garmentData.success && garmentData.garments && garmentData.garments.length > 0) {
+          const loadedGarments: GarmentType[] = garmentData.garments.map((g: any) => ({
+            id: g.garment_code || g.garment_name.toLowerCase(),
+            name: g.garment_name,
+            icon: getGarmentIcon(g.garment_name),
+            price: parseFloat(g.garment_price),
+          }));
+          setGarmentTypes(loadedGarments);
+        }
+      }
+      
+      // Load fabric types
+      const fabricResponse = await fetch(`${baseUrl}/fabric-types`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (fabricResponse.ok) {
+        const fabricData = await fabricResponse.json();
+        if (fabricData.success && fabricData.fabrics && fabricData.fabrics.length > 0) {
+          const loadedFabrics: FabricType[] = fabricData.fabrics.map((f: any) => ({
+            id: f.fabric_name.toLowerCase(),
+            name: f.fabric_name,
+            price: parseFloat(f.fabric_price),
+          }));
+          setFabricTypes(loadedFabrics);
+        }
+      }
+    } catch (error) {
+      console.log('Error loading types from API:', error);
+      // Keep default values
+    } finally {
+      setLoadingTypes(false);
+    }
+  };
+
+  // Helper to get icon based on garment name
+  const getGarmentIcon = (name: string): string => {
+    const nameLower = name.toLowerCase();
+    if (nameLower.includes('pants')) return 'body-outline';
+    if (nameLower.includes('suit')) return 'business-outline';
+    if (nameLower.includes('dress')) return 'woman-outline';
+    return 'shirt-outline';
+  };
+
+  // Load types when modal opens
+  React.useEffect(() => {
+    if (visible) {
+      loadTypesFromAPI();
+    }
+  }, [visible]);
 
   const resetForm = () => {
     setStep(1);
@@ -81,7 +170,7 @@ export default function CustomizationModal({ visible, onClose }: CustomizationMo
   };
 
   const getSelectedGarmentPrice = () => {
-    const garment = GARMENT_TYPES.find(g => g.id === selectedGarment);
+    const garment = garmentTypes.find(g => g.id === selectedGarment);
     return garment?.price || 1000;
   };
 
@@ -130,8 +219,8 @@ export default function CustomizationModal({ visible, onClose }: CustomizationMo
       }
 
       // Add to cart
-      const garmentName = GARMENT_TYPES.find(g => g.id === selectedGarment)?.name || selectedGarment;
-      const fabricName = FABRIC_TYPES.find(f => f.id === selectedFabric)?.name || selectedFabric;
+      const garmentName = garmentTypes.find(g => g.id === selectedGarment)?.name || selectedGarment;
+      const fabricName = fabricTypes.find(f => f.id === selectedFabric)?.name || selectedFabric;
 
       await addCustomizationToCart({
         garmentType: garmentName,
@@ -218,7 +307,7 @@ export default function CustomizationModal({ visible, onClose }: CustomizationMo
               <View style={styles.stepContainer}>
                 <Text style={styles.sectionTitle}>Select Garment Type</Text>
                 <View style={styles.garmentGrid}>
-                  {GARMENT_TYPES.map((garment) => (
+                  {garmentTypes.map((garment) => (
                     <TouchableOpacity
                       key={garment.id}
                       style={[
@@ -259,7 +348,7 @@ export default function CustomizationModal({ visible, onClose }: CustomizationMo
               <View style={styles.stepContainer}>
                 <Text style={styles.sectionTitle}>Select Fabric Type</Text>
                 <View style={styles.fabricRow}>
-                  {FABRIC_TYPES.map((fabric) => (
+                  {fabricTypes.map((fabric) => (
                     <TouchableOpacity
                       key={fabric.id}
                       style={[

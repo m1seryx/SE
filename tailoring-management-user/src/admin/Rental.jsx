@@ -705,13 +705,13 @@ function Rental() {
                           textDecoration: rental.approval_status === 'cancelled' ? 'line-through' : 'none',
                           color: rental.approval_status === 'cancelled' ? '#999' : 'inherit'
                         }}>
-                          ₱{finalPrice.toLocaleString()}
+                          ₱{finalPrice.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                         </td>
                         <td>
                           <div style={{ fontSize: '12px' }}>
-                            <div>Paid: ₱{amountPaid.toLocaleString()}</div>
+                            <div>Paid: ₱{amountPaid.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                             <div style={{ color: remainingBalance > 0 ? '#ff9800' : '#4caf50', fontWeight: 'bold' }}>
-                              Remaining: ₱{Math.max(0, remainingBalance).toLocaleString()}
+                              Remaining: ₱{Math.max(0, remainingBalance).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                             </div>
                           </div>
                         </td>
@@ -788,7 +788,7 @@ function Rental() {
                                   if (isMovingToRented && hasNoPayment) {
                                     disableMessage = `Record payment first before moving to ${nextStatusLabel}`;
                                   } else if (isCurrentlyRented && hasRemainingBalance) {
-                                    disableMessage = `Full payment required (₱${remainingBalance.toLocaleString()} remaining) before moving to ${nextStatusLabel}`;
+                                    disableMessage = `Full payment required (₱${remainingBalance.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} remaining) before moving to ${nextStatusLabel}`;
                                   }
                                   
                                   return (
@@ -991,7 +991,7 @@ function Rental() {
                   textDecoration: selectedRental.approval_status === 'cancelled' ? 'line-through' : 'none',
                   color: selectedRental.approval_status === 'cancelled' ? '#999' : 'inherit'
                 }}>
-                  ₱{parseFloat(selectedRental.final_price || 0).toLocaleString()}
+                  ₱{parseFloat(selectedRental.final_price || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </span>
               </div>
               {(() => {
@@ -1016,20 +1016,20 @@ function Rental() {
                       }}>
                         <strong style={{ color: '#856404' }}>⚠️ Late Return Penalty:</strong>
                         <span style={{ color: '#856404', fontWeight: 'bold' }}>
-                          ₱{penalty.toLocaleString()} ({penaltyDays} day{penaltyDays > 1 ? 's' : ''} exceeded)
+                          ₱{penalty.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ({penaltyDays} day{penaltyDays > 1 ? 's' : ''} exceeded)
                         </span>
                       </div>
                     )}
                     <div className="detail-row">
                       <strong>Amount Paid:</strong>
                       <span style={{ color: '#4caf50', fontWeight: 'bold' }}>
-                        ₱{amountPaid.toLocaleString()}
+                        ₱{amountPaid.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                       </span>
                     </div>
                     <div className="detail-row">
                       <strong>Remaining Balance:</strong>
                       <span style={{ color: remaining > 0 ? '#ff9800' : '#4caf50', fontWeight: 'bold' }}>
-                        ₱{Math.max(0, remaining).toLocaleString()}
+                        ₱{Math.max(0, remaining).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                       </span>
                     </div>
                   </>
@@ -1159,7 +1159,7 @@ function Rental() {
                       </div>
                       <div className="detail-row">
                         <strong>Category:</strong>
-                        <span>{selectedRental.specific_data?.category || 'N/A'}</span>
+                        <span>{(selectedRental.specific_data?.category || 'N/A').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
                       </div>
                       <div className="detail-row">
                         <strong>Brand:</strong>
@@ -1380,7 +1380,7 @@ function Rental() {
                   fontWeight: 'bold',
                   textDecoration: selectedRental.approval_status === 'cancelled' ? 'line-through' : 'none'
                 }}>
-                  ₱{parseFloat(selectedRental.final_price || 0).toLocaleString()}
+                  ₱{parseFloat(selectedRental.final_price || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </span>
               </div>
               {(() => {
@@ -1405,20 +1405,20 @@ function Rental() {
                       }}>
                         <strong style={{ color: '#856404' }}>⚠️ Late Return Penalty:</strong>
                         <span style={{ color: '#856404', fontWeight: 'bold' }}>
-                          ₱{penalty.toLocaleString()} ({penaltyDays} day{penaltyDays > 1 ? 's' : ''} exceeded)
+                          ₱{penalty.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ({penaltyDays} day{penaltyDays > 1 ? 's' : ''} exceeded)
                         </span>
                       </div>
                     )}
               <div className="detail-row">
                       <strong>Amount Paid:</strong>
                       <span style={{ color: '#4caf50', fontWeight: 'bold' }}>
-                        ₱{amountPaid.toLocaleString()}
+                        ₱{amountPaid.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </span>
               </div>
                     <div className="detail-row">
                       <strong>Remaining Balance:</strong>
                       <span style={{ color: remaining > 0 ? '#ff9800' : '#4caf50', fontWeight: 'bold' }}>
-                        ₱{Math.max(0, remaining).toLocaleString()}
+                        ₱{Math.max(0, remaining).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                         {remaining <= 0 && finalPrice > 0 && ' (Fully Paid)'}
                       </span>
                     </div>

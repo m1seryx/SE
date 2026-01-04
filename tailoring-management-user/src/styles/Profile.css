@@ -586,6 +586,10 @@
   font-size: 1.3rem;
 }
 
+.details-modal-header h3.modal-title-black {
+  color: #000 !important;
+}
+
 .details-modal-close {
   background: none;
   border: none;

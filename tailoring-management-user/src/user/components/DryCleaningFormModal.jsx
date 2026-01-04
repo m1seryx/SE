@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { addDryCleaningToCart, uploadDryCleaningImage } from '../../api/DryCleaningApi';
 import { getAvailableSlots, bookSlot } from '../../api/AppointmentSlotApi';
-import { getAllGarmentTypes } from '../../api/GarmentTypeApi';
+import { getAllDCGarmentTypes } from '../../api/DryCleaningGarmentTypeApi';
 import '../../styles/DryCleaningFormModal.css';
 import '../../styles/SharedModal.css';
 
@@ -39,17 +39,17 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   // Load garment types from API
   const loadGarmentTypes = async () => {
     try {
-      const result = await getAllGarmentTypes();
-      if (result.success && result.garments) {
+      const result = await getAllDCGarmentTypes();
+      if (result.success && result.data) {
         // Create object for quick price lookup
         const typesObj = {};
-        result.garments.forEach(garment => {
+        result.data.forEach(garment => {
           if (garment.is_active === 1) {
             typesObj[garment.garment_name.toLowerCase()] = parseFloat(garment.garment_price);
           }
         });
         setGarmentTypes(typesObj);
-        setGarmentTypesList(result.garments.filter(g => g.is_active === 1));
+        setGarmentTypesList(result.data.filter(g => g.is_active === 1));
       }
     } catch (err) {
       console.error("Load garment types error:", err);

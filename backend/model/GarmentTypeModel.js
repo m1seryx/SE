@@ -21,23 +21,23 @@ const GarmentType = {
 
   // Create new garment type
   create: (garmentData, callback) => {
-    const { garment_name, garment_price, description, is_active } = garmentData;
+    const { garment_name, garment_price, garment_code, description, is_active } = garmentData;
     const sql = `
-      INSERT INTO garment_types (garment_name, garment_price, description, is_active)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO garment_types (garment_name, garment_price, garment_code, description, is_active)
+      VALUES (?, ?, ?, ?, ?)
     `;
-    db.query(sql, [garment_name, garment_price || 0.00, description || null, is_active !== undefined ? is_active : 1], callback);
+    db.query(sql, [garment_name, garment_price || 0.00, garment_code || null, description || null, is_active !== undefined ? is_active : 1], callback);
   },
 
   // Update garment type
   update: (garmentId, garmentData, callback) => {
-    const { garment_name, garment_price, description, is_active } = garmentData;
+    const { garment_name, garment_price, garment_code, description, is_active } = garmentData;
     const sql = `
       UPDATE garment_types 
-      SET garment_name = ?, garment_price = ?, description = ?, is_active = ?
+      SET garment_name = ?, garment_price = ?, garment_code = ?, description = ?, is_active = ?
       WHERE garment_id = ?
     `;
-    db.query(sql, [garment_name, garment_price, description || null, is_active !== undefined ? is_active : 1, garmentId], callback);
+    db.query(sql, [garment_name, garment_price, garment_code || null, description || null, is_active !== undefined ? is_active : 1, garmentId], callback);
   },
 
   // Delete garment type (soft delete by setting is_active = 0)

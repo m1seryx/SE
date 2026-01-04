@@ -1,15 +1,20 @@
 import { useGLTF } from '@react-three/drei';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 export default function DraggableButton({ id, modelPath, position, color, scale = 0.15, onPositionChange, onSelect, isSelected, onMovingChange }) {
     const { scene: buttonModel } = useGLTF(modelPath);
     const groupRef = useRef();
-    const clonedScene = buttonModel.clone();
     const [isMoving, setIsMoving] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
     const { camera, raycaster, pointer, gl, scene } = useThree();
+
+    // Clone scene only once using useMemo to prevent crashes
+    const clonedScene = useMemo(() => {
+        if (!buttonModel) return null;
+        return buttonModel.clone();
+    }, [buttonModel]);
 
     useLayoutEffect(() => {
         if (clonedScene) {
@@ -107,7 +112,7 @@ export default function DraggableButton({ id, modelPath, position, color, scale 
             onPointerEnter={handlePointerEnter}
             onPointerLeave={handlePointerLeave}
         >
-            <primitive object={clonedScene} />
+            {clonedScene && <primitive object={clonedScene} />}
 
             {/* Visual feedback */}
             {(isSelected || isHovered || isMoving) && (

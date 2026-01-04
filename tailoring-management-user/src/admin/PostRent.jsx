@@ -406,7 +406,7 @@ const PostRent = () => {
                 <div className="compact-item-info">
                   <h3>{item.item_name}</h3>
                   <div className="compact-item-price">
-                    ₱{item.price || '0'}
+                    ₱{parseFloat(item.price || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </div>
                   <span className={`status-badge ${item.status?.toLowerCase()}`}>
                     {item.status || 'available'}
@@ -939,7 +939,7 @@ const PostRent = () => {
                   <div className="price-grid" style={{ gridTemplateColumns: '1fr' }}>
                     <div className="price-item">
                       <label>Price:</label>
-                      <span className="price-value">₱{selectedItem.price || '0'}</span>
+                      <span className="price-value">₱{parseFloat(selectedItem.price || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                     </div>
                   </div>
                 </div>

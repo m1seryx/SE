@@ -4,6 +4,7 @@ import '../../styles/CustomizationFormModal.css';
 import '../../styles/SharedModal.css';
 import { uploadCustomizationImage, addCustomizationToCart } from '../../api/CustomizationApi';
 import { getAllFabricTypes } from '../../api/FabricTypeApi';
+import { getAllGarmentTypes } from '../../api/GarmentTypeApi';
 
 const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const navigate = useNavigate();
@@ -31,13 +32,10 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
 
   const [fabricTypes, setFabricTypes] = useState(defaultFabricTypes);
 
-  // Garment types with prices
-  const garmentTypes = {
-    'Suits': 500,
-    'Coat': 400,
-    'barong': 400,
-    'Pants': 200
-  };
+  // Garment types - loaded dynamically from API only (no defaults)
+  const [garmentTypes, setGarmentTypes] = useState({});
+  // Mapping of garment_code to garment_name (for 3D customizer auto-fill)
+  const [garmentCodeToName, setGarmentCodeToName] = useState({});
 
   // Preset colors from 3D customizer - must match exactly
   const presetColors = [
@@ -171,8 +169,8 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     return accessoryMap[modelPath] || modelPath.split('/').pop().replace('.glb', '').replace(/\d+/g, '').trim();
   };
 
-  // Load fabric types from API - reload every time modal opens to get latest data
-  // Merge with default fabric types (defaults are kept, API fabrics are added)
+  // Load fabric types and garment types from API - reload every time modal opens to get latest data
+  // Merge with defaults (defaults are kept, API data is added)
   useEffect(() => {
     if (isOpen) {
       const loadFabricTypes = async () => {
@@ -203,13 +201,117 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
           setFabricTypes(defaultFabricTypes);
         }
       };
+
+      const loadGarmentTypes = async () => {
+        try {
+          console.log('🔄 Loading garment types from API...');
+          const result = await getAllGarmentTypes();
+          console.log('✅ Garment types API result:', result);
+          
+          if (result.success && result.garments && result.garments.length > 0) {
+            // Build garment types object from API only
+            const garmentTypesObj = {};
+            const codeToNameMap = {};
+            result.garments.forEach(garment => {
+              garmentTypesObj[garment.garment_name] = parseFloat(garment.garment_price);
+              // Map garment_code to garment_name for 3D customizer auto-fill
+              if (garment.garment_code) {
+                codeToNameMap[garment.garment_code.toLowerCase()] = garment.garment_name;
+              }
+              // Also map by lowercase name for flexible matching
+              codeToNameMap[garment.garment_name.toLowerCase()] = garment.garment_name;
+            });
+            console.log('✅ Garment types from API:', garmentTypesObj);
+            console.log('✅ Garment code to name mapping:', codeToNameMap);
+            console.log('✅ Total garment types:', Object.keys(garmentTypesObj).length);
+            setGarmentTypes(garmentTypesObj);
+            setGarmentCodeToName(codeToNameMap);
+          } else {
+            console.warn('⚠️ No garment types found from API');
+            setGarmentTypes({});
+            setGarmentCodeToName({});
+          }
+        } catch (error) {
+          console.error('❌ Error loading garment types:', error);
+          setGarmentTypes({});
+          setGarmentCodeToName({});
+        }
+      };
+
       // Small delay to ensure modal is fully rendered
       const timer = setTimeout(() => {
         loadFabricTypes();
+        loadGarmentTypes();
       }, 100);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+
+  // Auto-fill garment type when garmentCodeToName mapping is ready
+  useEffect(() => {
+    if (designDetails?._pendingGarmentAutoFill && Object.keys(garmentCodeToName).length > 0) {
+      console.log('🎯 Processing pending garment auto-fill...');
+      console.log('🎯 Design details:', designDetails);
+      console.log('🎯 Available garment code mapping:', garmentCodeToName);
+      
+      let mappedGarment = '';
+      
+      // First try to match by garment code (most reliable)
+      if (designDetails.garment) {
+        const garmentCode = designDetails.garment.toLowerCase();
+        console.log('🎯 Trying to match garment code:', garmentCode);
+        
+        // Direct match
+        if (garmentCodeToName[garmentCode]) {
+          mappedGarment = garmentCodeToName[garmentCode];
+        } else {
+          // Try partial matches
+          for (const [code, name] of Object.entries(garmentCodeToName)) {
+            if (garmentCode.includes(code) || code.includes(garmentCode)) {
+              mappedGarment = name;
+              break;
+            }
+          }
+        }
+      }
+      
+      // Fallback: try to match by garmentType name
+      if (!mappedGarment && designDetails.garmentType) {
+        const garmentTypeLower = designDetails.garmentType.toLowerCase();
+        console.log('🎯 Trying to match garment type name:', garmentTypeLower);
+        
+        // Try exact match first
+        if (garmentCodeToName[garmentTypeLower]) {
+          mappedGarment = garmentCodeToName[garmentTypeLower];
+        } else {
+          // Try partial matches on the name
+          for (const [code, name] of Object.entries(garmentCodeToName)) {
+            const nameLower = name.toLowerCase();
+            if (garmentTypeLower.includes(nameLower) || nameLower.includes(garmentTypeLower) ||
+                garmentTypeLower.includes(code) || code.includes(garmentTypeLower)) {
+              mappedGarment = name;
+              break;
+            }
+          }
+        }
+      }
+      
+      console.log('🎯 Final mapped garment:', mappedGarment || '(no match found)');
+      
+      if (mappedGarment) {
+        setFormData(prev => ({
+          ...prev,
+          garmentType: mappedGarment
+        }));
+      }
+      
+      // Clear the pending flag
+      setDesignDetails(prev => ({
+        ...prev,
+        _pendingGarmentAutoFill: false
+      }));
+    }
+  }, [garmentCodeToName, designDetails]);
 
   // Load 3D customization data when modal opens
   useEffect(() => {
@@ -231,8 +333,12 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
           }
           
           // Store design details for display (this includes angleImages if available)
+          // Also mark for pending garment auto-fill
           if (design.design) {
-            setDesignDetails(design.design);
+            setDesignDetails({
+              ...design.design,
+              _pendingGarmentAutoFill: true
+            });
           }
           
           if (designImage) {
@@ -282,36 +388,11 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
             }));
           }
           
-          if (design.design?.garmentType) {
-            const garmentName = design.design.garmentType;
-            // Map garment names to match our options
-            let mappedGarment = garmentName;
-            if (garmentName.includes('Suit') || garmentName.includes('suit')) {
-              mappedGarment = 'Suits';
-            } else if (garmentName.includes('Coat') || garmentName.includes('Blazer')) {
-              mappedGarment = 'Coat';
-            } else if (garmentName.includes('Barong') || garmentName.includes('barong')) {
-              mappedGarment = 'barong';
-            } else if (garmentName.includes('Pants') || garmentName.includes('Pants')) {
-              mappedGarment = 'Pants';
-            }
-            
-            setFormData(prev => ({
-              ...prev,
-              garmentType: mappedGarment
-            }));
-          }
-          
           if (design.notes || design.design?.notes) {
             setFormData(prev => ({
               ...prev,
               notes: design.notes || design.design?.notes || ''
             }));
-          }
-          
-          // Store design details for display
-          if (design.design) {
-            setDesignDetails(design.design);
           }
           
           // Clear the sessionStorage after loading

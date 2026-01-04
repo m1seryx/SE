@@ -1,5 +1,5 @@
 // CustomizationModal.tsx - Modal for customization with 3D WebView option
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePickerModal from '../../../components/DateTimePickerModal';
 import { addCustomizationToCart, uploadCustomizationImage } from '../../../utils/customizationService';
 
@@ -27,7 +28,8 @@ interface CustomizationModalProps {
   onClose: () => void;
 }
 
-const GARMENT_TYPES = [
+// Default fallback garment types
+const DEFAULT_GARMENT_TYPES = [
   { id: 'shirt', label: 'Shirt', icon: 'shirt-outline', price: 800 },
   { id: 'pants', label: 'Pants', icon: 'body-outline', price: 900 },
   { id: 'suit', label: 'Suit', icon: 'bowtie-outline', price: 2500 },
@@ -44,6 +46,15 @@ const FABRIC_TYPES = [
   { id: 'polyester', label: 'Polyester' },
 ];
 
+// Helper to get icon based on garment name
+const getGarmentIcon = (name: string): string => {
+  const lowerName = name.toLowerCase();
+  if (lowerName.includes('pants') || lowerName.includes('trouser')) return 'body-outline';
+  if (lowerName.includes('suit')) return 'bowtie-outline';
+  if (lowerName.includes('dress') || lowerName.includes('gown')) return 'woman-outline';
+  return 'shirt-outline';
+};
+
 export default function CustomizationModal({ visible, onClose }: CustomizationModalProps) {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -55,6 +66,52 @@ export default function CustomizationModal({ visible, onClose }: CustomizationMo
   const [measurements, setMeasurements] = useState('');
   const [preferredDate, setPreferredDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [garmentTypes, setGarmentTypes] = useState(DEFAULT_GARMENT_TYPES);
+  const [loadingGarments, setLoadingGarments] = useState(false);
+
+  // Load garment types from API when modal opens
+  useEffect(() => {
+    if (visible) {
+      loadGarmentTypes();
+    }
+  }, [visible]);
+
+  const loadGarmentTypes = async () => {
+    setLoadingGarments(true);
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.1.202:5000/api'}/garment-types`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.garments && data.garments.length > 0) {
+          const transformedGarments = data.garments
+            .filter((g: any) => g.is_active === 1)
+            .map((garment: any) => ({
+              id: garment.garment_code || garment.garment_name.toLowerCase().replace(/\s+/g, '_'),
+              label: garment.garment_name,
+              icon: getGarmentIcon(garment.garment_name),
+              price: parseFloat(garment.garment_price) || 0,
+            }));
+          
+          if (transformedGarments.length > 0) {
+            setGarmentTypes(transformedGarments);
+            console.log('✅ Loaded garment types for modal:', transformedGarments);
+          }
+        }
+      }
+    } catch (error) {
+      console.log('Error loading garment types:', error);
+      // Keep default values
+    } finally {
+      setLoadingGarments(false);
+    }
+  };
 
   const resetForm = () => {
     setStep(1);
@@ -91,7 +148,7 @@ export default function CustomizationModal({ visible, onClose }: CustomizationMo
   };
 
   const getSelectedGarmentPrice = () => {
-    const garment = GARMENT_TYPES.find(g => g.id === selectedGarment);
+    const garment = garmentTypes.find(g => g.id === selectedGarment);
     return garment?.price || 1000;
   };
 
@@ -134,7 +191,7 @@ export default function CustomizationModal({ visible, onClose }: CustomizationMo
 
       // Add to cart
       await addCustomizationToCart({
-        garmentType: GARMENT_TYPES.find(g => g.id === selectedGarment)?.label || selectedGarment,
+        garmentType: garmentTypes.find(g => g.id === selectedGarment)?.label || selectedGarment,
         fabricType: FABRIC_TYPES.find(f => f.id === selectedFabric)?.label || selectedFabric,
         preferredDate: preferredDate.toISOString().split('T')[0],
         notes: notes,
@@ -218,8 +275,11 @@ export default function CustomizationModal({ visible, onClose }: CustomizationMo
             <>
               {/* Garment Type Selection */}
               <Text style={styles.sectionTitle}>Select Garment Type</Text>
+              {loadingGarments ? (
+                <ActivityIndicator size="small" color="#B8860B" style={{ marginVertical: 20 }} />
+              ) : (
               <View style={styles.garmentGrid}>
-                {GARMENT_TYPES.map((garment) => (
+                {garmentTypes.map((garment) => (
                   <TouchableOpacity
                     key={garment.id}
                     style={[
@@ -243,6 +303,7 @@ export default function CustomizationModal({ visible, onClose }: CustomizationMo
                   </TouchableOpacity>
                 ))}
               </View>
+              )}
 
               {/* Fabric Type */}
               <Text style={styles.sectionTitle}>Select Fabric</Text>
@@ -299,7 +360,7 @@ export default function CustomizationModal({ visible, onClose }: CustomizationMo
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Garment:</Text>
                   <Text style={styles.summaryValue}>
-                    {GARMENT_TYPES.find(g => g.id === selectedGarment)?.label}
+                    {garmentTypes.find(g => g.id === selectedGarment)?.label}
                   </Text>
                 </View>
                 <View style={styles.summaryRow}>

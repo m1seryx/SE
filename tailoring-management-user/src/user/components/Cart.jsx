@@ -33,6 +33,15 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
   // Bundle modal state
   const [bundleModalOpen, setBundleModalOpen] = useState(false);
   const [bundleItems, setBundleItems] = useState([]);
+  
+  // Rental detail modal state
+  const [rentalDetailModalOpen, setRentalDetailModalOpen] = useState(false);
+  const [selectedRentalItem, setSelectedRentalItem] = useState(null);
+  
+  // Bundle item detail modal state
+  const [bundleItemDetailOpen, setBundleItemDetailOpen] = useState(false);
+  const [selectedBundleItem, setSelectedBundleItem] = useState(null);
+  const [parentBundleData, setParentBundleData] = useState(null);
 
   // Function to open image preview
   const openImagePreview = (imageUrl, altText) => {
@@ -58,6 +67,38 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
   const closeBundleModal = () => {
     setBundleModalOpen(false);
     setBundleItems([]);
+    setParentBundleData(null);
+  };
+
+  // Function to open rental detail modal
+  const openRentalDetailModal = (item) => {
+    setSelectedRentalItem(item);
+    setRentalDetailModalOpen(true);
+  };
+
+  // Function to close rental detail modal
+  const closeRentalDetailModal = () => {
+    setRentalDetailModalOpen(false);
+    setSelectedRentalItem(null);
+  };
+
+  // Function to open bundle modal with parent data
+  const openBundleModalWithData = (items, parentItem) => {
+    setBundleItems(items);
+    setParentBundleData(parentItem);
+    setBundleModalOpen(true);
+  };
+
+  // Function to open bundle item detail modal
+  const openBundleItemDetail = (bundleItem) => {
+    setSelectedBundleItem(bundleItem);
+    setBundleItemDetailOpen(true);
+  };
+
+  // Function to close bundle item detail modal
+  const closeBundleItemDetail = () => {
+    setBundleItemDetailOpen(false);
+    setSelectedBundleItem(null);
   };
 
   // Load cart when component opens
@@ -383,6 +424,111 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
     return types[serviceType] || serviceType;
   };
 
+  // Helper to parse and render size/measurements
+  const renderSizeMeasurements = (sizeData) => {
+    if (!sizeData) return null;
+    
+    // Parse if string
+    let measurements = sizeData;
+    if (typeof sizeData === 'string') {
+      try {
+        measurements = JSON.parse(sizeData);
+      } catch (e) {
+        // If can't parse, it might be just a size label like "M", "L", etc.
+        return (
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+            <span style={{ fontWeight: '500', color: '#666' }}>Size</span>
+            <span style={{ fontWeight: '600', color: '#333' }}>{sizeData}</span>
+          </div>
+        );
+      }
+    }
+    
+    // If it's just a simple value or "Standard", skip
+    if (typeof measurements !== 'object' || measurements === null) {
+      if (measurements && measurements !== 'Standard') {
+        return (
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+            <span style={{ fontWeight: '500', color: '#666' }}>Size</span>
+            <span style={{ fontWeight: '600', color: '#333' }}>{measurements}</span>
+          </div>
+        );
+      }
+      return null;
+    }
+    
+    // Map measurement keys to display names
+    const measurementLabels = {
+      chest: 'Chest',
+      shoulders: 'Shoulders',
+      sleeveLength: 'Sleeve',
+      sleeve_length: 'Sleeve',
+      neck: 'Neck',
+      waist: 'Waist',
+      length: 'Length',
+      hips: 'Hips',
+      inseam: 'Inseam',
+      thigh: 'Thigh',
+      outseam: 'Outseam'
+    };
+    
+    // Extract measurements
+    const measurementRows = [];
+    for (const [key, value] of Object.entries(measurements)) {
+      const label = measurementLabels[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
+      
+      if (value && typeof value === 'object') {
+        // Has inch and cm values
+        const inch = value.inch || value.in || '0';
+        const cm = value.cm || (parseFloat(inch) * 2.54).toFixed(2);
+        measurementRows.push({ label, inch, cm });
+      } else if (value && value !== '0' && value !== '') {
+        // Single value - assume inches
+        const inch = value;
+        const cm = (parseFloat(value) * 2.54).toFixed(2);
+        measurementRows.push({ label, inch, cm });
+      }
+    }
+    
+    if (measurementRows.length === 0) return null;
+    
+    return (
+      <div style={{ marginTop: '10px' }}>
+        <p style={{ fontWeight: '600', color: '#333', marginBottom: '10px', textAlign: 'center' }}>Size:</p>
+        <div style={{ 
+          border: '1px solid #e0e0e0', 
+          borderRadius: '8px', 
+          overflow: 'hidden',
+          backgroundColor: '#fff'
+        }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <tbody>
+              {measurementRows.map((row, index) => (
+                <tr key={index} style={{ borderBottom: index < measurementRows.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
+                  <td style={{ 
+                    padding: '10px 15px', 
+                    fontWeight: '500', 
+                    color: '#666',
+                    width: '40%'
+                  }}>
+                    {row.label}:
+                  </td>
+                  <td style={{ 
+                    padding: '10px 15px', 
+                    color: '#8B4513',
+                    textAlign: 'right'
+                  }}>
+                    {row.inch} in / {row.cm} cm
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -438,9 +584,13 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                       display: 'flex', 
                       alignItems: 'flex-start', 
                       gap: '10px',
-                      cursor: isBundle ? 'pointer' : 'default'
+                      cursor: item.service_type === 'rental' ? 'pointer' : 'default'
                     }}
-                    onClick={isBundle ? () => openBundleModal(bundleItems) : undefined}
+                    onClick={
+                      item.service_type === 'rental' 
+                        ? (isBundle ? () => openBundleModalWithData(bundleItems, item) : () => openRentalDetailModal(item))
+                        : undefined
+                    }
                   >
                     <input
                       type="checkbox"
@@ -475,6 +625,11 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                       {isBundle && (
                         <p style={{ color: '#007bff', fontWeight: '500', marginBottom: '5px' }}>
                           Bundle ({bundleItems.length} items) - Click to view
+                        </p>
+                      )}
+                      {item.service_type === 'rental' && !isBundle && (
+                        <p style={{ color: '#007bff', fontWeight: '500', marginBottom: '5px' }}>
+                          Click to view details
                         </p>
                       )}
                       <p>Service ID: {item.service_id}</p>
@@ -698,8 +853,8 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                             </div>
                           )}
                           
-                          {/* Show design preview if available */}
-                          {item.specific_data.imageUrl && item.specific_data.imageUrl !== 'no-image' && (
+                          {/* Show design preview only if NO angle images from 3D customization */}
+                          {item.specific_data.imageUrl && item.specific_data.imageUrl !== 'no-image' && !item.specific_data.designData?.angleImages && (
                             <div className="cart-item-image">
                               <img 
                                 src={`http://localhost:5000${item.specific_data.imageUrl}`} 
@@ -822,16 +977,16 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
               background: 'white',
               borderRadius: '12px',
               padding: '24px',
-              maxWidth: '600px',
+              maxWidth: '700px',
               width: '90%',
-              maxHeight: '80vh',
+              maxHeight: '85vh',
               overflowY: 'auto',
               boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
               zIndex: 2001
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, color: '#333' }}>Rental Bundle Items</h2>
+              <h2 style={{ margin: 0, color: '#333' }}>Rental Bundle ({bundleItems.length} items)</h2>
               <button
                 onClick={closeBundleModal}
                 style={{
@@ -852,7 +1007,47 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
               </button>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px' }}>
+            {/* Bundle Summary */}
+            {parentBundleData && (
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(2, 1fr)', 
+                gap: '10px', 
+                marginBottom: '20px',
+                padding: '15px',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '8px'
+              }}>
+                <div>
+                  <span style={{ color: '#666', fontSize: '13px' }}>Rental Duration</span>
+                  <p style={{ margin: '4px 0 0', fontWeight: '600', color: '#333' }}>
+                    {parentBundleData.pricing_factors?.duration || 'N/A'} days
+                  </p>
+                </div>
+                <div>
+                  <span style={{ color: '#666', fontSize: '13px' }}>Start Date</span>
+                  <p style={{ margin: '4px 0 0', fontWeight: '600', color: '#333' }}>
+                    {parentBundleData.rental_start_date ? new Date(parentBundleData.rental_start_date).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <span style={{ color: '#666', fontSize: '13px' }}>End Date</span>
+                  <p style={{ margin: '4px 0 0', fontWeight: '600', color: '#333' }}>
+                    {parentBundleData.rental_end_date ? new Date(parentBundleData.rental_end_date).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <span style={{ color: '#666', fontSize: '13px' }}>Total Price</span>
+                  <p style={{ margin: '4px 0 0', fontWeight: '700', color: '#2d5a3d', fontSize: '16px' }}>
+                    {formatPrice(parentBundleData.final_price)}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <p style={{ color: '#666', marginBottom: '15px', fontSize: '14px' }}>Click on an item to view details</p>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px' }}>
               {bundleItems.map((bundleItem, index) => (
                 <div 
                   key={index}
@@ -861,15 +1056,18 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                     borderRadius: '8px',
                     overflow: 'hidden',
                     cursor: 'pointer',
-                    transition: 'transform 0.2s ease',
+                    transition: 'all 0.2s ease',
+                    backgroundColor: '#fff'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                  onClick={() => {
-                    if (bundleItem.image_url) {
-                      openImagePreview(bundleItem.image_url, bundleItem.item_name || 'Rental Item');
-                    }
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-4px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
                   }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  onClick={() => openBundleItemDetail(bundleItem)}
                 >
                   {bundleItem.image_url ? (
                     <img
@@ -897,18 +1095,292 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                       No Image
                     </div>
                   )}
-                  <div style={{ padding: '10px' }}>
-                    <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: '#333' }}>
+                  <div style={{ padding: '12px' }}>
+                    <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#333' }}>
                       {bundleItem.item_name || 'Rental Item'}
                     </p>
-                    {bundleItem.brand && (
+                    {bundleItem.brand && bundleItem.brand !== 'Unknown' && (
                       <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
                         {bundleItem.brand}
                       </p>
                     )}
+                    {bundleItem.color && (
+                      <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#888' }}>
+                        Color: {bundleItem.color}
+                      </p>
+                    )}
+                    <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#007bff' }}>
+                      Click to view details →
+                    </p>
                   </div>
                 </div>
               ))}
+            </div>
+            
+            {/* Bundle Total */}
+            {parentBundleData && (
+              <div style={{ 
+                marginTop: '20px', 
+                padding: '15px', 
+                backgroundColor: '#fff3cd', 
+                borderRadius: '8px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span style={{ fontWeight: '500', color: '#856404' }}>Downpayment (50%)</span>
+                <span style={{ fontWeight: '700', color: '#856404', fontSize: '18px' }}>
+                  {formatPrice(parentBundleData.pricing_factors?.downpayment || 0)}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Bundle Item Detail Modal */}
+      {bundleItemDetailOpen && selectedBundleItem && (
+        <div className="cart-overlay" style={{ zIndex: 2100 }} onClick={closeBundleItemDetail}>
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              maxWidth: '450px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+              zIndex: 2101
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, color: '#333', fontSize: '18px' }}>Item Details</h2>
+              <button
+                onClick={closeBundleItemDetail}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666',
+                  padding: '0',
+                  width: '30px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            {/* Item Image */}
+            {selectedBundleItem.image_url && (
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <img
+                  src={selectedBundleItem.image_url}
+                  alt={selectedBundleItem.item_name || 'Rental Item'}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '200px',
+                    objectFit: 'contain',
+                    borderRadius: '8px',
+                    border: '1px solid #e0e0e0',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => openImagePreview(selectedBundleItem.image_url, selectedBundleItem.item_name || 'Rental Item')}
+                />
+              </div>
+            )}
+            
+            {/* Item Details */}
+            <div style={{ display: 'grid', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                <span style={{ fontWeight: '500', color: '#666' }}>Item Name</span>
+                <span style={{ fontWeight: '600', color: '#333' }}>{selectedBundleItem.item_name || 'N/A'}</span>
+              </div>
+              
+              {selectedBundleItem.brand && selectedBundleItem.brand !== 'Unknown' && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                  <span style={{ fontWeight: '500', color: '#666' }}>Brand</span>
+                  <span style={{ fontWeight: '600', color: '#333' }}>{selectedBundleItem.brand}</span>
+                </div>
+              )}
+              
+              {selectedBundleItem.color && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                  <span style={{ fontWeight: '500', color: '#666' }}>Color</span>
+                  <span style={{ fontWeight: '600', color: '#333' }}>{selectedBundleItem.color}</span>
+                </div>
+              )}
+              
+              {selectedBundleItem.material && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                  <span style={{ fontWeight: '500', color: '#666' }}>Material</span>
+                  <span style={{ fontWeight: '600', color: '#333' }}>{selectedBundleItem.material}</span>
+                </div>
+              )}
+              
+              {/* Size Measurements */}
+              {selectedBundleItem.size && renderSizeMeasurements(selectedBundleItem.size)}
+              
+              {selectedBundleItem.price && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#e8f4e8', borderRadius: '6px', marginTop: '10px' }}>
+                  <span style={{ fontWeight: '500', color: '#2d5a3d' }}>Base Price (per 3 days)</span>
+                  <span style={{ fontWeight: '700', color: '#2d5a3d' }}>{formatPrice(selectedBundleItem.price)}</span>
+                </div>
+              )}
+            </div>
+            
+            <button
+              onClick={closeBundleItemDetail}
+              style={{
+                marginTop: '20px',
+                width: '100%',
+                padding: '12px',
+                backgroundColor: '#8B4513',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Back to Bundle
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Rental Detail Modal */}
+      {rentalDetailModalOpen && selectedRentalItem && (
+        <div className="cart-overlay" style={{ zIndex: 2000 }} onClick={closeRentalDetailModal}>
+          <div 
+            className="rental-detail-modal" 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              maxWidth: '500px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+              zIndex: 2001
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, color: '#333' }}>Rental Details</h2>
+              <button
+                onClick={closeRentalDetailModal}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666',
+                  padding: '0',
+                  width: '30px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            {/* Rental Image */}
+            {selectedRentalItem.specific_data?.image_url && (
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <img
+                  src={selectedRentalItem.specific_data.image_url}
+                  alt={selectedRentalItem.specific_data?.item_name || 'Rental Item'}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '250px',
+                    objectFit: 'contain',
+                    borderRadius: '8px',
+                    border: '1px solid #e0e0e0',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => openImagePreview(selectedRentalItem.specific_data.image_url, selectedRentalItem.specific_data?.item_name || 'Rental Item')}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
+            
+            {/* Rental Details */}
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                <span style={{ fontWeight: '500', color: '#666' }}>Item Name</span>
+                <span style={{ fontWeight: '600', color: '#333' }}>{selectedRentalItem.specific_data?.item_name || 'N/A'}</span>
+              </div>
+              
+              {selectedRentalItem.specific_data?.brand && selectedRentalItem.specific_data.brand !== 'Unknown' && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                  <span style={{ fontWeight: '500', color: '#666' }}>Brand</span>
+                  <span style={{ fontWeight: '600', color: '#333' }}>{selectedRentalItem.specific_data.brand}</span>
+                </div>
+              )}
+              
+              {selectedRentalItem.specific_data?.color && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                  <span style={{ fontWeight: '500', color: '#666' }}>Color</span>
+                  <span style={{ fontWeight: '600', color: '#333' }}>{selectedRentalItem.specific_data.color}</span>
+                </div>
+              )}
+              
+              {selectedRentalItem.specific_data?.material && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                  <span style={{ fontWeight: '500', color: '#666' }}>Material</span>
+                  <span style={{ fontWeight: '600', color: '#333' }}>{selectedRentalItem.specific_data.material}</span>
+                </div>
+              )}
+              
+              {/* Size Measurements */}
+              {selectedRentalItem.specific_data?.size && renderSizeMeasurements(selectedRentalItem.specific_data.size)}
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                <span style={{ fontWeight: '500', color: '#666' }}>Rental Duration</span>
+                <span style={{ fontWeight: '600', color: '#333' }}>{selectedRentalItem.pricing_factors?.duration || selectedRentalItem.pricing_factors?.rental_days || 'N/A'} days</span>
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                <span style={{ fontWeight: '500', color: '#666' }}>Start Date</span>
+                <span style={{ fontWeight: '600', color: '#333' }}>{selectedRentalItem.rental_start_date ? new Date(selectedRentalItem.rental_start_date).toLocaleDateString() : 'N/A'}</span>
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                <span style={{ fontWeight: '500', color: '#666' }}>End Date</span>
+                <span style={{ fontWeight: '600', color: '#333' }}>{selectedRentalItem.rental_end_date ? new Date(selectedRentalItem.rental_end_date).toLocaleDateString() : 'N/A'}</span>
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#e8f4e8', borderRadius: '6px' }}>
+                <span style={{ fontWeight: '500', color: '#2d5a3d' }}>Rental Price</span>
+                <span style={{ fontWeight: '700', color: '#2d5a3d', fontSize: '18px' }}>{formatPrice(selectedRentalItem.final_price)}</span>
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#fff3cd', borderRadius: '6px' }}>
+                <span style={{ fontWeight: '500', color: '#856404' }}>Downpayment (50%)</span>
+                <span style={{ fontWeight: '700', color: '#856404', fontSize: '18px' }}>{formatPrice(selectedRentalItem.pricing_factors?.downpayment || selectedRentalItem.specific_data?.downpayment || 0)}</span>
+              </div>
             </div>
           </div>
         </div>

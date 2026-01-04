@@ -19,6 +19,67 @@ import { orderTrackingService, API_BASE_URL } from "../../../utils/apiService";
 
 const { width } = Dimensions.get("window");
 
+// Helper function to format size measurements - matching web version
+const formatSize = (size: any): Array<{ label: string; value: string }> | null => {
+  if (!size) return null;
+  
+  // If it's already a string and not JSON, return as simple array
+  if (typeof size === 'string' && !size.trim().startsWith('{')) {
+    return [{ label: 'Size', value: size }];
+  }
+  
+  try {
+    // Parse JSON if it's a string
+    let measurements = typeof size === 'string' ? JSON.parse(size) : size;
+    
+    // If it's not an object, return as simple array
+    if (!measurements || typeof measurements !== 'object' || Array.isArray(measurements)) {
+      return [{ label: 'Size', value: typeof size === 'string' ? size : JSON.stringify(size) }];
+    }
+    
+    // Format measurements nicely
+    const labelMap: { [key: string]: string } = {
+      'chest': 'Chest',
+      'shoulders': 'Shoulders',
+      'sleeveLength': 'Sleeve',
+      'neck': 'Neck',
+      'waist': 'Waist',
+      'length': 'Length'
+    };
+    
+    const parts = Object.entries(measurements)
+      .filter(([key, value]) => value !== null && value !== undefined && value !== '' && value !== '0')
+      .map(([key, value]) => {
+        const label = labelMap[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1').trim();
+        // Handle nested objects (e.g., {inch: "1", cm: "2.54"})
+        let displayValue: string;
+        if (typeof value === 'object' && value !== null) {
+          const val = value as { inch?: string; cm?: string; value?: string };
+          // Show both inch and cm if available
+          if (val.inch !== undefined && val.cm !== undefined) {
+            displayValue = `${val.inch} in / ${val.cm} cm`;
+          } else if (val.inch !== undefined) {
+            displayValue = `${val.inch} in`;
+          } else if (val.cm !== undefined) {
+            displayValue = `${val.cm} cm`;
+          } else if (val.value !== undefined) {
+            displayValue = `${val.value} in`;
+          } else {
+            displayValue = JSON.stringify(value);
+          }
+        } else {
+          displayValue = `${value} in`;
+        }
+        return { label, value: displayValue };
+      });
+    
+    return parts.length > 0 ? parts : null;
+  } catch (e) {
+    // If parsing fails, return as simple array
+    return [{ label: 'Size', value: typeof size === 'string' ? size : 'N/A' }];
+  }
+};
+
 export default function OrderDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -165,39 +226,68 @@ export default function OrderDetails() {
             // Get image URL from various possible locations
             let imageUrl = order.specific_data?.imageUrl || 
                           order.specific_data?.image_url || 
-                          order.specific_data?.designImage;
+                          order.specific_data?.designImage ||
+                          order.specific_data?.item_image ||
+                          order.specific_data?.completed_item_image ||
+                          order.image_url;
             
-            // For rental, also check bundle items
+            // For rental, also check bundle items and item_image
             if (order.service_type === 'rental' && !imageUrl) {
               const bundleItems = order.specific_data?.bundle_items || [];
               if (bundleItems.length > 0) {
-                imageUrl = bundleItems[0]?.image_url || bundleItems[0]?.imageUrl;
+                imageUrl = bundleItems[0]?.image_url || 
+                          bundleItems[0]?.imageUrl || 
+                          bundleItems[0]?.item_image;
+              }
+              // Also check direct item_image for single rentals
+              if (!imageUrl) {
+                imageUrl = order.specific_data?.item_image;
               }
             }
             
+            // For dry cleaning, check completed_item_image
+            if (order.service_type === 'dry_cleaning' && !imageUrl) {
+              imageUrl = order.specific_data?.completed_item_image || order.specific_data?.item_image;
+            }
+            
+            // For repair, check multiple fields
+            if (order.service_type === 'repair' && !imageUrl) {
+              imageUrl = order.specific_data?.damageImage || 
+                        order.specific_data?.repairImage ||
+                        order.specific_data?.item_image;
+            }
+            
             const hasValidImage = imageUrl && imageUrl !== 'no-image' && imageUrl.trim() !== '';
+            
+            console.log('=== ORDER IMAGE DEBUG ===');
+            console.log('Service type:', order.service_type);
+            console.log('Image URL found:', imageUrl);
+            console.log('Has valid image:', hasValidImage);
+            console.log('Full specific_data:', JSON.stringify(order.specific_data, null, 2));
+            console.log('========================');
             
             if (hasValidImage) {
               // Get API base URL without /api suffix
               const API_BASE = API_BASE_URL.replace('/api', '');
               const fullImageUrl = imageUrl.startsWith('http') 
                 ? imageUrl 
-                : `${API_BASE}${imageUrl}`;
+                : `${API_BASE}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
               
-              console.log('Order tracking image URL:', fullImageUrl);
-              console.log('Image source:', { imageUrl, hasValidImage, serviceType: order.service_type });
+              console.log('Constructed full image URL:', fullImageUrl);
               
               return (
-                <Image
-                  source={{ uri: fullImageUrl }}
-                  style={styles.image}
-                  resizeMode="cover"
-                  onError={(e) => {
-                    console.log('Image load error:', e.nativeEvent.error);
-                    console.log('Failed URL:', fullImageUrl);
-                  }}
-                  onLoad={() => console.log('Image loaded successfully:', fullImageUrl)}
-                />
+                <View>
+                  <Image
+                    source={{ uri: fullImageUrl }}
+                    style={styles.image}
+                    resizeMode="cover"
+                    onError={(e) => {
+                      console.log('Image load error:', e.nativeEvent.error);
+                      console.log('Failed URL:', fullImageUrl);
+                    }}
+                    onLoad={() => console.log('Image loaded successfully:', fullImageUrl)}
+                  />
+                </View>
               );
             }
             return null;
@@ -309,12 +399,56 @@ export default function OrderDetails() {
                       <Text style={styles.value}>{order.specific_data.brand}</Text>
                     </View>
                   )}
+                  
+                  {/* Size Details - Web Style Grid */}
                   {order.specific_data.size && (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.label}>Size</Text>
-                      <Text style={styles.value}>{order.specific_data.size}</Text>
+                    <View style={styles.sizeSection}>
+                      <Text style={styles.sizeSectionTitle}>Size Details</Text>
+                      <View style={styles.sizeContainer}>
+                        {(() => {
+                          const sizeData = formatSize(order.specific_data.size);
+                          if (sizeData && Array.isArray(sizeData)) {
+                            return sizeData.map((measurement, idx) => (
+                              <View key={idx} style={styles.sizeRow}>
+                                <Text style={styles.sizeLabel}>{measurement.label}:</Text>
+                                <Text style={styles.sizeValue}>{measurement.value}</Text>
+                              </View>
+                            ));
+                          }
+                          return <Text style={styles.sizeValueSimple}>N/A</Text>;
+                        })()}
+                      </View>
                     </View>
                   )}
+                  
+                  {/* Bundle Items Size Details */}
+                  {order.specific_data.bundle_items && order.specific_data.bundle_items.length > 0 && (
+                    <View style={styles.sizeSection}>
+                      <Text style={styles.sizeSectionTitle}>Bundle Items</Text>
+                      {order.specific_data.bundle_items.map((item: any, itemIdx: number) => (
+                        <View key={itemIdx} style={styles.bundleItemContainer}>
+                          <Text style={styles.bundleItemName}>
+                            {item.item_name || `Item ${itemIdx + 1}`}
+                          </Text>
+                          <View style={styles.sizeContainer}>
+                            {(() => {
+                              const sizeData = formatSize(item.size);
+                              if (sizeData && Array.isArray(sizeData)) {
+                                return sizeData.map((measurement, idx) => (
+                                  <View key={idx} style={styles.sizeRow}>
+                                    <Text style={styles.sizeLabel}>{measurement.label}:</Text>
+                                    <Text style={styles.sizeValue}>{measurement.value}</Text>
+                                  </View>
+                                ));
+                              }
+                              return <Text style={styles.sizeValueSimple}>N/A</Text>;
+                            })()}
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  
                   {order.specific_data.category && (
                     <View style={styles.detailRow}>
                       <Text style={styles.label}>Category</Text>
@@ -379,6 +513,31 @@ export default function OrderDetails() {
                         {order.specific_data.designData.pattern && order.specific_data.designData.pattern !== 'none' && `Pattern: ${order.specific_data.designData.pattern.charAt(0).toUpperCase() + order.specific_data.designData.pattern.slice(1)}\n`}
                         {order.specific_data.designData.personalization?.initials && `Personalization: ${order.specific_data.designData.personalization.initials}`}
                       </Text>
+                    </View>
+                  )}
+                  
+                  {/* Display all 4 angle images if available */}
+                  {order.specific_data?.designData?.angleImages && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Design Views</Text>
+                      <View style={styles.angleImagesGrid}>
+                        {['front', 'back', 'right', 'left'].map((angle) => (
+                          order.specific_data.designData.angleImages[angle] && (
+                            <View key={angle} style={styles.angleImageContainer}>
+                              <Image
+                                source={{ uri: order.specific_data.designData.angleImages[angle] }}
+                                style={styles.angleImage}
+                                resizeMode="cover"
+                              />
+                              <View style={styles.angleLabel}>
+                                <Text style={styles.angleLabelText}>
+                                  {angle.charAt(0).toUpperCase() + angle.slice(1)}
+                                </Text>
+                              </View>
+                            </View>
+                          )
+                        ))}
+                      </View>
                     </View>
                   )}
                 </>
@@ -613,5 +772,102 @@ const styles = StyleSheet.create({
     backgroundColor: "#FDE68A",
     alignItems: "center",
     justifyContent: "center",
+  },
+  // Size Details - Web Style Grid Layout
+  sizeSection: {
+    marginVertical: 16,
+  },
+  sizeSectionTitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginBottom: 12,
+    textAlign: "center",
+    fontWeight: "500",
+  },
+  sizeContainer: {
+    backgroundColor: "#F5F5F5",
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+  sizeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEEEEE",
+  },
+  sizeLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#555",
+    flex: 1,
+  },
+  sizeValue: {
+    fontSize: 14,
+    color: "#333",
+    flex: 1,
+    textAlign: "right",
+  },
+  sizeValueSimple: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+  },
+  // Bundle items
+  bundleItemContainer: {
+    marginBottom: 12,
+    backgroundColor: "#FAFAFA",
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#E8E8E8",
+  },
+  bundleItemName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#DDD",
+    textAlign: "center",
+  },
+  // Angle images grid for customization 3D views
+  angleImagesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  angleImageContainer: {
+    width: (width - 100) / 2,
+    aspectRatio: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    position: 'relative',
+  },
+  angleImage: {
+    width: '100%',
+    height: '100%',
+  },
+  angleLabel: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  angleLabelText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'capitalize',
   },
 });

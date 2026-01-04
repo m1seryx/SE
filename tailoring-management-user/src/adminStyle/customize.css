@@ -1176,6 +1176,15 @@ tbody tr.clickable-row:active {
   display: flex;
 }
 
+/* Confirmation modal should appear above other modals */
+.modal-overlay.active:has(.confirm-modal) {
+  z-index: 2000;
+}
+
+.modal-overlay.confirm-modal-overlay {
+  z-index: 2000 !important;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;

@@ -1,7 +1,24 @@
 import { RoundedBox, Capsule, Text, Edges, useGLTF } from '@react-three/drei';
-import { useMemo, useLayoutEffect, Suspense } from 'react';
+import { useMemo, useLayoutEffect, Suspense, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import CustomModelLoader from './CustomModelLoader';
+
+// Check if running on mobile/React Native WebView
+const isMobile = () => {
+  return typeof window !== 'undefined' && (
+    window.IS_REACT_NATIVE_WEBVIEW ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  );
+};
+
+// Log model loading for debugging
+const logModelLoad = (name, scene) => {
+  if (scene) {
+    console.log(`✅ Model loaded: ${name}`, scene);
+  } else {
+    console.warn(`⚠️ Model failed to load: ${name}`);
+  }
+};
 
 function makePattern(type, base, accent) {
   const c = document.createElement('canvas');
@@ -155,8 +172,15 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
   const buttonColor = new THREE.Color(colors.button);
   const liningColor = new THREE.Color(colors.lining);
 
-  // Load all 3D models unconditionally (hooks must be called at top level)
-  // Full-size models
+  // Track if models are loaded
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [modelError, setModelError] = useState(null);
+  
+  // Mobile detection
+  const isMobileDevice = isMobile();
+  
+  // Load all models - useGLTF has built-in caching so this is efficient
+  // The models only load once and are cached for subsequent renders
   const blackBlazer = useGLTF('/black blazer 3d model.glb');
   const blackBlazerPlain = useGLTF('/black blazer plain 3d model.glb');
   const blazerWomen = useGLTF('/blazer 3d model.glb');
@@ -169,12 +193,24 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
   const pantsFormalMen = useGLTF('/dress pants 3d model.glb');
   const pantsFormalWomen = useGLTF('/denim jeans 3d model.glb');
 
-  // Short models from public/short3d folder
+  // Short models
   const blackBlazerShort = useGLTF('/short3d/blazer short model.glb');
   const blackBlazerPlainShort = useGLTF('/short3d/blazer short plain M model.glb');
   const blazerWomenShort = useGLTF('/short3d/blazer W short model.glb');
   const blazerWomenPlainShort = useGLTF('/short3d/blazer woman short plain model.glb');
   const tealCoatShort = useGLTF('/short3d/trench coat 3d  short model.glb');
+
+  // Log model loading status for debugging
+  useEffect(() => {
+    console.log('🔄 Model loading status...');
+    console.log('Current garment type:', garment);
+    console.log('Is mobile:', isMobileDevice);
+    
+    if (blackBlazer?.scene) {
+      setModelsLoaded(true);
+      console.log('✅ Models loaded successfully');
+    }
+  }, [garment, modelSize, blackBlazer?.scene, isMobileDevice]);
 
   // Find matching custom model for current garment
   // Only show custom model if explicitly selected (by ID or exact category match)
@@ -571,8 +607,11 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
       ? matchingCustomModel.file_url 
       : `http://localhost:5000${matchingCustomModel.file_url}`;
     
+    // Scale up custom models to match other garments and bring closer
+    const customModelScale = sizeScale * 3;
+    
     return (
-      <group position={[0, 0, 0]} scale={sizeScale}>
+      <group position={[0, 0.8, 2]} scale={customModelScale}>
         <CustomModelLoader 
           modelUrl={modelUrl}
           materialProps={materialProps}

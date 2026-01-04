@@ -262,6 +262,23 @@ export const notificationService = {
   }
 };
 
+// Measurements API functions
+export const measurementsService = {
+  // Get current user's own measurements
+  getMyMeasurements: async () => {
+    try {
+      return await apiCall('/user/measurements');
+    } catch (error) {
+      console.error('Get my measurements error:', error);
+      return {
+        success: false,
+        message: 'Error fetching measurements',
+        measurements: null
+      };
+    }
+  }
+};
+
 // Appointment Slot API functions
 export const appointmentSlotService = {
   // Get available time slots for a date and service type

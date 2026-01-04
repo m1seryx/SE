@@ -38,6 +38,98 @@ export default function RentalDetail() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false); // NEW: Full image modal
+  const [measurementUnit, setMeasurementUnit] = useState<'inch' | 'cm'>('inch');
+  const [showMeasurements, setShowMeasurements] = useState(false);
+
+  // Helper function to get measurement value based on selected unit
+  const getMeasurementValue = (measurement: any, unit: string): string | null => {
+    if (!measurement) return null;
+    
+    // Handle new format with inch/cm objects
+    if (typeof measurement === 'object' && measurement.inch !== undefined) {
+      if (unit === 'inch') {
+        return measurement.inch ? `${measurement.inch}"` : null;
+      } else {
+        return measurement.cm ? `${measurement.cm} cm` : null;
+      }
+    }
+    
+    // Handle old format (just a number/string) - assume it's inches
+    if (typeof measurement === 'string' || typeof measurement === 'number') {
+      const inchValue = String(measurement);
+      if (unit === 'inch') {
+        return `${inchValue}"`;
+      } else {
+        // Convert to cm
+        const num = parseFloat(inchValue);
+        if (isNaN(num)) return null;
+        return `${(num * 2.54).toFixed(1)} cm`;
+      }
+    }
+    
+    return null;
+  };
+
+  // Parse measurements from item.size
+  const getMeasurements = (): { label: string; value: string }[] => {
+    if (!item || !item.size) return [];
+    
+    try {
+      let measurements;
+      let sizeString = item.size;
+      
+      if (typeof sizeString === 'string') {
+        // Check if it's truncated
+        if (sizeString.startsWith('{') && !sizeString.endsWith('}')) {
+          return [];
+        }
+        try {
+          measurements = JSON.parse(sizeString);
+        } catch (parseError) {
+          return [];
+        }
+      } else {
+        measurements = sizeString;
+      }
+      
+      if (!measurements || typeof measurements !== 'object' || Array.isArray(measurements)) {
+        return [];
+      }
+
+      const parts: { label: string; value: string }[] = [];
+      const checkValue = (val: any) => {
+        if (typeof val === 'object' && val !== null) {
+          return (val.inch && val.inch !== '' && val.inch !== '0') || 
+                 (val.cm && val.cm !== '' && val.cm !== '0');
+        }
+        return val && val !== '' && val !== '0';
+      };
+
+      const measurementKeys = [
+        { key: 'chest', label: 'Chest' },
+        { key: 'shoulders', label: 'Shoulders' },
+        { key: 'sleeveLength', label: 'Sleeve Length' },
+        { key: 'neck', label: 'Neck' },
+        { key: 'waist', label: 'Waist' },
+        { key: 'length', label: 'Length' },
+        { key: 'hips', label: 'Hips' },
+        { key: 'inseam', label: 'Inseam' },
+        { key: 'outseam', label: 'Outseam' },
+        { key: 'thigh', label: 'Thigh' },
+      ];
+
+      measurementKeys.forEach(({ key, label }) => {
+        if (checkValue(measurements[key])) {
+          const value = getMeasurementValue(measurements[key], measurementUnit);
+          if (value) parts.push({ label, value });
+        }
+      });
+
+      return parts;
+    } catch (e) {
+      return [];
+    }
+  };
 
   // Calculate end date from start date and duration (matches web logic)
   const calculateEndDate = (start: Date | null, duration: number): Date | null => {
@@ -306,7 +398,6 @@ export default function RentalDetail() {
           {/* Details Grid */}
           <View style={styles.detailsGrid}>
             {[
-              { key: "size", icon: "resize-outline", value: item.size },
               { key: "color", icon: "color-palette-outline", value: item.color },
               { key: "brand", icon: "business-outline", value: item.brand },
               { key: "material", icon: "shirt-outline", value: item.material },
@@ -324,6 +415,70 @@ export default function RentalDetail() {
               </View>
             ))}
           </View>
+
+          {/* Measurements Section with cm/inches toggle */}
+          {getMeasurements().length > 0 && (
+            <View style={styles.measurementsSection}>
+              <View style={styles.measurementsHeader}>
+                <TouchableOpacity
+                  style={styles.measurementsToggleBtn}
+                  onPress={() => setShowMeasurements(!showMeasurements)}
+                >
+                  <Ionicons name="resize-outline" size={18} color="#fff" />
+                  <Text style={styles.measurementsToggleBtnText}>
+                    {showMeasurements ? 'Hide Measurements' : 'Show Measurements'}
+                  </Text>
+                  <Ionicons 
+                    name={showMeasurements ? "chevron-up" : "chevron-down"} 
+                    size={16} 
+                    color="#fff" 
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {showMeasurements && (
+                <View style={styles.measurementsContent}>
+                  {/* Unit Toggle */}
+                  <View style={styles.unitToggleContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.unitToggleBtn,
+                        measurementUnit === 'inch' && styles.unitToggleBtnActive
+                      ]}
+                      onPress={() => setMeasurementUnit('inch')}
+                    >
+                      <Text style={[
+                        styles.unitToggleBtnText,
+                        measurementUnit === 'inch' && styles.unitToggleBtnTextActive
+                      ]}>Inch</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.unitToggleBtn,
+                        measurementUnit === 'cm' && styles.unitToggleBtnActive
+                      ]}
+                      onPress={() => setMeasurementUnit('cm')}
+                    >
+                      <Text style={[
+                        styles.unitToggleBtnText,
+                        measurementUnit === 'cm' && styles.unitToggleBtnTextActive
+                      ]}>CM</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Measurements List */}
+                  <View style={styles.measurementsList}>
+                    {getMeasurements().map((m, idx) => (
+                      <View key={idx} style={styles.measurementRow}>
+                        <Text style={styles.measurementLabel}>{m.label}</Text>
+                        <Text style={styles.measurementValue}>{m.value}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>About this garment</Text>
@@ -423,10 +578,6 @@ export default function RentalDetail() {
             <View style={styles.policyRow}>
               <Ionicons name="alert-circle" size={20} color="#F59E0B" />
               <Text style={styles.policyText}>Late return: ₱100 per day</Text>
-            </View>
-            <View style={styles.policyRow}>
-              <Ionicons name="shield-checkmark" size={20} color="#3B82F6" />
-              <Text style={styles.policyText}>Refundable deposit: ₱500</Text>
             </View>
           </View>
         </View>
@@ -980,5 +1131,81 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1.5,
     borderColor: "#E5E7EB",
+  },
+  // Measurements Section Styles
+  measurementsSection: {
+    marginTop: 20,
+  },
+  measurementsHeader: {
+    alignItems: 'center',
+  },
+  measurementsToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8B4513',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  measurementsToggleBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  measurementsContent: {
+    marginTop: 12,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 16,
+  },
+  unitToggleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 16,
+    gap: 8,
+    backgroundColor: '#f5f5f5',
+    padding: 4,
+    borderRadius: 20,
+    alignSelf: 'center',
+  },
+  unitToggleBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: '#666',
+  },
+  unitToggleBtnActive: {
+    backgroundColor: '#2196F3',
+  },
+  unitToggleBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  unitToggleBtnTextActive: {
+    fontWeight: '700',
+  },
+  measurementsList: {
+    gap: 8,
+  },
+  measurementRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  measurementLabel: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  measurementValue: {
+    fontSize: 14,
+    color: '#1F2937',
+    fontWeight: '700',
   },
 });

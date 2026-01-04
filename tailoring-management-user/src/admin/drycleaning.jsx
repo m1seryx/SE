@@ -5,7 +5,7 @@ import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
 import { getAllDryCleaningOrders, updateDryCleaningOrderItem } from '../api/DryCleaningOrderApi';
 import { getUserRole } from '../api/AuthApi';
-import { getAllGarmentTypesAdmin, createGarmentType, updateGarmentType, deleteGarmentType } from '../api/GarmentTypeApi';
+import { getAllDCGarmentTypesAdmin, createDCGarmentType, updateDCGarmentType, deleteDCGarmentType } from '../api/DryCleaningGarmentTypeApi';
 import { recordPayment } from '../api/PaymentApi';
 import { deleteOrderItem } from '../api/OrderApi';
 
@@ -106,9 +106,9 @@ const DryCleaning = () => {
   const loadGarmentTypes = async () => {
     setLoadingGarmentTypes(true);
     try {
-      const result = await getAllGarmentTypesAdmin();
+      const result = await getAllDCGarmentTypesAdmin();
       if (result.success) {
-        setGarmentTypes(result.garments || []);
+        setGarmentTypes(result.data || []);
       } else {
         showToast(result.message || 'Failed to load garment types', 'error');
       }
@@ -134,9 +134,9 @@ const DryCleaning = () => {
     try {
       let result;
       if (editingGarmentType) {
-        result = await updateGarmentType(editingGarmentType.garment_id, garmentTypeForm);
+        result = await updateDCGarmentType(editingGarmentType.dc_garment_id, garmentTypeForm);
       } else {
-        result = await createGarmentType(garmentTypeForm);
+        result = await createDCGarmentType(garmentTypeForm);
       }
       
       if (result.success) {
@@ -158,11 +158,11 @@ const DryCleaning = () => {
   const handleDeleteGarmentType = async (garmentId) => {
     openConfirmModal("Are you sure you want to delete this garment type? This action cannot be undone.", async () => {
       try {
-        const result = await deleteGarmentType(garmentId);
+        const result = await deleteDCGarmentType(garmentId);
         if (result.success) {
           showToast('Garment type deleted successfully', 'success');
           // Immediately remove from list (optimistic update)
-          setGarmentTypes(prevGarments => prevGarments.filter(garment => garment.garment_id !== garmentId));
+          setGarmentTypes(prevGarments => prevGarments.filter(garment => garment.dc_garment_id !== garmentId));
           // Also reload from server to ensure consistency
           await loadGarmentTypes();
         } else {
@@ -1161,17 +1161,17 @@ const DryCleaning = () => {
         {/* List of existing garment types */}
         {garmentTypes.length > 0 && (
           <div className="garment-types-list-header">
-            <h3>Existing Garment Types ({garmentTypes.length})</h3>
+            <h3>Existing Dry Cleaning Garment Types ({garmentTypes.length})</h3>
             <div className="garment-types-scrollable">
               {garmentTypes.map(garment => (
                 <div 
-                  key={garment.garment_id} 
+                  key={garment.dc_garment_id} 
                   className={`garment-item-card ${garment.is_active ? 'active' : 'inactive'}`}
                 >
                   <div className="garment-item-info">
                     <div className="garment-item-name">{garment.garment_name}</div>
                     <div className="garment-item-details">
-                      <span className="price">Price: ₱{parseFloat(garment.garment_price).toFixed(2)}</span>
+                      <span className="price">Price: ₱{parseFloat(garment.garment_price).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                       {garment.description && ` | ${garment.description}`}
                       {!garment.is_active && <span className="inactive-badge">(Inactive)</span>}
                     </div>
@@ -1184,7 +1184,7 @@ const DryCleaning = () => {
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDeleteGarmentType(garment.garment_id)}
+                      onClick={() => handleDeleteGarmentType(garment.dc_garment_id)}
                       className="garment-delete-btn"
                     >
                       Delete

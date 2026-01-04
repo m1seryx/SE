@@ -639,6 +639,21 @@ export default function RentalLanding() {
                 </View>
               )}
 
+              {/* Rental Policy */}
+              <View style={styles.policyCard}>
+                <Text style={styles.policyTitle}>Rental Policy</Text>
+                <View style={styles.policyRow}>
+                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                  <Text style={styles.policyText}>
+                    Minimum 3 days • Maximum 30 days • Must be multiple of 3
+                  </Text>
+                </View>
+                <View style={styles.policyRow}>
+                  <Ionicons name="alert-circle" size={20} color="#F59E0B" />
+                  <Text style={styles.policyText}>Late return: ₱100 per day</Text>
+                </View>
+              </View>
+
               {/* Action Buttons */}
               <View style={styles.bundleModalActions}>
                 <TouchableOpacity
@@ -1290,5 +1305,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  // Rental Policy Styles
+  policyCard: {
+    marginTop: 16,
+    marginHorizontal: 20,
+    marginBottom: 8,
+    backgroundColor: "#FAFAFA",
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  policyTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: 12,
+  },
+  policyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 8,
+  },
+  policyText: { 
+    fontSize: 14, 
+    color: "#52525B", 
+    flex: 1 
   },
 });

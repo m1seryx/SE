@@ -126,16 +126,14 @@ export default function DraggableAccessory({ id, modelPath, position, color, sca
             return modelPath;
         }
         
-        // If it starts with /, it's a path from root - construct full URL
-        const baseUrl = window.location.origin.includes('localhost') 
-            ? 'http://localhost:5000'
-            : window.location.origin.replace(/:\d+$/, ':5000');
-        
+        // For local paths (starting with /), use the current origin (frontend server)
+        // The accessories are stored in the public folder of the frontend, not the backend
+        // So we should use the current page's origin, not localhost:5000
         const fullPath = modelPath.startsWith('/') 
-            ? `${baseUrl}${modelPath}`
-            : `${baseUrl}/${modelPath}`;
+            ? modelPath  // Vite will serve files from public folder at root path
+            : `/${modelPath}`;
         
-        console.log('DraggableAccessory: Constructed URL:', fullPath, 'from:', modelPath);
+        console.log('DraggableAccessory: Using local path:', fullPath, 'from:', modelPath);
         return fullPath;
     }, [modelPath]);
 

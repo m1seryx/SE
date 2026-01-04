@@ -1,5 +1,5 @@
 // CustomizationService.tsx - Full screen version of CustomizationModal
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,32 +12,33 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  Modal,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePickerModal from '../../../components/DateTimePickerModal';
 import { addCustomizationToCart, uploadCustomizationImage } from '../../../utils/customizationService';
 
 const { width, height } = Dimensions.get('window');
 
-const GARMENT_TYPES = [
-  { id: 'shirt', label: 'Shirt', icon: 'shirt-outline', price: 800 },
-  { id: 'pants', label: 'Pants', icon: 'body-outline', price: 900 },
-  { id: 'suit', label: 'Suit', icon: 'bowtie-outline', price: 2500 },
-  { id: 'dress', label: 'Dress', icon: 'woman-outline', price: 1800 },
-  { id: 'blazer', label: 'Blazer', icon: 'shirt-outline', price: 2000 },
-  { id: 'barong', label: 'Barong', icon: 'shirt-outline', price: 3000 },
-];
+// Garment types with prices - matching web
+const GARMENT_TYPES: { [key: string]: number } = {
+  'Suits': 500,
+  'Coat': 400,
+  'Barong': 400,
+  'Pants': 200,
+};
 
-const FABRIC_TYPES = [
-  { id: 'cotton', label: 'Cotton' },
-  { id: 'silk', label: 'Silk' },
-  { id: 'linen', label: 'Linen' },
-  { id: 'wool', label: 'Wool' },
-  { id: 'polyester', label: 'Polyester' },
-];
+// Default fabric types - these will always be available
+const DEFAULT_FABRIC_TYPES: { [key: string]: number } = {
+  'Cotton': 200,
+  'Silk': 300,
+  'Linen': 400,
+  'Wool': 200
+};
 
 export default function CustomizationService() {
   const router = useRouter();
@@ -51,6 +52,60 @@ export default function CustomizationService() {
   const [measurements, setMeasurements] = useState('');
   const [preferredDate, setPreferredDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
   const [showDatePicker, setShowDatePicker] = useState(false);
+  
+  // Form validation errors
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  
+  // Fabric types from API
+  const [fabricTypes, setFabricTypes] = useState<{ [key: string]: number }>(DEFAULT_FABRIC_TYPES);
+  const [estimatedPrice, setEstimatedPrice] = useState(0);
+  
+  // Dropdown states
+  const [showFabricPicker, setShowFabricPicker] = useState(false);
+  const [showGarmentPicker, setShowGarmentPicker] = useState(false);
+
+  // Load fabric types from API on mount
+  useEffect(() => {
+    loadFabricTypes();
+  }, []);
+
+  // Calculate estimated price when selections change
+  useEffect(() => {
+    if (selectedFabric && selectedGarment) {
+      const fabricPrice = fabricTypes[selectedFabric] || 0;
+      const garmentPrice = GARMENT_TYPES[selectedGarment] || 0;
+      setEstimatedPrice(fabricPrice + garmentPrice);
+    } else {
+      setEstimatedPrice(0);
+    }
+  }, [selectedFabric, selectedGarment, fabricTypes]);
+
+  // Load fabric types from API
+  const loadFabricTypes = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.1.202:5000/api'}/fabric-types`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.fabrics && data.fabrics.length > 0) {
+          const fabricTypesObj: { [key: string]: number } = { ...DEFAULT_FABRIC_TYPES };
+          data.fabrics.forEach((fabric: { fabric_name: string; fabric_price: string }) => {
+            fabricTypesObj[fabric.fabric_name] = parseFloat(fabric.fabric_price);
+          });
+          setFabricTypes(fabricTypesObj);
+        }
+      }
+    } catch (error) {
+      console.log('Error loading fabric types:', error);
+      // Keep default values
+    }
+  };
 
   const handleClose = () => {
     router.back();
@@ -76,8 +131,11 @@ export default function CustomizationService() {
   };
 
   const getSelectedGarmentPrice = () => {
-    const garment = GARMENT_TYPES.find(g => g.id === selectedGarment);
-    return garment?.price || 1000;
+    return GARMENT_TYPES[selectedGarment] || 0;
+  };
+
+  const getSelectedFabricPrice = () => {
+    return fabricTypes[selectedFabric] || 0;
   };
 
   const handleOpen3DCustomizer = () => {
@@ -118,12 +176,12 @@ export default function CustomizationService() {
 
       // Add to cart
       await addCustomizationToCart({
-        garmentType: GARMENT_TYPES.find(g => g.id === selectedGarment)?.label || selectedGarment,
-        fabricType: FABRIC_TYPES.find(f => f.id === selectedFabric)?.label || selectedFabric,
+        garmentType: selectedGarment,
+        fabricType: selectedFabric,
         preferredDate: preferredDate.toISOString().split('T')[0],
         notes: notes,
         imageUrl: imageUrl,
-        estimatedPrice: getSelectedGarmentPrice(),
+        estimatedPrice: estimatedPrice,
       });
 
       Alert.alert(
@@ -193,55 +251,168 @@ export default function CustomizationService() {
 
         {step === 1 && (
           <>
-            {/* Garment Type Selection */}
+            {/* Garment Type Selection - Dropdown */}
             <Text style={styles.sectionTitle}>Select Garment Type</Text>
-            <View style={styles.garmentGrid}>
-              {GARMENT_TYPES.map((garment) => (
-                <TouchableOpacity
-                  key={garment.id}
-                  style={[
-                    styles.garmentCard,
-                    selectedGarment === garment.id && styles.garmentCardSelected,
-                  ]}
-                  onPress={() => setSelectedGarment(garment.id)}
-                >
-                  <Ionicons
-                    name={garment.icon as any}
-                    size={28}
-                    color={selectedGarment === garment.id ? '#B8860B' : '#8D6E63'}
-                  />
-                  <Text style={[
-                    styles.garmentLabel,
-                    selectedGarment === garment.id && styles.garmentLabelSelected,
-                  ]}>
-                    {garment.label}
-                  </Text>
-                  <Text style={styles.garmentPrice}>₱{garment.price.toLocaleString()}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <TouchableOpacity 
+              style={styles.dropdownSelector}
+              onPress={() => setShowGarmentPicker(true)}
+            >
+              <View style={styles.dropdownLeft}>
+                <Ionicons name="shirt-outline" size={20} color="#8D6E63" />
+                <Text style={[styles.dropdownText, !selectedGarment && styles.dropdownPlaceholder]}>
+                  {selectedGarment || 'Select a garment type'}
+                </Text>
+              </View>
+              <View style={styles.dropdownRight}>
+                {selectedGarment && (
+                  <Text style={styles.dropdownPrice}>₱{GARMENT_TYPES[selectedGarment]?.toLocaleString()}</Text>
+                )}
+                <Ionicons name="chevron-down" size={20} color="#8D6E63" />
+              </View>
+            </TouchableOpacity>
 
-            {/* Fabric Type */}
+            {/* Garment Type Picker Modal */}
+            <Modal
+              visible={showGarmentPicker}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={() => setShowGarmentPicker(false)}
+            >
+              <TouchableOpacity 
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => setShowGarmentPicker(false)}
+              >
+                <View style={styles.pickerModal}>
+                  <View style={styles.pickerHeader}>
+                    <Text style={styles.pickerTitle}>Select Garment Type</Text>
+                    <TouchableOpacity onPress={() => setShowGarmentPicker(false)}>
+                      <Ionicons name="close" size={24} color="#5D4037" />
+                    </TouchableOpacity>
+                  </View>
+                  <ScrollView style={styles.pickerScroll}>
+                    {Object.entries(GARMENT_TYPES).map(([name, price]) => (
+                      <TouchableOpacity
+                        key={name}
+                        style={[
+                          styles.pickerOption,
+                          selectedGarment === name && styles.pickerOptionSelected,
+                        ]}
+                        onPress={() => {
+                          setSelectedGarment(name);
+                          setShowGarmentPicker(false);
+                        }}
+                      >
+                        <Text style={[
+                          styles.pickerOptionText,
+                          selectedGarment === name && styles.pickerOptionTextSelected,
+                        ]}>
+                          {name}
+                        </Text>
+                        <Text style={[
+                          styles.pickerOptionPrice,
+                          selectedGarment === name && styles.pickerOptionPriceSelected,
+                        ]}>
+                          ₱{price.toLocaleString()}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </TouchableOpacity>
+            </Modal>
+
+            {/* Fabric Type Selection - Dropdown */}
             <Text style={styles.sectionTitle}>Select Fabric</Text>
-            <View style={styles.fabricRow}>
-              {FABRIC_TYPES.map((fabric) => (
-                <TouchableOpacity
-                  key={fabric.id}
-                  style={[
-                    styles.fabricChip,
-                    selectedFabric === fabric.id && styles.fabricChipSelected,
-                  ]}
-                  onPress={() => setSelectedFabric(fabric.id)}
-                >
-                  <Text style={[
-                    styles.fabricLabel,
-                    selectedFabric === fabric.id && styles.fabricLabelSelected,
-                  ]}>
-                    {fabric.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <TouchableOpacity 
+              style={styles.dropdownSelector}
+              onPress={() => setShowFabricPicker(true)}
+            >
+              <View style={styles.dropdownLeft}>
+                <MaterialCommunityIcons name="palette-swatch-outline" size={20} color="#8D6E63" />
+                <Text style={[styles.dropdownText, !selectedFabric && styles.dropdownPlaceholder]}>
+                  {selectedFabric || 'Select a fabric type'}
+                </Text>
+              </View>
+              <View style={styles.dropdownRight}>
+                {selectedFabric && (
+                  <Text style={styles.dropdownPrice}>₱{fabricTypes[selectedFabric]?.toLocaleString()}</Text>
+                )}
+                <Ionicons name="chevron-down" size={20} color="#8D6E63" />
+              </View>
+            </TouchableOpacity>
+
+            {/* Fabric Type Picker Modal */}
+            <Modal
+              visible={showFabricPicker}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={() => setShowFabricPicker(false)}
+            >
+              <TouchableOpacity 
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => setShowFabricPicker(false)}
+              >
+                <View style={styles.pickerModal}>
+                  <View style={styles.pickerHeader}>
+                    <Text style={styles.pickerTitle}>Select Fabric Type</Text>
+                    <TouchableOpacity onPress={() => setShowFabricPicker(false)}>
+                      <Ionicons name="close" size={24} color="#5D4037" />
+                    </TouchableOpacity>
+                  </View>
+                  <ScrollView style={styles.pickerScroll}>
+                    {Object.entries(fabricTypes).map(([name, price]) => (
+                      <TouchableOpacity
+                        key={name}
+                        style={[
+                          styles.pickerOption,
+                          selectedFabric === name && styles.pickerOptionSelected,
+                        ]}
+                        onPress={() => {
+                          setSelectedFabric(name);
+                          setShowFabricPicker(false);
+                        }}
+                      >
+                        <Text style={[
+                          styles.pickerOptionText,
+                          selectedFabric === name && styles.pickerOptionTextSelected,
+                        ]}>
+                          {name}
+                        </Text>
+                        <Text style={[
+                          styles.pickerOptionPrice,
+                          selectedFabric === name && styles.pickerOptionPriceSelected,
+                        ]}>
+                          ₱{price.toLocaleString()}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </TouchableOpacity>
+            </Modal>
+
+            {/* Price Estimate */}
+            {selectedGarment && selectedFabric && (
+              <View style={styles.priceEstimateCard}>
+                <Text style={styles.priceEstimateTitle}>Estimated Price</Text>
+                <View style={styles.priceBreakdown}>
+                  <View style={styles.priceRow}>
+                    <Text style={styles.priceLabel}>Garment ({selectedGarment}):</Text>
+                    <Text style={styles.priceValue}>₱{GARMENT_TYPES[selectedGarment]?.toLocaleString()}</Text>
+                  </View>
+                  <View style={styles.priceRow}>
+                    <Text style={styles.priceLabel}>Fabric ({selectedFabric}):</Text>
+                    <Text style={styles.priceValue}>₱{fabricTypes[selectedFabric]?.toLocaleString()}</Text>
+                  </View>
+                  <View style={[styles.priceRow, styles.priceTotalRow]}>
+                    <Text style={styles.priceTotalLabel}>Total:</Text>
+                    <Text style={styles.priceTotalValue}>₱{estimatedPrice.toLocaleString()}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
 
             {/* Image Upload */}
             <Text style={styles.sectionTitle}>Reference Image (Optional)</Text>
@@ -276,18 +447,28 @@ export default function CustomizationService() {
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Garment:</Text>
                 <Text style={styles.summaryValue}>
-                  {GARMENT_TYPES.find(g => g.id === selectedGarment)?.label}
+                  {selectedGarment}
                 </Text>
               </View>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Fabric:</Text>
                 <Text style={styles.summaryValue}>
-                  {FABRIC_TYPES.find(f => f.id === selectedFabric)?.label}
+                  {selectedFabric}
                 </Text>
               </View>
+              <View style={styles.summaryDivider} />
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Estimated Price:</Text>
-                <Text style={styles.summaryPrice}>₱{getSelectedGarmentPrice().toLocaleString()}</Text>
+                <Text style={styles.summaryLabel}>Garment Price:</Text>
+                <Text style={styles.summaryValue}>₱{getSelectedGarmentPrice().toLocaleString()}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Fabric Price:</Text>
+                <Text style={styles.summaryValue}>₱{getSelectedFabricPrice().toLocaleString()}</Text>
+              </View>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabelTotal}>Estimated Total:</Text>
+                <Text style={styles.summaryPrice}>₱{estimatedPrice.toLocaleString()}</Text>
               </View>
             </View>
 
@@ -570,13 +751,168 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8D6E63',
   },
+  summaryLabelTotal: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#5D4037',
+  },
   summaryValue: {
     fontSize: 14,
     fontWeight: '600',
     color: '#5D4037',
   },
   summaryPrice: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#B8860B',
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: '#E8D5C4',
+    marginVertical: 10,
+  },
+
+  // Dropdown Selector
+  dropdownSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#E8D5C4',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+  },
+  dropdownLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dropdownRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dropdownText: {
+    fontSize: 14,
+    color: '#333',
+    marginLeft: 10,
+  },
+  dropdownPlaceholder: {
+    color: '#999',
+  },
+  dropdownPrice: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#B8860B',
+  },
+
+  // Picker Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  pickerModal: {
+    backgroundColor: '#FFFBF0',
+    borderRadius: 16,
+    width: '100%',
+    maxHeight: '70%',
+    overflow: 'hidden',
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8D5C4',
+  },
+  pickerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#5D4037',
+  },
+  pickerScroll: {
+    maxHeight: 350,
+  },
+  pickerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F0E8',
+  },
+  pickerOptionSelected: {
+    backgroundColor: '#FFF8E7',
+  },
+  pickerOptionText: {
+    fontSize: 15,
+    color: '#5D4037',
+  },
+  pickerOptionTextSelected: {
+    fontWeight: '600',
+    color: '#B8860B',
+  },
+  pickerOptionPrice: {
+    fontSize: 14,
+    color: '#8D6E63',
+  },
+  pickerOptionPriceSelected: {
+    fontWeight: '600',
+    color: '#B8860B',
+  },
+
+  // Price Estimate Card
+  priceEstimateCard: {
+    backgroundColor: '#FFF8E7',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#B8860B',
+  },
+  priceEstimateTitle: {
     fontSize: 16,
+    fontWeight: '700',
+    color: '#5D4037',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  priceBreakdown: {
+    gap: 8,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  priceTotalRow: {
+    marginTop: 8,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#E8D5C4',
+  },
+  priceLabel: {
+    fontSize: 14,
+    color: '#8D6E63',
+  },
+  priceValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#5D4037',
+  },
+  priceTotalLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#5D4037',
+  },
+  priceTotalValue: {
+    fontSize: 18,
     fontWeight: '700',
     color: '#B8860B',
   },

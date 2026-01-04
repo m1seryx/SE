@@ -481,8 +481,13 @@ body {
 }
 
 /* Slight warmth for logged-in feel */
-.services, .rental, .customization {
+.services, .rental {
   background: #fffcf9;
+}
+
+/* Light brown background for Bespoke Customization section */
+.customization {
+  background: #f5ebe0;
 }
 
 .cart-button {
@@ -501,20 +506,20 @@ body {
 }
 .cart-badge {
   position: absolute;
-  top: -8px;
-  right: -8px;
+  top: 2px;
+  right: 2px;
   background: #d9534f;
   color: #fff;
   border-radius: 50%;
-  min-width: 20px;
-  height: 20px;
+  min-width: 16px;
+  height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 9px;
   font-weight: bold;
-  border: 2px solid white;
-  padding: 0 4px;
+  border: none;
+  padding: 0 2px;
   box-sizing: border-box;
 }
 
@@ -534,19 +539,19 @@ body {
 }
 .notif-badge {
   position: absolute;
-  top: -2px;
-  right: -2px;
-  background: #4b2e21;
+  top: 2px;
+  right: 2px;
+  background: #d9534f;
   color: #fff;
   border-radius: 50%;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: bold;
-  border: 2px solid white;
+  border: none;
 }
 
 /* Consistent icon button styling */
@@ -866,20 +871,20 @@ body {
 .cart-badge,
 .notif-badge {
   position: absolute;
-  top: -2px;
-  right: -2px;
+  top: 2px;
+  right: 2px;
   background: #d9534f;
   color: white;
   border-radius: 50%;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 2px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: bold;
-  border: 2px solid white;
+  border: none;
   z-index: 10;
 }
 
@@ -887,6 +892,6 @@ body {
 .cart-badge:has-text("10"),
 .cart-badge:has-text("11"),
 .cart-badge:has-text("12") {
-  min-width: 20px;
-  font-size: 9px;
+  min-width: 18px;
+  font-size: 8px;
 }

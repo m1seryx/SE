@@ -8,12 +8,14 @@ const ensureTableExists = (callback) => {
       garment_id INT AUTO_INCREMENT PRIMARY KEY,
       garment_name VARCHAR(100) NOT NULL UNIQUE,
       garment_price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+      garment_code VARCHAR(50) DEFAULT NULL,
       description TEXT,
       is_active TINYINT(1) DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       
       INDEX idx_garment_name (garment_name),
+      INDEX idx_garment_code (garment_code),
       INDEX idx_is_active (is_active),
       INDEX idx_created_at (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -24,7 +26,20 @@ const ensureTableExists = (callback) => {
       console.error('Error creating garment_types table:', err);
       return callback(err);
     }
-    callback(null);
+    
+    // Add garment_code column if it doesn't exist (for existing tables)
+    const addColumnSQL = `
+      ALTER TABLE garment_types 
+      ADD COLUMN IF NOT EXISTS garment_code VARCHAR(50) DEFAULT NULL AFTER garment_price
+    `;
+    
+    db.query(addColumnSQL, (alterErr) => {
+      // Ignore error if column already exists
+      if (alterErr && !alterErr.message.includes('Duplicate column')) {
+        console.warn('Note: Could not add garment_code column (may already exist):', alterErr.message);
+      }
+      callback(null);
+    });
   });
 };
 
@@ -122,7 +137,7 @@ exports.createGarmentType = (req, res) => {
     });
   }
   
-  const { garment_name, garment_price, description, is_active } = req.body;
+  const { garment_name, garment_price, garment_code, description, is_active } = req.body;
   
   if (!garment_name || !garment_name.trim()) {
     return res.status(400).json({
@@ -149,6 +164,7 @@ exports.createGarmentType = (req, res) => {
     const garmentData = {
       garment_name: garment_name.trim(),
       garment_price: parseFloat(garment_price),
+      garment_code: garment_code ? garment_code.trim().toLowerCase() : null,
       description: description || null,
       is_active: is_active !== undefined ? is_active : 1
     };
@@ -192,7 +208,7 @@ exports.updateGarmentType = (req, res) => {
   }
   
   const garmentId = req.params.garmentId;
-  const { garment_name, garment_price, description, is_active } = req.body;
+  const { garment_name, garment_price, garment_code, description, is_active } = req.body;
   
   if (!garment_name || !garment_name.trim()) {
     return res.status(400).json({
@@ -211,6 +227,7 @@ exports.updateGarmentType = (req, res) => {
   const garmentData = {
     garment_name: garment_name.trim(),
     garment_price: parseFloat(garment_price),
+    garment_code: garment_code ? garment_code.trim().toLowerCase() : null,
     description: description || null,
     is_active: is_active !== undefined ? is_active : 1
   };

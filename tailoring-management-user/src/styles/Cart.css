@@ -467,17 +467,16 @@
 
 /* Dry Cleaning Details */
 .drycleaning-details {
-  background: #e6f7ff;
+  background: #f8f9fa;
   padding: 8px;
   border-radius: 4px;
   margin-top: 8px;
-  border: 1px solid #91d5ff;
 }
 
 .drycleaning-details p {
   margin: 2px 0;
   font-size: 0.85rem;
-  color: #0050b3;
+  color: #666;
 }
 
 /* Clickable Image Styles */

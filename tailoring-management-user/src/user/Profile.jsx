@@ -641,7 +641,7 @@ const Profile = () => {
                   }}>
                     <span className="detail-label" style={{ color: '#856404', fontWeight: '600' }}>⚠️ Late Return Penalty:</span>
                     <span className="detail-value" style={{ color: '#856404', fontWeight: '600' }}>
-                      ₱{penalty.toFixed(2)} ({penaltyDays} day{penaltyDays > 1 ? 's' : ''} exceeded)
+                      ₱{penalty.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ({penaltyDays} day{penaltyDays > 1 ? 's' : ''} exceeded)
                     </span>
                   </div>
                 );
@@ -727,7 +727,7 @@ const Profile = () => {
             </div>
             <div className="detail-row">
               <span className="detail-label">Estimated Price:</span>
-              <span className="detail-value">₱{estimatedPrice}</span>
+              <span className="detail-value">₱{parseFloat(estimatedPrice).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
           </div>
         );
@@ -1006,7 +1006,7 @@ const Profile = () => {
               <span className="detail-label">
                 {specific_data?.isEstimatedPrice === true ? 'Estimated Price:' : 'Final Price:'}
               </span>
-              <span className="detail-value">₱{dryCleaningPrice.toFixed(2)}</span>
+              <span className="detail-value">₱{dryCleaningPrice.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
             </div>
           </div>
         );
@@ -1586,17 +1586,17 @@ const Profile = () => {
                         {hasPayment && remainingAmount > 0 ? (
                           <>
                             <div style={{ fontSize: '14px', color: '#666', textDecoration: 'line-through' }}>
-                              ₱{finalPrice.toFixed(2)}
+                              ₱{finalPrice.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                             </div>
                             <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ff9800' }}>
-                              ₱{remainingAmount.toFixed(2)}
+                              ₱{remainingAmount.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                             </div>
                             <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
                               Remaining
                             </div>
                           </>
                         ) : (
-                          `₱${finalPrice.toFixed(2)}`
+                          `₱${finalPrice.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
                         )}
                       </div>
                     </div>
@@ -1619,16 +1619,16 @@ const Profile = () => {
                           <>
                             <div className="price-row">
                               <span className="price-label">Total Rental Price:</span>
-                              <span className="price-value final">₱{finalPrice.toFixed(2)}</span>
+                              <span className="price-value final">₱{finalPrice.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                             </div>
                             <div className="price-row">
                               <span className="price-label">Amount Paid:</span>
-                              <span className="price-value" style={{ color: '#4caf50' }}>₱{totalPaid.toFixed(2)}</span>
+                              <span className="price-value" style={{ color: '#4caf50' }}>₱{totalPaid.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                             </div>
                             <div className="price-row" style={{ borderTop: '2px solid #e0e0e0', paddingTop: '8px', marginTop: '8px' }}>
                               <span className="price-label" style={{ fontWeight: 'bold', fontSize: '16px' }}>Remaining Amount:</span>
                               <span className="price-value" style={{ fontWeight: 'bold', fontSize: '18px', color: '#ff9800' }}>
-                                ₱{remainingAmount.toFixed(2)}
+                                ₱{remainingAmount.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                               </span>
                             </div>
                             <div style={{ marginTop: '8px', padding: '10px', backgroundColor: '#fff3e0', borderRadius: '6px', fontSize: '13px', color: '#666' }}>
@@ -1647,14 +1647,14 @@ const Profile = () => {
                                 return (
                                   <div className="price-row">
                                     <span className="price-label">Estimated Price:</span>
-                                    <span className="price-value estimated">₱{estimatedPrice.toFixed(2)}</span>
+                                    <span className="price-value estimated">₱{estimatedPrice.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                                   </div>
                                 );
                               } else {
                                 return (
                                   <div className="price-row">
                                     <span className="price-label">Final Price:</span>
-                                    <span className="price-value final">₱{parseFloat(item.final_price).toFixed(2)}</span>
+                                    <span className="price-value final">₱{parseFloat(item.final_price).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                                   </div>
                                 );
                               }
@@ -1664,7 +1664,7 @@ const Profile = () => {
                             return estimatedPrice > 0 ? (
                               <div className="price-row">
                                 <span className="price-label">Estimated Price:</span>
-                                <span className="price-value estimated">₱{estimatedPrice.toFixed(2)}</span>
+                                <span className="price-value estimated">₱{estimatedPrice.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                               </div>
                             ) : null;
                           })()
@@ -1673,12 +1673,12 @@ const Profile = () => {
                           <>
                             <div className="price-row">
                               <span className="price-label">Estimated Price:</span>
-                              <span className="price-value estimated">₱{estimatedPrice.toFixed(2)}</span>
+                              <span className="price-value estimated">₱{estimatedPrice.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                             </div>
                             <div className="price-row">
                               <span className="price-label">Final Price:</span>
                               <span className={`price-value ${priceChanged ? 'changed' : 'same'}`}>
-                                ₱{parseFloat(item.final_price).toFixed(2)}
+                                ₱{parseFloat(item.final_price).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                 {priceChanged && <span className="price-change-indicator">⚠️ Updated by Admin</span>}
                               </span>
                             </div>
@@ -1692,13 +1692,13 @@ const Profile = () => {
                               <>
                                 <div className="price-row">
                                   <span className="price-label">Amount Paid:</span>
-                                  <span className="price-value" style={{ color: '#4caf50' }}>₱{totalPaid.toFixed(2)}</span>
+                                  <span className="price-value" style={{ color: '#4caf50' }}>₱{totalPaid.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                                 </div>
                                 {remainingAmount > 0 && (
                                   <div className="price-row" style={{ borderTop: '2px solid #e0e0e0', paddingTop: '8px', marginTop: '8px' }}>
                                     <span className="price-label" style={{ fontWeight: 'bold', fontSize: '16px' }}>Remaining Amount:</span>
                                     <span className="price-value" style={{ fontWeight: 'bold', fontSize: '18px', color: '#ff9800' }}>
-                                      ₱{remainingAmount.toFixed(2)}
+                                      ₱{remainingAmount.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                     </span>
                                   </div>
                                 )}
@@ -1717,19 +1717,19 @@ const Profile = () => {
                                 <>
                                   <div className="price-row">
                                     <span className="price-label">Estimated Price:</span>
-                                    <span className="price-value estimated">₱{parseFloat(item.final_price).toFixed(2)}</span>
+                                    <span className="price-value estimated">₱{parseFloat(item.final_price).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                                   </div>
                                   {hasPayment && (
                                     <>
                                       <div className="price-row">
                                         <span className="price-label">Amount Paid:</span>
-                                        <span className="price-value" style={{ color: '#4caf50' }}>₱{totalPaid.toFixed(2)}</span>
+                                        <span className="price-value" style={{ color: '#4caf50' }}>₱{totalPaid.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                                       </div>
                                       {remainingAmount > 0 && (
                                         <div className="price-row" style={{ borderTop: '2px solid #e0e0e0', paddingTop: '8px', marginTop: '8px' }}>
                                           <span className="price-label" style={{ fontWeight: 'bold', fontSize: '16px' }}>Remaining Amount:</span>
                                           <span className="price-value" style={{ fontWeight: 'bold', fontSize: '18px', color: '#ff9800' }}>
-                                            ₱{remainingAmount.toFixed(2)}
+                                            ₱{remainingAmount.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                           </span>
                                         </div>
                                       )}
@@ -1744,19 +1744,19 @@ const Profile = () => {
                               <>
                                 <div className="price-row">
                                   <span className="price-label">Final Price:</span>
-                                  <span className="price-value final">₱{parseFloat(item.final_price).toFixed(2)}</span>
+                                  <span className="price-value final">₱{parseFloat(item.final_price).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                                 </div>
                                 {hasPayment && (
                                   <>
                                     <div className="price-row">
                                       <span className="price-label">Amount Paid:</span>
-                                      <span className="price-value" style={{ color: '#4caf50' }}>₱{totalPaid.toFixed(2)}</span>
+                                      <span className="price-value" style={{ color: '#4caf50' }}>₱{totalPaid.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                                     </div>
                                     {remainingAmount > 0 && (
                                       <div className="price-row" style={{ borderTop: '2px solid #e0e0e0', paddingTop: '8px', marginTop: '8px' }}>
                                         <span className="price-label" style={{ fontWeight: 'bold', fontSize: '16px' }}>Remaining Amount:</span>
                                         <span className="price-value" style={{ fontWeight: 'bold', fontSize: '18px', color: '#ff9800' }}>
-                                          ₱{remainingAmount.toFixed(2)}
+                                          ₱{remainingAmount.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                         </span>
                                       </div>
                                     )}
@@ -1991,7 +1991,7 @@ const Profile = () => {
           <div className="details-modal-overlay" onClick={closeDetailsModal}>
             <div className="details-modal" onClick={(e) => e.stopPropagation()}>
               <div className="details-modal-header">
-                <h3>Order Details - ORD-{selectedItem.order_id}</h3>
+                <h3 className="modal-title-black">Order Details - ORD-{selectedItem.order_id}</h3>
                 <button className="details-modal-close" onClick={closeDetailsModal}>×</button>
               </div>
 
@@ -2000,7 +2000,7 @@ const Profile = () => {
                   <div className="summary-item">
                     <span className="summary-label">Service Type:</span>
                     <span className="summary-value">
-                      {selectedItem.service_type.charAt(0).toUpperCase() + selectedItem.service_type.slice(1)}
+                      {formatServiceType(selectedItem.service_type)}
                     </span>
                   </div>
                   <div className="summary-item">
@@ -2034,10 +2034,10 @@ const Profile = () => {
                           return (
                             <div>
                               <div style={{ fontSize: '14px', color: '#666', textDecoration: 'line-through', marginBottom: '4px' }}>
-                                ₱{finalPrice.toFixed(2)}
+                                ₱{finalPrice.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                               </div>
                               <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ff9800' }}>
-                                ₱{remainingAmount.toFixed(2)}
+                                ₱{remainingAmount.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                               </div>
                               <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
                                 (Remaining after payment)
@@ -2050,12 +2050,12 @@ const Profile = () => {
                         if (selectedItem.status === 'pending') {
                           const estimatedPrice = getEstimatedPrice(selectedItem.specific_data, selectedItem.service_type);
                           if (estimatedPrice > 0) {
-                            return `₱${estimatedPrice.toFixed(2)} (Estimated)`;
+                            return `₱${estimatedPrice.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (Estimated)`;
                           }
                         }
                         
                         // For price_confirmation or other statuses, show final price
-                        return `₱${finalPrice.toFixed(2)}`;
+                        return `₱${finalPrice.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
                       })()}
                     </span>
                   </div>
@@ -2163,7 +2163,7 @@ const Profile = () => {
         >
           <div className="details-modal" onClick={(e) => e.stopPropagation()}>
             <div className="details-modal-header">
-              <h3>My Measurements</h3>
+              <h3 className="modal-title-black">My Measurements</h3>
               <button className="details-modal-close" onClick={() => setMeasurementsModalOpen(false)}>×</button>
             </div>
             <div className="details-modal-content">
@@ -2177,9 +2177,9 @@ const Profile = () => {
                       <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '1.1rem', fontWeight: '600', borderBottom: '2px solid #8B4513', paddingBottom: '8px' }}>Top Measurements</h4>
                       <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
                         <thead>
-                          <tr style={{ backgroundColor: '#f8f9fa' }}>
-                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Measurement</th>
-                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Value (inches)</th>
+                          <tr style={{ backgroundColor: '#8B4513' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#fff' }}>Measurement</th>
+                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#fff' }}>Value (Inches / CM)</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2190,15 +2190,17 @@ const Profile = () => {
                               'chest': 'Chest',
                               'shoulders': 'Shoulders',
                               'sleeveLength': 'Sleeve Length',
+                              'sleeve_length': 'Sleeve Length',
                               'neck': 'Neck',
                               'waist': 'Waist',
                               'length': 'Length'
                             };
-                            const label = labelMap[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1').trim();
+                            const label = labelMap[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
+                            const cmValue = (parseFloat(value) * 2.54).toFixed(1);
                             return (
                               <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
                                 <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', fontWeight: '500', color: '#000' }}>{label}</td>
-                                <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}>{value}"</td>
+                                <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}>{value}" / {cmValue} cm</td>
                               </tr>
                             );
                           })}
@@ -2213,9 +2215,9 @@ const Profile = () => {
                       <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '1.1rem', fontWeight: '600', borderBottom: '2px solid #8B4513', paddingBottom: '8px' }}>Bottom Measurements</h4>
                       <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
                         <thead>
-                          <tr style={{ backgroundColor: '#f8f9fa' }}>
-                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Measurement</th>
-                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#333' }}>Value (inches)</th>
+                          <tr style={{ backgroundColor: '#8B4513' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#fff' }}>Measurement</th>
+                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#fff' }}>Value (Inches / CM)</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2230,11 +2232,12 @@ const Profile = () => {
                               'thigh': 'Thigh',
                               'outseam': 'Outseam'
                             };
-                            const label = labelMap[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1').trim();
+                            const label = labelMap[key] || key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
+                            const cmValue = (parseFloat(value) * 2.54).toFixed(1);
                             return (
                               <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
                                 <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', fontWeight: '500', color: '#000' }}>{label}</td>
-                                <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}>{value}"</td>
+                                <td style={{ padding: '12px', borderBottom: '1px solid #f0f0f0', color: '#000' }}>{value}" / {cmValue} cm</td>
                               </tr>
                             );
                           })}
