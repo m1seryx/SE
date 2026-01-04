@@ -261,6 +261,13 @@ const RentalInventory = {
   },
 
 
+  // Update status and damage notes together (for bundle item returns)
+  updateStatusWithDamageNotes: (item_id, status, damage_notes, callback) => {
+    const sql = "UPDATE rental_inventory SET status = ?, damage_notes = ? WHERE item_id = ?";
+    db.query(sql, [status, damage_notes, item_id], callback);
+  },
+
+
   updateRentedCount: (item_id, change, callback) => {
     const sql = "UPDATE rental_inventory SET currently_rented = currently_rented + ? WHERE item_id = ?";
     db.query(sql, [change, item_id], callback);

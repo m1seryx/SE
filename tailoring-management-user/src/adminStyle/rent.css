@@ -1,9 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap');
 
+html, body {
+  overflow-x: hidden;
+}
+
 /* ============ RENTAL PAGE ============ */
 .rental-page {
   min-height: 100vh;
   background-color: #F5F6FA;
+  overflow-x: hidden;
 }
 
 /* ============ ADD RENTAL BUTTON ============ */
@@ -1043,4 +1048,75 @@ tbody tr.clickable-row:active {
 .form-group textarea::placeholder,
 .form-control::placeholder {
   color: #95a5a6 !important;
+}
+
+/* Centered modal footer for buttons */
+.modal-footer-centered {
+  padding: 20px 28px;
+  display: flex !important;
+  gap: 15px !important;
+  justify-content: flex-end !important;
+  background: #FAFAFA;
+  border-top: 1px solid rgba(139, 69, 19, 0.1);
+}
+
+.modal-footer-centered .btn-save {
+  background: rgb(139, 69, 19) !important;
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.3) !important;
+  padding: 12px 24px;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.modal-footer-centered .btn-save:hover {
+  background: rgb(110, 55, 15) !important;
+  box-shadow: 0 6px 16px rgba(139, 69, 19, 0.4) !important;
+  transform: translateY(-2px);
+}
+
+.modal-footer-centered .btn-cancel {
+  padding: 12px 24px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.modal-footer-centered .btn-cancel:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
+}
+
+/* Centered payment form group */
+.payment-form-group {
+  text-align: center;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.payment-form-group label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.payment-form-group input {
+  text-align: center;
+  width: 100%;
+  max-width: 300px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
 }

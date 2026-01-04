@@ -7,6 +7,12 @@
   box-sizing: border-box;
 }
 
+/* Prevent horizontal scrolling globally */
+html, body, #root {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
 :root {
   /* Brand Colors - Using #8B4513 as primary */
   --primary: #8B4513;

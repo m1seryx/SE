@@ -54,4 +54,7 @@ router.post('/:itemId/decline-price', orderPriceController.declinePrice);
 // Get order item details
 router.get('/items/:itemId', orderController.getOrderItemDetails);
 
+// Delete order item (admin only - only completed orders)
+router.delete('/items/:itemId', orderController.deleteOrderItem);
+
 module.exports = router;

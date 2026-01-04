@@ -10,6 +10,7 @@ import ImagePreviewModal from '../components/ImagePreviewModal';
 import { getMeasurements, saveMeasurements } from '../api/CustomerApi';
 import { useAlert } from '../context/AlertContext';
 import { recordPayment } from '../api/PaymentApi';
+import { deleteOrderItem } from '../api/OrderApi';
 
 // Helper to check if user is authenticated
 const isAuthenticated = () => {
@@ -18,7 +19,7 @@ const isAuthenticated = () => {
 
 
 const Customize = () => {
-  const { alert } = useAlert();
+  const { alert, confirm } = useAlert();
   const navigate = useNavigate();
   const [allItems, setAllItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -812,6 +813,30 @@ const Customize = () => {
     setShowEditModal(true);
   };
 
+  const handleDeleteOrder = async (item) => {
+    const confirmed = await confirm(
+      `Are you sure you want to delete this completed order (ORD-${item.order_id})?\n\nThis action cannot be undone.`,
+      'Delete Order',
+      'danger',
+      { confirmText: 'Delete', cancelText: 'Cancel' }
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      const result = await deleteOrderItem(item.item_id);
+      if (result.success) {
+        await alert('Order deleted successfully', 'Success', 'success');
+        loadCustomizationOrders();
+      } else {
+        await alert(result.message || 'Failed to delete order', 'Error', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      await alert('Error deleting order', 'Error', 'error');
+    }
+  };
+
   const handleRecordPayment = async () => {
     if (!selectedOrder || !paymentAmount) {
       await alert('Please enter a payment amount', 'Error', 'error');
@@ -1048,14 +1073,6 @@ const Customize = () => {
                             </svg>
                           </button>
                           {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
-                            <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                              </svg>
-                            </button>
-                          )}
-                          {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
                             <button 
                               className="icon-btn" 
                               onClick={(e) => {
@@ -1086,14 +1103,6 @@ const Customize = () => {
                             </button>
                           )}
                           {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
-                            <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                              </svg>
-                            </button>
-                          )}
-                          {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
                             <button 
                               className="icon-btn" 
                               onClick={(e) => {
@@ -1106,6 +1115,24 @@ const Customize = () => {
                               style={{ backgroundColor: '#2196F3', color: 'white' }}
                             >
                               💰
+                            </button>
+                          )}
+                          {item.approval_status === 'completed' && (
+                            <button 
+                              className="icon-btn delete" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteOrder(item);
+                              }} 
+                              title="Delete Order"
+                              style={{ backgroundColor: '#f44336', color: 'white' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                              </svg>
                             </button>
                           )}
                         </div>
@@ -1286,11 +1313,9 @@ const Customize = () => {
               )}
 
               {/* Customer Measurements Section */}
-              <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', color: '#333' }}>Customer Measurements</h3>
+              <div className="measurements-btn-wrapper">
                   <button 
-                    className="btn-secondary" 
+                    className="btn-measurements" 
                     onClick={async () => {
                       setMeasurementsLoading(true);
                       const result = await getMeasurements(selectedOrder.user_id);
@@ -1310,11 +1335,9 @@ const Customize = () => {
                       setMeasurementsLoading(false);
                       setShowMeasurementsModal(true);
                     }}
-                    style={{ padding: '6px 12px', fontSize: '14px' }}
                   >
                     {measurementsLoading ? 'Loading...' : 'View/Edit Measurements'}
                   </button>
-                </div>
               </div>
 
               {/* Show design preview images - all 4 angles if available */}
@@ -1588,7 +1611,7 @@ const Customize = () => {
       {/* Measurements Modal */}
       {showMeasurementsModal && selectedOrder && (
         <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowMeasurementsModal(false)}>
-          <div className="modal-content" style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="modal-content" style={{ maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="modal-header">
               <h2>Customer Measurements</h2>
               <span className="close-modal" onClick={() => setShowMeasurementsModal(false)}>×</span>
@@ -1596,10 +1619,12 @@ const Customize = () => {
             <div className="modal-body">
               <div className="detail-row"><strong>Customer:</strong> {selectedOrder.first_name} {selectedOrder.last_name}</div>
               
-              {/* Top Measurements */}
-              <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
-                <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#333' }}>Top Measurements</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              {/* Measurements Container - Top and Bottom side by side */}
+              <div style={{ display: 'flex', gap: '20px', marginTop: '20px' }}>
+                {/* Top Measurements */}
+                <div style={{ flex: 1, padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
+                  <p className="measurement-title" style={{ marginTop: 0, marginBottom: '15px', color: '#000', textAlign: 'center', fontWeight: '600', fontSize: '16px', padding: 0 }}>Top Measurements</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                   <div className="form-group">
                     <label>Chest (inches)</label>
                     <input
@@ -1666,13 +1691,13 @@ const Customize = () => {
                       style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                     />
                   </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Bottom Measurements */}
-              <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
-                <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#333' }}>Bottom Measurements</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                {/* Bottom Measurements */}
+                <div style={{ flex: 1, padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
+                  <p className="measurement-title" style={{ marginTop: 0, marginBottom: '15px', color: '#000', textAlign: 'center', fontWeight: '600', fontSize: '16px', padding: 0 }}>Bottom Measurements</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                   <div className="form-group">
                     <label>Waist (inches)</label>
                     <input
@@ -1739,18 +1764,19 @@ const Customize = () => {
                       style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                     />
                   </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Notes */}
-              <div className="form-group" style={{ marginTop: '20px' }}>
-                <label>Notes</label>
+              {/* Notes - Below both measurement sections */}
+              <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#fff3e0', borderRadius: '8px', border: '1px solid #ffcc80' }}>
+                <label style={{ display: 'block', marginBottom: '10px', color: '#000', fontWeight: '600', fontSize: '16px' }}>Notes</label>
                 <textarea
                   value={measurements.notes}
                   onChange={(e) => setMeasurements({ ...measurements, notes: e.target.value })}
                   placeholder="Add any additional notes about measurements..."
                   rows={3}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                  style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
                 />
               </div>
             </div>
@@ -1918,14 +1944,15 @@ const Customize = () => {
 
               {/* List of existing custom models */}
               {customModels.length > 0 && (
-                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee', width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', width: '100%' }}>
                     <h3 style={{ fontSize: '16px', margin: 0 }}>Existing Custom Models ({customModels.length})</h3>
                     <button
                       onClick={handleDeleteAllModels}
+                      className="model-delete-all-btn"
                       style={{
                         padding: '6px 12px',
-                        backgroundColor: '#d32f2f',
+                        backgroundColor: '#f44336',
                         color: 'white',
                         border: 'none',
                         borderRadius: '4px',
@@ -1935,10 +1962,10 @@ const Customize = () => {
                       }}
                       title="Delete all custom models"
                     >
-                      Delete All
+                      DELETE ALL
                     </button>
                   </div>
-                  <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                  <div style={{ maxHeight: '200px', overflowY: 'auto', width: '100%' }}>
                     {customModels.map(model => (
                       <div 
                         key={model.model_id} 
@@ -1960,6 +1987,7 @@ const Customize = () => {
                         </div>
                         <button
                           onClick={() => handleDeleteModel(model.model_id)}
+                          className="model-delete-btn"
                           style={{
                             padding: '5px 10px',
                             backgroundColor: '#f44336',
@@ -1970,7 +1998,7 @@ const Customize = () => {
                             fontSize: '12px'
                           }}
                         >
-                          Delete
+                          DELETE
                         </button>
                       </div>
                     ))}
@@ -1978,7 +2006,7 @@ const Customize = () => {
                 </div>
               )}
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer-centered">
               <button className="btn-cancel" onClick={() => setShowGLBUploadModal(false)}>Cancel</button>
               <button 
                 className="btn-save" 
@@ -2055,9 +2083,9 @@ const Customize = () => {
 
               {/* List of existing fabric types */}
               {fabricTypes.length > 0 && (
-                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee' }}>
+                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee', width: '100%' }}>
                   <h3 style={{ fontSize: '16px', marginBottom: '15px' }}>Existing Fabric Types ({fabricTypes.length})</h3>
-                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                  <div style={{ maxHeight: '300px', overflowY: 'auto', width: '100%' }}>
                     {fabricTypes.map(fabric => (
                       <div 
                         key={fabric.fabric_id} 
@@ -2122,7 +2150,7 @@ const Customize = () => {
                 </div>
               )}
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer-centered">
               <button className="btn-cancel" onClick={() => {
                 setShowFabricTypeModal(false);
                 setEditingFabricType(null);
@@ -2195,7 +2223,7 @@ const Customize = () => {
                 return null;
               })()}
               
-              <div className="form-group" style={{ marginTop: '20px' }}>
+              <div className="payment-form-group">
                 <label>Payment Amount *</label>
                 <input
                   type="number"
@@ -2212,7 +2240,7 @@ const Customize = () => {
                 </small>
               </div>
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer-centered">
               <button className="btn-cancel" onClick={() => {
                 setShowPaymentModal(false);
                 setPaymentAmount('');

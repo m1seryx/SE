@@ -9,15 +9,15 @@ function AdminPage() {
   const [stats, setStats] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
   const [allActivities, setAllActivities] = useState([]);
-  const [allPayments, setAllPayments] = useState([]); // Store all payment activities
+  const [allPayments, setAllPayments] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Filter states
+
   const [serviceFilter, setServiceFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState('all'); // all, today, week, month
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all'); // all, down-payment, paid, partial-payment
+  const [dateFilter, setDateFilter] = useState('all'); 
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all'); 
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -43,7 +43,7 @@ function AdminPage() {
     fetchDashboard();
   }, []);
 
-  // Fetch all payment history when payment filter is selected
+
   useEffect(() => {
     const fetchAllPayments = async () => {
       if (statusFilter === 'payment') {
@@ -51,7 +51,7 @@ function AdminPage() {
           setLoading(true);
           const result = await getAllTransactionLogs();
           if (result.success && result.logs) {
-            // First, sort all logs by order_item_id and created_at to calculate cumulative totals
+   
             const sortedLogs = [...result.logs].sort((a, b) => {
               if (a.order_item_id !== b.order_item_id) {
                 return a.order_item_id - b.order_item_id;
@@ -59,7 +59,6 @@ function AdminPage() {
               return new Date(a.created_at) - new Date(b.created_at);
             });
 
-            // Calculate cumulative totals for each order item
             const cumulativeTotals = {};
             sortedLogs.forEach(tx => {
               const itemId = tx.order_item_id;
@@ -69,10 +68,10 @@ function AdminPage() {
               cumulativeTotals[itemId] += parseFloat(tx.amount || 0);
             });
 
-            // Create a map to track running totals for each order item
+        
             const runningTotals = {};
             
-            // Format transaction logs as activities
+        
             const paymentActivities = sortedLogs.map(tx => {
               const orderDate = tx.created_at instanceof Date 
                 ? tx.created_at 
@@ -104,7 +103,7 @@ function AdminPage() {
               const customerName = `${tx.first_name || ''} ${tx.last_name || ''}`.trim() || 'Customer';
               const paymentAmount = parseFloat(tx.amount || 0);
               
-              // Calculate running total up to this transaction
+          
               const itemId = tx.order_item_id;
               if (!runningTotals[itemId]) {
                 runningTotals[itemId] = 0;
@@ -160,24 +159,37 @@ function AdminPage() {
     fetchAllPayments();
   }, [statusFilter, allActivities]);
 
-  // Filter payment activities by payment status
+  // Filter payment activities by payment status AND service type
   useEffect(() => {
     if (statusFilter === 'payment' && allPayments.length > 0) {
       let filtered = [...allPayments];
       
+      // Filter by service type first
+      if (serviceFilter !== 'all') {
+        filtered = filtered.filter(activity => {
+          const service = activity.service?.toLowerCase() || '';
+          const filter = serviceFilter.toLowerCase();
+          return service.includes(filter) || 
+                 (filter === 'dry' && service.includes('dry')) ||
+                 (filter === 'dry_cleaning' && service.includes('dry')) ||
+                 (filter === 'custom' && (service.includes('custom') || service.includes('customize')));
+        });
+      }
+      
+      // Then filter by payment status
       if (paymentStatusFilter !== 'all') {
         filtered = filtered.filter(activity => {
           const paymentStatus = activity.paymentInfo?.payment_status || activity.status || '';
-          const normalizedStatus = paymentStatus.toLowerCase();
-          const filter = paymentStatusFilter.toLowerCase();
+          const normalizedStatus = paymentStatus.toLowerCase().replace(/-/g, '_');
+          const filter = paymentStatusFilter.toLowerCase().replace(/-/g, '_');
           
           // Map filter values to actual payment statuses
           if (filter === 'paid') {
             return normalizedStatus === 'paid' || normalizedStatus === 'fully_paid';
-          } else if (filter === 'down-payment') {
-            return normalizedStatus === 'down-payment' || normalizedStatus === 'down_payment';
-          } else if (filter === 'partial-payment') {
-            return normalizedStatus === 'partial_payment' || normalizedStatus === 'partial-payment';
+          } else if (filter === 'down_payment') {
+            return normalizedStatus === 'down_payment' || normalizedStatus === 'downpayment' || normalizedStatus === 'down-payment';
+          } else if (filter === 'partial_payment') {
+            return normalizedStatus === 'partial_payment' || normalizedStatus === 'partialpayment' || normalizedStatus === 'partial-payment';
           }
           return false;
         });
@@ -188,7 +200,7 @@ function AdminPage() {
       // If payment filter is active but no payments loaded yet, show empty
       setRecentActivities([]);
     }
-  }, [paymentStatusFilter, statusFilter, allPayments]);
+  }, [paymentStatusFilter, statusFilter, allPayments, serviceFilter]);
 
   // Filter activities based on selected filters (when not showing all payments)
   useEffect(() => {

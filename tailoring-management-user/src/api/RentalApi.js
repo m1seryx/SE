@@ -106,9 +106,13 @@ export async function updateRental(item_id, rentalData, imageFile) {
   }
 }
 
-export async function updateRentalStatus(item_id, status) {
+export async function updateRentalStatus(item_id, status, damage_notes = null) {
   try {
-    const response = await axios.put(`${BASE_URL}/rentals/${item_id}/status`, { status });
+    const payload = { status };
+    if (damage_notes !== null) {
+      payload.damage_notes = damage_notes;
+    }
+    const response = await axios.put(`${BASE_URL}/rentals/${item_id}/status`, payload);
     return response.data;
   } catch (error) {
     console.error("Update rental status error:", error);

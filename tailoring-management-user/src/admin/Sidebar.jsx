@@ -8,7 +8,7 @@ function Sidebar() {
       <div className='profile'> 
         <div className="w-12 h-12 bg-teal-500 rounded-full flex items-center justify-center text-white text-xl font-semibold">
         </div>
-        <h3 style={{ color: 'black' }} className='text-black'>D'jackman Tailor Deluxe</h3>
+        <h3 style={{ color: 'rgb(139, 69, 19)' }}>D'jackman Tailor Deluxe</h3>
 
       </div>
 

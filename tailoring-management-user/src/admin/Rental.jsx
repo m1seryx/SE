@@ -5,6 +5,7 @@ import '../adminStyle/rent.css';
 import { getAllRentalOrders, getRentalOrdersByStatus, updateRentalOrderItem, recordRentalPayment } from '../api/RentalOrderApi';
 import { updateRentalStatus } from '../api/RentalApi';
 import { useAlert } from '../context/AlertContext';
+import { deleteOrderItem } from '../api/OrderApi';
 
 function Rental() {
   const { alert, confirm, prompt } = useAlert();
@@ -179,6 +180,30 @@ function Rental() {
       damageNotes: rental.specific_data?.damageNotes || ''
     });
     setShowEditModal(true);
+  };
+
+  const handleDeleteOrder = async (rental) => {
+    const confirmed = await confirm(
+      `Are you sure you want to delete this completed rental order (ORD-${rental.order_id})?\n\nThis action cannot be undone.`,
+      'Delete Order',
+      'danger',
+      { confirmText: 'Delete', cancelText: 'Cancel' }
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      const result = await deleteOrderItem(rental.item_id);
+      if (result.success) {
+        await alert('Order deleted successfully', 'Success', 'success');
+        loadRentalOrders();
+      } else {
+        await alert(result.message || 'Failed to delete order', 'Error', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      await alert('Error deleting order', 'Error', 'error');
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -360,24 +385,27 @@ function Rental() {
           const isBundle = rental.specific_data?.is_bundle === true || rental.specific_data?.category === 'rental_bundle';
           const bundleItems = rental.specific_data?.bundle_items || [];
           
-          if (isBundle && bundleItems.length > 0 && damageNotes) {
+          if (isBundle && bundleItems.length > 0) {
             // Parse damage notes to see which items are damaged
             let damagedItems = {};
-            try {
-              damagedItems = JSON.parse(damageNotes);
-            } catch (e) {
-              console.error('Error parsing damage notes:', e);
+            if (damageNotes) {
+              try {
+                damagedItems = JSON.parse(damageNotes);
+              } catch (e) {
+                console.error('Error parsing damage notes:', e);
+              }
             }
             
-            // Update each bundle item's status based on damage
+            // Update each bundle item's status and damage notes based on damage
             for (const bundleItem of bundleItems) {
               try {
-                const isDamaged = damagedItems[bundleItem.item_name];
-                const newStatus = isDamaged ? 'maintenance' : 'available';
+                const itemDamageNote = damagedItems[bundleItem.item_name] || null;
+                const newStatus = itemDamageNote ? 'maintenance' : 'available';
                 
-                await updateRentalStatus(bundleItem.item_id || bundleItem.id, newStatus);
+                // Pass the individual damage note for this specific item
+                await updateRentalStatus(bundleItem.item_id || bundleItem.id, newStatus, itemDamageNote);
                 
-                console.log(`Updated ${bundleItem.item_name} status to ${newStatus} due to ${isDamaged ? 'damage' : 'no damage'}`);
+                console.log(`Updated ${bundleItem.item_name} status to ${newStatus}${itemDamageNote ? ` with damage notes: "${itemDamageNote}"` : ''}`);
               } catch (error) {
                 console.warn(`Failed to update rental inventory item status for ${bundleItem.item_name}:`, error);
               }
@@ -706,8 +734,32 @@ function Rental() {
                             const isCompleted = rental.approval_status === 'completed';
                             const isRejected = rental.approval_status === 'cancelled';
                             
-                            // Hide all action icons if status is completed or rejected
-                            if (isCompleted || isRejected) {
+                            // Show only delete button for completed status
+                            if (isCompleted) {
+                              return (
+                                <div className="action-buttons">
+                                  <button 
+                                    className="icon-btn delete" 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteOrder(rental);
+                                    }} 
+                                    title="Delete Order"
+                                    style={{ backgroundColor: '#f44336', color: 'white' }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <polyline points="3 6 5 6 21 6"></polyline>
+                                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                      <line x1="10" y1="11" x2="10" y2="17"></line>
+                                      <line x1="14" y1="11" x2="14" y2="17"></line>
+                                    </svg>
+                                  </button>
+                                </div>
+                              );
+                            }
+                            
+                            // Hide all action icons if status is rejected
+                            if (isRejected) {
                               return null;
                             }
                             
@@ -723,7 +775,21 @@ function Rental() {
                                   // Check if moving to "rented" requires payment first
                                   const isMovingToRented = nextStatus === 'rented';
                                   const hasNoPayment = amountPaid <= 0;
-                                  const shouldDisable = isMovingToRented && hasNoPayment;
+                                  
+                                  // Check if current status is "rented" and trying to move to "returned" - require full payment
+                                  const isCurrentlyRented = currentStatus === 'rented';
+                                  const hasRemainingBalance = remainingBalance > 0;
+                                  
+                                  // Disable if: moving to rented without payment OR currently rented with remaining balance
+                                  const shouldDisable = (isMovingToRented && hasNoPayment) || (isCurrentlyRented && hasRemainingBalance);
+                                  
+                                  // Set appropriate tooltip message
+                                  let disableMessage = '';
+                                  if (isMovingToRented && hasNoPayment) {
+                                    disableMessage = `Record payment first before moving to ${nextStatusLabel}`;
+                                  } else if (isCurrentlyRented && hasRemainingBalance) {
+                                    disableMessage = `Full payment required (₱${remainingBalance.toLocaleString()} remaining) before moving to ${nextStatusLabel}`;
+                                  }
                                   
                                   return (
                                     <button 
@@ -736,7 +802,7 @@ function Rental() {
                                         }
                                         handleStatusUpdate(rental.item_id, nextStatus, rental);
                                       }} 
-                                      title={shouldDisable ? `Record payment first before moving to ${nextStatusLabel}` : `Move to ${nextStatusLabel}`}
+                                      title={shouldDisable ? disableMessage : `Move to ${nextStatusLabel}`}
                                       disabled={shouldDisable}
                                       style={{ 
                                         backgroundColor: shouldDisable ? '#ccc' : '#4CAF50', 
@@ -775,12 +841,6 @@ function Rental() {
                                 </svg>
                               </button>
                                 )}
-                              <button className="icon-btn edit" onClick={() => handleEditClick(rental)} title="Edit">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                </svg>
-                              </button>
                                 {/* Show record payment button - disabled if pending, hidden if cancelled */}
                                 {rental.approval_status !== 'cancelled' && (
                                 <button 
@@ -976,7 +1036,7 @@ function Rental() {
                 );
               })()}
               
-              <div className="form-group" style={{ marginTop: '20px' }}>
+              <div className="payment-form-group">
                 <label>Payment Amount *</label>
                 <input
                   type="number"
@@ -993,7 +1053,7 @@ function Rental() {
                 </small>
               </div>
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer-centered">
               <button className="btn-cancel" onClick={() => {
                 setShowPaymentModal(false);
                 setPaymentAmount('');

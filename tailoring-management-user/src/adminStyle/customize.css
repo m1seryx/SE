@@ -6,12 +6,121 @@
   box-sizing: border-box;
 }
 
+/* Brown button for Record Payment */
+.btn-brown {
+  background-color: rgb(139, 69, 19) !important;
+  background: rgb(139, 69, 19) !important;
+  color: white !important;
+  border: none !important;
+  padding: 10px 20px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  font-weight: 500 !important;
+  transition: background-color 0.3s ease !important;
+}
+
+.btn-brown:hover {
+  background-color: rgb(101, 50, 14) !important;
+  background: rgb(101, 50, 14) !important;
+}
+
+/* Centered payment form group */
+.payment-form-group {
+  text-align: center !important;
+  margin-top: 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+.payment-form-group label {
+  display: block !important;
+  margin-bottom: 10px !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+}
+
+.payment-form-group input {
+  text-align: center !important;
+  width: 100% !important;
+  max-width: 300px !important;
+  margin: 0 auto !important;
+}
+
+.payment-form-group small {
+  text-align: center !important;
+}
+
+/* Fabric type edit/delete buttons - override any conflicting styles */
+.fabric-edit-btn {
+  background-color: #2196f3 !important;
+  background: #2196f3 !important;
+  background-image: none !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.fabric-edit-btn:hover {
+  background-color: #1976d2 !important;
+  background: #1976d2 !important;
+  background-image: none !important;
+}
+
+.fabric-delete-btn {
+  background-color: #f44336 !important;
+  background: #f44336 !important;
+  background-image: none !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.fabric-delete-btn:hover {
+  background-color: #d32f2f !important;
+  background: #d32f2f !important;
+  background-image: none !important;
+}
+
+/* 3D Model delete buttons - override any conflicting styles */
+.model-delete-btn {
+  background-color: #f44336 !important;
+  background: #f44336 !important;
+  background-image: none !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.model-delete-btn:hover {
+  background-color: #d32f2f !important;
+  background: #d32f2f !important;
+  background-image: none !important;
+}
+
+.model-delete-all-btn {
+  background-color: #f44336 !important;
+  background: #f44336 !important;
+  background-image: none !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.model-delete-all-btn:hover {
+  background-color: #d32f2f !important;
+  background: #d32f2f !important;
+  background-image: none !important;
+}
+
 body {
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
   background: linear-gradient(135deg, #F8F9FA 0%, #F5F6FA 100%);
   color: #2D3436;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -24,6 +133,7 @@ h1, h2, h3, h4, h5, h6 {
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 [id] {
@@ -123,6 +233,7 @@ html {
   margin-top: 70px;
   padding: 40px;
   min-height: calc(100vh - 70px);
+  overflow-x: hidden;
 }
 
 .dashboard-title {
@@ -432,6 +543,54 @@ tbody td {
   transform: translateY(-2px);
 }
 
+/* ============ BUTTON STYLES ============ */
+.btn-secondary {
+  background-color: #C87941;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #a6632e;
+  transform: translateY(-1px);
+}
+
+/* Measurements Button Wrapper - Centered */
+.measurements-btn-wrapper {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 2px solid #eee;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100%;
+}
+
+.btn-measurements {
+  background-color: #C87941 !important;
+  color: white !important;
+  border: none !important;
+  padding: 10px 20px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  font-size: 14px !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-measurements:hover {
+  background-color: #a6632e !important;
+  transform: translateY(-1px);
+}
+
 /* ============ ANIMATIONS ============ */
 @keyframes modalSlideIn {
   from {
@@ -610,6 +769,23 @@ padding: 28px;
 background: #FFFFFF;
 }
 
+/* Measurements Section Styles */
+.modal-body .measurement-title {
+  color: #000 !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  text-align: center !important;
+  margin-bottom: 15px !important;
+  margin-top: 0 !important;
+  padding: 0 !important;
+}
+
+.modal-body .form-group label {
+  color: #333 !important;
+  font-weight: 500;
+  font-size: 14px;
+}
+
 .detail-row {
 display: flex;
 justify-content: space-between;
@@ -661,6 +837,52 @@ gap: 60px;
 text-align: right;
 background: #f9f9f9;
 border-top: 1px solid #eee;
+}
+
+/* Centered modal footer for buttons */
+.modal-footer-centered {
+  padding: 20px 28px;
+  display: flex !important;
+  gap: 15px !important;
+  justify-content: flex-end !important;
+  background: #FAFAFA;
+  border-top: 1px solid rgba(139, 69, 19, 0.1);
+}
+
+.modal-footer-centered .btn-save {
+  background: rgb(139, 69, 19) !important;
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.3) !important;
+  padding: 12px 24px;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.modal-footer-centered .btn-save:hover {
+  background: rgb(110, 55, 15) !important;
+  box-shadow: 0 6px 16px rgba(139, 69, 19, 0.4) !important;
+  transform: translateY(-2px);
+}
+
+.modal-footer-centered .btn-cancel {
+  padding: 12px 24px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.modal-footer-centered .btn-cancel:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
 }
 
 .close-btn {

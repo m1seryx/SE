@@ -204,7 +204,7 @@ exports.updateRental = (req, res) => {
 
 exports.updateRentalStatus = (req, res) => {
   const { item_id } = req.params;
-  const { status } = req.body;
+  const { status, damage_notes } = req.body;
 
   if (!['available', 'rented', 'maintenance'].includes(status)) {
     return res.status(400).json({ 
@@ -212,21 +212,41 @@ exports.updateRentalStatus = (req, res) => {
     });
   }
 
-  RentalInventory.updateStatus(item_id, status, (err, result) => {
-    if (err) {
-      console.error("Error updating rental status:", err);
-      return res.status(500).json({ 
-        message: "Error updating rental status", 
-        error: err 
-      });
-    }
+  // If damage_notes is provided, use the function that updates both status and damage_notes
+  if (damage_notes !== undefined) {
+    RentalInventory.updateStatusWithDamageNotes(item_id, status, damage_notes || null, (err, result) => {
+      if (err) {
+        console.error("Error updating rental status with damage notes:", err);
+        return res.status(500).json({ 
+          message: "Error updating rental status with damage notes", 
+          error: err 
+        });
+      }
 
-    res.json({
-      message: `Rental item status updated to ${status}`,
-      item_id: parseInt(item_id),
-      status
+      res.json({
+        message: `Rental item status updated to ${status}${damage_notes ? ' with damage notes' : ''}`,
+        item_id: parseInt(item_id),
+        status,
+        damage_notes: damage_notes || null
+      });
     });
-  });
+  } else {
+    RentalInventory.updateStatus(item_id, status, (err, result) => {
+      if (err) {
+        console.error("Error updating rental status:", err);
+        return res.status(500).json({ 
+          message: "Error updating rental status", 
+          error: err 
+        });
+      }
+
+      res.json({
+        message: `Rental item status updated to ${status}`,
+        item_id: parseInt(item_id),
+        status
+      });
+    });
+  }
 };
 
 

@@ -1,4 +1,5 @@
 const Order = require('../model/OrderModel');
+const db = require('../config/db');
 
 // Get user's orders
 exports.getUserOrders = (req, res) => {
@@ -1341,24 +1342,56 @@ exports.updateRentalOrderItem = (req, res) => {
       // If status changed to "rented", update rental_inventory status
       if (updateData.approvalStatus === 'rented' && updateData.approvalStatus !== previousStatus) {
         const RentalInventory = require('../model/RentalInventoryModel');
-        const rentalItemId = item.service_id; // service_id is the rental item_id
+        const db = require('../config/db');
         
-        if (rentalItemId) {
-          console.log(`Updating rental_inventory status to 'rented' for item_id: ${rentalItemId}`);
+        // Check if this is a bundled rental
+        let specificData = {};
+        try {
+          specificData = item.specific_data ? (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data) : {};
+        } catch (e) {
+          console.warn('Error parsing specific_data:', e);
+        }
+        
+        const isBundle = specificData.is_bundle === true || specificData.category === 'rental_bundle';
+        const bundleItems = specificData.bundle_items || [];
+        
+        if (isBundle && bundleItems.length > 0) {
+          // Update all bundle items to 'rented'
+          console.log(`Updating rental_inventory status to 'rented' for ${bundleItems.length} bundle items`);
           
-          // Update rental inventory status to 'rented'
-          const db = require('../config/db');
-          const updateSql = `UPDATE rental_inventory SET status = 'rented' WHERE item_id = ?`;
-          
-          db.query(updateSql, [rentalItemId], (rentalUpdateErr, rentalUpdateResult) => {
-            if (rentalUpdateErr) {
-              console.error('Error updating rental_inventory status:', rentalUpdateErr);
-            } else {
-              console.log(`Successfully updated rental_inventory status to 'rented' for item_id: ${rentalItemId}`);
+          for (const bundleItem of bundleItems) {
+            const bundleItemId = bundleItem.item_id || bundleItem.id;
+            if (bundleItemId) {
+              const updateSql = `UPDATE rental_inventory SET status = 'rented' WHERE item_id = ?`;
+              db.query(updateSql, [bundleItemId], (rentalUpdateErr, rentalUpdateResult) => {
+                if (rentalUpdateErr) {
+                  console.error(`Error updating rental_inventory status for bundle item ${bundleItemId}:`, rentalUpdateErr);
+                } else {
+                  console.log(`Successfully updated rental_inventory status to 'rented' for bundle item: ${bundleItem.item_name} (id: ${bundleItemId})`);
+                }
+              });
             }
-          });
+          }
         } else {
-          console.warn('Cannot update rental_inventory: service_id is missing from order item');
+          // Single item rental
+          const rentalItemId = item.service_id; // service_id is the rental item_id
+          
+          if (rentalItemId) {
+            console.log(`Updating rental_inventory status to 'rented' for item_id: ${rentalItemId}`);
+            
+            // Update rental inventory status to 'rented'
+            const updateSql = `UPDATE rental_inventory SET status = 'rented' WHERE item_id = ?`;
+            
+            db.query(updateSql, [rentalItemId], (rentalUpdateErr, rentalUpdateResult) => {
+              if (rentalUpdateErr) {
+                console.error('Error updating rental_inventory status:', rentalUpdateErr);
+              } else {
+                console.log(`Successfully updated rental_inventory status to 'rented' for item_id: ${rentalItemId}`);
+              }
+            });
+          } else {
+            console.warn('Cannot update rental_inventory: service_id is missing from order item');
+          }
         }
       }
 
@@ -1370,7 +1403,21 @@ exports.updateRentalOrderItem = (req, res) => {
         const RentalInventory = require('../model/RentalInventoryModel');
         const rentalItemId = item.service_id; // service_id is the rental item_id
         
-        if (rentalItemId) {
+        // Check if this is a bundled rental - if so, skip individual inventory update here
+        // The frontend will handle updating each bundle item's status and damage notes individually
+        let specificData = {};
+        try {
+          specificData = item.specific_data ? (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data) : {};
+        } catch (e) {
+          console.warn('Error parsing specific_data:', e);
+        }
+        
+        const isBundle = specificData.is_bundle === true || specificData.category === 'rental_bundle';
+        
+        if (isBundle) {
+          console.log('Skipping rental_inventory update for bundled rental - frontend will handle individual items');
+        } else if (rentalItemId) {
+          // Single item rental - update as before
           // If damage notes exist and are not empty, set status to 'maintenance', otherwise set to 'available'
           const hasDamage = damageNotes && typeof damageNotes === 'string' && damageNotes.trim().length > 0;
           const newInventoryStatus = hasDamage ? 'maintenance' : 'available';
@@ -1646,6 +1693,68 @@ exports.recordRentalPayment = (req, res) => {
           payment_status: newPaymentStatus,
           total_price: finalPrice
         }
+      });
+    });
+  });
+};
+
+// Delete order item (admin only - only completed orders)
+exports.deleteOrderItem = (req, res) => {
+  const itemId = req.params.itemId;
+  const userId = req.user.id;
+
+  // Check if user is admin
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: "Access denied. Admin only."
+    });
+  }
+
+  // First check if the order item exists and is completed
+  const checkQuery = `SELECT item_id, approval_status, service_type FROM order_items WHERE item_id = ?`;
+  
+  db.query(checkQuery, [itemId], (err, results) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+        error: err
+      });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Order item not found"
+      });
+    }
+
+    const orderItem = results[0];
+
+    // Only allow deletion of completed or returned orders
+    if (orderItem.approval_status !== 'completed' && orderItem.approval_status !== 'returned') {
+      return res.status(400).json({
+        success: false,
+        message: "Only completed or returned orders can be deleted"
+      });
+    }
+
+    // Delete the order item
+    const deleteQuery = `DELETE FROM order_items WHERE item_id = ?`;
+    
+    db.query(deleteQuery, [itemId], (err, result) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Error deleting order item",
+          error: err
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Order item deleted successfully"
       });
     });
   });

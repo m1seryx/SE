@@ -7,6 +7,7 @@ import { getAllDryCleaningOrders, updateDryCleaningOrderItem } from '../api/DryC
 import { getUserRole } from '../api/AuthApi';
 import { getAllGarmentTypesAdmin, createGarmentType, updateGarmentType, deleteGarmentType } from '../api/GarmentTypeApi';
 import { recordPayment } from '../api/PaymentApi';
+import { deleteOrderItem } from '../api/OrderApi';
 
 // Helper to check if user is authenticated
 const isAuthenticated = () => {
@@ -35,6 +36,8 @@ const DryCleaning = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmButtonText, setConfirmButtonText] = useState('Confirm');
+  const [confirmButtonStyle, setConfirmButtonStyle] = useState('blue'); // 'blue' or 'danger'
  
   // Price confirmation modal state
   const [showPriceConfirmationModal, setShowPriceConfirmationModal] = useState(false);
@@ -67,9 +70,11 @@ const DryCleaning = () => {
   };
 
 
-  const openConfirmModal = (message, action) => {
+  const openConfirmModal = (message, action, buttonText = 'Confirm', buttonStyle = 'blue') => {
     setConfirmMessage(message);
     setConfirmAction(() => action);
+    setConfirmButtonText(buttonText);
+    setConfirmButtonStyle(buttonStyle);
     setShowConfirmModal(true);
   };
 
@@ -169,7 +174,7 @@ const DryCleaning = () => {
         // Reload on error to restore correct state
         await loadGarmentTypes();
       }
-    });
+    }, 'Delete', 'danger');
   };
 
   // Open garment type modal for editing
@@ -447,7 +452,7 @@ const DryCleaning = () => {
         console.error("Decline error:", err);
         showToast("Failed to decline request", "error");
       }
-    });
+    }, 'Decline', 'danger');
   };
 
 
@@ -507,7 +512,9 @@ const DryCleaning = () => {
         } catch (err) {
           showToast("Failed to update status", "error");
         }
-      }
+      },
+      'Confirm',
+      'blue'
     );
   };
 
@@ -526,6 +533,28 @@ const DryCleaning = () => {
       adminNotes: item.pricing_factors?.adminNotes || ''
     });
     setShowEditModal(true);
+  };
+
+  const handleDeleteOrder = async (item) => {
+    openConfirmModal(
+      `Are you sure you want to delete this completed order (ORD-${item.order_id})? This action cannot be undone.`,
+      async () => {
+        try {
+          const result = await deleteOrderItem(item.item_id);
+          if (result.success) {
+            showToast('Order deleted successfully', 'success');
+            loadDryCleaningOrders();
+          } else {
+            showToast(result.message || 'Failed to delete order', 'error');
+          }
+        } catch (error) {
+          console.error('Error deleting order:', error);
+          showToast('Error deleting order', 'error');
+        }
+      },
+      'Delete',
+      'danger'
+    );
   };
 
   const handleRecordPayment = async () => {
@@ -770,14 +799,6 @@ const DryCleaning = () => {
                             </svg>
                           </button>
                           {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
-                            <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                              </svg>
-                            </button>
-                          )}
-                          {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
                             <button 
                               className="icon-btn" 
                               onClick={(e) => {
@@ -808,14 +829,6 @@ const DryCleaning = () => {
                             </button>
                           )}
                           {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
-                            <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Update">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                              </svg>
-                            </button>
-                          )}
-                          {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
                             <button 
                               className="icon-btn" 
                               onClick={(e) => {
@@ -828,6 +841,24 @@ const DryCleaning = () => {
                               style={{ backgroundColor: '#2196F3', color: 'white' }}
                             >
                               💰
+                            </button>
+                          )}
+                          {item.approval_status === 'completed' && (
+                            <button 
+                              className="icon-btn delete" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteOrder(item);
+                              }} 
+                              title="Delete Order"
+                              style={{ backgroundColor: '#f44336', color: 'white' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                              </svg>
                             </button>
                           )}
                         </div>
@@ -982,7 +1013,7 @@ const DryCleaning = () => {
         <div className="modal-overlay confirm-overlay active" onClick={(e) => e.target === e.currentTarget && setShowConfirmModal(false)}>
           <div className="confirm-modal">
             <div className="confirm-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E74C3C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={confirmButtonStyle === 'danger' ? '#E74C3C' : '#F39C12'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="12" y1="8" x2="12" y2="12"></line>
                 <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -992,7 +1023,7 @@ const DryCleaning = () => {
             <p>{confirmMessage}</p>
             <div className="confirm-buttons">
               <button className="confirm-btn cancel" onClick={() => setShowConfirmModal(false)}>Cancel</button>
-              <button className="confirm-btn confirm" onClick={handleConfirm}>Confirm</button>
+              <button className={confirmButtonStyle === 'danger' ? 'confirm-btn-danger' : 'confirm-btn-blue'} onClick={handleConfirm}>{confirmButtonText}</button>
             </div>
           </div>
         </div>
@@ -1012,7 +1043,7 @@ const DryCleaning = () => {
               <div className="detail-row"><strong>Garment Type:</strong> {priceConfirmationItem.specific_data?.garmentType || 'N/A'}</div>
               <div className="detail-row"><strong>Quantity:</strong> {priceConfirmationItem.specific_data?.quantity || 1}</div>
               
-              <div className="form-group" style={{ marginTop: '20px' }}>
+              <div className="payment-form-group">
                 <label>Final Price (₱)</label>
                 <input
                   type="number"
@@ -1021,7 +1052,6 @@ const DryCleaning = () => {
                   value={priceConfirmationPrice}
                   onChange={(e) => setPriceConfirmationPrice(e.target.value)}
                   placeholder="Enter final price"
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '16px' }}
                 />
                 {(() => {
                   const estimatedPrice = getEstimatedPrice(priceConfirmationItem);
@@ -1043,7 +1073,7 @@ const DryCleaning = () => {
                 ℹ️ Customer will be notified to confirm the price before proceeding.
               </div>
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer-centered">
               <button className="btn-cancel" onClick={() => setShowPriceConfirmationModal(false)}>Cancel</button>
               <button className="btn-save" onClick={handlePriceConfirmationSubmit}>Confirm & Move to Price Confirmation</button>
             </div>
@@ -1133,9 +1163,9 @@ const DryCleaning = () => {
 
               {/* List of existing garment types */}
               {garmentTypes.length > 0 && (
-                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee' }}>
+                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee', width: '100%' }}>
                   <h3 style={{ fontSize: '16px', marginBottom: '15px' }}>Existing Garment Types ({garmentTypes.length})</h3>
-                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                  <div style={{ maxHeight: '300px', overflowY: 'auto', width: '100%' }}>
                     {garmentTypes.map(garment => (
                       <div 
                         key={garment.garment_id} 
@@ -1200,27 +1230,17 @@ const DryCleaning = () => {
                 </div>
               )}
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer-centered">
               <button className="btn-cancel" onClick={() => {
                 setShowGarmentTypeModal(false);
                 setEditingGarmentType(null);
                 setGarmentTypeForm({ garment_name: '', garment_price: '', description: '', is_active: 1 });
               }}>Cancel</button>
               <button
+                className="btn-save"
                 onClick={handleGarmentTypeSubmit}
                 disabled={!garmentTypeForm.garment_name.trim() || !garmentTypeForm.garment_price || isNaN(parseFloat(garmentTypeForm.garment_price))}
-                style={{ 
-                  opacity: (!garmentTypeForm.garment_name.trim() || !garmentTypeForm.garment_price || isNaN(parseFloat(garmentTypeForm.garment_price))) ? 0.6 : 1,
-                  padding: '10px 20px',
-                  backgroundColor: '#2196f3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  boxShadow: 'none'
-                }}
+                style={{ opacity: (!garmentTypeForm.garment_name.trim() || !garmentTypeForm.garment_price || isNaN(parseFloat(garmentTypeForm.garment_price))) ? 0.6 : 1 }}
               >
                 {editingGarmentType ? 'Update' : 'Create'}
               </button>
@@ -1283,7 +1303,7 @@ const DryCleaning = () => {
                 return null;
               })()}
               
-              <div className="form-group" style={{ marginTop: '20px' }}>
+              <div className="payment-form-group">
                 <label>Payment Amount *</label>
                 <input
                   type="number"
@@ -1300,7 +1320,7 @@ const DryCleaning = () => {
                 </small>
               </div>
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer-centered">
               <button className="btn-cancel" onClick={() => {
                 setShowPaymentModal(false);
                 setPaymentAmount('');

@@ -294,62 +294,71 @@ const CustomerList = () => {
               <span className="close-modal" onClick={() => setShowEditModal(false)}>×</span>
             </div>
             <div className="modal-body">
-              <div className="form-group">
-                <label>First Name *</label>
-                <input
-                  type="text"
-                  value={editForm.first_name}
-                  onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
-                  required
-                />
+              {/* First row: First Name, Last Name, Email */}
+              <div className="form-row-three-cols">
+                <div className="form-group">
+                  <label>First Name *</label>
+                  <input
+                    type="text"
+                    value={editForm.first_name}
+                    onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Last Name *</label>
+                  <input
+                    type="text"
+                    value={editForm.last_name}
+                    onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Email *</label>
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    required
+                  />
+                </div>
               </div>
-              <div className="form-group">
-                <label>Last Name *</label>
-                <input
-                  type="text"
-                  value={editForm.last_name}
-                  onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Email *</label>
-                <input
-                  type="email"
-                  value={editForm.email}
-                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Phone Number</label>
-                <input
-                  type="text"
-                  value={editForm.phone_number || ''}
-                  onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Status *</label>
-                <select
-                  value={editForm.status}
-                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                  required
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
+              
+              {/* Second row: Phone Number and Status - centered */}
+              <div className="form-row-centered">
+                <div className="form-field-centered">
+                  <label>Phone Number</label>
+                  <input
+                    type="text"
+                    value={editForm.phone_number || ''}
+                    onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })}
+                  />
+                </div>
+                <div className="form-field-centered">
+                  <label>Status *</label>
+                  <select
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                    required
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
               </div>
 
               {/* Customer Measurements Section */}
               <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '2px solid #eee' }}>
-                <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#333' }}>Customer Measurements</h3>
+                <h3 className="measurement-title" style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#000', textAlign: 'center', fontWeight: '600' }}>Customer Measurements</h3>
                 
-                {/* Top Measurements */}
-                <div style={{ marginTop: '15px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px', marginBottom: '15px' }}>
-                  <h4 style={{ marginTop: 0, marginBottom: '15px', color: '#333', fontSize: '16px' }}>Top Measurements</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                    <div className="form-group">
+                {/* Measurements Container - Top and Bottom side by side */}
+                <div style={{ display: 'flex', gap: '20px', marginTop: '15px' }}>
+                  {/* Top Measurements */}
+                  <div style={{ flex: 1, padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
+                    <p className="measurement-title" style={{ marginTop: 0, marginBottom: '15px', color: '#000', textAlign: 'center', fontWeight: '600', fontSize: '16px' }}>Top Measurements</p>
+                    <div className="measurements-grid">
+                    <div className="measurement-field">
                       <label>Chest (inches)</label>
                       <input
                         type="number"
@@ -360,7 +369,7 @@ const CustomerList = () => {
                         style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                       />
                     </div>
-                    <div className="form-group">
+                    <div className="measurement-field">
                       <label>Shoulders (inches)</label>
                       <input
                         type="number"
@@ -371,8 +380,8 @@ const CustomerList = () => {
                         style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                       />
                     </div>
-                    <div className="form-group">
-                      <label>Sleeve Length (inches)</label>
+                    <div className="measurement-field">
+                      <label>Sleeve (inches)</label>
                       <input
                         type="number"
                         step="0.1"
@@ -382,7 +391,7 @@ const CustomerList = () => {
                         style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                       />
                     </div>
-                    <div className="form-group">
+                    <div className="measurement-field">
                       <label>Neck (inches)</label>
                       <input
                         type="number"
@@ -393,7 +402,7 @@ const CustomerList = () => {
                         style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                       />
                     </div>
-                    <div className="form-group">
+                    <div className="measurement-field">
                       <label>Waist (inches)</label>
                       <input
                         type="number"
@@ -404,7 +413,7 @@ const CustomerList = () => {
                         style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                       />
                     </div>
-                    <div className="form-group">
+                    <div className="measurement-field">
                       <label>Length (inches)</label>
                       <input
                         type="number"
@@ -418,11 +427,11 @@ const CustomerList = () => {
                   </div>
                 </div>
 
-                {/* Bottom Measurements */}
-                <div style={{ marginTop: '15px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px', marginBottom: '15px' }}>
-                  <h4 style={{ marginTop: 0, marginBottom: '15px', color: '#333', fontSize: '16px' }}>Bottom Measurements</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                    <div className="form-group">
+                  {/* Bottom Measurements */}
+                  <div style={{ flex: 1, padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
+                    <p className="measurement-title" style={{ marginTop: 0, marginBottom: '15px', color: '#000', textAlign: 'center', fontWeight: '600', fontSize: '16px' }}>Bottom Measurements</p>
+                    <div className="measurements-grid">
+                    <div className="measurement-field">
                       <label>Waist (inches)</label>
                       <input
                         type="number"
@@ -433,7 +442,7 @@ const CustomerList = () => {
                         style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                       />
                     </div>
-                    <div className="form-group">
+                    <div className="measurement-field">
                       <label>Hips (inches)</label>
                       <input
                         type="number"
@@ -444,7 +453,7 @@ const CustomerList = () => {
                         style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                       />
                     </div>
-                    <div className="form-group">
+                    <div className="measurement-field">
                       <label>Inseam (inches)</label>
                       <input
                         type="number"
@@ -455,7 +464,7 @@ const CustomerList = () => {
                         style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                       />
                     </div>
-                    <div className="form-group">
+                    <div className="measurement-field">
                       <label>Length (inches)</label>
                       <input
                         type="number"
@@ -466,7 +475,7 @@ const CustomerList = () => {
                         style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                       />
                     </div>
-                    <div className="form-group">
+                    <div className="measurement-field">
                       <label>Thigh (inches)</label>
                       <input
                         type="number"
@@ -477,7 +486,7 @@ const CustomerList = () => {
                         style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                       />
                     </div>
-                    <div className="form-group">
+                    <div className="measurement-field">
                       <label>Outseam (inches)</label>
                       <input
                         type="number"
@@ -490,24 +499,24 @@ const CustomerList = () => {
                     </div>
                   </div>
                 </div>
+                </div>
 
-                {/* Notes */}
-                <div className="form-group" style={{ marginTop: '15px' }}>
-                  <label>Measurement Notes</label>
+                {/* Notes - Below both measurement sections */}
+                <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#fff3e0', borderRadius: '8px', border: '1px solid #ffcc80' }}>
+                  <label style={{ display: 'block', marginBottom: '10px', color: '#000', fontWeight: '600', fontSize: '16px' }}>Notes</label>
                   <textarea
                     value={measurements.notes}
                     onChange={(e) => setMeasurements({ ...measurements, notes: e.target.value })}
                     placeholder="Add any additional notes about measurements..."
                     rows={3}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
                   />
                 </div>
               </div>
-
-              <div className="modal-footer">
-                <button className="btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
-                <button className="btn-primary" onClick={handleSaveEdit}>Save Changes</button>
-              </div>
+            </div>
+            <div className="modal-footer-centered">
+              <button className="btn-cancel" onClick={() => setShowEditModal(false)}>Cancel</button>
+              <button className="btn-save" onClick={handleSaveEdit}>Save Changes</button>
             </div>
           </div>
         </div>

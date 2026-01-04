@@ -7,6 +7,7 @@ import ImagePreviewModal from '../components/ImagePreviewModal';
 import { useAlert } from '../context/AlertContext';
 import { getAllRepairGarmentTypesAdmin, createRepairGarmentType, updateRepairGarmentType, deleteRepairGarmentType } from '../api/RepairGarmentTypeApi';
 import { recordPayment } from '../api/PaymentApi';
+import { deleteOrderItem } from '../api/OrderApi';
 
 const Repair = () => {
   const { alert, confirm } = useAlert();
@@ -488,6 +489,30 @@ const Repair = () => {
     setShowEditModal(true);
   };
 
+  const handleDeleteOrder = async (item) => {
+    const confirmed = await confirm(
+      `Are you sure you want to delete this completed order (ORD-${item.order_id})?\n\nThis action cannot be undone.`,
+      'Delete Order',
+      'danger',
+      { confirmText: 'Delete', cancelText: 'Cancel' }
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      const result = await deleteOrderItem(item.item_id);
+      if (result.success) {
+        await alert('Order deleted successfully', 'Success', 'success');
+        loadRepairOrders();
+      } else {
+        await alert(result.message || 'Failed to delete order', 'Error', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      await alert('Error deleting order', 'Error', 'error');
+    }
+  };
+
   // Helper to get estimated price for comparison
   const getEstimatedPrice = (item) => {
     if (!item || !item.specific_data) return null;
@@ -719,14 +744,6 @@ const Repair = () => {
                             </svg>
                           </button>
                           {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
-                            <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Edit">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                              </svg>
-                            </button>
-                          )}
-                          {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
                             <button 
                               className="icon-btn" 
                               onClick={(e) => {
@@ -757,14 +774,6 @@ const Repair = () => {
                             </button>
                           )}
                           {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
-                            <button className="icon-btn edit" onClick={() => handleEditOrder(item)} title="Edit">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                              </svg>
-                            </button>
-                          )}
-                          {item.approval_status !== 'completed' && item.approval_status !== 'cancelled' && (
                             <button 
                               className="icon-btn" 
                               onClick={(e) => {
@@ -777,6 +786,24 @@ const Repair = () => {
                               style={{ backgroundColor: '#2196F3', color: 'white' }}
                             >
                               💰
+                            </button>
+                          )}
+                          {item.approval_status === 'completed' && (
+                            <button 
+                              className="icon-btn delete" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteOrder(item);
+                              }} 
+                              title="Delete Order"
+                              style={{ backgroundColor: '#f44336', color: 'white' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                              </svg>
                             </button>
                           )}
                         </div>
@@ -1017,9 +1044,9 @@ const Repair = () => {
 
               {/* List of existing repair garment types */}
               {repairGarmentTypes.length > 0 && (
-                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee' }}>
+                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee', width: '100%' }}>
                   <h3 style={{ fontSize: '16px', marginBottom: '15px' }}>Existing Repair Garment Types ({repairGarmentTypes.length})</h3>
-                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                  <div style={{ maxHeight: '300px', overflowY: 'auto', width: '100%' }}>
                     {repairGarmentTypes.map(garment => (
                       <div 
                         key={garment.repair_garment_id} 
@@ -1083,27 +1110,17 @@ const Repair = () => {
                 </div>
               )}
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer-centered">
               <button className="btn-cancel" onClick={() => {
                 setShowRepairGarmentTypeModal(false);
                 setEditingRepairGarmentType(null);
                 setRepairGarmentTypeForm({ garment_name: '', description: '', is_active: 1 });
               }}>Cancel</button>
               <button
+                className="btn-save"
                 onClick={handleRepairGarmentTypeSubmit}
                 disabled={!repairGarmentTypeForm.garment_name.trim()}
-                style={{ 
-                  opacity: (!repairGarmentTypeForm.garment_name.trim()) ? 0.6 : 1,
-                  padding: '10px 20px',
-                  backgroundColor: '#2196f3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  boxShadow: 'none'
-                }}
+                style={{ opacity: (!repairGarmentTypeForm.garment_name.trim()) ? 0.6 : 1 }}
               >
                 {editingRepairGarmentType ? 'Update' : 'Create'}
               </button>
@@ -1218,7 +1235,7 @@ const Repair = () => {
                 return null;
               })()}
               
-              <div className="form-group" style={{ marginTop: '20px' }}>
+              <div className="payment-form-group">
                 <label>Payment Amount *</label>
                 <input
                   type="number"
@@ -1235,7 +1252,7 @@ const Repair = () => {
                 </small>
               </div>
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer-centered">
               <button className="btn-cancel" onClick={() => {
                 setShowPaymentModal(false);
                 setPaymentAmount('');

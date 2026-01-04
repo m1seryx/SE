@@ -39,3 +39,19 @@ export async function getUserOrders() {
     throw error;
   }
 }
+
+// Delete order item (admin only - only completed orders)
+export async function deleteOrderItem(itemId) {
+  try {
+    const response = await axios.delete(`${BASE_URL}/orders/items/${itemId}`, {
+      headers: getAuthHeaders()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting order item:', error);
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Error deleting order item'
+    };
+  }
+}

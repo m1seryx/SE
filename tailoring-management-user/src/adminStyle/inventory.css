@@ -13,6 +13,11 @@
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+html, body {
+  overflow-x: hidden;
 }
 
 .inventory-management h1,
@@ -34,6 +39,7 @@
   margin-top: 70px;
   padding: 40px;
   min-height: calc(100vh - 70px);
+  overflow-x: hidden;
 }
 
 .inventory-management .dashboard-title {

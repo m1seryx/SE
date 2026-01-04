@@ -325,16 +325,20 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
   }, [modelScene, garment, materialProps, use3DModel, fabricColor]);
 
   // Pants model selection and setup (hooks must be at top level)
-  let pantsModel = null;
-  if (garment === 'pants') {
+  // Use useMemo to properly track pantsType changes
+  const pantsModel = useMemo(() => {
+    if (garment !== 'pants') return null;
+    
     if (pantsType === 'casual-men') {
-      pantsModel = pantsCasualMen.scene;
+      return pantsCasualMen.scene;
     } else if (pantsType === 'formal-men') {
-      pantsModel = pantsFormalMen.scene;
+      return pantsFormalMen.scene;
     } else if (pantsType === 'formal-women') {
-      pantsModel = pantsFormalWomen.scene;
+      return pantsFormalWomen.scene;
     }
-  }
+    // Default to casual-men if pantsType is not recognized
+    return pantsCasualMen.scene;
+  }, [garment, pantsType, pantsCasualMen.scene, pantsFormalMen.scene, pantsFormalWomen.scene]);
 
   const pantsModelScene = useMemo(() => pantsModel ? pantsModel.clone() : null, [pantsModel]);
 
@@ -363,30 +367,14 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
     }
   }, [pantsModelScene, materialProps, fabricColor]);
 
-  if (garment === 'pants') {
-    if (!pantsModelScene) return null;
-
-    return (
-      <group position={[0, 0, 0]} scale={sizeScale}>
-        <primitive object={pantsModelScene} />
-        {personalization.initials && (
-          <Text position={[0, 1.5, 0.3]} fontSize={personalization.size * 0.25} color={colors.stitching}>
-            {personalization.initials}
-          </Text>
-        )}
-      </group>
-    );
-  }
-
   const isCoat = garment.startsWith('coat') || garment === 'suit';
   const lapel = isCoat ? style.lapel : 'shawl';
-  const buttons = isCoat ? style.buttons : 0;
+  const buttonsCount = isCoat ? style.buttons : 0;
   const torsoH = garment.startsWith('coat') ? 3.0 * waistS : 2.4 * waistS;
-
-
 
   // Check for custom models first - either by ID or by category match
   // IMPORTANT: Built-in garments should NEVER use custom models
+  // This hook MUST be called before any early returns to satisfy React's rules of hooks
   const customModelToRender = useMemo(() => {
     // List of built-in garment values - these should NEVER use custom models
     const builtInGarments = [
@@ -429,6 +417,34 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
     console.log('✗ No custom model match found - will use built-in model');
     return null;
   }, [garment, customModels, matchingCustomModel]);
+
+  // ============================================================
+  // ALL HOOKS ARE NOW DEFINED - EARLY RETURNS CAN HAPPEN BELOW
+  // ============================================================
+
+  // Render pants model
+  if (garment === 'pants') {
+    if (!pantsModelScene) {
+      // Return a simple placeholder while model is loading
+      return (
+        <mesh position={[0, 0.5, 0]}>
+          <boxGeometry args={[1, 1.5, 0.5]} />
+          <meshStandardMaterial color="#cccccc" transparent opacity={0.5} />
+        </mesh>
+      );
+    }
+
+    return (
+      <group position={[0, 0, 0]} scale={sizeScale}>
+        <primitive object={pantsModelScene} />
+        {personalization.initials && (
+          <Text position={[0, 1.5, 0.3]} fontSize={personalization.size * 0.25} color={colors.stitching}>
+            {personalization.initials}
+          </Text>
+        )}
+      </group>
+    );
+  }
   
   // Render custom model if explicitly selected
   if (customModelToRender && customModelToRender.file_url) {
@@ -594,13 +610,13 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
         <meshPhysicalMaterial color={liningColor} roughness={0.9} opacity={materialProps.opacity} transparent={materialProps.transparent} sheen={0.4} />
         <Edges scale={1} threshold={12} color={colors.stitching} />
       </Capsule>
-      {isCoat && Array.from({ length: buttons }).map((_, i) => (
+      {isCoat && Array.from({ length: buttonsCount }).map((_, i) => (
         <mesh key={`L${i}`} position={[-0.2, 1.1 - i * 0.25, 0.42]}>
           <sphereGeometry args={[0.05, 16, 16]} />
           <meshPhysicalMaterial color={buttonColor} metalness={0.2} roughness={0.5} />
         </mesh>
       ))}
-      {isCoat && Array.from({ length: buttons }).map((_, i) => (
+      {isCoat && Array.from({ length: buttonsCount }).map((_, i) => (
         <mesh key={`R${i}`} position={[0.2, 1.1 - i * 0.25, 0.42]}>
           <sphereGeometry args={[0.05, 16, 16]} />
           <meshPhysicalMaterial color={buttonColor} metalness={0.2} roughness={0.5} />
