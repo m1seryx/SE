@@ -5,81 +5,577 @@
   padding: 0;
   box-sizing: border-box;
 }
-
-.garment-edit-button {
-  padding: 6px 12px;
-  background-color: #2196f3 !important;
-  background: #2196f3 !important;
-  color: white !important;
-  border: none !important;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  box-shadow: none !important;
+/* Garment Modal Body */
+.garment-modal-body {
+  padding: 24px;
 }
 
-/* Override any button styles in modal-body for Edit/Delete buttons */
+/* Form Inputs & Textareas - Clean and Modern */
+.garment-modal-body input[type="text"],
+.garment-modal-body input[type="number"],
+.garment-modal-body textarea {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: #2c3e50;
+  background-color: #fff;
+  border: 2px solid #e8ecef;
+  border-radius: 8px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  line-height: 1.5;
+}
+
+.garment-modal-body input[type="text"]:hover,
+.garment-modal-body input[type="number"]:hover,
+.garment-modal-body textarea:hover {
+  border-color: #cbd5e0;
+}
+
+.garment-modal-body input[type="text"]:focus,
+.garment-modal-body input[type="number"]:focus,
+.garment-modal-body textarea:focus {
+  border-color: #2196f3;
+  box-shadow: 0 0 0 4px rgba(33, 150, 243, 0.08);
+  background-color: #fafbfc;
+}
+
+.garment-modal-body input[type="text"]::placeholder,
+.garment-modal-body input[type="number"]::placeholder,
+.garment-modal-body textarea::placeholder {
+  color: #a0aec0;
+  font-size: 13.5px;
+  opacity: 1;
+}
+
+/* Textarea specific */
+.garment-modal-body textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+/* Form Group Spacing */
+.garment-form-group {
+  margin-bottom: 20px;
+}
+
+.garment-form-group:last-child {
+  margin-bottom: 0;
+}
+
+.garment-form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #374151;
+  letter-spacing: 0.01em;
+}
+
+.garment-form-group label span {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+/* Checkbox Styling */
+.garment-form-group label input[type="checkbox"] {
+  margin-right: 10px;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  accent-color: #2196f3;
+  vertical-align: middle;
+}
+
+.garment-form-group label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+/* Existing Garment Types Section */
+.garment-types-list-header {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 2px solid #e5e7eb;
+}
+
+.garment-types-list-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 16px;
+  letter-spacing: 0.01em;
+}
+
+.garment-types-scrollable {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.garment-types-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.garment-types-scrollable::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.garment-types-scrollable::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.garment-types-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Individual Garment Item Card */
+.garment-item-card {
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.garment-item-card.active {
+  background-color: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+}
+
+.garment-item-card.inactive {
+  background-color: #fef2f2;
+  border: 1.5px solid #fecaca;
+}
+
+.garment-item-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.garment-item-info {
+  flex: 1;
+}
+
+.garment-item-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.garment-item-details {
+  font-size: 12.5px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.garment-item-details .price {
+  font-weight: 600;
+  color: #059669;
+}
+
+.garment-item-details .inactive-badge {
+  color: #dc2626;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+/* Action Buttons Container */
+.garment-item-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+/* Garment Edit & Delete Buttons */
+.garment-edit-btn,
+.garment-delete-btn {
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: none;
+  background-image: none;
+  letter-spacing: 0.01em;
+}
+
 .garment-edit-btn {
-  background-color: #2196f3 !important;
-  background: #2196f3 !important;
-  background-image: none !important;
-  color: white !important;
-  border: none !important;
-  box-shadow: none !important;
+  background-color: #2196f3;
 }
 
 .garment-edit-btn:hover {
-  background-color: #1976d2 !important;
-  background: #1976d2 !important;
-  background-image: none !important;
+  background-color: #1976d2;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
 }
 
 .garment-delete-btn {
-  background-color: #f44336 !important;
-  background: #f44336 !important;
-  background-image: none !important;
-  color: white !important;
-  border: none !important;
-  box-shadow: none !important;
+  background-color: #ef4444;
 }
 
 .garment-delete-btn:hover {
-  background-color: #d32f2f !important;
-  background: #d32f2f !important;
-  background-image: none !important;
+  background-color: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
-/* Repair garment type buttons - same styles since repair.jsx uses dryclean.css */
+.garment-edit-btn:active,
+.garment-delete-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.garment-edit-btn:disabled,
+.garment-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Modal Footer Buttons */
+.garment-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.garment-btn-cancel,
+.garment-btn-submit {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  font-family: inherit;
+}
+
+.garment-btn-cancel {
+  background-color: #f3f4f6;
+  color: #ffffff;
+}
+
+.garment-btn-cancel:hover {
+  background-color: #e5e7eb;
+}
+
+.garment-btn-submit {
+  background-color: #2196f3;
+  color: white;
+}
+
+.garment-btn-submit:hover:not(:disabled) {
+  background-color: #1976d2;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+  transform: translateY(-1px);
+}
+
+.garment-btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Repair Modal Body */
+.repair-modal-body {
+  padding: 24px;
+}
+
+/* Form Inputs & Textareas - Clean and Modern */
+.repair-modal-body input[type="text"],
+.repair-modal-body input[type="number"],
+.repair-modal-body textarea {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: #2c3e50;
+  background-color: #fff;
+  border: 2px solid #e8ecef;
+  border-radius: 8px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  line-height: 1.5;
+}
+
+.repair-modal-body input[type="text"]:hover,
+.repair-modal-body input[type="number"]:hover,
+.repair-modal-body textarea:hover {
+  border-color: #cbd5e0;
+}
+
+.repair-modal-body input[type="text"]:focus,
+.repair-modal-body input[type="number"]:focus,
+.repair-modal-body textarea:focus {
+  border-color: #2196f3;
+  box-shadow: 0 0 0 4px rgba(33, 150, 243, 0.08);
+  background-color: #fafbfc;
+}
+
+.repair-modal-body input[type="text"]::placeholder,
+.repair-modal-body input[type="number"]::placeholder,
+.repair-modal-body textarea::placeholder {
+  color: #a0aec0;
+  font-size: 13.5px;
+  opacity: 1;
+}
+
+/* Textarea specific */
+.repair-modal-body textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+/* Form Group Spacing */
+.repair-form-group {
+  margin-bottom: 20px;
+}
+
+.repair-form-group:last-child {
+  margin-bottom: 0;
+}
+
+.repair-form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #374151;
+  letter-spacing: 0.01em;
+}
+
+.repair-form-group label span {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+/* Checkbox Styling */
+.repair-form-group label input[type="checkbox"] {
+  margin-right: 10px;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  accent-color: #2196f3;
+  vertical-align: middle;
+}
+
+.repair-form-group label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+/* Existing Repair Garment Types Section */
+.repair-types-list-header {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 2px solid #e5e7eb;
+}
+
+.repair-types-list-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 16px;
+  letter-spacing: 0.01em;
+}
+
+.repair-types-scrollable {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.repair-types-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.repair-types-scrollable::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.repair-types-scrollable::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.repair-types-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Individual Repair Garment Item Card */
+.repair-item-card {
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.repair-item-card.active {
+  background-color: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+}
+
+.repair-item-card.inactive {
+  background-color: #fef2f2;
+  border: 1.5px solid #fecaca;
+}
+
+.repair-item-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.repair-item-info {
+  flex: 1;
+}
+
+.repair-item-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.repair-item-details {
+  font-size: 12.5px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.repair-item-details .inactive-badge {
+  color: #dc2626;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+/* Action Buttons Container */
+.repair-item-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+/* Repair Garment Edit & Delete Buttons */
+.repair-garment-edit-btn,
+.repair-garment-delete-btn {
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: none;
+  background-image: none;
+  letter-spacing: 0.01em;
+}
+
 .repair-garment-edit-btn {
-  background-color: #2196f3 !important;
-  background: #2196f3 !important;
-  background-image: none !important;
-  color: white !important;
-  border: none !important;
-  box-shadow: none !important;
+  background-color: #2196f3;
 }
 
 .repair-garment-edit-btn:hover {
-  background-color: #1976d2 !important;
-  background: #1976d2 !important;
-  background-image: none !important;
+  background-color: #1976d2;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
 }
 
 .repair-garment-delete-btn {
-  background-color: #f44336 !important;
-  background: #f44336 !important;
-  background-image: none !important;
-  color: white !important;
-  border: none !important;
-  box-shadow: none !important;
+  background-color: #ef4444;
 }
 
 .repair-garment-delete-btn:hover {
-  background-color: #d32f2f !important;
-  background: #d32f2f !important;
-  background-image: none !important;
+  background-color: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
+
+.repair-garment-edit-btn:active,
+.repair-garment-delete-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.repair-garment-edit-btn:disabled,
+.repair-garment-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Modal Footer Buttons */
+.repair-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.repair-btn-cancel,
+.repair-btn-submit {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  font-family: inherit;
+}
+
+.repair-btn-cancel {
+  background-color: #f3f4f6;
+  color: #ffffff;
+}
+
+.repair-btn-cancel:hover {
+  background-color: #e5e7eb;
+}
+
+.repair-btn-submit {
+  background-color: #2196f3;
+  color: white;
+}
+
+.repair-btn-submit:hover:not(:disabled) {
+  background-color: #1976d2;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+  transform: translateY(-1px);
+}
+
+.repair-btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 
 body {
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;

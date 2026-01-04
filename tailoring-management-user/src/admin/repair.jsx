@@ -995,139 +995,106 @@ const Repair = () => {
         onClose={closeImagePreview}
       />
 
-      {/* Repair Garment Type Modal */}
-      {showRepairGarmentTypeModal && (
-        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowRepairGarmentTypeModal(false)}>
-          <div className="modal-content" style={{ maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="modal-header">
-              <h2>{editingRepairGarmentType ? 'Edit Repair Garment Type' : 'Add Repair Garment Type'}</h2>
-              <span className="close-modal" onClick={() => {
-                setShowRepairGarmentTypeModal(false);
-                setEditingRepairGarmentType(null);
-                setRepairGarmentTypeForm({ garment_name: '', description: '', is_active: 1 });
-              }}>×</span>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Garment Name *</label>
-                <input
-                  type="text"
-                  value={repairGarmentTypeForm.garment_name}
-                  onChange={(e) => setRepairGarmentTypeForm({ ...repairGarmentTypeForm, garment_name: e.target.value })}
-                  placeholder="e.g., Shirt, Pants, Jacket, Coat, Dress, Suit"
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                />
-              </div>
+          {/* Repair Garment Type Modal */}
+{showRepairGarmentTypeModal && (
+  <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowRepairGarmentTypeModal(false)}>
+    <div className="modal-content" style={{ maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div className="modal-header">
+        <h2>{editingRepairGarmentType ? 'Edit Repair Garment Type' : 'Add Repair Garment Type'}</h2>
+        <span className="close-modal" onClick={() => {
+          setShowRepairGarmentTypeModal(false);
+          setEditingRepairGarmentType(null);
+          setRepairGarmentTypeForm({ garment_name: '', description: '', is_active: 1 });
+        }}>×</span>
+      </div>
+      
+      <div className="repair-modal-body">
+        <div className="repair-form-group">
+          <label>Garment Name *</label>
+          <input
+            type="text"
+            value={repairGarmentTypeForm.garment_name}
+            onChange={(e) => setRepairGarmentTypeForm({ ...repairGarmentTypeForm, garment_name: e.target.value })}
+            placeholder="e.g., Shirt, Pants, Jacket, Coat, Dress, Suit"
+          />
+        </div>
 
-              <div className="form-group">
-                <label>Description</label>
-                <textarea
-                  value={repairGarmentTypeForm.description}
-                  onChange={(e) => setRepairGarmentTypeForm({ ...repairGarmentTypeForm, description: e.target.value })}
-                  placeholder="Optional description..."
-                  rows={3}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                />
-              </div>
+        <div className="repair-form-group">
+          <label>Description</label>
+          <textarea
+            value={repairGarmentTypeForm.description}
+            onChange={(e) => setRepairGarmentTypeForm({ ...repairGarmentTypeForm, description: e.target.value })}
+            placeholder="Optional description..."
+            rows={3}
+          />
+        </div>
 
-              <div className="form-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={repairGarmentTypeForm.is_active === 1}
-                    onChange={(e) => setRepairGarmentTypeForm({ ...repairGarmentTypeForm, is_active: e.target.checked ? 1 : 0 })}
-                    style={{ marginRight: '8px' }}
-                  />
-                  Active (Show in dropdowns)
-                </label>
-              </div>
+        <div className="repair-form-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={repairGarmentTypeForm.is_active === 1}
+              onChange={(e) => setRepairGarmentTypeForm({ ...repairGarmentTypeForm, is_active: e.target.checked ? 1 : 0 })}
+            />
+            Active (Show in dropdowns)
+          </label>
+        </div>
 
-              {/* List of existing repair garment types */}
-              {repairGarmentTypes.length > 0 && (
-                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee', width: '100%' }}>
-                  <h3 style={{ fontSize: '16px', marginBottom: '15px' }}>Existing Repair Garment Types ({repairGarmentTypes.length})</h3>
-                  <div style={{ maxHeight: '300px', overflowY: 'auto', width: '100%' }}>
-                    {repairGarmentTypes.map(garment => (
-                      <div 
-                        key={garment.repair_garment_id} 
-                        style={{ 
-                          padding: '10px', 
-                          marginBottom: '8px', 
-                          backgroundColor: garment.is_active ? '#f9f9f9' : '#ffebee', 
-                          borderRadius: '4px',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          border: garment.is_active ? '1px solid #ddd' : '1px solid #ffcdd2'
-                        }}
-                      >
-                        <div style={{ flex: 1 }}>
-                          <strong>{garment.garment_name}</strong>
-                          <div style={{ fontSize: '0.85em', color: '#666', marginTop: '4px' }}>
-                            {garment.description && `${garment.description}`}
-                            {!garment.is_active && <span style={{ color: '#f44336', marginLeft: '8px' }}>(Inactive)</span>}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            onClick={() => openEditRepairGarmentType(garment)}
-                            className="repair-garment-edit-btn"
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: '#2196f3',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              fontWeight: '500',
-                              boxShadow: 'none'
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteRepairGarmentType(garment.repair_garment_id)}
-                            className="repair-garment-delete-btn"
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: '#f44336',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              fontWeight: '500',
-                              boxShadow: 'none'
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+        {/* List of existing repair garment types */}
+        {repairGarmentTypes.length > 0 && (
+          <div className="repair-types-list-header">
+            <h3>Existing Repair Garment Types ({repairGarmentTypes.length})</h3>
+            <div className="repair-types-scrollable">
+              {repairGarmentTypes.map(garment => (
+                <div 
+                  key={garment.repair_garment_id} 
+                  className={`repair-item-card ${garment.is_active ? 'active' : 'inactive'}`}
+                >
+                  <div className="repair-item-info">
+                    <div className="repair-item-name">{garment.garment_name}</div>
+                    <div className="repair-item-details">
+                      {garment.description && `${garment.description}`}
+                      {!garment.is_active && <span className="inactive-badge">(Inactive)</span>}
+                    </div>
+                  </div>
+                  <div className="repair-item-actions">
+                    <button
+                      onClick={() => openEditRepairGarmentType(garment)}
+                      className="repair-garment-edit-btn"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteRepairGarmentType(garment.repair_garment_id)}
+                      className="repair-garment-delete-btn"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>
-            <div className="modal-footer-centered">
-              <button className="btn-cancel" onClick={() => {
-                setShowRepairGarmentTypeModal(false);
-                setEditingRepairGarmentType(null);
-                setRepairGarmentTypeForm({ garment_name: '', description: '', is_active: 1 });
-              }}>Cancel</button>
-              <button
-                className="btn-save"
-                onClick={handleRepairGarmentTypeSubmit}
-                disabled={!repairGarmentTypeForm.garment_name.trim()}
-                style={{ opacity: (!repairGarmentTypeForm.garment_name.trim()) ? 0.6 : 1 }}
-              >
-                {editingRepairGarmentType ? 'Update' : 'Create'}
-              </button>
+              ))}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+      
+      <div className="repair-modal-footer">
+        <button className="repair-btn-cancel" onClick={() => {
+          setShowRepairGarmentTypeModal(false);
+          setEditingRepairGarmentType(null);
+          setRepairGarmentTypeForm({ garment_name: '', description: '', is_active: 1 });
+        }}>Cancel</button>
+        <button
+          className="repair-btn-submit"
+          onClick={handleRepairGarmentTypeSubmit}
+          disabled={!repairGarmentTypeForm.garment_name.trim()}
+        >
+          {editingRepairGarmentType ? 'Update' : 'Create'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Price Confirmation Modal */}
       {showPriceConfirmationModal && priceConfirmationItem && (

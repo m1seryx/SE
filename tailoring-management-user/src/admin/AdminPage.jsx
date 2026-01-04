@@ -307,7 +307,7 @@ function AdminPage() {
           <button className={`filter-tab-sm ${serviceFilter === 'custom' ? 'active' : ''}`} onClick={() => setServiceFilter('custom')}>Custom</button>
           <button className={`filter-tab-sm ${serviceFilter === 'rental' ? 'active' : ''}`} onClick={() => setServiceFilter('rental')}>Rental</button>
           <span className="filter-divider">|</span>
-          <button className={`filter-tab-sm ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>All Status</button>
+          <button className={`filter-tab-sm ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>All</button>
           <button className={`filter-tab-sm ${statusFilter === 'payment' ? 'active' : ''}`} onClick={() => setStatusFilter('payment')}>💳 Paid</button>
           <button className={`filter-tab-sm ${statusFilter === 'pending' ? 'active' : ''}`} onClick={() => setStatusFilter('pending')}>Pending</button>
           <button className={`filter-tab-sm ${statusFilter === 'in-progress' ? 'active' : ''}`} onClick={() => setStatusFilter('in-progress')}>In Progress</button>

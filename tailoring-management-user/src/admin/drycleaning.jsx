@@ -1101,153 +1101,120 @@ const DryCleaning = () => {
         </div>
       )}
 
-      {/* Garment Type Modal */}
-      {showGarmentTypeModal && (
-        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowGarmentTypeModal(false)}>
-          <div className="modal-content" style={{ maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="modal-header">
-              <h2>{editingGarmentType ? 'Edit Garment Type' : 'Add Garment Type'}</h2>
-              <span className="close-modal" onClick={() => {
-                setShowGarmentTypeModal(false);
-                setEditingGarmentType(null);
-                setGarmentTypeForm({ garment_name: '', garment_price: '', description: '', is_active: 1 });
-              }}>×</span>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Garment Name *</label>
-                <input
-                  type="text"
-                  value={garmentTypeForm.garment_name}
-                  onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, garment_name: e.target.value })}
-                  placeholder="e.g., Barong, Suits, Coat, Trousers"
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                />
-              </div>
+     {/* Garment Type Modal */}
+{showGarmentTypeModal && (
+  <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowGarmentTypeModal(false)}>
+    <div className="modal-content" style={{ maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div className="modal-header">
+        <h2>{editingGarmentType ? 'Edit Garment Type' : 'Add Garment Type'}</h2>
+        <span className="close-modal" onClick={() => {
+          setShowGarmentTypeModal(false);
+          setEditingGarmentType(null);
+          setGarmentTypeForm({ garment_name: '', garment_price: '', description: '', is_active: 1 });
+        }}>×</span>
+      </div>
+      
+      <div className="garment-modal-body">
+        <div className="garment-form-group">
+          <label>Garment Name *</label>
+          <input
+            type="text"
+            value={garmentTypeForm.garment_name}
+            onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, garment_name: e.target.value })}
+            placeholder="e.g., Barong, Suits, Coat, Trousers"
+          />
+        </div>
 
-              <div className="form-group">
-                <label>Price (₱) *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={garmentTypeForm.garment_price}
-                  onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, garment_price: e.target.value })}
-                  placeholder="0.00"
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                />
-              </div>
+        <div className="garment-form-group">
+          <label>Price (₱) *</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={garmentTypeForm.garment_price}
+            onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, garment_price: e.target.value })}
+            placeholder="0.00"
+          />
+        </div>
 
-              <div className="form-group">
-                <label>Description</label>
-                <textarea
-                  value={garmentTypeForm.description}
-                  onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, description: e.target.value })}
-                  placeholder="Optional description..."
-                  rows={3}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                />
-              </div>
+        <div className="garment-form-group">
+          <label>Description</label>
+          <textarea
+            value={garmentTypeForm.description}
+            onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, description: e.target.value })}
+            placeholder="Optional description..."
+            rows={3}
+          />
+        </div>
 
-              <div className="form-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={garmentTypeForm.is_active === 1}
-                    onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, is_active: e.target.checked ? 1 : 0 })}
-                    style={{ marginRight: '8px' }}
-                  />
-                  Active (Show in dropdowns)
-                </label>
-              </div>
+        <div className="garment-form-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={garmentTypeForm.is_active === 1}
+              onChange={(e) => setGarmentTypeForm({ ...garmentTypeForm, is_active: e.target.checked ? 1 : 0 })}
+            />
+            Active (Show in dropdowns)
+          </label>
+        </div>
 
-              {/* List of existing garment types */}
-              {garmentTypes.length > 0 && (
-                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee', width: '100%' }}>
-                  <h3 style={{ fontSize: '16px', marginBottom: '15px' }}>Existing Garment Types ({garmentTypes.length})</h3>
-                  <div style={{ maxHeight: '300px', overflowY: 'auto', width: '100%' }}>
-                    {garmentTypes.map(garment => (
-                      <div 
-                        key={garment.garment_id} 
-                        style={{ 
-                          padding: '10px', 
-                          marginBottom: '8px', 
-                          backgroundColor: garment.is_active ? '#f9f9f9' : '#ffebee', 
-                          borderRadius: '4px',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          border: garment.is_active ? '1px solid #ddd' : '1px solid #ffcdd2'
-                        }}
-                      >
-                        <div style={{ flex: 1 }}>
-                          <strong>{garment.garment_name}</strong>
-                          <div style={{ fontSize: '0.85em', color: '#666', marginTop: '4px' }}>
-                            Price: ₱{parseFloat(garment.garment_price).toFixed(2)}
-                            {garment.description && ` | ${garment.description}`}
-                            {!garment.is_active && <span style={{ color: '#f44336', marginLeft: '8px' }}>(Inactive)</span>}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            onClick={() => openEditGarmentType(garment)}
-                            className="garment-edit-btn"
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: '#2196f3',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              fontWeight: '500',
-                              boxShadow: 'none'
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteGarmentType(garment.garment_id)}
-                            className="garment-delete-btn"
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: '#f44336',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              fontWeight: '500',
-                              boxShadow: 'none'
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+        {/* List of existing garment types */}
+        {garmentTypes.length > 0 && (
+          <div className="garment-types-list-header">
+            <h3>Existing Garment Types ({garmentTypes.length})</h3>
+            <div className="garment-types-scrollable">
+              {garmentTypes.map(garment => (
+                <div 
+                  key={garment.garment_id} 
+                  className={`garment-item-card ${garment.is_active ? 'active' : 'inactive'}`}
+                >
+                  <div className="garment-item-info">
+                    <div className="garment-item-name">{garment.garment_name}</div>
+                    <div className="garment-item-details">
+                      <span className="price">Price: ₱{parseFloat(garment.garment_price).toFixed(2)}</span>
+                      {garment.description && ` | ${garment.description}`}
+                      {!garment.is_active && <span className="inactive-badge">(Inactive)</span>}
+                    </div>
+                  </div>
+                  <div className="garment-item-actions">
+                    <button
+                      onClick={() => openEditGarmentType(garment)}
+                      className="garment-edit-btn"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteGarmentType(garment.garment_id)}
+                      className="garment-delete-btn"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>
-            <div className="modal-footer-centered">
-              <button className="btn-cancel" onClick={() => {
-                setShowGarmentTypeModal(false);
-                setEditingGarmentType(null);
-                setGarmentTypeForm({ garment_name: '', garment_price: '', description: '', is_active: 1 });
-              }}>Cancel</button>
-              <button
-                className="btn-save"
-                onClick={handleGarmentTypeSubmit}
-                disabled={!garmentTypeForm.garment_name.trim() || !garmentTypeForm.garment_price || isNaN(parseFloat(garmentTypeForm.garment_price))}
-                style={{ opacity: (!garmentTypeForm.garment_name.trim() || !garmentTypeForm.garment_price || isNaN(parseFloat(garmentTypeForm.garment_price))) ? 0.6 : 1 }}
-              >
-                {editingGarmentType ? 'Update' : 'Create'}
-              </button>
+              ))}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+      
+      <div className="garment-modal-footer">
+        <button className="garment-btn-cancel" onClick={() => {
+          setShowGarmentTypeModal(false);
+          setEditingGarmentType(null);
+          setGarmentTypeForm({ garment_name: '', garment_price: '', description: '', is_active: 1 });
+        }}>Cancel</button>
+        <button
+          className="garment-btn-submit"
+          onClick={handleGarmentTypeSubmit}
+          disabled={!garmentTypeForm.garment_name.trim() || !garmentTypeForm.garment_price || isNaN(parseFloat(garmentTypeForm.garment_price))}
+        >
+          {editingGarmentType ? 'Update' : 'Create'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
       {/* PAYMENT MODAL */}
       {showPaymentModal && selectedOrder && (

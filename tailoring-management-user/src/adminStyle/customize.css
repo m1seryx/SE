@@ -1424,3 +1424,667 @@ tbody tr.clickable-row:active {
 .customization-management .stats-grid {
   grid-template-columns: repeat(5, 1fr);
 }
+
+
+/* Customize Modal Body */
+.customize-modal-body {
+  padding: 24px;
+}
+
+/* Form Inputs & Textareas - Clean and Modern */
+.customize-modal-body input[type="text"],
+.customize-modal-body input[type="number"],
+.customize-modal-body textarea {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: #2c3e50;
+  background-color: #fff;
+  border: 2px solid #e8ecef;
+  border-radius: 8px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  line-height: 1.5;
+}
+
+.customize-modal-body input[type="text"]:hover,
+.customize-modal-body input[type="number"]:hover,
+.customize-modal-body textarea:hover {
+  border-color: #cbd5e0;
+}
+
+.customize-modal-body input[type="text"]:focus,
+.customize-modal-body input[type="number"]:focus,
+.customize-modal-body textarea:focus {
+  border-color: #2196f3;
+  box-shadow: 0 0 0 4px rgba(33, 150, 243, 0.08);
+  background-color: #fafbfc;
+}
+
+.customize-modal-body input[type="text"]::placeholder,
+.customize-modal-body input[type="number"]::placeholder,
+.customize-modal-body textarea::placeholder {
+  color: #a0aec0;
+  font-size: 13.5px;
+  opacity: 1;
+}
+
+/* Textarea specific */
+.customize-modal-body textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+/* Form Group Spacing */
+.customize-form-group {
+  margin-bottom: 20px;
+}
+
+.customize-form-group:last-child {
+  margin-bottom: 0;
+}
+
+.customize-form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #374151;
+  letter-spacing: 0.01em;
+}
+
+.customize-form-group label span {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+/* Checkbox Styling */
+.customize-form-group label input[type="checkbox"] {
+  margin-right: 10px;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  accent-color: #2196f3;
+  vertical-align: middle;
+}
+
+.customize-form-group label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+/* Existing Fabric Types Section */
+.fabric-types-list-header {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 2px solid #e5e7eb;
+}
+
+.fabric-types-list-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 16px;
+  letter-spacing: 0.01em;
+}
+
+.fabric-types-scrollable {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.fabric-types-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.fabric-types-scrollable::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.fabric-types-scrollable::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.fabric-types-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Individual Fabric Item Card */
+.fabric-item-card {
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.fabric-item-card.active {
+  background-color: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+}
+
+.fabric-item-card.inactive {
+  background-color: #fef2f2;
+  border: 1.5px solid #fecaca;
+}
+
+.fabric-item-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.fabric-item-info {
+  flex: 1;
+}
+
+.fabric-item-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.fabric-item-details {
+  font-size: 12.5px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.fabric-item-details .price {
+  font-weight: 600;
+  color: #059669;
+}
+
+.fabric-item-details .inactive-badge {
+  color: #dc2626;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+/* Action Buttons Container */
+.fabric-item-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+/* Fabric Edit & Delete Buttons */
+.fabric-edit-btn,
+.fabric-delete-btn {
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: none;
+  background-image: none;
+  letter-spacing: 0.01em;
+}
+
+.fabric-edit-btn {
+  background-color: #2196f3;
+}
+
+.fabric-edit-btn:hover {
+  background-color: #1976d2;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.fabric-delete-btn {
+  background-color: #ef4444;
+}
+
+.fabric-delete-btn:hover {
+  background-color: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.fabric-edit-btn:active,
+.fabric-delete-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.fabric-edit-btn:disabled,
+.fabric-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Modal Footer Buttons */
+.customize-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.customize-btn-cancel,
+.customize-btn-submit {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  font-family: inherit;
+}
+
+.customize-btn-cancel {
+  background-color: #f3f4f6;
+  color: #ffffff;
+}
+
+.customize-btn-cancel:hover {
+  background-color: #e5e7eb;
+}
+
+.customize-btn-submit {
+  background-color: #2196f3;
+  color: white;
+}
+
+.customize-btn-submit:hover:not(:disabled) {
+  background-color: #1976d2;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+  transform: translateY(-1px);
+}
+
+.customize-btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* GLB Upload Modal Body */
+.glb-modal-body {
+  padding: 24px;
+}
+
+/* Form Inputs & Textareas - Clean and Modern */
+.glb-modal-body input[type="text"],
+.glb-modal-body input[type="file"],
+.glb-modal-body select,
+.glb-modal-body textarea {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: #2c3e50;
+  background-color: #fff;
+  border: 2px solid #e8ecef;
+  border-radius: 8px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  line-height: 1.5;
+}
+
+.glb-modal-body input[type="text"]:hover,
+.glb-modal-body input[type="file"]:hover,
+.glb-modal-body select:hover,
+.glb-modal-body textarea:hover {
+  border-color: #cbd5e0;
+}
+
+.glb-modal-body input[type="text"]:focus,
+.glb-modal-body input[type="file"]:focus,
+.glb-modal-body select:focus,
+.glb-modal-body textarea:focus {
+  border-color: #2196f3;
+  box-shadow: 0 0 0 4px rgba(33, 150, 243, 0.08);
+  background-color: #fafbfc;
+}
+
+.glb-modal-body input[type="text"]::placeholder,
+.glb-modal-body textarea::placeholder {
+  color: #a0aec0;
+  font-size: 13.5px;
+  opacity: 1;
+}
+
+/* Select specific styling */
+.glb-modal-body select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23666' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+}
+
+/* Textarea specific */
+.glb-modal-body textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+/* Form Group Spacing */
+.glb-form-group {
+  margin-bottom: 20px;
+}
+
+.glb-form-group:last-child {
+  margin-bottom: 0;
+}
+
+.glb-form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #374151;
+  letter-spacing: 0.01em;
+}
+
+.glb-form-group small {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* Model Type Selection - Prominent Box */
+.model-type-selection {
+  background-color: #f0f9ff;
+  padding: 18px;
+  border-radius: 10px;
+  margin-bottom: 24px;
+  border: 2px solid #3b82f6;
+}
+
+.model-type-selection label {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 12px;
+  display: block;
+  color: #1e40af;
+}
+
+.model-type-selection .required-note {
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.model-type-info {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: #dbeafe;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #1e40af;
+}
+
+.model-type-info strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #1e3a8a;
+}
+
+/* File Input Selected Info */
+.file-selected-info {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background-color: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #166534;
+}
+
+/* Existing Models Section */
+.models-list-header {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 2px solid #e5e7eb;
+}
+
+.models-list-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.models-list-title-row h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.models-scrollable {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.models-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.models-scrollable::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.models-scrollable::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.models-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Individual Model Card */
+.model-item-card {
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  background-color: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.model-item-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.model-item-info {
+  flex: 1;
+}
+
+.model-item-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.model-item-details {
+  font-size: 12.5px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+/* Delete Buttons */
+.model-delete-btn,
+.model-delete-all-btn {
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: inherit;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: #ef4444;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.model-delete-btn:hover,
+.model-delete-all-btn:hover {
+  background-color: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.model-delete-btn:active,
+.model-delete-all-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.model-delete-all-btn {
+  padding: 8px 16px;
+  font-size: 11.5px;
+}
+
+/* Modal Footer Centered */
+.modal-footer-centered {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.glb-btn-cancel,
+.glb-btn-submit {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  font-family: inherit;
+}
+
+.glb-btn-cancel {
+  background-color: #f3f4f6;
+  color: #ffffff;
+}
+
+.glb-btn-cancel:hover {
+  background-color: #e5e7eb;
+}
+
+.glb-btn-submit {
+  background-color: #2196f3;
+  color: white;
+}
+
+.glb-btn-submit:hover:not(:disabled) {
+  background-color: #1976d2;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+  transform: translateY(-1px);
+}
+
+.glb-btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Modal Overlay - Allow scrolling */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  overflow-y: auto; /* Enable vertical scrolling */
+  padding: 20px; /* Add padding for spacing */
+}
+
+/* Modal Content - Scrollable */
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh; /* Limit height to 90% of viewport */
+  overflow-y: auto; /* Enable scrolling inside modal */
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  margin: auto; /* Center vertically when content is smaller than viewport */
+}
+
+/* GLB Modal Body - Scrollable */
+.glb-modal-body {
+  padding: 24px;
+  max-height: calc(90vh - 140px); /* Account for header and footer */
+  overflow-y: auto; /* Enable scrolling */
+}
+
+/* Scrollbar styling for modal body */
+.glb-modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.glb-modal-body::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.glb-modal-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.glb-modal-body::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Ensure modal header and footer stay fixed */
+.modal-header {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-footer-centered {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+}

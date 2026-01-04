@@ -362,7 +362,6 @@ const PostRent = () => {
       <div className="content">
         <div className="dashboard-title">
           <h2>Post Rental Items</h2>
-          <p>Manage and showcase available items for rent</p>
           <button className="add-btn" onClick={() => openModal()}>Add Post +</button>
         </div>
 

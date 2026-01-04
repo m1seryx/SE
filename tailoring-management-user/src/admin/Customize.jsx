@@ -1823,351 +1823,264 @@ const Customize = () => {
         onClose={closeImagePreview}
       />
 
-      {/* GLB Upload Modal */}
-      {showGLBUploadModal && (
-        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowGLBUploadModal(false)}>
-          <div className="modal-content" style={{ maxWidth: '600px' }}>
-            <div className="modal-header">
-              <h2>Upload 3D Model (GLB File)</h2>
-              <span className="close-modal" onClick={() => setShowGLBUploadModal(false)}>×</span>
+     {/* GLB Upload Modal */}
+{showGLBUploadModal && (
+  <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowGLBUploadModal(false)}>
+    <div className="modal-content" style={{ maxWidth: '600px' }}>
+      <div className="modal-header">
+        <h2>Upload 3D Model (GLB File)</h2>
+        <span className="close-modal" onClick={() => setShowGLBUploadModal(false)}>×</span>
+      </div>
+      
+      <div className="glb-modal-body">
+        {/* Model Type Selection - Prominent at the top */}
+        <div className="model-type-selection">
+          <label>
+            Select Model Type * <span className="required-note">(Important: Choose where this model will be used)</span>
+          </label>
+          <select
+            value={glbFormData.model_type}
+            onChange={(e) => setGlbFormData({ ...glbFormData, model_type: e.target.value, garment_category: '' })}
+          >
+            <option value="garment">👔 Garment (Main clothing items - Coats, Suits, Barong, Pants)</option>
+            <option value="button">🔘 Button (Decorative buttons for garments)</option>
+            <option value="accessory">🎩 Accessory (Hats, ties, belts, etc.)</option>
+          </select>
+          <div className="model-type-info">
+            {glbFormData.model_type === 'garment' && (
+              <div>
+                <strong>Garment:</strong> This will appear in the "Select Type" dropdown alongside built-in models (Blazer, Barong, Suit, Pants). 
+                Use this for complete clothing items.
+              </div>
+            )}
+            {glbFormData.model_type === 'button' && (
+              <div>
+                <strong>Button:</strong> This will appear in the "3D Buttons" section. Use this for decorative button models that can be added to garments.
+              </div>
+            )}
+            {glbFormData.model_type === 'accessory' && (
+              <div>
+                <strong>Accessory:</strong> This will appear in the "3D Accessories" section. Use this for items like hats, ties, belts, etc.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="glb-form-group">
+          <label>Model Name *</label>
+          <input
+            type="text"
+            value={glbFormData.model_name}
+            onChange={(e) => setGlbFormData({ ...glbFormData, model_name: e.target.value })}
+            placeholder={glbFormData.model_type === 'garment' ? 'e.g., Chinese Collar 3D Model' : glbFormData.model_type === 'button' ? 'e.g., Gold Button Set' : 'e.g., Leather Belt'}
+          />
+        </div>
+
+        {/* Garment Category - Only show for garments */}
+        {glbFormData.model_type === 'garment' && (
+          <div className="glb-form-group">
+            <label>Select Garment Type *</label>
+            <select
+              value={glbFormData.garment_category}
+              onChange={(e) => setGlbFormData({ ...glbFormData, garment_category: e.target.value })}
+              required
+            >
+              <option value="">-- Select Garment Type --</option>
+              <option value="coat-men">Blazer</option>
+              <option value="barong">Barong</option>
+              <option value="suit-1">Suit</option>
+              <option value="pants">Pants</option>
+            </select>
+            <small>This model will appear in the "Select Type" dropdown for the selected garment type</small>
+          </div>
+        )}
+
+        <div className="glb-form-group">
+          <label>GLB File *</label>
+          <input
+            type="file"
+            accept=".glb"
+            onChange={handleGLBFileChange}
+          />
+          {glbFile && (
+            <div className="file-selected-info">
+              Selected: {glbFile.name} ({(glbFile.size / 1024 / 1024).toFixed(2)} MB)
             </div>
-            <div className="modal-body">
-              {/* Model Type Selection - Prominent at the top */}
-              <div className="form-group" style={{ 
-                backgroundColor: '#f8f9fa', 
-                padding: '15px', 
-                borderRadius: '8px', 
-                marginBottom: '20px',
-                border: '2px solid #007bff'
-              }}>
-                <label style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '10px', display: 'block' }}>
-                  Select Model Type * <span style={{ color: '#dc3545' }}>(Important: Choose where this model will be used)</span>
-                </label>
-                <select
-                  value={glbFormData.model_type}
-                  onChange={(e) => setGlbFormData({ ...glbFormData, model_type: e.target.value, garment_category: '' })}
-                  style={{ 
-                    width: '100%', 
-                    padding: '12px', 
-                    border: '2px solid #007bff', 
-                    borderRadius: '6px',
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    backgroundColor: 'white'
-                  }}
-                >
-                  <option value="garment">👔 Garment (Main clothing items - Coats, Suits, Barong, Pants)</option>
-                  <option value="button">🔘 Button (Decorative buttons for garments)</option>
-                  <option value="accessory">🎩 Accessory (Hats, ties, belts, etc.)</option>
-                </select>
-                <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#e7f3ff', borderRadius: '4px', fontSize: '0.9em' }}>
-                  {glbFormData.model_type === 'garment' && (
-                    <div>
-                      <strong>Garment:</strong> This will appear in the "Select Type" dropdown alongside built-in models (Blazer, Barong, Suit, Pants). 
-                      Use this for complete clothing items.
-                    </div>
-                  )}
-                  {glbFormData.model_type === 'button' && (
-                    <div>
-                      <strong>Button:</strong> This will appear in the "3D Buttons" section. Use this for decorative button models that can be added to garments.
-                    </div>
-                  )}
-                  {glbFormData.model_type === 'accessory' && (
-                    <div>
-                      <strong>Accessory:</strong> This will appear in the "3D Accessories" section. Use this for items like hats, ties, belts, etc.
-                    </div>
-                  )}
-                </div>
-              </div>
+          )}
+          <small>Maximum file size: 50MB</small>
+        </div>
 
-              <div className="form-group">
-                <label>Model Name *</label>
-                <input
-                  type="text"
-                  value={glbFormData.model_name}
-                  onChange={(e) => setGlbFormData({ ...glbFormData, model_name: e.target.value })}
-                  placeholder={glbFormData.model_type === 'garment' ? 'e.g., Chinese Collar 3D Model' : glbFormData.model_type === 'button' ? 'e.g., Gold Button Set' : 'e.g., Leather Belt'}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                />
-              </div>
+        <div className="glb-form-group">
+          <label>Description</label>
+          <textarea
+            value={glbFormData.description}
+            onChange={(e) => setGlbFormData({ ...glbFormData, description: e.target.value })}
+            placeholder="Optional description..."
+            rows={3}
+          />
+        </div>
 
-              {/* Garment Category - Only show for garments - Simple selection */}
-              {glbFormData.model_type === 'garment' && (
-                <div className="form-group">
-                  <label>Select Garment Type *</label>
-                  <select
-                    value={glbFormData.garment_category}
-                    onChange={(e) => setGlbFormData({ ...glbFormData, garment_category: e.target.value })}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                    required
-                  >
-                    <option value="">-- Select Garment Type --</option>
-                    <option value="coat-men">Blazer</option>
-                    <option value="barong">Barong</option>
-                    <option value="suit-1">Suit</option>
-                    <option value="pants">Pants</option>
-                  </select>
-                  <small style={{ display: 'block', marginTop: '4px', color: '#888' }}>
-                    This model will appear in the "Select Type" dropdown for the selected garment type
-                  </small>
-                </div>
-              )}
-
-              <div className="form-group">
-                <label>GLB File *</label>
-                <input
-                  type="file"
-                  accept=".glb"
-                  onChange={handleGLBFileChange}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                />
-                {glbFile && (
-                  <div style={{ marginTop: '8px', fontSize: '0.9em', color: '#666' }}>
-                    Selected: {glbFile.name} ({(glbFile.size / 1024 / 1024).toFixed(2)} MB)
+        {/* List of existing custom models */}
+        {customModels.length > 0 && (
+          <div className="models-list-header">
+            <div className="models-list-title-row">
+              <h3>Existing Custom Models ({customModels.length})</h3>
+              <button
+                onClick={handleDeleteAllModels}
+                className="model-delete-all-btn"
+                title="Delete all custom models"
+              >
+                DELETE ALL
+              </button>
+            </div>
+            <div className="models-scrollable">
+              {customModels.map(model => (
+                <div key={model.model_id} className="model-item-card">
+                  <div className="model-item-info">
+                    <div className="model-item-name">{model.model_name}</div>
+                    <div className="model-item-details">
+                      Type: {model.model_type} | Category: {model.garment_category || 'N/A'}
+                    </div>
                   </div>
-                )}
-                <small style={{ display: 'block', marginTop: '4px', color: '#888' }}>
-                  Maximum file size: 50MB
-                </small>
-              </div>
+                  <button
+                    onClick={() => handleDeleteModel(model.model_id)}
+                    className="model-delete-btn"
+                  >
+                    DELETE
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      
+      <div className="modal-footer-centered">
+        <button className="glb-btn-cancel" onClick={() => setShowGLBUploadModal(false)}>Cancel</button>
+        <button 
+          className="glb-btn-submit" 
+          onClick={handleGLBUpload}
+          disabled={uploadingGLB || !glbFile || !glbFormData.model_name.trim()}
+        >
+          {uploadingGLB ? 'Uploading...' : 'Upload'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+       {/* Fabric Type Management Modal */}
+{showFabricTypeModal && (
+  <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowFabricTypeModal(false)}>
+    <div className="modal-content" style={{ maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div className="modal-header">
+        <h2>{editingFabricType ? 'Edit Fabric Type' : 'Add Fabric Type'}</h2>
+        <span className="close-modal" onClick={() => {
+          setShowFabricTypeModal(false);
+          setEditingFabricType(null);
+          setFabricTypeForm({ fabric_name: '', fabric_price: '', description: '', is_active: 1 });
+        }}>×</span>
+      </div>
+      
+      <div className="customize-modal-body">
+        <div className="customize-form-group">
+          <label>Fabric Name *</label>
+          <input
+            type="text"
+            value={fabricTypeForm.fabric_name}
+            onChange={(e) => setFabricTypeForm({ ...fabricTypeForm, fabric_name: e.target.value })}
+            placeholder="e.g., Silk, Cotton, Linen"
+          />
+        </div>
 
-              <div className="form-group">
-                <label>Description</label>
-                <textarea
-                  value={glbFormData.description}
-                  onChange={(e) => setGlbFormData({ ...glbFormData, description: e.target.value })}
-                  placeholder="Optional description..."
-                  rows={3}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                />
-              </div>
+        <div className="customize-form-group">
+          <label>Price (₱) *</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={fabricTypeForm.fabric_price}
+            onChange={(e) => setFabricTypeForm({ ...fabricTypeForm, fabric_price: e.target.value })}
+            placeholder="0.00"
+          />
+        </div>
 
-              {/* List of existing custom models */}
-              {customModels.length > 0 && (
-                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee', width: '100%' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', width: '100%' }}>
-                    <h3 style={{ fontSize: '16px', margin: 0 }}>Existing Custom Models ({customModels.length})</h3>
+        <div className="customize-form-group">
+          <label>Description</label>
+          <textarea
+            value={fabricTypeForm.description}
+            onChange={(e) => setFabricTypeForm({ ...fabricTypeForm, description: e.target.value })}
+            placeholder="Optional description..."
+            rows={3}
+          />
+        </div>
+
+        <div className="customize-form-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={fabricTypeForm.is_active === 1}
+              onChange={(e) => setFabricTypeForm({ ...fabricTypeForm, is_active: e.target.checked ? 1 : 0 })}
+            />
+            Active (Show in dropdowns)
+          </label>
+        </div>
+
+        {/* List of existing fabric types */}
+        {fabricTypes.length > 0 && (
+          <div className="fabric-types-list-header">
+            <h3>Existing Fabric Types ({fabricTypes.length})</h3>
+            <div className="fabric-types-scrollable">
+              {fabricTypes.map(fabric => (
+                <div 
+                  key={fabric.fabric_id} 
+                  className={`fabric-item-card ${fabric.is_active ? 'active' : 'inactive'}`}
+                >
+                  <div className="fabric-item-info">
+                    <div className="fabric-item-name">{fabric.fabric_name}</div>
+                    <div className="fabric-item-details">
+                      <span className="price">Price: ₱{parseFloat(fabric.fabric_price).toFixed(2)}</span>
+                      {fabric.description && ` | ${fabric.description}`}
+                      {!fabric.is_active && <span className="inactive-badge">(Inactive)</span>}
+                    </div>
+                  </div>
+                  <div className="fabric-item-actions">
                     <button
-                      onClick={handleDeleteAllModels}
-                      className="model-delete-all-btn"
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: '#f44336',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}
-                      title="Delete all custom models"
+                      onClick={() => openEditFabricType(fabric)}
+                      className="fabric-edit-btn"
                     >
-                      DELETE ALL
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteFabricType(fabric.fabric_id)}
+                      className="fabric-delete-btn"
+                    >
+                      Delete
                     </button>
                   </div>
-                  <div style={{ maxHeight: '200px', overflowY: 'auto', width: '100%' }}>
-                    {customModels.map(model => (
-                      <div 
-                        key={model.model_id} 
-                        style={{ 
-                          padding: '10px', 
-                          marginBottom: '8px', 
-                          backgroundColor: '#f9f9f9', 
-                          borderRadius: '4px',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center'
-                        }}
-                      >
-                        <div>
-                          <strong>{model.model_name}</strong>
-                          <div style={{ fontSize: '0.85em', color: '#666', marginTop: '4px' }}>
-                            Type: {model.model_type} | Category: {model.garment_category || 'N/A'}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleDeleteModel(model.model_id)}
-                          className="model-delete-btn"
-                          style={{
-                            padding: '5px 10px',
-                            backgroundColor: '#f44336',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                          }}
-                        >
-                          DELETE
-                        </button>
-                      </div>
-                    ))}
-                  </div>
                 </div>
-              )}
-            </div>
-            <div className="modal-footer-centered">
-              <button className="btn-cancel" onClick={() => setShowGLBUploadModal(false)}>Cancel</button>
-              <button 
-                className="btn-save" 
-                onClick={handleGLBUpload}
-                disabled={uploadingGLB || !glbFile || !glbFormData.model_name.trim()}
-                style={{ opacity: (uploadingGLB || !glbFile || !glbFormData.model_name.trim()) ? 0.6 : 1 }}
-              >
-                {uploadingGLB ? 'Uploading...' : 'Upload'}
-              </button>
+              ))}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Fabric Type Management Modal */}
-      {showFabricTypeModal && (
-        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowFabricTypeModal(false)}>
-          <div className="modal-content" style={{ maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="modal-header">
-              <h2>{editingFabricType ? 'Edit Fabric Type' : 'Add Fabric Type'}</h2>
-              <span className="close-modal" onClick={() => {
-                setShowFabricTypeModal(false);
-                setEditingFabricType(null);
-                setFabricTypeForm({ fabric_name: '', fabric_price: '', description: '', is_active: 1 });
-              }}>×</span>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Fabric Name *</label>
-                <input
-                  type="text"
-                  value={fabricTypeForm.fabric_name}
-                  onChange={(e) => setFabricTypeForm({ ...fabricTypeForm, fabric_name: e.target.value })}
-                  placeholder="e.g., Silk, Cotton, Linen"
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Price (₱) *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={fabricTypeForm.fabric_price}
-                  onChange={(e) => setFabricTypeForm({ ...fabricTypeForm, fabric_price: e.target.value })}
-                  placeholder="0.00"
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Description</label>
-                <textarea
-                  value={fabricTypeForm.description}
-                  onChange={(e) => setFabricTypeForm({ ...fabricTypeForm, description: e.target.value })}
-                  placeholder="Optional description..."
-                  rows={3}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={fabricTypeForm.is_active === 1}
-                    onChange={(e) => setFabricTypeForm({ ...fabricTypeForm, is_active: e.target.checked ? 1 : 0 })}
-                    style={{ marginRight: '8px' }}
-                  />
-                  Active (Show in dropdowns)
-                </label>
-              </div>
-
-              {/* List of existing fabric types */}
-              {fabricTypes.length > 0 && (
-                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee', width: '100%' }}>
-                  <h3 style={{ fontSize: '16px', marginBottom: '15px' }}>Existing Fabric Types ({fabricTypes.length})</h3>
-                  <div style={{ maxHeight: '300px', overflowY: 'auto', width: '100%' }}>
-                    {fabricTypes.map(fabric => (
-                      <div 
-                        key={fabric.fabric_id} 
-                        style={{ 
-                          padding: '10px', 
-                          marginBottom: '8px', 
-                          backgroundColor: fabric.is_active ? '#f9f9f9' : '#ffebee', 
-                          borderRadius: '4px',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          border: fabric.is_active ? '1px solid #ddd' : '1px solid #ffcdd2'
-                        }}
-                      >
-                        <div style={{ flex: 1 }}>
-                          <strong>{fabric.fabric_name}</strong>
-                          <div style={{ fontSize: '0.85em', color: '#666', marginTop: '4px' }}>
-                            Price: ₱{parseFloat(fabric.fabric_price).toFixed(2)}
-                            {fabric.description && ` | ${fabric.description}`}
-                            {!fabric.is_active && <span style={{ color: '#f44336', marginLeft: '8px' }}>(Inactive)</span>}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            onClick={() => openEditFabricType(fabric)}
-                            className="fabric-edit-btn"
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: '#2196f3',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              fontWeight: '500',
-                              boxShadow: 'none'
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteFabricType(fabric.fabric_id)}
-                            className="fabric-delete-btn"
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: '#f44336',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              fontWeight: '500',
-                              boxShadow: 'none'
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="modal-footer-centered">
-              <button className="btn-cancel" onClick={() => {
-                setShowFabricTypeModal(false);
-                setEditingFabricType(null);
-                setFabricTypeForm({ fabric_name: '', fabric_price: '', description: '', is_active: 1 });
-              }}>Cancel</button>
-              <button
-                className="btn-save"
-                onClick={handleFabricTypeSubmit}
-                disabled={!fabricTypeForm.fabric_name.trim() || !fabricTypeForm.fabric_price || isNaN(parseFloat(fabricTypeForm.fabric_price))}
-                style={{ opacity: (!fabricTypeForm.fabric_name.trim() || !fabricTypeForm.fabric_price || isNaN(parseFloat(fabricTypeForm.fabric_price))) ? 0.6 : 1 }}
-              >
-                {editingFabricType ? 'Update' : 'Create'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
+      
+      <div className="customize-modal-footer">
+        <button className="customize-btn-cancel" onClick={() => {
+          setShowFabricTypeModal(false);
+          setEditingFabricType(null);
+          setFabricTypeForm({ fabric_name: '', fabric_price: '', description: '', is_active: 1 });
+        }}>Cancel</button>
+        <button
+          className="customize-btn-submit"
+          onClick={handleFabricTypeSubmit}
+          disabled={!fabricTypeForm.fabric_name.trim() || !fabricTypeForm.fabric_price || isNaN(parseFloat(fabricTypeForm.fabric_price))}
+        >
+          {editingFabricType ? 'Update' : 'Create'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* PAYMENT MODAL */}
       {showPaymentModal && selectedOrder && (
