@@ -1,5 +1,5 @@
-import { RoundedBox, Capsule, Text, Edges, useGLTF } from '@react-three/drei';
-import { useMemo, useLayoutEffect, Suspense, useEffect, useState } from 'react';
+import { RoundedBox, Capsule, Text, Edges, useGLTF, useTexture } from '@react-three/drei';
+import React, { useMemo, useLayoutEffect, Suspense, useEffect, useState, useRef } from 'react';
 import * as THREE from 'three';
 import CustomModelLoader from './CustomModelLoader';
 
@@ -20,28 +20,60 @@ const logModelLoad = (name, scene) => {
   }
 };
 
-function makePattern(type, base, accent) {
+// Make procedural pattern on canvas with PBR-ready settings
+function makeProceduralPattern(type, base, accent, repeatX = 2, repeatY = 2) {
   const c = document.createElement('canvas');
-  c.width = 256; c.height = 256;
+  // Use power-of-2 dimensions for GPU optimization
+  c.width = 512; c.height = 512;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = base; ctx.fillRect(0, 0, 256, 256);
+  ctx.fillStyle = base; ctx.fillRect(0, 0, 512, 512);
+  
   if (type === 'minimal-stripe') {
     ctx.fillStyle = accent;
-    for (let i = 0; i < 256; i += 12) { ctx.fillRect(i, 0, 2, 256); }
+    for (let i = 0; i < 512; i += 24) { ctx.fillRect(i, 0, 4, 512); }
   } else if (type === 'minimal-check') {
-    ctx.strokeStyle = accent; ctx.lineWidth = 1;
-    for (let i = 0; i < 256; i += 14) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 256); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke(); }
-  } else if (type === 'embroidery-1') {
     ctx.strokeStyle = accent; ctx.lineWidth = 2;
-    for (let i = 0; i < 10; i++) { const x = 20 + i * 20; ctx.beginPath(); ctx.arc(128, x, 16, 0, Math.PI * 2); ctx.stroke(); }
+    for (let i = 0; i < 512; i += 28) { 
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 512); ctx.stroke(); 
+      ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(512, i); ctx.stroke(); 
+    }
+  } else if (type === 'embroidery-1') {
+    ctx.strokeStyle = accent; ctx.lineWidth = 3;
+    for (let i = 0; i < 12; i++) { 
+      const x = 40 + i * 40; 
+      ctx.beginPath(); ctx.arc(256, x, 24, 0, Math.PI * 2); ctx.stroke(); 
+    }
   } else if (type === 'embroidery-2') {
     ctx.fillStyle = accent;
-    for (let i = 0; i < 8; i++) { ctx.beginPath(); ctx.moveTo(32 + i * 24, 40); ctx.lineTo(48 + i * 24, 56); ctx.lineTo(16 + i * 24, 56); ctx.closePath(); ctx.fill(); }
+    for (let i = 0; i < 10; i++) { 
+      ctx.beginPath(); 
+      ctx.moveTo(48 + i * 48, 80); 
+      ctx.lineTo(72 + i * 48, 112); 
+      ctx.lineTo(24 + i * 48, 112); 
+      ctx.closePath(); ctx.fill(); 
+    }
   }
+  
   const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(2, 2);
+  // Seamless wrapping
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeatX, repeatY);
+  
+  // PBR-ready texture settings
+  tex.anisotropy = 16;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = true;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  
   return tex;
+}
+
+// Legacy makePattern function for backward compatibility
+function makePattern(type, base, accent) {
+  return makeProceduralPattern(type, base, accent);
 }
 
 function makeBump() {
@@ -64,10 +96,197 @@ function makeBump() {
   return tex;
 }
 
-export default function GarmentModel({ garment, size, fit, modelSize, colors, fabric, pattern, style, measurements, personalization, pantsType, customModels = [] }) {
+export default function GarmentModel({ garment, size, fit, modelSize, colors, fabric, pattern, style, measurements, personalization, pantsType, customModels = [], patterns = [] }) {
   const baseColor = colors.fabric;
   const accent = colors.stitching;
-  const map = useMemo(() => makePattern(pattern, baseColor, accent), [pattern, baseColor, accent]);
+  
+  // State for image-based pattern texture
+  const [imageTexture, setImageTexture] = useState(null);
+  // State to track if we're loading an image pattern
+  const [isLoadingTexture, setIsLoadingTexture] = useState(false);
+  // Ref to track current texture for cleanup
+  const textureRef = React.useRef(null);
+  // Ref to track current pattern code to prevent stale updates
+  const currentPatternCodeRef = React.useRef(pattern);
+  
+  // Find the current pattern configuration from patterns array
+  const currentPattern = useMemo(() => {
+    if (!patterns || patterns.length === 0) return null;
+    const found = patterns.find(p => p.pattern_code === pattern);
+    console.log('🔍 Looking for pattern:', pattern, 'Found:', found?.pattern_name, 'Type:', found?.pattern_type);
+    return found;
+  }, [patterns, pattern]);
+  
+  // Load image texture for image-based patterns
+  useEffect(() => {
+    // Update the ref to current pattern
+    currentPatternCodeRef.current = pattern;
+    
+    // Clear previous texture immediately
+    if (textureRef.current) {
+      textureRef.current.dispose();
+      textureRef.current = null;
+    }
+    setImageTexture(null);
+    setIsLoadingTexture(false);
+    
+    if (currentPattern && currentPattern.pattern_type === 'image' && currentPattern.image_url) {
+      console.log('🖼️ Loading image pattern:', currentPattern.pattern_name, 'URL:', currentPattern.image_url);
+      setIsLoadingTexture(true);
+      
+      // Construct full URL
+      let imageUrl = currentPattern.image_url;
+      if (!imageUrl.startsWith('http')) {
+        const baseUrl = window.location.origin.includes('localhost')
+          ? 'http://localhost:5000'
+          : window.location.origin.replace(/:\d+$/, ':5000');
+        imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+      }
+      
+      console.log('📥 Full image URL:', imageUrl);
+      
+      // Load the image texture with proper PBR settings
+      const loader = new THREE.TextureLoader();
+      loader.setCrossOrigin('anonymous');
+      
+      // Store the pattern code we're loading for
+      const loadingForPattern = pattern;
+      
+      loader.load(
+        imageUrl,
+        (texture) => {
+          // Check if pattern changed while loading - if so, discard this texture
+          if (currentPatternCodeRef.current !== loadingForPattern) {
+            console.log('⚠️ Pattern changed while loading, discarding texture for:', loadingForPattern);
+            texture.dispose();
+            return;
+          }
+          
+          // Configure texture for seamless tiling on 3D garments
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.RepeatWrapping;
+          
+          // Get repeat values - adjust based on garment type for consistent appearance
+          const baseRepeatX = parseFloat(currentPattern.repeat_x) || 2;
+          const baseRepeatY = parseFloat(currentPattern.repeat_y) || 2;
+          
+          // Apply garment-specific repeat multipliers for consistent pattern scale
+          const garmentRepeatMultiplier = getGarmentRepeatMultiplier(garment);
+          texture.repeat.set(
+            baseRepeatX * garmentRepeatMultiplier.x,
+            baseRepeatY * garmentRepeatMultiplier.y
+          );
+          
+          // Enable anisotropic filtering for better quality on angled surfaces
+          texture.anisotropy = 16;
+          
+          // Use linear filtering for smooth texture appearance
+          texture.minFilter = THREE.LinearMipmapLinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          
+          // Generate mipmaps for quality at different distances
+          texture.generateMipmaps = true;
+          
+          // Proper color space for PBR rendering (sRGB for color textures)
+          texture.colorSpace = THREE.SRGBColorSpace;
+          
+          // Center the texture offset for better alignment
+          texture.offset.set(0, 0);
+          
+          // Mark texture as needing update
+          texture.needsUpdate = true;
+          
+          textureRef.current = texture;
+          setImageTexture(texture);
+          setIsLoadingTexture(false);
+          console.log('✅ Pattern image texture loaded:', currentPattern.pattern_name, 
+            'Repeat:', texture.repeat.x.toFixed(2), 'x', texture.repeat.y.toFixed(2));
+        },
+        (progress) => {
+          if (progress.total > 0) {
+            console.log('⏳ Loading pattern texture:', Math.round((progress.loaded / progress.total) * 100), '%');
+          }
+        },
+        (error) => {
+          console.error('❌ Error loading pattern texture:', error);
+          console.error('❌ Failed URL:', imageUrl);
+          setIsLoadingTexture(false);
+          setImageTexture(null);
+        }
+      );
+    } else if (currentPattern) {
+      console.log('📐 Using procedural pattern:', currentPattern.procedural_type || pattern);
+    }
+    
+    // Cleanup
+    return () => {
+      if (textureRef.current) {
+        textureRef.current.dispose();
+        textureRef.current = null;
+      }
+    };
+  }, [currentPattern, pattern, garment]);
+  
+  // Helper function to get repeat multipliers based on garment type
+  // This ensures patterns look consistent across different garment sizes
+  function getGarmentRepeatMultiplier(garmentType) {
+    const multipliers = {
+      // Coats - larger garments need more repeats
+      'coat-men': { x: 1.5, y: 1.8 },
+      'coat-men-plain': { x: 1.5, y: 1.8 },
+      'coat-women': { x: 1.4, y: 1.7 },
+      'coat-women-plain': { x: 1.4, y: 1.7 },
+      'coat-teal': { x: 1.5, y: 1.8 },
+      // Suits - full body coverage
+      'suit-1': { x: 1.5, y: 2.0 },
+      'suit-2': { x: 1.5, y: 2.0 },
+      // Barong - traditional shirt
+      'barong': { x: 1.2, y: 1.5 },
+      // Pants - lower body
+      'pants': { x: 1.0, y: 1.5 },
+      // Default
+      'default': { x: 1.0, y: 1.0 }
+    };
+    
+    return multipliers[garmentType] || multipliers['default'];
+  }
+  
+  // Create the pattern map - use image texture if available, otherwise procedural
+  // This applies consistently to ALL garment types (coats, barong, suits, pants, custom models)
+  const map = useMemo(() => {
+    // If we have an image texture loaded for image-type patterns, use it
+    if (currentPattern?.pattern_type === 'image' && imageTexture) {
+      console.log('🎨 Using image texture for pattern:', currentPattern.pattern_name, 'on garment:', garment);
+      return imageTexture;
+    }
+    
+    // If we're loading an image pattern, show a solid color (no pattern) while loading
+    if (isLoadingTexture && currentPattern?.pattern_type === 'image') {
+      console.log('⏳ Loading image texture, showing solid color temporarily');
+      // Return a simple solid texture while loading
+      return makeProceduralPattern('none', baseColor, accent, 1, 1);
+    }
+    
+    // Get the procedural type for procedural patterns
+    const proceduralType = currentPattern?.procedural_type || pattern;
+    
+    // Get garment-specific repeat multiplier for consistent appearance
+    const repeatMultiplier = getGarmentRepeatMultiplier(garment);
+    const baseRepeat = 2; // Base repeat value
+    
+    console.log('🎨 Using procedural pattern:', proceduralType, 'on garment:', garment, 
+      'Repeat:', (baseRepeat * repeatMultiplier.x).toFixed(2), 'x', (baseRepeat * repeatMultiplier.y).toFixed(2));
+    
+    // Use procedural pattern with garment-specific repeat values
+    return makeProceduralPattern(
+      proceduralType, 
+      baseColor, 
+      accent, 
+      baseRepeat * repeatMultiplier.x, 
+      baseRepeat * repeatMultiplier.y
+    );
+  }, [imageTexture, isLoadingTexture, currentPattern, pattern, baseColor, accent, garment]);
+  
   const bump = useMemo(() => makeBump(), []);
   const fabricColor = useMemo(() => {
     const color = new THREE.Color(baseColor);
@@ -305,7 +524,7 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
   }
   }
 
-  const modelScene = useMemo(() => selectedModel ? selectedModel.clone() : null, [selectedModel]);
+  const modelScene = useMemo(() => selectedModel ? selectedModel.clone() : null, [selectedModel, pattern, imageTexture]);
 
   // Calculate scale based on size and fit selection
   const sizeScale = useMemo(() => {
@@ -337,6 +556,8 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
 
   useLayoutEffect(() => {
     if (use3DModel && modelScene) {
+      console.log('🔄 Applying material to model, pattern:', pattern, 'hasImageTexture:', !!imageTexture);
+      
       // Rotate model to face forward (toward camera)
       modelScene.rotation.y = -Math.PI / 2; // -90 degrees
 
@@ -346,19 +567,22 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
           if (child.material && child.material.dispose) {
             child.material.dispose();
           }
-          // Create new material with updated color
+          // Create new material with updated color and pattern
           const newMaterial = new THREE.MeshPhysicalMaterial({
             ...materialProps,
             color: fabricColor.clone(),
-            sheenColor: fabricColor.clone()
+            sheenColor: fabricColor.clone(),
+            map: map, // Explicitly pass the map texture
+            needsUpdate: true
           });
+          newMaterial.needsUpdate = true;
           child.material = newMaterial;
           child.castShadow = true;
           child.receiveShadow = true;
         }
       });
     }
-  }, [modelScene, garment, materialProps, use3DModel, fabricColor]);
+  }, [modelScene, garment, materialProps, use3DModel, fabricColor, pattern, imageTexture, map]);
 
   // Pants model selection and setup (hooks must be at top level)
   // Use useMemo to properly track pantsType changes
@@ -376,10 +600,12 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
     return pantsCasualMen.scene;
   }, [garment, pantsType, pantsCasualMen.scene, pantsFormalMen.scene, pantsFormalWomen.scene]);
 
-  const pantsModelScene = useMemo(() => pantsModel ? pantsModel.clone() : null, [pantsModel]);
+  const pantsModelScene = useMemo(() => pantsModel ? pantsModel.clone() : null, [pantsModel, pattern, imageTexture]);
 
   useLayoutEffect(() => {
     if (pantsModelScene) {
+      console.log('🔄 Applying material to pants model, pattern:', pattern, 'hasImageTexture:', !!imageTexture);
+      
       // Rotate model to face forward (toward camera)
       pantsModelScene.rotation.y = -Math.PI / 2; // -90 degrees
 
@@ -389,19 +615,22 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
           if (child.material && child.material.dispose) {
             child.material.dispose();
           }
-          // Create new material with updated color
+          // Create new material with updated color and pattern
           const newMaterial = new THREE.MeshPhysicalMaterial({
             ...materialProps,
             color: fabricColor.clone(),
-            sheenColor: fabricColor.clone()
+            sheenColor: fabricColor.clone(),
+            map: map, // Explicitly pass the map texture
+            needsUpdate: true
           });
+          newMaterial.needsUpdate = true;
           child.material = newMaterial;
           child.castShadow = true;
           child.receiveShadow = true;
         }
       });
     }
-  }, [pantsModelScene, materialProps, fabricColor]);
+  }, [pantsModelScene, materialProps, fabricColor, pattern, imageTexture, map]);
 
   const isCoat = garment.startsWith('coat') || garment === 'suit';
   const lapel = isCoat ? style.lapel : 'shawl';
@@ -515,6 +744,8 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
             modelUrl={modelUrl}
             materialProps={materialProps}
             fabricColor={fabricColor}
+            map={map}
+            pattern={pattern}
             onLoad={() => {
               console.log('✓ Custom model loaded successfully:', customModelToRender.model_name);
             }}
@@ -576,6 +807,8 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
             modelUrl={modelUrl}
             materialProps={materialProps}
             fabricColor={fabricColor}
+            map={map}
+            pattern={pattern}
             onLoad={() => {}}
           />
           {personalization.initials && (
@@ -616,6 +849,8 @@ export default function GarmentModel({ garment, size, fit, modelSize, colors, fa
           modelUrl={modelUrl}
           materialProps={materialProps}
           fabricColor={fabricColor}
+          map={map}
+          pattern={pattern}
           onLoad={() => {}}
         />
         {personalization.initials && (

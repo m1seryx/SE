@@ -4,6 +4,7 @@ import Viewer3D from '../components/3d-customizer/Viewer3D';
 import CustomizationPanel from '../components/3d-customizer/CustomizationPanel';
 import { getAllCustom3DModels } from '../api/CustomizationApi';
 import { getAllFabricTypes } from '../api/FabricTypeApi';
+import { getAllPatterns } from '../api/PatternApi';
 import '../styles/3d-App.css';
 import './Customizer3DPage.css';
 
@@ -61,7 +62,16 @@ const Customizer3DPage = () => {
   // Default fabric types - these will always be available
   const defaultFabrics = ['silk', 'linen', 'cotton', 'wool', 'jusi', 'Piña'];
   const [fabrics, setFabrics] = useState(defaultFabrics);
-  const patterns = ['none', 'minimal-stripe', 'minimal-check', 'embroidery-1', 'embroidery-2'];
+  
+  // Default patterns for fallback - will be replaced by database patterns
+  const defaultPatterns = [
+    { pattern_code: 'none', pattern_name: 'None (Solid)', pattern_type: 'procedural', procedural_type: 'none' },
+    { pattern_code: 'minimal-stripe', pattern_name: 'Minimal Stripe', pattern_type: 'procedural', procedural_type: 'minimal-stripe' },
+    { pattern_code: 'minimal-check', pattern_name: 'Minimal Check', pattern_type: 'procedural', procedural_type: 'minimal-check' },
+    { pattern_code: 'embroidery-1', pattern_name: 'Embroidery Style 1', pattern_type: 'procedural', procedural_type: 'embroidery-1' },
+    { pattern_code: 'embroidery-2', pattern_name: 'Embroidery Style 2', pattern_type: 'procedural', procedural_type: 'embroidery-2' }
+  ];
+  const [patterns, setPatterns] = useState(defaultPatterns);
 
   const coatStyle = { lapel: 'notch', buttons: 2, pocket: 'flap', vents: 'single' };
   const barongStyle = { collar: 'classic', sleeves: 'long', transparency: 0.35, embroidery: 'preset-a' };
@@ -202,6 +212,47 @@ const Customizer3DPage = () => {
     loadFabricTypes();
   }, []);
 
+  // Load patterns from API
+  useEffect(() => {
+    const loadPatterns = async () => {
+      try {
+        const result = await getAllPatterns();
+        if (result.success && result.patterns && result.patterns.length > 0) {
+          console.log('✅ Patterns loaded from API:', result.patterns);
+          
+          // Sort patterns: default patterns first (by sort_order), then custom patterns by name
+          const sortedPatterns = result.patterns.sort((a, b) => {
+            // Default patterns should come first
+            const defaultPatternCodes = ['none', 'minimal-stripe', 'minimal-check', 'embroidery-1', 'embroidery-2'];
+            const aIsDefault = defaultPatternCodes.includes(a.pattern_code);
+            const bIsDefault = defaultPatternCodes.includes(b.pattern_code);
+            
+            if (aIsDefault && !bIsDefault) return -1;
+            if (!aIsDefault && bIsDefault) return 1;
+            
+            // If both are default, sort by sort_order
+            if (aIsDefault && bIsDefault) {
+              return (a.sort_order || 0) - (b.sort_order || 0);
+            }
+            
+            // For custom patterns, sort by pattern_name alphabetically
+            return (a.pattern_name || '').localeCompare(b.pattern_name || '');
+          });
+          
+          setPatterns(sortedPatterns);
+        } else {
+          console.warn('⚠️ No patterns found from API, using defaults');
+          setPatterns(defaultPatterns);
+        }
+      } catch (error) {
+        console.error('❌ Error loading patterns:', error);
+        // Keep defaults if API fails
+        setPatterns(defaultPatterns);
+      }
+    };
+    loadPatterns();
+  }, []);
+
   const handleSaveDesign = async () => {
     const summary = {
       garment,
@@ -286,10 +337,14 @@ const Customizer3DPage = () => {
         const lineHeight = 28;
         let y = sourceCanvas.height + 70;
         
+        // Get pattern display name from patterns array
+        const patternObj = patterns.find(p => p.pattern_code === pattern);
+        const patternDisplayName = patternObj ? patternObj.pattern_name : (pattern === 'none' ? 'Solid' : pattern);
+        
         const infoLines = [
           `🎨 Garment Type: ${garmentName}`,
           `📏 Size: ${size.charAt(0).toUpperCase() + size.slice(1)} | Fit: ${fit.charAt(0).toUpperCase() + fit.slice(1)}`,
-          `🧵 Fabric: ${fabric.charAt(0).toUpperCase() + fabric.slice(1)} | Pattern: ${pattern === 'none' ? 'Solid' : pattern}`,
+          `🧵 Fabric: ${fabric.charAt(0).toUpperCase() + fabric.slice(1)} | Pattern: ${patternDisplayName}`,
           `🎨 Colors - Fabric: ${colors.fabric} | Lining: ${colors.lining} | Buttons: ${colors.button}`,
           `🔘 Buttons: ${buttonsList}`,
           `✨ Accessories: ${accessoriesList}`,
@@ -651,6 +706,7 @@ const Customizer3DPage = () => {
           setAccessories={setAccessories}
           pantsType={pantsType}
           customModels={customModels}
+          patterns={patterns}
         />
       </div>
     </div>

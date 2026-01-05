@@ -123,7 +123,7 @@ function LoadingFallback() {
   );
 }
 
-export default function Viewer3D({ garment, size, fit, modelSize, colors, fabric, pattern, style, measurements, personalization, buttons, setButtons, accessories, setAccessories, pantsType, customModels = [] }) {
+export default function Viewer3D({ garment, size, fit, modelSize, colors, fabric, pattern, style, measurements, personalization, buttons, setButtons, accessories, setAccessories, pantsType, customModels = [], patterns = [] }) {
   const [selectedButton, setSelectedButton] = useState(null);
   const [selectedAccessory, setSelectedAccessory] = useState(null);
   const [isAnyButtonMoving, setIsAnyButtonMoving] = useState(false);
@@ -287,7 +287,7 @@ export default function Viewer3D({ garment, size, fit, modelSize, colors, fabric
         <fog attach="fog" args={[0xffffff, 10, 30]} />
         <Stage intensity={0.6} adjustCamera={false} shadows="accumulative" environment={null}>
           <Suspense fallback={<LoadingFallback />}>
-            <GarmentModel garment={garment} size={size} fit={fit} modelSize={modelSize} colors={colors} fabric={fabric} pattern={pattern} style={style} measurements={measurements} personalization={personalization} pantsType={pantsType} customModels={customModels} />
+            <GarmentModel garment={garment} size={size} fit={fit} modelSize={modelSize} colors={colors} fabric={fabric} pattern={pattern} style={style} measurements={measurements} personalization={personalization} pantsType={pantsType} customModels={customModels} patterns={patterns} />
           </Suspense>
         </Stage>
         {/* Enhanced lighting to show dark colors accurately */}

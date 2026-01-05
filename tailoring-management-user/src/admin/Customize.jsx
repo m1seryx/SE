@@ -7,6 +7,7 @@ import { getAllCustomizationOrders, updateCustomizationOrderItem, uploadGLBFile,
 import { getUserRole } from '../api/AuthApi';
 import { getAllFabricTypesAdmin, createFabricType, updateFabricType, deleteFabricType } from '../api/FabricTypeApi';
 import { getAllGarmentTypesAdmin, createGarmentType, updateGarmentType, deleteGarmentType } from '../api/GarmentTypeApi';
+import { getAllPatterns, uploadPatternImage, createPattern, updatePattern, deletePattern } from '../api/PatternApi';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 import { getMeasurements, saveMeasurements } from '../api/CustomerApi';
 import { useAlert } from '../context/AlertContext';
@@ -104,6 +105,27 @@ const Customize = () => {
   const [loadingGarmentTypes, setLoadingGarmentTypes] = useState(false);
   const [garmentGlbFile, setGarmentGlbFile] = useState(null);
   const [uploadingGarmentGlb, setUploadingGarmentGlb] = useState(false);
+
+  // Pattern management state
+  const [showPatternModal, setShowPatternModal] = useState(false);
+  const [patterns, setPatterns] = useState([]);
+  const [patternForm, setPatternForm] = useState({
+    pattern_code: '',
+    pattern_name: '',
+    pattern_type: 'image',
+    repeat_x: 2.0,
+    repeat_y: 2.0,
+    description: '',
+    is_active: 1,
+    make_seamless: true,
+    texture_size: 512,
+    pattern_scale: 'medium'
+  });
+  const [editingPattern, setEditingPattern] = useState(null);
+  const [loadingPatterns, setLoadingPatterns] = useState(false);
+  const [patternImageFile, setPatternImageFile] = useState(null);
+  const [patternImagePreview, setPatternImagePreview] = useState(null);
+  const [uploadingPattern, setUploadingPattern] = useState(false);
 
   // Default garment categories (built-in)
   const defaultGarmentCategories = [
@@ -272,6 +294,7 @@ const Customize = () => {
       loadCustom3DModels();
       loadFabricTypes();
       loadGarmentTypes();
+      loadPatterns();
     }
   }, []);
 
@@ -511,6 +534,232 @@ const Customize = () => {
     setGarmentTypeForm({ garment_name: '', garment_price: '', garment_code: '', description: '', is_active: 1 });
     setGarmentGlbFile(null); // Reset GLB file
     setShowGarmentTypeModal(true);
+  };
+
+  // ==================== PATTERN MANAGEMENT ====================
+  
+  // Load patterns
+  const loadPatterns = async () => {
+    setLoadingPatterns(true);
+    try {
+      const result = await getAllPatterns();
+      if (result.success) {
+        // Sort patterns: default patterns first (by sort_order), then custom patterns by name
+        const sortedPatterns = (result.patterns || []).sort((a, b) => {
+          // Default patterns should come first
+          const defaultPatterns = ['none', 'minimal-stripe', 'minimal-check', 'embroidery-1', 'embroidery-2'];
+          const aIsDefault = defaultPatterns.includes(a.pattern_code);
+          const bIsDefault = defaultPatterns.includes(b.pattern_code);
+          
+          if (aIsDefault && !bIsDefault) return -1;
+          if (!aIsDefault && bIsDefault) return 1;
+          
+          // If both are default, sort by sort_order
+          if (aIsDefault && bIsDefault) {
+            return (a.sort_order || 0) - (b.sort_order || 0);
+          }
+          
+          // For custom patterns, sort by pattern_name alphabetically
+          return (a.pattern_name || '').localeCompare(b.pattern_name || '');
+        });
+        setPatterns(sortedPatterns);
+      } else {
+        showToast(result.message || 'Failed to load patterns', 'error');
+      }
+    } catch (err) {
+      console.error("Load patterns error:", err);
+      showToast('Failed to load patterns', 'error');
+    } finally {
+      setLoadingPatterns(false);
+    }
+  };
+
+  // Handle pattern image file selection
+  const handlePatternImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+      if (!allowedTypes.includes(file.type)) {
+        showToast('Please select an image file (JPEG, PNG, GIF, WebP, or SVG)', 'error');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        showToast('File size must be less than 10MB', 'error');
+        return;
+      }
+      setPatternImageFile(file);
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPatternImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Generate unique pattern code from name with timestamp to avoid duplicates
+  const generatePatternCode = (name) => {
+    const baseName = name.toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, '-')
+      .substring(0, 30);
+    const timestamp = Date.now().toString(36); // Short unique suffix
+    return `${baseName}-${timestamp}`;
+  };
+
+  // Handle pattern form submit
+  const handlePatternSubmit = async () => {
+    if (!patternForm.pattern_name.trim()) {
+      showToast('Please enter a pattern name', 'error');
+      return;
+    }
+    
+    // Auto-generate unique code if empty (always generate for new patterns to ensure uniqueness)
+    let code = patternForm.pattern_code.trim();
+    if (!code || !editingPattern) {
+      code = generatePatternCode(patternForm.pattern_name);
+    }
+    
+    // For new patterns, require an image
+    if (!editingPattern && !patternImageFile) {
+      showToast('Please select a pattern image', 'error');
+      return;
+    }
+
+    setUploadingPattern(true);
+    try {
+      let result;
+      
+      if (editingPattern) {
+        // Update existing pattern
+        const updateData = {
+          pattern_name: patternForm.pattern_name,
+          pattern_code: code,
+          repeat_x: parseFloat(patternForm.repeat_x) || 2.0,
+          repeat_y: parseFloat(patternForm.repeat_y) || 2.0,
+          description: patternForm.description,
+          is_active: patternForm.is_active
+        };
+        
+        result = await updatePattern(editingPattern.pattern_id, updateData, patternImageFile);
+      } else {
+        // Create new pattern with image and seamless processing options
+        const patternData = {
+          pattern_code: code,
+          pattern_name: patternForm.pattern_name,
+          repeat_x: parseFloat(patternForm.repeat_x) || 2.0,
+          repeat_y: parseFloat(patternForm.repeat_y) || 2.0,
+          description: patternForm.description,
+          make_seamless: patternForm.make_seamless,
+          texture_size: patternForm.texture_size,
+          pattern_scale: patternForm.pattern_scale
+        };
+        
+        result = await uploadPatternImage(patternImageFile, patternData);
+        
+        // Show info about seamless processing
+        if (result.success && result.isSeamless) {
+          showToast('Pattern processed into seamless texture!', 'info');
+        }
+      }
+      
+      if (result.success) {
+        showToast(editingPattern ? 'Pattern updated successfully' : 'Pattern added successfully', 'success');
+        await loadPatterns();
+        resetPatternForm();
+      } else {
+        showToast(result.message || 'Failed to save pattern', 'error');
+      }
+    } catch (err) {
+      console.error("Pattern submit error:", err);
+      showToast('Failed to save pattern', 'error');
+    } finally {
+      setUploadingPattern(false);
+    }
+  };
+
+  // Reset pattern form
+  const resetPatternForm = () => {
+    setPatternForm({
+      pattern_code: '',
+      pattern_name: '',
+      pattern_type: 'image',
+      repeat_x: 2.0,
+      repeat_y: 2.0,
+      description: '',
+      is_active: 1,
+      make_seamless: true,
+      texture_size: 512,
+      pattern_scale: 'medium'
+    });
+    setPatternImageFile(null);
+    setPatternImagePreview(null);
+    setEditingPattern(null);
+  };
+
+  // Handle delete pattern
+  const handleDeletePattern = async (patternId, patternCode) => {
+    // Prevent deleting default patterns
+    const defaultPatterns = ['none', 'minimal-stripe', 'minimal-check', 'embroidery-1', 'embroidery-2'];
+    if (defaultPatterns.includes(patternCode)) {
+      showToast('Cannot delete default patterns', 'error');
+      return;
+    }
+    
+    openConfirmModal("Are you sure you want to delete this pattern? This action cannot be undone.", async () => {
+      try {
+        const result = await deletePattern(patternId);
+        if (result.success) {
+          showToast('Pattern deleted successfully', 'success');
+          await loadPatterns();
+        } else {
+          showToast(result.message || 'Failed to delete pattern', 'error');
+        }
+      } catch (err) {
+        console.error("Delete pattern error:", err);
+        showToast('Failed to delete pattern', 'error');
+      }
+    });
+  };
+
+  // Open pattern modal for editing
+  const openEditPattern = (pattern) => {
+    setEditingPattern(pattern);
+    setPatternForm({
+      pattern_code: pattern.pattern_code,
+      pattern_name: pattern.pattern_name,
+      pattern_type: pattern.pattern_type,
+      repeat_x: parseFloat(pattern.repeat_x) || 2.0,
+      repeat_y: parseFloat(pattern.repeat_y) || 2.0,
+      description: pattern.description || '',
+      is_active: pattern.is_active,
+      make_seamless: true,
+      texture_size: 512,
+      pattern_scale: 'medium'
+    });
+    setPatternImageFile(null);
+    // Set preview to existing image
+    if (pattern.image_url) {
+      const baseUrl = window.location.origin.includes('localhost') ? 'http://localhost:5000' : '';
+      setPatternImagePreview(`${baseUrl}${pattern.image_url}`);
+    } else {
+      setPatternImagePreview(null);
+    }
+    setShowPatternModal(true);
+  };
+
+  // Open pattern modal for creating new
+  const openNewPattern = () => {
+    resetPatternForm();
+    setShowPatternModal(true);
+  };
+
+  // Get pattern image URL
+  const getPatternImageUrl = (pattern) => {
+    if (!pattern.image_url) return null;
+    if (pattern.image_url.startsWith('http')) return pattern.image_url;
+    const baseUrl = window.location.origin.includes('localhost') ? 'http://localhost:5000' : '';
+    return `${baseUrl}${pattern.image_url}`;
   };
 
   // Get all garment categories (built-in + custom from API)
@@ -1145,6 +1394,22 @@ const Customize = () => {
               }}
             >
               + Add Garment Type
+            </button>
+            <button
+              onClick={openNewPattern}
+              style={{
+                marginLeft: '10px',
+                padding: '10px 20px',
+                backgroundColor: '#e65100',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              + Add Pattern
             </button>
           </div>
           {error && <div className="error-message" style={{ color: 'red', marginBottom: '20px' }}>{error}</div>}
@@ -2451,6 +2716,310 @@ const Customize = () => {
     </div>
   </div>
 )}
+
+      {/* Pattern Management Modal */}
+      {showPatternModal && (
+        <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowPatternModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-header">
+              <h2>{editingPattern ? 'Edit Pattern' : 'Add New Pattern'}</h2>
+              <span className="close-modal" onClick={() => {
+                setShowPatternModal(false);
+                resetPatternForm();
+              }}>×</span>
+            </div>
+            
+            <div className="customize-modal-body">
+              <div className="customize-form-group">
+                <label>Pattern Name *</label>
+                <input
+                  type="text"
+                  value={patternForm.pattern_name}
+                  onChange={(e) => {
+                    setPatternForm({ 
+                      ...patternForm, 
+                      pattern_name: e.target.value,
+                      pattern_code: patternForm.pattern_code || generatePatternCode(e.target.value)
+                    });
+                  }}
+                  placeholder="e.g., Floral Print, Polka Dots, Herringbone"
+                />
+              </div>
+
+              <div className="customize-form-group">
+                <label>Pattern Code</label>
+                <input
+                  type="text"
+                  value={patternForm.pattern_code}
+                  onChange={(e) => setPatternForm({ ...patternForm, pattern_code: e.target.value })}
+                  placeholder="Auto-generated from name"
+                  disabled={editingPattern && ['none', 'minimal-stripe', 'minimal-check', 'embroidery-1', 'embroidery-2'].includes(editingPattern.pattern_code)}
+                />
+                <small style={{ color: '#666' }}>Unique identifier for the pattern (auto-generated if empty)</small>
+              </div>
+
+              <div className="customize-form-group">
+                <label>Pattern Image {!editingPattern && '*'}</label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+                  onChange={handlePatternImageChange}
+                  style={{ marginBottom: '10px' }}
+                />
+                <small style={{ color: '#666' }}>Supported formats: JPEG, PNG, GIF, WebP, SVG (max 10MB)</small>
+                
+                {patternImagePreview && (
+                  <div style={{ marginTop: '10px', textAlign: 'center' }}>
+                    <p style={{ marginBottom: '8px', color: '#666', fontSize: '14px' }}>Preview:</p>
+                    <div style={{ 
+                      width: '200px', 
+                      height: '200px', 
+                      margin: '0 auto',
+                      border: '2px solid #ddd',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      background: `url(${patternImagePreview})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'repeat'
+                    }} />
+                    <p style={{ marginTop: '8px', color: '#888', fontSize: '12px' }}>
+                      This pattern will tile/repeat on garments
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '15px' }}>
+                <div className="customize-form-group" style={{ flex: 1 }}>
+                  <label>Repeat X</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    max="10"
+                    value={patternForm.repeat_x}
+                    onChange={(e) => setPatternForm({ ...patternForm, repeat_x: parseFloat(e.target.value) || 2.0 })}
+                    placeholder="2.0"
+                  />
+                  <small style={{ color: '#666' }}>Horizontal repeat (higher = smaller pattern)</small>
+                </div>
+
+                <div className="customize-form-group" style={{ flex: 1 }}>
+                  <label>Repeat Y</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    max="10"
+                    value={patternForm.repeat_y}
+                    onChange={(e) => setPatternForm({ ...patternForm, repeat_y: parseFloat(e.target.value) || 2.0 })}
+                    placeholder="2.0"
+                  />
+                  <small style={{ color: '#666' }}>Vertical repeat (higher = smaller pattern)</small>
+                </div>
+              </div>
+
+              {/* Seamless Texture Processing Options */}
+              {!editingPattern && (
+                <div style={{ 
+                  border: '1px solid #e0e0e0', 
+                  borderRadius: '8px', 
+                  padding: '15px', 
+                  marginTop: '15px',
+                  backgroundColor: '#f8f9fa'
+                }}>
+                  <h4 style={{ margin: '0 0 12px 0', color: '#333', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    🔄 Seamless Texture Processing
+                    <span style={{ 
+                      fontSize: '11px', 
+                      backgroundColor: '#4CAF50', 
+                      color: 'white', 
+                      padding: '2px 8px', 
+                      borderRadius: '10px' 
+                    }}>
+                      Auto
+                    </span>
+                  </h4>
+                  <p style={{ fontSize: '12px', color: '#666', marginBottom: '12px' }}>
+                    Your uploaded image will be automatically converted into a seamless, tileable fabric pattern 
+                    optimized for 3D garment texturing.
+                  </p>
+                  
+                  <div className="customize-form-group" style={{ marginBottom: '12px' }}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={patternForm.make_seamless}
+                        onChange={(e) => setPatternForm({ ...patternForm, make_seamless: e.target.checked })}
+                      />
+                      Create seamless tileable texture
+                    </label>
+                    <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
+                      Blends edges for smooth repetition without visible seams
+                    </small>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '15px' }}>
+                    <div className="customize-form-group" style={{ flex: 1 }}>
+                      <label>Texture Resolution</label>
+                      <select
+                        value={patternForm.texture_size}
+                        onChange={(e) => setPatternForm({ ...patternForm, texture_size: parseInt(e.target.value) })}
+                      >
+                        <option value={256}>256x256 (Fast, Low Detail)</option>
+                        <option value={512}>512x512 (Balanced)</option>
+                        <option value={1024}>1024x1024 (High Quality)</option>
+                        <option value={2048}>2048x2048 (Maximum Detail)</option>
+                      </select>
+                      <small style={{ color: '#666' }}>Higher = better quality, larger file</small>
+                    </div>
+
+                    <div className="customize-form-group" style={{ flex: 1 }}>
+                      <label>Pattern Scale</label>
+                      <select
+                        value={patternForm.pattern_scale}
+                        onChange={(e) => setPatternForm({ ...patternForm, pattern_scale: e.target.value })}
+                      >
+                        <option value="small">Small (Fine details, more repeats)</option>
+                        <option value="medium">Medium (Balanced)</option>
+                        <option value="large">Large (Bold pattern, fewer repeats)</option>
+                      </select>
+                      <small style={{ color: '#666' }}>How pattern appears on garments</small>
+                    </div>
+                  </div>
+
+                  <div style={{ 
+                    marginTop: '10px', 
+                    padding: '10px', 
+                    backgroundColor: '#e3f2fd', 
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    color: '#1565c0'
+                  }}>
+                    ✨ <strong>Applies to all garments:</strong> Coats, Barong, Suits, Pants, and any custom models
+                  </div>
+                </div>
+              )}
+
+              <div className="customize-form-group">
+                <label>Description</label>
+                <textarea
+                  value={patternForm.description}
+                  onChange={(e) => setPatternForm({ ...patternForm, description: e.target.value })}
+                  placeholder="Optional description of the pattern..."
+                  rows={2}
+                />
+              </div>
+
+              <div className="customize-form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={patternForm.is_active === 1}
+                    onChange={(e) => setPatternForm({ ...patternForm, is_active: e.target.checked ? 1 : 0 })}
+                  />
+                  Active (Show in pattern dropdown)
+                </label>
+              </div>
+
+              {/* List of existing patterns */}
+              {patterns.length > 0 && (
+                <div className="fabric-types-list-header">
+                  <h3>Existing Patterns ({patterns.length})</h3>
+                  <div className="fabric-types-scrollable" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    {patterns.map(pattern => {
+                      const isDefault = ['none', 'minimal-stripe', 'minimal-check', 'embroidery-1', 'embroidery-2'].includes(pattern.pattern_code);
+                      const imageUrl = getPatternImageUrl(pattern);
+                      
+                      return (
+                        <div 
+                          key={pattern.pattern_id} 
+                          className={`fabric-item-card ${pattern.is_active ? 'active' : 'inactive'}`}
+                          style={{ display: 'flex', alignItems: 'center', gap: '15px' }}
+                        >
+                          {/* Pattern preview thumbnail */}
+                          <div style={{
+                            width: '60px',
+                            height: '60px',
+                            borderRadius: '6px',
+                            border: '1px solid #ddd',
+                            flexShrink: 0,
+                            background: imageUrl 
+                              ? `url(${imageUrl}) center/cover`
+                              : pattern.pattern_type === 'procedural' 
+                                ? '#f0f0f0' 
+                                : '#ccc',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '10px',
+                            color: '#666'
+                          }}>
+                            {!imageUrl && pattern.pattern_type === 'procedural' && '🎨'}
+                          </div>
+                          
+                          <div className="fabric-item-info" style={{ flex: 1 }}>
+                            <div className="fabric-item-name">
+                              {pattern.pattern_name}
+                              {isDefault && <span style={{ color: '#888', fontSize: '12px', marginLeft: '8px' }}>(Built-in)</span>}
+                            </div>
+                            <div className="fabric-item-details">
+                              <span>Code: {pattern.pattern_code}</span>
+                              {' | '}
+                              <span>Type: {pattern.pattern_type}</span>
+                              {' | '}
+                              <span>Repeat: {pattern.repeat_x}x{pattern.repeat_y}</span>
+                              {!pattern.is_active && <span className="inactive-badge">(Inactive)</span>}
+                            </div>
+                          </div>
+                          
+                          <div className="fabric-item-actions" style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              className="fabric-action-btn edit"
+                              onClick={() => openEditPattern(pattern)}
+                              title="Edit pattern"
+                            >
+                              ✏️
+                            </button>
+                            {!isDefault && (
+                              <button
+                                className="fabric-action-btn delete"
+                                onClick={() => handleDeletePattern(pattern.pattern_id, pattern.pattern_code)}
+                                title="Delete pattern"
+                              >
+                                🗑️
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="modal-footer-centered">
+              <button className="customize-btn-cancel" onClick={() => {
+                setShowPatternModal(false);
+                resetPatternForm();
+              }} disabled={uploadingPattern}>Cancel</button>
+              <button
+                className="customize-btn-submit"
+                onClick={handlePatternSubmit}
+                disabled={
+                  uploadingPattern ||
+                  !patternForm.pattern_name.trim() ||
+                  (!editingPattern && !patternImageFile)
+                }
+              >
+                {uploadingPattern ? 'Uploading...' : (editingPattern ? 'Update' : 'Create Pattern')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PAYMENT MODAL */}
       {showPaymentModal && selectedOrder && (

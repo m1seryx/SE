@@ -73,8 +73,25 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-
-app.use('/uploads', express.static('uploads'));
+// Serve static files with CORS headers for textures
+app.use('/uploads', (req, res, next) => {
+  // Allow cross-origin access for texture loading in Three.js
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static('uploads', {
+  maxAge: '1d', // Cache for 1 day
+  setHeaders: (res, path) => {
+    // Set proper content type for image files
+    if (path.endsWith('.png')) {
+      res.setHeader('Content-Type', 'image/png');
+    } else if (path.endsWith('.jpg') || path.endsWith('.jpeg')) {
+      res.setHeader('Content-Type', 'image/jpeg');
+    } else if (path.endsWith('.webp')) {
+      res.setHeader('Content-Type', 'image/webp');
+    }
+  }
+}));
 
 const authRoutes = require('./routes/AuthRoutes');
 const rentalRoutes = require('./routes/RentalRoutes');
@@ -119,6 +136,8 @@ const dcGarmentTypeRoutes = require('./routes/DryCleaningGarmentTypeRoutes');
 app.use('/api/dc-garment-types', dcGarmentTypeRoutes);
 const shopScheduleRoutes = require('./routes/ShopScheduleRoutes');
 app.use('/api/shop-schedule', shopScheduleRoutes);
+const patternRoutes = require('./routes/PatternRoutes');
+app.use('/api/patterns', patternRoutes);
 
 
 // Initialize database tables (time_slots and appointment_slots)

@@ -464,7 +464,15 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
                 }
               </select>
             </label>
-            <label>Pattern<select value={pattern} onChange={e => setPattern(e.target.value)}>{patterns.map(p => <option key={p} value={p}>{p}</option>)}</select></label>
+            <label>Pattern
+              <select value={pattern} onChange={e => setPattern(e.target.value)}>
+                {patterns.map(p => (
+                  <option key={p.pattern_code || p} value={p.pattern_code || p}>
+                    {p.pattern_name || p}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           {garment === 'barong' && (
             <div className="row" style={{ marginTop: '16px' }}>
@@ -555,7 +563,7 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
       </h3>
       {expandedSections.accessories && (
         <div className={styles.sectionContent}>
-          <div className="row">
+          <div className={styles.accessoryRow}>
             <label>Accessory Type
               <select value={selectedAccessoryModel} onChange={e => setSelectedAccessoryModel(e.target.value)}>
                 {availableAccessoryModels.map(model => (
@@ -576,7 +584,7 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
                 })}
               </select>
             </label>
-            <button onClick={addAccessory} className={styles.premiumButton} style={{ marginLeft: 8 }}>Add Accessory</button>
+            <button onClick={addAccessory} className={styles.compactButton}>Add Accessory</button>
           </div>
 
           {accessories && accessories.length > 0 && (
@@ -686,15 +694,21 @@ export default function CustomizationPanel({ garment, setGarment, size, setSize,
         <div className={styles.sectionContent}>
           <div className="row">
             <label>Design Image (Optional)
-              <input type="file" accept="image/*" onChange={e => {
+              <input type="file" accept="image/*" className={styles.fileInput} onChange={e => {
                 if (e.target.files && e.target.files[0]) {
                   setDesignImage(URL.createObjectURL(e.target.files[0]));
                 }
               }} />
             </label>
-            {designImage && <img src={designImage} alt="Design Preview" style={{ width: '100%', maxHeight: 150, objectFit: 'contain', marginTop: 8 }} />}
+            {designImage && <img src={designImage} alt="Design Preview" style={{ width: '100%', maxHeight: 150, objectFit: 'contain', marginTop: 8, borderRadius: 8, border: '1px solid rgba(139, 69, 19, 0.2)' }} />}
             <label>Notes for Admin
-              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} style={{ width: '100%', marginTop: 4 }} placeholder="Enter any specific instructions..." />
+              <textarea 
+                value={notes} 
+                onChange={e => setNotes(e.target.value)} 
+                rows={3} 
+                className={styles.notesTextarea}
+                placeholder="Enter any specific instructions..." 
+              />
             </label>
           </div>
         </div>

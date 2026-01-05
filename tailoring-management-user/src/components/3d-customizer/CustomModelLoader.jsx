@@ -4,23 +4,24 @@ import * as THREE from 'three';
 
 // Component to load a custom GLB model
 // useGLTF uses Suspense internally, so we need to handle it properly
-function CustomModelContent({ modelUrl, materialProps, fabricColor, onLoad }) {
+function CustomModelContent({ modelUrl, materialProps, fabricColor, onLoad, map, pattern }) {
   // useGLTF must be called unconditionally at the top level
   // It will throw a promise if loading, which Suspense will catch
   const { scene } = useGLTF(modelUrl);
   
+  // Include pattern and map in dependencies to force re-clone when pattern changes
   const clonedScene = useMemo(() => {
     if (scene) {
       const cloned = scene.clone();
-      console.log('Custom model scene cloned successfully');
+      console.log('Custom model scene cloned successfully, pattern:', pattern);
       return cloned;
     }
     return null;
-  }, [scene]);
+  }, [scene, pattern, map]);
 
   useLayoutEffect(() => {
     if (clonedScene) {
-      console.log('Applying materials to custom model');
+      console.log('Applying materials to custom model, pattern:', pattern, 'hasMap:', !!map);
       // Apply material updates
       clonedScene.traverse((child) => {
         if (child.isMesh) {
@@ -31,8 +32,11 @@ function CustomModelContent({ modelUrl, materialProps, fabricColor, onLoad }) {
             const newMaterial = new THREE.MeshPhysicalMaterial({
               ...materialProps,
               color: fabricColor.clone(),
-              sheenColor: fabricColor.clone()
+              sheenColor: fabricColor.clone(),
+              map: map, // Explicitly pass the map texture
+              needsUpdate: true
             });
+            newMaterial.needsUpdate = true;
             child.material = newMaterial;
           }
           child.castShadow = true;
@@ -45,7 +49,7 @@ function CustomModelContent({ modelUrl, materialProps, fabricColor, onLoad }) {
         onLoad(clonedScene);
       }
     }
-  }, [clonedScene, onLoad, materialProps, fabricColor]);
+  }, [clonedScene, onLoad, materialProps, fabricColor, map, pattern]);
 
   if (!clonedScene) {
     return null;
@@ -75,13 +79,13 @@ function ModelErrorFallback() {
 }
 
 // Main component with Suspense
-export default function CustomModelLoader({ modelUrl, onLoad, materialProps, fabricColor }) {
+export default function CustomModelLoader({ modelUrl, onLoad, materialProps, fabricColor, map, pattern }) {
   if (!modelUrl) {
     console.warn('CustomModelLoader: No model URL provided');
     return <ModelErrorFallback />;
   }
 
-  console.log('CustomModelLoader loading model from:', modelUrl);
+  console.log('CustomModelLoader loading model from:', modelUrl, 'pattern:', pattern);
 
   return (
     <Suspense fallback={<ModelLoadingFallback />}>
@@ -90,6 +94,8 @@ export default function CustomModelLoader({ modelUrl, onLoad, materialProps, fab
         materialProps={materialProps}
         fabricColor={fabricColor}
         onLoad={onLoad}
+        map={map}
+        pattern={pattern}
       />
     </Suspense>
   );
