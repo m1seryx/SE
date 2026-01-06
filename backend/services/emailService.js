@@ -645,6 +645,216 @@ Thank you for choosing D'jackman Tailor Deluxe!
 // Initialize on module load
 initializeSendGrid();
 
+/**
+ * Send service status update email (for all service types)
+ * @param {Object} options - Email options
+ */
+const sendServiceStatusEmail = async ({ 
+  userEmail, 
+  userName, 
+  serviceName,
+  serviceType,
+  status,
+  orderId,
+  message,
+  appointmentDate
+}) => {
+  const serviceTypeLabels = {
+    'repair': 'Repair Service',
+    'dry_cleaning': 'Dry Cleaning Service',
+    'drycleaning': 'Dry Cleaning Service',
+    'rental': 'Rental Service',
+    'customize': 'Customization Service',
+    'customization': 'Customization Service'
+  };
+
+  const statusLabels = {
+    'pending': '⏳ Pending Review',
+    'pending_review': '⏳ Pending Review',
+    'accepted': '✅ Accepted',
+    'price_confirmation': '💰 Price Confirmation Required',
+    'confirmed': '✅ Confirmed',
+    'in_progress': '🔧 In Progress',
+    'ready_to_pickup': '🎉 Ready for Pickup',
+    'ready_for_pickup': '🎉 Ready for Pickup',
+    'picked_up': '📦 Picked Up',
+    'rented': '📦 Rented',
+    'returned': '🔙 Returned',
+    'completed': '✅ Completed',
+    'cancelled': '❌ Cancelled'
+  };
+
+  const statusColors = {
+    'pending': '#ffc107',
+    'pending_review': '#ffc107',
+    'accepted': '#28a745',
+    'price_confirmation': '#17a2b8',
+    'confirmed': '#28a745',
+    'in_progress': '#6f42c1',
+    'ready_to_pickup': '#17a2b8',
+    'ready_for_pickup': '#17a2b8',
+    'picked_up': '#20c997',
+    'rented': '#6f42c1',
+    'returned': '#20c997',
+    'completed': '#28a745',
+    'cancelled': '#dc3545'
+  };
+
+  const serviceLabel = serviceTypeLabels[serviceType] || 'Service';
+  const statusLabel = statusLabels[status] || status;
+  const statusColor = statusColors[status] || '#667eea';
+  
+  // Get appropriate message based on status and service type
+  let statusMessage = message || '';
+  if (!statusMessage) {
+    switch (status) {
+      case 'accepted':
+        if (serviceType === 'rental') {
+          statusMessage = 'Your rental request has been accepted! Please visit our store to pick up your rental item.';
+        } else if (serviceType === 'dry_cleaning' || serviceType === 'drycleaning') {
+          statusMessage = 'Your dry cleaning request has been accepted! Please drop off your items at our store so we can begin processing.';
+        } else if (serviceType === 'repair') {
+          statusMessage = 'Your repair request has been accepted! Please drop off your item at our store so we can assess and fix it.';
+        } else if (serviceType === 'customize' || serviceType === 'customization') {
+          statusMessage = 'Your customization request has been accepted! Please visit our store for measurements and consultation.';
+        } else {
+          statusMessage = 'Your service request has been accepted! Please visit our store for next steps.';
+        }
+        break;
+      case 'in_progress':
+      case 'confirmed':
+        statusMessage = `Your ${serviceLabel.toLowerCase()} is now being processed. We will notify you once it's ready!`;
+        break;
+      case 'ready_to_pickup':
+      case 'ready_for_pickup':
+        statusMessage = `Great news! Your ${serviceLabel.toLowerCase()} is complete and ready for pickup. Please visit our store to collect your item.`;
+        break;
+      case 'completed':
+        statusMessage = `Your ${serviceLabel.toLowerCase()} has been completed successfully. Thank you for choosing D'jackman Tailor Deluxe!`;
+        break;
+      case 'cancelled':
+        statusMessage = `Your ${serviceLabel.toLowerCase()} order has been cancelled. If you have any questions, please contact us.`;
+        break;
+      case 'price_confirmation':
+        statusMessage = 'The final price for your service has been updated. Please review and confirm to proceed.';
+        break;
+      default:
+        statusMessage = `Your order status has been updated to: ${statusLabel}`;
+    }
+  }
+
+  const subject = `${statusLabel} - Your ${serviceLabel} Order Update (ORD-${orderId})`;
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f4f4f4; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                  <h1 style="color: #ffffff; margin: 0; font-size: 28px;">D'jackman Tailor Deluxe</h1>
+                  <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">${serviceLabel} Update</p>
+                </td>
+              </tr>
+              
+              <!-- Content -->
+              <tr>
+                <td style="padding: 40px 30px;">
+                  <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                    Hello <strong>${userName}</strong>,
+                  </p>
+                  
+                  <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                    Your service order has been updated.
+                  </p>
+                  
+                  <!-- Status Box -->
+                  <div style="background-color: #f8f9fa; border-left: 4px solid ${statusColor}; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                    <p style="margin: 0 0 10px 0; color: #333;">
+                      <strong>📋 Order ID:</strong> ORD-${orderId}
+                    </p>
+                    <p style="margin: 0 0 10px 0; color: #333;">
+                      <strong>🏷️ Service:</strong> ${serviceLabel}
+                    </p>
+                    ${serviceName ? `<p style="margin: 0 0 10px 0; color: #333;"><strong>📦 Item:</strong> ${serviceName}</p>` : ''}
+                    ${appointmentDate ? `<p style="margin: 0 0 10px 0; color: #333;"><strong>📅 Appointment:</strong> ${new Date(appointmentDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>` : ''}
+                    <p style="margin: 0; color: #333;">
+                      <strong>📋 Status:</strong> 
+                      <span style="color: ${statusColor}; font-weight: bold; font-size: 18px;">${statusLabel}</span>
+                    </p>
+                  </div>
+                  
+                  <!-- Message Box -->
+                  <div style="background-color: #e7f3ff; border: 1px solid #b3d7ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <p style="margin: 0; color: #004085; font-size: 14px;">
+                      📝 ${statusMessage}
+                    </p>
+                  </div>
+                  
+                  ${status === 'accepted' || status === 'ready_to_pickup' || status === 'ready_for_pickup' ? `
+                  <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 20px 0;">
+                    Please visit our store at your earliest convenience.
+                  </p>
+                  ` : ''}
+                  
+                  ${status === 'price_confirmation' ? `
+                  <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <p style="margin: 0; color: #856404; font-size: 14px;">
+                      ⚠️ <strong>Action Required:</strong> Please log in to your account to review and confirm the updated price.
+                    </p>
+                  </div>
+                  ` : ''}
+                </td>
+              </tr>
+              
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f8f9fa; padding: 25px; border-radius: 0 0 10px 10px; text-align: center;">
+                  <p style="color: #888; font-size: 14px; margin: 0 0 10px 0;">
+                    D'jackman Tailor Deluxe
+                  </p>
+                  <p style="color: #aaa; font-size: 12px; margin: 0;">
+                    This is an automated notification. Please do not reply to this email.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const text = `
+SERVICE STATUS UPDATE - D'jackman Tailor Deluxe
+
+Hello ${userName},
+
+Your service order has been updated.
+
+Order ID: ORD-${orderId}
+Service: ${serviceLabel}
+${serviceName ? `Item: ${serviceName}` : ''}
+${appointmentDate ? `Appointment: ${new Date(appointmentDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}` : ''}
+Status: ${statusLabel}
+
+${statusMessage}
+
+Thank you for choosing D'jackman Tailor Deluxe!
+  `;
+
+  return sendEmail({ to: userEmail, subject, text, html });
+};
+
 module.exports = {
   initializeSendGrid,
   isEmailServiceConfigured,
@@ -652,5 +862,6 @@ module.exports = {
   sendRentalEndReminderEmail,
   sendOverdueNotificationEmail,
   sendPenaltyChargeEmail,
-  sendRentalStatusEmail
+  sendRentalStatusEmail,
+  sendServiceStatusEmail
 };

@@ -620,3 +620,371 @@
   outline: 2px solid #8B4513;
   outline-offset: 2px;
 }
+
+/* ===== COLOR-CODED TIME SLOT GRID STYLES ===== */
+
+/* Time Slot Legend */
+.time-slot-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: rgba(139, 69, 19, 0.04);
+  border-radius: 12px;
+  border: 1px solid rgba(139, 69, 19, 0.1);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legend-dot.available {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4);
+}
+
+.legend-dot.limited {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+.legend-dot.full {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+/* Time Slots Grid */
+.time-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* Time Slot Button */
+.time-slot-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 12px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 72px;
+  position: relative;
+  overflow: hidden;
+}
+
+.time-slot-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+/* Slot Time Display */
+.slot-time {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: inherit;
+  margin-bottom: 4px;
+  z-index: 1;
+}
+
+/* Slot Status Display */
+.slot-status {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: inherit;
+  opacity: 0.85;
+  z-index: 1;
+}
+
+/* Available Status (Green) - 1-4 bookings */
+.time-slot-btn.available {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #22c55e;
+  color: #166534;
+}
+
+.time-slot-btn.available:hover:not(:disabled) {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  border-color: #16a34a;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.25);
+}
+
+.time-slot-btn.available.selected {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  border-color: #15803d;
+  color: white;
+  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.35);
+}
+
+.time-slot-btn.available.selected .slot-status {
+  opacity: 0.95;
+}
+
+/* Limited Status (Orange) - 5-9 bookings */
+.time-slot-btn.limited {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.time-slot-btn.limited:hover:not(:disabled) {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #d97706;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.25);
+}
+
+.time-slot-btn.limited.selected {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: #b45309;
+  color: white;
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.35);
+}
+
+.time-slot-btn.limited.selected .slot-status {
+  opacity: 0.95;
+}
+
+/* Full/Booked Status (Red) - 10/10 */
+.time-slot-btn.full {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-color: #ef4444;
+  color: #991b1b;
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.time-slot-btn.full:disabled {
+  pointer-events: auto;
+  cursor: not-allowed;
+}
+
+.time-slot-btn.full .slot-status {
+  font-weight: 600;
+}
+
+/* Inactive/Unavailable Status */
+.time-slot-btn.inactive {
+  background: linear-gradient(135deg, #f5f5f5 0%, #e5e5e5 100%);
+  border-color: #d4d4d4;
+  color: #737373;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Loading State */
+.time-slots-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 16px;
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(139, 69, 19, 0.15);
+  border-top-color: #8B4513;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Shop Closed Message */
+.shop-closed-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-radius: 12px;
+  border: 1px solid #fca5a5;
+  text-align: center;
+}
+
+.shop-closed-message .closed-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+}
+
+.shop-closed-message p {
+  margin: 0;
+  color: #991b1b;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+/* No Slots Message */
+.no-slots-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
+  text-align: center;
+}
+
+.no-slots-message .no-slots-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+  opacity: 0.7;
+}
+
+.no-slots-message p {
+  margin: 0;
+  color: #475569;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+/* Selected Slot Info */
+.selected-slot-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-radius: 10px;
+  border: 1px solid #86efac;
+  color: #166534;
+  font-size: 0.95rem;
+  margin-top: 12px;
+}
+
+.selected-slot-info strong {
+  color: #15803d;
+}
+
+/* Responsive Design for Time Slots */
+@media (max-width: 768px) {
+  .time-slots-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+  }
+
+  .time-slot-btn {
+    padding: 12px 10px;
+    min-height: 65px;
+  }
+
+  .slot-time {
+    font-size: 0.95rem;
+  }
+
+  .slot-status {
+    font-size: 0.7rem;
+  }
+
+  .time-slot-legend {
+    gap: 12px;
+    padding: 10px 14px;
+  }
+
+  .legend-item {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .time-slots-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .time-slot-btn {
+    padding: 10px 8px;
+    min-height: 60px;
+    border-radius: 10px;
+  }
+
+  .slot-time {
+    font-size: 0.9rem;
+  }
+
+  .slot-status {
+    font-size: 0.65rem;
+  }
+
+  .time-slot-legend {
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .selected-slot-info {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Animation for slot selection */
+.time-slot-btn.selected {
+  animation: selectPulse 0.4s ease-out;
+}
+
+@keyframes selectPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Accessibility for time slots */
+@media (prefers-reduced-motion: reduce) {
+  .time-slot-btn,
+  .loading-spinner {
+    animation: none;
+    transition: none;
+  }
+  
+  .time-slot-btn:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+.time-slot-btn:focus-visible {
+  outline: 3px solid #8B4513;
+  outline-offset: 2px;
+}

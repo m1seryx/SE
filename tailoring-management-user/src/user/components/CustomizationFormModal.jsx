@@ -5,6 +5,7 @@ import '../../styles/SharedModal.css';
 import { uploadCustomizationImage, addCustomizationToCart } from '../../api/CustomizationApi';
 import { getAllFabricTypes } from '../../api/FabricTypeApi';
 import { getAllGarmentTypes } from '../../api/GarmentTypeApi';
+import { getAllSlotsWithAvailability, bookSlot } from '../../api/AppointmentSlotApi';
 
 const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const navigate = useNavigate();
@@ -13,8 +14,12 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     fabricType: '',
     garmentType: '',
     preferredDate: '',
+    preferredTime: '',
     notes: '',
   });
+  const [allTimeSlots, setAllTimeSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [isShopOpen, setIsShopOpen] = useState(true);
   const [imagePreview, setImagePreview] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -246,6 +251,50 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+
+  // Load available time slots when date changes
+  useEffect(() => {
+    if (formData.preferredDate) {
+      loadAvailableSlots(formData.preferredDate);
+    } else {
+      setAllTimeSlots([]);
+      setIsShopOpen(true);
+      setFormData(prev => ({ ...prev, preferredTime: '' }));
+    }
+  }, [formData.preferredDate]);
+
+  const loadAvailableSlots = async (date) => {
+    if (!date) return;
+    
+    setLoadingSlots(true);
+    
+    try {
+      // Use the new API that returns all slots with availability info
+      const result = await getAllSlotsWithAvailability('customization', date);
+      
+      if (result.success) {
+        if (!result.isShopOpen) {
+          setIsShopOpen(false);
+          setAllTimeSlots([]);
+          setErrors(prev => ({ ...prev, preferredDate: 'The shop is closed on this date. Please select another date.' }));
+          return;
+        }
+        
+        setIsShopOpen(true);
+        setAllTimeSlots(result.slots || []);
+        setErrors(prev => ({ ...prev, preferredDate: null }));
+      } else {
+        setErrors(prev => ({ ...prev, preferredDate: result.message || 'Error loading time slots' }));
+        setAllTimeSlots([]);
+      }
+    } catch (error) {
+      console.error('Error loading available slots:', error);
+      setErrors(prev => ({ ...prev, preferredDate: 'Error loading available time slots' }));
+      setAllTimeSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
 
   // Auto-fill garment type when garmentCodeToName mapping is ready
   useEffect(() => {
@@ -491,6 +540,9 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     if (!formData.preferredDate) {
       newErrors.preferredDate = 'Please select a preferred date';
     }
+    if (!formData.preferredTime) {
+      newErrors.preferredTime = 'Please select a time slot';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -602,8 +654,11 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       fabricType: '',
       garmentType: '',
       preferredDate: '',
+      preferredTime: '',
       notes: '',
     });
+    setAllTimeSlots([]);
+    setIsShopOpen(true);
     setImagePreview('');
     setErrors({});
     setEstimatedPrice(0);
@@ -796,6 +851,74 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               <span className="error-message-shared">{errors.preferredDate}</span>
             )}
           </div>
+
+          {/* 4b. Time Slot Selection - Color-Coded Grid */}
+          {formData.preferredDate && (
+            <div className="form-group-shared">
+              <label className="form-label-shared">
+                🕐 Select Time Slot <span className="required-indicator">*</span>
+              </label>
+              
+              {/* Legend */}
+              <div className="time-slot-legend">
+                <div className="legend-item">
+                  <span className="legend-dot available"></span>
+                  <span>Available</span>
+                </div>
+                <div className="legend-item">
+                  <span className="legend-dot limited"></span>
+                  <span>Limited</span>
+                </div>
+                <div className="legend-item">
+                  <span className="legend-dot full"></span>
+                  <span>Full</span>
+                </div>
+              </div>
+              
+              {loadingSlots ? (
+                <div className="time-slots-loading">
+                  <div className="loading-spinner"></div>
+                  <span>Loading available time slots...</span>
+                </div>
+              ) : !isShopOpen ? (
+                <div className="shop-closed-message">
+                  <span className="closed-icon">🚫</span>
+                  <p>The shop is closed on this date. Please select another date.</p>
+                </div>
+              ) : allTimeSlots.length > 0 ? (
+                <div className="time-slots-grid">
+                  {allTimeSlots.map(slot => (
+                    <button
+                      key={slot.slot_id}
+                      type="button"
+                      className={`time-slot-btn ${slot.status} ${formData.preferredTime === slot.time_slot ? 'selected' : ''}`}
+                      onClick={() => slot.isClickable && setFormData(prev => ({ ...prev, preferredTime: slot.time_slot }))}
+                      disabled={!slot.isClickable || loading}
+                      title={slot.statusLabel}
+                    >
+                      <span className="slot-time">{slot.display_time}</span>
+                      <span className="slot-status">
+                        {slot.status === 'full' ? 'Fully Booked' : 
+                         slot.status === 'limited' ? `${slot.available} left` : 
+                         slot.status === 'available' ? `${slot.available} spots` : 'Unavailable'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="no-slots-message">
+                  <span className="no-slots-icon">📅</span>
+                  <p>No time slots available for this date. Please select another date.</p>
+                </div>
+              )}
+              
+              {formData.preferredTime && (
+                <div className="selected-slot-info">
+                  ✅ Selected: <strong>{allTimeSlots.find(s => s.time_slot === formData.preferredTime)?.display_time}</strong>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 5. 3D Customization Choices Display */}
           {designDetails && (

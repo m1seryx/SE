@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { addDryCleaningToCart, uploadDryCleaningImage } from '../../api/DryCleaningApi';
-import { getAvailableSlots, bookSlot } from '../../api/AppointmentSlotApi';
+import { getAvailableSlots, bookSlot, getAllSlotsWithAvailability } from '../../api/AppointmentSlotApi';
 import { getAllDCGarmentTypes } from '../../api/DryCleaningGarmentTypeApi';
 import '../../styles/DryCleaningFormModal.css';
 import '../../styles/SharedModal.css';
@@ -20,8 +20,10 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     garmentType: '',
     customGarmentType: ''
   });
+  const [allTimeSlots, setAllTimeSlots] = useState([]);
   const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [isShopOpen, setIsShopOpen] = useState(true);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [loading, setLoading] = useState(false);
@@ -87,7 +89,9 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     if (formData.date) {
       loadAvailableSlots(formData.date);
     } else {
+      setAllTimeSlots([]);
       setAvailableTimeSlots([]);
+      setIsShopOpen(true);
       setFormData(prev => ({ ...prev, time: '' }));
     }
   }, [formData.date]);
@@ -108,40 +112,42 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const loadAvailableSlots = async (date) => {
     if (!date) return;
     
-    // Check if date is on an open day using shop schedule
-    try {
-      const { checkDateOpen } = await import('../../api/ShopScheduleApi');
-      const result = await checkDateOpen(date);
-      if (!result.success || !result.is_open) {
-        setMessage('Appointments are not available on this date. Please select another date.');
-        setAvailableTimeSlots([]);
-        return;
-      }
-    } catch (error) {
-      console.error('Error checking date availability:', error);
-      // Fallback to basic check
-      const selectedDate = new Date(date);
-      const dayOfWeek = selectedDate.getDay();
-      if (dayOfWeek === 0) {
-        setMessage('Appointments are not available on this date. Please select another date.');
-        setAvailableTimeSlots([]);
-        return;
-      }
-    }
-
     setLoadingSlots(true);
+    setMessage('');
+    
     try {
-      const result = await getAvailableSlots('dry_cleaning', date);
+      // Use the new API that returns all slots with availability info
+      const result = await getAllSlotsWithAvailability('dry_cleaning', date);
+      
       if (result.success) {
-        setAvailableTimeSlots(result.slots || []);
-        setMessage('');
+        if (!result.isShopOpen) {
+          setIsShopOpen(false);
+          setAllTimeSlots([]);
+          setAvailableTimeSlots([]);
+          setMessage('The shop is closed on this date. Please select another date.');
+          return;
+        }
+        
+        setIsShopOpen(true);
+        setAllTimeSlots(result.slots || []);
+        
+        // Filter for backward compatibility with the old format
+        const available = (result.slots || [])
+          .filter(slot => slot.isClickable)
+          .map(slot => ({
+            value: slot.time_slot,
+            display: slot.display_time
+          }));
+        setAvailableTimeSlots(available);
       } else {
-        setMessage(result.message || 'Error loading available time slots');
+        setMessage(result.message || 'Error loading time slots');
+        setAllTimeSlots([]);
         setAvailableTimeSlots([]);
       }
     } catch (error) {
       console.error('Error loading available slots:', error);
       setMessage('Error loading available time slots');
+      setAllTimeSlots([]);
       setAvailableTimeSlots([]);
     } finally {
       setLoadingSlots(false);
@@ -519,32 +525,77 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               <span className="help-text-shared">Select a date when the shop is open</span>
             </div>
 
+            {/* Time Slot - Color-Coded Grid */}
             {formData.date && (
               <div className="form-group-shared">
-                <label htmlFor="time" className="form-label-shared">
-                  Available Time Slots <span className="required-indicator">*</span>
+                <label className="form-label-shared">
+                  Select Time Slot <span className="required-indicator">*</span>
                 </label>
+                
+                {/* Legend */}
+                <div className="time-slot-legend">
+                  <div className="legend-item">
+                    <span className="legend-dot available"></span>
+                    <span>Available</span>
+                  </div>
+                  <div className="legend-item">
+                    <span className="legend-dot limited"></span>
+                    <span>Limited</span>
+                  </div>
+                  <div className="legend-item">
+                    <span className="legend-dot full"></span>
+                    <span>Full</span>
+                  </div>
+                </div>
+                
                 {loadingSlots ? (
-                  <div className="help-text-shared">Loading available time slots...</div>
-                ) : availableTimeSlots.length > 0 ? (
-                  <select
-                    id="time"
-                    name="time"
-                    value={formData.time}
-                    onChange={handleInputChange}
-                    className="form-select-shared"
-                    required
-                  >
-                    <option value="">-- Select Time Slot --</option>
-                    {availableTimeSlots.map(slot => (
-                      <option key={slot.value} value={slot.value}>
-                        {slot.display}
-                      </option>
+                  <div className="time-slots-loading">
+                    <div className="loading-spinner"></div>
+                    <span>Loading available time slots...</span>
+                  </div>
+                ) : !isShopOpen ? (
+                  <div className="shop-closed-message">
+                    <span className="closed-icon">🚫</span>
+                    <p>The shop is closed on this date. Please select another date.</p>
+                  </div>
+                ) : allTimeSlots.length > 0 ? (
+                  <div className="time-slots-grid">
+                    {allTimeSlots.map(slot => (
+                      <button
+                        key={slot.slot_id}
+                        type="button"
+                        className={`time-slot-btn ${slot.status} ${formData.time === slot.time_slot ? 'selected' : ''}`}
+                        onClick={() => slot.isClickable && setFormData(prev => ({ ...prev, time: slot.time_slot }))}
+                        disabled={!slot.isClickable}
+                        title={slot.statusLabel}
+                      >
+                        <span className="slot-time">{slot.display_time}</span>
+                        <span className="slot-status">
+                          {slot.status === 'full' ? 'Fully Booked' : 
+                           slot.status === 'limited' ? `${slot.available} left` : 
+                           slot.status === 'available' ? `${slot.available} spots` : 'Unavailable'}
+                        </span>
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 ) : (
-                  <div className="error-message-shared">
-                    No available time slots for this date. Please select another date.
+                  <div className="no-slots-message">
+                    <span className="no-slots-icon">📅</span>
+                    <p>No time slots available for this date. Please select another date.</p>
+                  </div>
+                )}
+                
+                {/* Hidden input for form validation */}
+                <input
+                  type="hidden"
+                  name="time"
+                  value={formData.time}
+                  required
+                />
+                
+                {formData.time && (
+                  <div className="selected-slot-info">
+                    ✅ Selected: <strong>{allTimeSlots.find(s => s.time_slot === formData.time)?.display_time}</strong>
                   </div>
                 )}
               </div>

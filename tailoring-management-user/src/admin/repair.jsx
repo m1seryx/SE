@@ -334,7 +334,17 @@ const Repair = () => {
 
     // Apply status filter only for "all" tab
     if (statusFilter && viewFilter === 'all') {
-      items = items.filter(item => item.approval_status === statusFilter);
+      items = items.filter(item => {
+        // Normalize approval_status for filtering
+        let normalizedStatus = item.approval_status;
+        if (item.approval_status === 'pending_review' || 
+            item.approval_status === null || 
+            item.approval_status === undefined || 
+            item.approval_status === '') {
+          normalizedStatus = 'pending';
+        }
+        return normalizedStatus === statusFilter;
+      });
     }
 
     // Sort items: pending orders first, then others

@@ -261,6 +261,122 @@ exports.updateCustomizationOrderItem = (req, res) => {
           }
         });
       }
+
+      // Create notifications and send emails for status changes
+      if (updateData.approvalStatus && updateData.approvalStatus !== previousStatus) {
+        const Notification = require('../model/NotificationModel');
+        const customerUserId = item.user_id; // Get customer's user_id from order
+        
+        if (customerUserId) {
+          const serviceType = 'customize';
+          
+          // Create accepted notification
+          if (updateData.approvalStatus === 'accepted') {
+            Notification.createAcceptedNotification(customerUserId, itemId, serviceType, (notifErr) => {
+              if (notifErr) {
+                console.error('[NOTIFICATION] Failed to create accepted notification:', notifErr);
+              } else {
+                console.log('[NOTIFICATION] Accepted notification created successfully');
+              }
+            });
+            
+            // Send email notification for accepted status
+            try {
+              const emailService = require('../services/emailService');
+              const dbConn = require('../config/db');
+              
+              const getUserSql = `SELECT u.email, u.first_name, u.last_name FROM user u WHERE u.user_id = ?`;
+              dbConn.query(getUserSql, [customerUserId], async (userErr, userResults) => {
+                if (!userErr && userResults.length > 0) {
+                  const user = userResults[0];
+                  const specificData = item.specific_data ? 
+                    (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data) : {};
+                  const itemName = specificData.garment_type || specificData.item_name || 'Customization Order';
+                  
+                  await emailService.sendServiceStatusEmail({
+                    userEmail: user.email,
+                    userName: `${user.first_name} ${user.last_name}`,
+                    serviceName: itemName,
+                    serviceType: serviceType,
+                    status: 'accepted',
+                    orderId: itemId,
+                    appointmentDate: item.appointment_date || null
+                  });
+                  console.log(`[EMAIL] Service status email sent to ${user.email} for status: accepted`);
+                }
+              });
+            } catch (emailErr) {
+              console.error('[EMAIL] Error sending service status email:', emailErr);
+            }
+          }
+          
+          // Create status update notifications for other statuses
+          const statusNotificationStatuses = [
+            'price_confirmation',
+            'confirmed',
+            'in_progress',
+            'ready_for_pickup',
+            'ready_to_pickup',
+            'completed',
+            'cancelled'
+          ];
+          
+          if (statusNotificationStatuses.includes(updateData.approvalStatus)) {
+            const statusForNotification = 
+              updateData.approvalStatus === 'confirmed' ? 'in_progress' :
+              updateData.approvalStatus === 'ready_for_pickup' ? 'ready_to_pickup' :
+              updateData.approvalStatus === 'ready_to_pickup' ? 'ready_to_pickup' :
+              updateData.approvalStatus;
+            
+            Notification.createStatusUpdateNotification(
+              customerUserId,
+              itemId,
+              statusForNotification,
+              null,
+              serviceType,
+              (notifErr) => {
+                if (notifErr) {
+                  console.error('[NOTIFICATION] Failed to create status update notification:', notifErr);
+                } else {
+                  console.log('[NOTIFICATION] Status update notification created successfully');
+                }
+              }
+            );
+            
+            // Send email notification for status updates
+            try {
+              const emailService = require('../services/emailService');
+              const dbConn = require('../config/db');
+              
+              const getUserSql = `SELECT u.email, u.first_name, u.last_name FROM user u WHERE u.user_id = ?`;
+              dbConn.query(getUserSql, [customerUserId], async (userErr, userResults) => {
+                if (!userErr && userResults.length > 0) {
+                  const user = userResults[0];
+                  const specificData = item.specific_data ? 
+                    (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data) : {};
+                  const itemName = specificData.garment_type || specificData.item_name || 'Customization Order';
+                  
+                  await emailService.sendServiceStatusEmail({
+                    userEmail: user.email,
+                    userName: `${user.first_name} ${user.last_name}`,
+                    serviceName: itemName,
+                    serviceType: serviceType,
+                    status: statusForNotification,
+                    orderId: itemId,
+                    message: updateData.adminNotes || null,
+                    appointmentDate: item.appointment_date || null
+                  });
+                  console.log(`[EMAIL] Service status email sent to ${user.email} for status: ${statusForNotification}`);
+                }
+              });
+            } catch (emailErr) {
+              console.error('[EMAIL] Error sending service status email:', emailErr);
+            }
+          }
+        } else {
+          console.error('[NOTIFICATION] Cannot create notification: customer user_id is missing');
+        }
+      }
       
       res.json({
         success: true,
@@ -353,6 +469,92 @@ exports.updateApprovalStatus = (req, res) => {
             console.log('Billing status auto-updated:', billingResult);
           }
         });
+      }
+
+      // Create notifications and send emails for status changes
+      if (status !== previousStatus) {
+        const Notification = require('../model/NotificationModel');
+        const customerUserId = item.user_id; // Get customer's user_id from order
+        
+        if (customerUserId) {
+          const serviceType = 'customize';
+          
+          // Create accepted notification
+          if (status === 'accepted') {
+            Notification.createAcceptedNotification(customerUserId, itemId, serviceType, (notifErr) => {
+              if (notifErr) {
+                console.error('[NOTIFICATION] Failed to create accepted notification:', notifErr);
+              } else {
+                console.log('[NOTIFICATION] Accepted notification created successfully');
+              }
+            });
+          }
+          
+          // Create status update notifications for other statuses
+          const statusNotificationStatuses = [
+            'price_confirmation',
+            'confirmed',
+            'in_progress',
+            'ready_for_pickup',
+            'ready_to_pickup',
+            'completed',
+            'cancelled'
+          ];
+          
+          if (statusNotificationStatuses.includes(status)) {
+            const statusForNotification = 
+              status === 'confirmed' ? 'in_progress' :
+              status === 'ready_for_pickup' ? 'ready_to_pickup' :
+              status === 'ready_to_pickup' ? 'ready_to_pickup' :
+              status;
+            
+            Notification.createStatusUpdateNotification(
+              customerUserId,
+              itemId,
+              statusForNotification,
+              null,
+              serviceType,
+              (notifErr) => {
+                if (notifErr) {
+                  console.error('[NOTIFICATION] Failed to create status update notification:', notifErr);
+                } else {
+                  console.log('[NOTIFICATION] Status update notification created successfully');
+                }
+              }
+            );
+          }
+          
+          // Send email notification for all status changes
+          try {
+            const emailService = require('../services/emailService');
+            const dbConn = require('../config/db');
+            
+            const getUserSql = `SELECT u.email, u.first_name, u.last_name FROM user u WHERE u.user_id = ?`;
+            dbConn.query(getUserSql, [customerUserId], async (userErr, userResults) => {
+              if (!userErr && userResults.length > 0) {
+                const user = userResults[0];
+                const specificData = item.specific_data ? 
+                  (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data) : {};
+                const itemName = specificData.garment_type || specificData.item_name || 'Customization Order';
+                
+                await emailService.sendServiceStatusEmail({
+                  userEmail: user.email,
+                  userName: `${user.first_name} ${user.last_name}`,
+                  serviceName: itemName,
+                  serviceType: serviceType,
+                  status: status,
+                  orderId: itemId,
+                  appointmentDate: item.appointment_date || null
+                });
+                console.log(`[EMAIL] Service status email sent to ${user.email} for status: ${status}`);
+              }
+            });
+          } catch (emailErr) {
+            console.error('[EMAIL] Error sending service status email:', emailErr);
+          }
+        } else {
+          console.error('[NOTIFICATION] Cannot create notification: customer user_id is missing');
+        }
       }
       
       res.json({

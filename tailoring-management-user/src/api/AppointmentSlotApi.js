@@ -28,6 +28,24 @@ export async function getAvailableSlots(serviceType, date) {
   }
 }
 
+// Get all time slots with availability status (for color-coded calendar display)
+export async function getAllSlotsWithAvailability(serviceType, date) {
+  try {
+    const response = await axios.get(`${BASE_URL}/appointments/slots-with-availability`, {
+      params: { serviceType, date }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Get slots with availability error:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Error fetching slot availability",
+      slots: [],
+      isShopOpen: true
+    };
+  }
+}
+
 // Check if a specific slot is available
 export async function checkSlotAvailability(serviceType, date, time) {
   try {

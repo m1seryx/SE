@@ -178,6 +178,166 @@ exports.getAvailableSlots = (req, res) => {
   });
 };
 
+// Get all time slots with availability status (for color-coded calendar display)
+exports.getAllSlotsWithAvailability = (req, res) => {
+  const { serviceType, date } = req.query;
+
+  if (!serviceType || !date) {
+    return res.status(400).json({
+      success: false,
+      message: "Service type and date are required"
+    });
+  }
+
+  // Validate service type
+  if (!['dry_cleaning', 'repair', 'customization'].includes(serviceType)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid service type. Must be: dry_cleaning, repair, or customization"
+    });
+  }
+
+  // Ensure table exists before querying
+  ensureTableExists((err) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: 'Database error. Please contact administrator.'
+      });
+    }
+
+    // First check if the date is valid (shop is open)
+    AppointmentSlot.isValidDate(date, (err, isValid) => {
+      if (err) {
+        console.error('[APPOINTMENT SLOT] Error validating date:', date, err);
+        return res.status(500).json({
+          success: false,
+          message: "Error checking date availability. Please try again."
+        });
+      }
+      
+      if (!isValid) {
+        return res.json({
+          success: true,
+          message: "Shop is closed on this date",
+          isShopOpen: false,
+          date: date,
+          slots: []
+        });
+      }
+
+      // Get all time slots with their capacity
+      const slotsSql = `SELECT slot_id, time_slot, capacity, is_active FROM time_slots ORDER BY time_slot`;
+      db.query(slotsSql, [], (err, slotsResults) => {
+        if (err) {
+          return res.status(500).json({
+            success: false,
+            message: "Error fetching time slots",
+            error: process.env.NODE_ENV === 'development' ? err.message : undefined
+          });
+        }
+
+        // Get booking counts for this date (only count confirmed orders, not cart items)
+        const bookingsSql = `
+          SELECT appointment_time, COUNT(*) as booked_count
+          FROM appointment_slots
+          WHERE appointment_date = ? AND status = 'booked' AND order_item_id IS NOT NULL
+          GROUP BY appointment_time
+        `;
+        db.query(bookingsSql, [date], (err, bookingsResults) => {
+          if (err) {
+            return res.status(500).json({
+              success: false,
+              message: "Error fetching bookings",
+              error: process.env.NODE_ENV === 'development' ? err.message : undefined
+            });
+          }
+
+          // Create map of booked counts
+          const bookedCounts = {};
+          if (bookingsResults && Array.isArray(bookingsResults)) {
+            bookingsResults.forEach(row => {
+              const time = row.appointment_time;
+              let timeStr = typeof time === 'string' ? time : time.toString();
+              if (!timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
+                if (timeStr.match(/^\d{2}:\d{2}$/)) {
+                  timeStr = timeStr + ':00';
+                }
+              }
+              bookedCounts[timeStr] = row.booked_count || 0;
+            });
+          }
+
+          // Combine slot info with booking counts and calculate availability status
+          const slotsWithAvailability = slotsResults.map(slot => {
+            const time = slot.time_slot;
+            let timeStr = typeof time === 'string' ? time : time.toString();
+            if (!timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
+              if (timeStr.match(/^\d{2}:\d{2}$/)) {
+                timeStr = timeStr + ':00';
+              }
+            }
+            
+            const booked = bookedCounts[timeStr] || 0;
+            const capacity = slot.capacity || 10;
+            const available = capacity - booked;
+            const isActive = slot.is_active === 1;
+            
+            // Determine availability status and color
+            let status, statusLabel, color;
+            if (!isActive) {
+              status = 'inactive';
+              statusLabel = 'Unavailable';
+              color = 'gray';
+            } else if (booked >= capacity) {
+              status = 'full';
+              statusLabel = 'Fully Booked';
+              color = 'red';
+            } else if (booked >= 5) {
+              status = 'limited';
+              statusLabel = `Limited (${available} left)`;
+              color = 'orange';
+            } else {
+              status = 'available';
+              statusLabel = `Available (${available} spots)`;
+              color = 'green';
+            }
+
+            // Format time for display (12-hour format)
+            const [hours, minutes] = timeStr.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            const displayTime = `${displayHour}:${minutes} ${ampm}`;
+
+            return {
+              slot_id: slot.slot_id,
+              time_slot: timeStr,
+              display_time: displayTime,
+              capacity: capacity,
+              booked: booked,
+              available: available,
+              is_active: isActive,
+              status: status,
+              statusLabel: statusLabel,
+              color: color,
+              isClickable: isActive && booked < capacity
+            };
+          });
+
+          res.json({
+            success: true,
+            message: "Slots with availability retrieved successfully",
+            isShopOpen: true,
+            date: date,
+            slots: slotsWithAvailability
+          });
+        });
+      });
+    });
+  });
+};
+
 // Check if a specific slot is available
 exports.checkSlotAvailability = (req, res) => {
   const { serviceType, date, time } = req.query;

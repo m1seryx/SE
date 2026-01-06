@@ -709,6 +709,35 @@ exports.updateRepairOrderItem = (req, res) => {
                 console.log('[NOTIFICATION] Accepted notification created successfully');
               }
             });
+            
+            // Send email notification for accepted status
+            try {
+              const emailService = require('../services/emailService');
+              const dbConn = require('../config/db');
+              
+              const getUserSql = `SELECT u.email, u.first_name, u.last_name FROM user u WHERE u.user_id = ?`;
+              dbConn.query(getUserSql, [customerUserId], async (userErr, userResults) => {
+                if (!userErr && userResults.length > 0) {
+                  const user = userResults[0];
+                  const specificData = item.specific_data ? 
+                    (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data) : {};
+                  const itemName = specificData.garment_type || specificData.item_name || 'Repair Item';
+                  
+                  await emailService.sendServiceStatusEmail({
+                    userEmail: user.email,
+                    userName: `${user.first_name} ${user.last_name}`,
+                    serviceName: itemName,
+                    serviceType: serviceType,
+                    status: 'accepted',
+                    orderId: itemId,
+                    appointmentDate: item.appointment_date || null
+                  });
+                  console.log(`[EMAIL] Service status email sent to ${user.email} for status: accepted`);
+                }
+              });
+            } catch (emailErr) {
+              console.error('[EMAIL] Error sending service status email:', emailErr);
+            }
           }
           
           // Create status update notifications
@@ -742,6 +771,36 @@ exports.updateRepairOrderItem = (req, res) => {
                 }
               }
             );
+            
+            // Send email notification for status updates
+            try {
+              const emailService = require('../services/emailService');
+              const dbConn = require('../config/db');
+              
+              const getUserSql = `SELECT u.email, u.first_name, u.last_name FROM user u WHERE u.user_id = ?`;
+              dbConn.query(getUserSql, [customerUserId], async (userErr, userResults) => {
+                if (!userErr && userResults.length > 0) {
+                  const user = userResults[0];
+                  const specificData = item.specific_data ? 
+                    (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data) : {};
+                  const itemName = specificData.garment_type || specificData.item_name || 'Repair Item';
+                  
+                  await emailService.sendServiceStatusEmail({
+                    userEmail: user.email,
+                    userName: `${user.first_name} ${user.last_name}`,
+                    serviceName: itemName,
+                    serviceType: serviceType,
+                    status: statusForNotification,
+                    orderId: itemId,
+                    message: updateData.adminNotes || null,
+                    appointmentDate: item.appointment_date || null
+                  });
+                  console.log(`[EMAIL] Service status email sent to ${user.email} for status: ${statusForNotification}`);
+                }
+              });
+            } catch (emailErr) {
+              console.error('[EMAIL] Error sending service status email:', emailErr);
+            }
           }
         } else {
           console.error('[NOTIFICATION] Cannot create notification: customer user_id is missing');
@@ -1012,6 +1071,35 @@ exports.updateDryCleaningOrderItem = (req, res) => {
                 console.log('[NOTIFICATION] Accepted notification created successfully');
               }
             });
+            
+            // Send email notification for accepted status
+            try {
+              const emailService = require('../services/emailService');
+              const dbConn = require('../config/db');
+              
+              const getUserSql = `SELECT u.email, u.first_name, u.last_name FROM user u WHERE u.user_id = ?`;
+              dbConn.query(getUserSql, [customerUserId], async (userErr, userResults) => {
+                if (!userErr && userResults.length > 0) {
+                  const user = userResults[0];
+                  const specificData = item.specific_data ? 
+                    (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data) : {};
+                  const itemName = specificData.garment_type || specificData.item_name || 'Dry Cleaning Item';
+                  
+                  await emailService.sendServiceStatusEmail({
+                    userEmail: user.email,
+                    userName: `${user.first_name} ${user.last_name}`,
+                    serviceName: itemName,
+                    serviceType: serviceType,
+                    status: 'accepted',
+                    orderId: itemId,
+                    appointmentDate: item.appointment_date || null
+                  });
+                  console.log(`[EMAIL] Service status email sent to ${user.email} for status: accepted`);
+                }
+              });
+            } catch (emailErr) {
+              console.error('[EMAIL] Error sending service status email:', emailErr);
+            }
           }
           
           // Create status update notifications
@@ -1045,6 +1133,36 @@ exports.updateDryCleaningOrderItem = (req, res) => {
                 }
               }
             );
+            
+            // Send email notification for status updates
+            try {
+              const emailService = require('../services/emailService');
+              const dbConn = require('../config/db');
+              
+              const getUserSql = `SELECT u.email, u.first_name, u.last_name FROM user u WHERE u.user_id = ?`;
+              dbConn.query(getUserSql, [customerUserId], async (userErr, userResults) => {
+                if (!userErr && userResults.length > 0) {
+                  const user = userResults[0];
+                  const specificData = item.specific_data ? 
+                    (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data) : {};
+                  const itemName = specificData.garment_type || specificData.item_name || 'Dry Cleaning Item';
+                  
+                  await emailService.sendServiceStatusEmail({
+                    userEmail: user.email,
+                    userName: `${user.first_name} ${user.last_name}`,
+                    serviceName: itemName,
+                    serviceType: serviceType,
+                    status: statusForNotification,
+                    orderId: itemId,
+                    message: updateData.adminNotes || null,
+                    appointmentDate: item.appointment_date || null
+                  });
+                  console.log(`[EMAIL] Service status email sent to ${user.email} for status: ${statusForNotification}`);
+                }
+              });
+            } catch (emailErr) {
+              console.error('[EMAIL] Error sending service status email:', emailErr);
+            }
           }
         } else {
           console.error('[NOTIFICATION] Cannot create notification: customer user_id is missing');
@@ -1496,6 +1614,35 @@ exports.updateRentalOrderItem = (req, res) => {
                 console.log('[NOTIFICATION] Accepted notification created successfully');
               }
             });
+            
+            // Send email notification for accepted status
+            try {
+              const emailService = require('../services/emailService');
+              const dbConn = require('../config/db');
+              
+              const getUserSql = `SELECT u.email, u.first_name, u.last_name FROM user u WHERE u.user_id = ?`;
+              dbConn.query(getUserSql, [customerUserId], async (userErr, userResults) => {
+                if (!userErr && userResults.length > 0) {
+                  const user = userResults[0];
+                  const specificData = item.specific_data ? 
+                    (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data) : {};
+                  const itemName = specificData.item_name || 'Rental Item';
+                  
+                  await emailService.sendServiceStatusEmail({
+                    userEmail: user.email,
+                    userName: `${user.first_name} ${user.last_name}`,
+                    serviceName: itemName,
+                    serviceType: serviceType,
+                    status: 'accepted',
+                    orderId: itemId,
+                    appointmentDate: item.rental_start_date || null
+                  });
+                  console.log(`[EMAIL] Service status email sent to ${user.email} for status: accepted`);
+                }
+              });
+            } catch (emailErr) {
+              console.error('[EMAIL] Error sending service status email:', emailErr);
+            }
           }
           
           // Create status update notifications (including rental-specific statuses)
@@ -1533,34 +1680,34 @@ exports.updateRentalOrderItem = (req, res) => {
             );
             
             // Send email notification for rental status updates via SendGrid
-            if (serviceType === 'rental') {
-              try {
-                const emailService = require('../services/emailService');
-                const db = require('../config/db');
-                
-                // Get user email
-                const getUserSql = `SELECT u.email, u.first_name, u.last_name FROM user u WHERE u.user_id = ?`;
-                db.query(getUserSql, [customerUserId], async (userErr, userResults) => {
-                  if (!userErr && userResults.length > 0) {
-                    const user = userResults[0];
-                    const itemName = item.specific_data ? 
-                      (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data).item_name || 'Rental Item'
-                      : 'Rental Item';
-                    
-                    await emailService.sendRentalStatusEmail({
-                      userEmail: user.email,
-                      userName: `${user.first_name} ${user.last_name}`,
-                      itemName: itemName,
-                      status: statusForNotification,
-                      message: updateData.adminNotes || null,
-                      itemId: itemId
-                    });
-                    console.log(`[EMAIL] Rental status email sent to ${user.email} for status: ${statusForNotification}`);
-                  }
-                });
-              } catch (emailErr) {
-                console.error('[EMAIL] Error sending rental status email:', emailErr);
-              }
+            try {
+              const emailService = require('../services/emailService');
+              const dbConn = require('../config/db');
+              
+              // Get user email
+              const getUserSql = `SELECT u.email, u.first_name, u.last_name FROM user u WHERE u.user_id = ?`;
+              dbConn.query(getUserSql, [customerUserId], async (userErr, userResults) => {
+                if (!userErr && userResults.length > 0) {
+                  const user = userResults[0];
+                  const specificData = item.specific_data ? 
+                    (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data) : {};
+                  const itemName = specificData.item_name || 'Rental Item';
+                  
+                  await emailService.sendServiceStatusEmail({
+                    userEmail: user.email,
+                    userName: `${user.first_name} ${user.last_name}`,
+                    serviceName: itemName,
+                    serviceType: serviceType,
+                    status: statusForNotification,
+                    orderId: itemId,
+                    message: updateData.adminNotes || null,
+                    appointmentDate: item.rental_start_date || null
+                  });
+                  console.log(`[EMAIL] Service status email sent to ${user.email} for status: ${statusForNotification}`);
+                }
+              });
+            } catch (emailErr) {
+              console.error('[EMAIL] Error sending service status email:', emailErr);
             }
           }
         } else {
