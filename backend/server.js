@@ -288,6 +288,94 @@ try {
   // Don't crash the server if reminder service fails
 }
 
+// Initialize rental monitoring and email notification service
+try {
+  const cronScheduler = require('./services/cronScheduler');
+  
+  // Create rental email/penalty tracking tables
+  const createRentalEmailLogsSQL = `
+    CREATE TABLE IF NOT EXISTS rental_email_logs (
+      log_id INT AUTO_INCREMENT PRIMARY KEY,
+      order_item_id INT NOT NULL,
+      user_id INT NOT NULL,
+      email_type ENUM('reminder', 'overdue', 'penalty_applied', 'status_update') NOT NULL,
+      email_status ENUM('sent', 'failed', 'pending') DEFAULT 'pending',
+      recipient_email VARCHAR(255) NOT NULL,
+      subject VARCHAR(500),
+      sent_at DATETIME,
+      error_message TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_order_item_id (order_item_id),
+      INDEX idx_user_id (user_id),
+      INDEX idx_email_type (email_type)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `;
+  
+  const createRentalRemindersSentSQL = `
+    CREATE TABLE IF NOT EXISTS rental_reminders_sent (
+      reminder_id INT AUTO_INCREMENT PRIMARY KEY,
+      order_item_id INT NOT NULL,
+      user_id INT NOT NULL,
+      reminder_type ENUM('1_day', '2_day', '3_day', 'same_day', 'overdue_1', 'overdue_3', 'overdue_7', 'daily_overdue') NOT NULL,
+      reminder_date DATE NOT NULL,
+      sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_order_item_id (order_item_id),
+      INDEX idx_reminder_date (reminder_date),
+      UNIQUE KEY unique_reminder (order_item_id, reminder_type, reminder_date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `;
+  
+  const createRentalPenaltyTrackingSQL = `
+    CREATE TABLE IF NOT EXISTS rental_penalty_tracking (
+      tracking_id INT AUTO_INCREMENT PRIMARY KEY,
+      order_item_id INT NOT NULL,
+      user_id INT NOT NULL,
+      rental_end_date DATE NOT NULL,
+      check_date DATE NOT NULL,
+      days_overdue INT DEFAULT 0,
+      penalty_amount DECIMAL(10,2) DEFAULT 0.00,
+      penalty_rate DECIMAL(10,2) DEFAULT 100.00,
+      is_notified TINYINT(1) DEFAULT 0,
+      notification_sent_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_order_item_id (order_item_id),
+      INDEX idx_check_date (check_date),
+      UNIQUE KEY unique_daily_check (order_item_id, check_date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `;
+  
+  db.query(createRentalEmailLogsSQL, (err) => {
+    if (err) {
+      console.error('[SERVER] Error creating rental_email_logs table:', err.message);
+    } else {
+      console.log('[SERVER] ✅ rental_email_logs table ready');
+    }
+  });
+  
+  db.query(createRentalRemindersSentSQL, (err) => {
+    if (err) {
+      console.error('[SERVER] Error creating rental_reminders_sent table:', err.message);
+    } else {
+      console.log('[SERVER] ✅ rental_reminders_sent table ready');
+    }
+  });
+  
+  db.query(createRentalPenaltyTrackingSQL, (err) => {
+    if (err) {
+      console.error('[SERVER] Error creating rental_penalty_tracking table:', err.message);
+    } else {
+      console.log('[SERVER] ✅ rental_penalty_tracking table ready');
+    }
+  });
+  
+  // Initialize the cron scheduler for rental monitoring
+  cronScheduler.initializeScheduler();
+  console.log('[SERVER] ✅ Rental monitoring service initialized with SendGrid email notifications');
+} catch (err) {
+  console.error('[SERVER] Error initializing rental monitoring service:', err.message);
+  // Don't crash the server if monitoring service fails
+}
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);

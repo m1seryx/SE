@@ -707,9 +707,66 @@ function Rental() {
                         <td>{rental.first_name} {rental.last_name}</td>
                         <td>{rental.specific_data?.item_name || 'N/A'}</td>
                         <td>
-                          {rental.rental_start_date && rental.rental_end_date
-                            ? `${rental.rental_start_date} to ${rental.rental_end_date}`
-                            : 'N/A'}
+                          {rental.rental_start_date && rental.rental_end_date ? (
+                            <>
+                              <div>{rental.rental_start_date} to {rental.rental_end_date}</div>
+                              {/* Overdue/Due Soon Warning */}
+                              {(rental.approval_status === 'rented' || rental.approval_status === 'picked_up') && (() => {
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const endDate = new Date(rental.rental_end_date);
+                                endDate.setHours(0, 0, 0, 0);
+                                const diffTime = endDate - today;
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                
+                                if (diffDays < 0) {
+                                  const daysOverdue = Math.abs(diffDays);
+                                  return (
+                                    <div style={{
+                                      backgroundColor: '#f8d7da',
+                                      color: '#721c24',
+                                      fontSize: '11px',
+                                      padding: '4px 8px',
+                                      borderRadius: '4px',
+                                      marginTop: '4px',
+                                      fontWeight: '600'
+                                    }}>
+                                      🚨 {daysOverdue}d OVERDUE (₱{daysOverdue * 100})
+                                    </div>
+                                  );
+                                } else if (diffDays === 0) {
+                                  return (
+                                    <div style={{
+                                      backgroundColor: '#fff3cd',
+                                      color: '#856404',
+                                      fontSize: '11px',
+                                      padding: '4px 8px',
+                                      borderRadius: '4px',
+                                      marginTop: '4px',
+                                      fontWeight: '600'
+                                    }}>
+                                      ⏰ DUE TODAY
+                                    </div>
+                                  );
+                                } else if (diffDays <= 3) {
+                                  return (
+                                    <div style={{
+                                      backgroundColor: '#e7f3ff',
+                                      color: '#004085',
+                                      fontSize: '11px',
+                                      padding: '4px 8px',
+                                      borderRadius: '4px',
+                                      marginTop: '4px',
+                                      fontWeight: '500'
+                                    }}>
+                                      📅 Due in {diffDays}d
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </>
+                          ) : 'N/A'}
                         </td>
                         <td style={{
                           textDecoration: rental.approval_status === 'cancelled' ? 'line-through' : 'none',
@@ -1385,6 +1442,92 @@ function Rental() {
                     : 'N/A'}
                 </span>
               </div>
+              
+              {/* Overdue/Due Warning for Rented Items */}
+              {(selectedRental.approval_status === 'rented' || selectedRental.approval_status === 'picked_up') && 
+               selectedRental.rental_end_date && (() => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const endDate = new Date(selectedRental.rental_end_date);
+                endDate.setHours(0, 0, 0, 0);
+                const diffTime = endDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays < 0) {
+                  const daysOverdue = Math.abs(diffDays);
+                  const currentPenalty = daysOverdue * 100;
+                  return (
+                    <div style={{
+                      backgroundColor: '#f8d7da',
+                      border: '1px solid #f5c6cb',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      marginBottom: '15px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '28px' }}>🚨</span>
+                        <div>
+                          <div style={{ color: '#721c24', fontWeight: '700', fontSize: '16px' }}>
+                            OVERDUE: {daysOverdue} Day{daysOverdue > 1 ? 's' : ''} Past Due Date!
+                          </div>
+                          <div style={{ color: '#721c24', fontSize: '14px', marginTop: '4px' }}>
+                            Expected penalty: <strong>₱{currentPenalty.toLocaleString()}</strong> (₱100/day)
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ color: '#856404', fontSize: '13px', backgroundColor: '#fff3cd', padding: '8px 12px', borderRadius: '4px' }}>
+                        📧 Automated email notifications are being sent to the customer about this overdue rental.
+                      </div>
+                    </div>
+                  );
+                } else if (diffDays === 0) {
+                  return (
+                    <div style={{
+                      backgroundColor: '#fff3cd',
+                      border: '1px solid #ffc107',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      marginBottom: '15px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '28px' }}>⏰</span>
+                        <div>
+                          <div style={{ color: '#856404', fontWeight: '700', fontSize: '16px' }}>
+                            DUE TODAY! Rental must be returned today.
+                          </div>
+                          <div style={{ color: '#856404', fontSize: '13px', marginTop: '4px' }}>
+                            Late returns will incur a penalty of ₱100 per day starting tomorrow.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                } else if (diffDays <= 3) {
+                  return (
+                    <div style={{
+                      backgroundColor: '#e7f3ff',
+                      border: '1px solid #b3d7ff',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      marginBottom: '15px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '28px' }}>📅</span>
+                        <div>
+                          <div style={{ color: '#004085', fontWeight: '600', fontSize: '15px' }}>
+                            Due in {diffDays} Day{diffDays > 1 ? 's' : ''} ({new Date(selectedRental.rental_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})
+                          </div>
+                          <div style={{ color: '#004085', fontSize: '13px', marginTop: '4px' }}>
+                            Reminder emails have been sent to the customer.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              
               <div className="detail-row">
                 <strong>Order Date:</strong>
                 <span>{selectedRental.order_date || 'N/A'}</span>

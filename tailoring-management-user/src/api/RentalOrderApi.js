@@ -78,3 +78,70 @@ export async function recordRentalPayment(itemId, paymentAmount) {
         };
     }
 }
+
+// Get active rentals with penalty status (admin only)
+export async function getActiveRentalsWithPenalty() {
+    try {
+        const response = await axios.get(`${BASE_URL}/rentals/monitoring/active`, {
+            headers: getAuthHeaders()
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Get active rentals error:", error);
+        return {
+            success: false,
+            message: error.response?.data?.message || "Error fetching active rentals",
+            data: []
+        };
+    }
+}
+
+// Get penalty for a specific rental item
+export async function getRentalPenalty(itemId) {
+    try {
+        const response = await axios.get(`${BASE_URL}/rentals/monitoring/penalty/${itemId}`, {
+            headers: getAuthHeaders()
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Get rental penalty error:", error);
+        return {
+            success: false,
+            message: error.response?.data?.message || "Error calculating penalty",
+            data: null
+        };
+    }
+}
+
+// Trigger manual rental check (admin only)
+export async function triggerRentalCheck() {
+    try {
+        const response = await axios.post(`${BASE_URL}/rentals/monitoring/check`, {}, {
+            headers: getAuthHeaders()
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Trigger rental check error:", error);
+        return {
+            success: false,
+            message: error.response?.data?.message || "Error running rental check"
+        };
+    }
+}
+
+// Get scheduler status
+export async function getSchedulerStatus() {
+    try {
+        const response = await axios.get(`${BASE_URL}/rentals/monitoring/status`, {
+            headers: getAuthHeaders()
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Get scheduler status error:", error);
+        return {
+            success: false,
+            message: error.response?.data?.message || "Error fetching scheduler status",
+            data: null
+        };
+    }
+}

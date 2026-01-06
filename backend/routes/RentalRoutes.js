@@ -3,6 +3,10 @@ const router = express.Router();
 const rentalController = require('../controller/RentalController');
 const { uploadSingle, handleUploadError } = require('../middleware/UploadMiddleware');
 
+// Rental Monitoring Routes (for email notifications and penalty tracking)
+const rentalMonitoringService = require('../services/rentalMonitoringService');
+const cronScheduler = require('../services/cronScheduler');
+
 // Define fields for multiple image uploads (front, back, side)
 const rentalImageFields = uploadSingle.fields([
   { name: 'image', maxCount: 1 },      // Legacy single image support
@@ -10,6 +14,43 @@ const rentalImageFields = uploadSingle.fields([
   { name: 'back_image', maxCount: 1 },
   { name: 'side_image', maxCount: 1 }
 ]);
+
+// Get active rentals with penalty status
+router.get('/monitoring/active', async (req, res) => {
+  rentalMonitoringService.getActiveRentalsWithPenalty((err, results) => {
+    if (err) {
+      return res.status(500).json({ success: false, message: 'Error fetching active rentals', error: err });
+    }
+    res.json({ success: true, data: results });
+  });
+});
+
+// Get penalty for a specific rental item
+router.get('/monitoring/penalty/:itemId', async (req, res) => {
+  const { itemId } = req.params;
+  rentalMonitoringService.calculatePenalty(itemId, (err, result) => {
+    if (err) {
+      return res.status(500).json({ success: false, message: 'Error calculating penalty', error: err });
+    }
+    res.json({ success: true, data: result });
+  });
+});
+
+// Trigger manual rental check (admin only)
+router.post('/monitoring/check', async (req, res) => {
+  try {
+    const result = await cronScheduler.triggerManualCheck();
+    res.json({ success: true, message: 'Rental check completed', data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error running rental check', error: error.message });
+  }
+});
+
+// Get scheduler status
+router.get('/monitoring/status', (req, res) => {
+  const status = cronScheduler.getSchedulerStatus();
+  res.json({ success: true, data: status });
+});
 
 router.post('/', rentalImageFields, rentalController.createRental);
 

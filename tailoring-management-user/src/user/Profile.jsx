@@ -1622,6 +1622,98 @@ const Profile = () => {
                       )}
                     </div>
 
+                    {/* Rental Overdue/End Date Warning */}
+                    {isRental && (item.status === 'rented' || item.status === 'picked_up') && item.rental_end_date && (() => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const endDate = new Date(item.rental_end_date);
+                      endDate.setHours(0, 0, 0, 0);
+                      const diffTime = endDate - today;
+                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                      
+                      // Overdue
+                      if (diffDays < 0) {
+                        const daysOverdue = Math.abs(diffDays);
+                        const penaltyAmount = daysOverdue * 100;
+                        return (
+                          <div style={{
+                            backgroundColor: '#f8d7da',
+                            border: '1px solid #f5c6cb',
+                            borderRadius: '8px',
+                            padding: '12px 16px',
+                            marginTop: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px'
+                          }}>
+                            <span style={{ fontSize: '24px' }}>🚨</span>
+                            <div>
+                              <div style={{ color: '#721c24', fontWeight: '600', fontSize: '14px' }}>
+                                OVERDUE: {daysOverdue} day{daysOverdue > 1 ? 's' : ''} past due date!
+                              </div>
+                              <div style={{ color: '#721c24', fontSize: '13px', marginTop: '4px' }}>
+                                Current penalty: <strong>₱{penaltyAmount.toLocaleString()}</strong> (₱100/day)
+                              </div>
+                              <div style={{ color: '#856404', fontSize: '12px', marginTop: '4px' }}>
+                                Please return immediately to avoid additional charges.
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      // Due today
+                      else if (diffDays === 0) {
+                        return (
+                          <div style={{
+                            backgroundColor: '#fff3cd',
+                            border: '1px solid #ffc107',
+                            borderRadius: '8px',
+                            padding: '12px 16px',
+                            marginTop: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px'
+                          }}>
+                            <span style={{ fontSize: '24px' }}>⏰</span>
+                            <div>
+                              <div style={{ color: '#856404', fontWeight: '600', fontSize: '14px' }}>
+                                DUE TODAY! Please return the item today.
+                              </div>
+                              <div style={{ color: '#856404', fontSize: '12px', marginTop: '4px' }}>
+                                Late returns will incur a penalty of ₱100 per day.
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      // Due soon (1-3 days)
+                      else if (diffDays <= 3) {
+                        return (
+                          <div style={{
+                            backgroundColor: '#e7f3ff',
+                            border: '1px solid #b3d7ff',
+                            borderRadius: '8px',
+                            padding: '12px 16px',
+                            marginTop: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px'
+                          }}>
+                            <span style={{ fontSize: '24px' }}>📅</span>
+                            <div>
+                              <div style={{ color: '#004085', fontWeight: '600', fontSize: '14px' }}>
+                                Return in {diffDays} day{diffDays > 1 ? 's' : ''} ({new Date(item.rental_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})
+                              </div>
+                              <div style={{ color: '#004085', fontSize: '12px', marginTop: '4px' }}>
+                                Late returns will incur a penalty of ₱100 per day.
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
                     {/* Price Comparison */}
                     {(estimatedPrice > 0 || item.final_price > 0) && (
                       <div className="price-comparison">

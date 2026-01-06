@@ -1218,6 +1218,39 @@ exports.updateRentalOrderItem = (req, res) => {
           updateData.penaltyData = currentPricingFactors;
           
           console.log(`[RENTAL PENALTY] Original price: ₱${originalPrice}, Penalty: ₱${penaltyAmount}, New final price: ₱${newFinalPrice}`);
+          
+          // Send penalty email notification via SendGrid
+          try {
+            const emailService = require('../services/emailService');
+            const db = require('../config/db');
+            
+            // Get user email
+            const getUserSql = `SELECT u.email, u.first_name, u.last_name FROM user u JOIN orders o ON u.user_id = o.user_id WHERE o.order_id = ?`;
+            db.query(getUserSql, [item.order_id], async (userErr, userResults) => {
+              if (!userErr && userResults.length > 0) {
+                const user = userResults[0];
+                const itemName = item.specific_data ? 
+                  (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data).item_name || 'Rental Item'
+                  : 'Rental Item';
+                
+                await emailService.sendPenaltyChargeEmail({
+                  userEmail: user.email,
+                  userName: `${user.first_name} ${user.last_name}`,
+                  itemName: itemName,
+                  rentalEndDate: item.rental_end_date,
+                  returnDate: new Date().toISOString().split('T')[0],
+                  daysOverdue: penaltyDays,
+                  penaltyAmount: penaltyAmount,
+                  originalPrice: originalPrice,
+                  totalAmount: newFinalPrice,
+                  itemId: itemId
+                });
+                console.log(`[RENTAL PENALTY] Penalty email sent to ${user.email}`);
+              }
+            });
+          } catch (emailErr) {
+            console.error('[RENTAL PENALTY] Error sending penalty email:', emailErr);
+          }
         } else {
           console.log(`[RENTAL PENALTY] Item ${itemId}: Returned on time, no penalty applied`);
         }
@@ -1498,6 +1531,37 @@ exports.updateRentalOrderItem = (req, res) => {
                 }
               }
             );
+            
+            // Send email notification for rental status updates via SendGrid
+            if (serviceType === 'rental') {
+              try {
+                const emailService = require('../services/emailService');
+                const db = require('../config/db');
+                
+                // Get user email
+                const getUserSql = `SELECT u.email, u.first_name, u.last_name FROM user u WHERE u.user_id = ?`;
+                db.query(getUserSql, [customerUserId], async (userErr, userResults) => {
+                  if (!userErr && userResults.length > 0) {
+                    const user = userResults[0];
+                    const itemName = item.specific_data ? 
+                      (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data).item_name || 'Rental Item'
+                      : 'Rental Item';
+                    
+                    await emailService.sendRentalStatusEmail({
+                      userEmail: user.email,
+                      userName: `${user.first_name} ${user.last_name}`,
+                      itemName: itemName,
+                      status: statusForNotification,
+                      message: updateData.adminNotes || null,
+                      itemId: itemId
+                    });
+                    console.log(`[EMAIL] Rental status email sent to ${user.email} for status: ${statusForNotification}`);
+                  }
+                });
+              } catch (emailErr) {
+                console.error('[EMAIL] Error sending rental status email:', emailErr);
+              }
+            }
           }
         } else {
           console.error('[NOTIFICATION] Cannot create notification: customer user_id is missing');
