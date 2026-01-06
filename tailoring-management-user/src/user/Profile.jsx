@@ -10,6 +10,7 @@ import ImagePreviewModal from '../components/ImagePreviewModal';
 import TransactionLogModal from './components/TransactionLogModal';
 import { useAlert } from '../context/AlertContext';
 import { getMyMeasurements } from '../api/CustomerApi';
+import SimpleImageCarousel from '../components/SimpleImageCarousel';
 
 const Profile = () => {
   const { alert } = useAlert();
@@ -443,59 +444,68 @@ const Profile = () => {
           <div className="service-details rental-details">
             <h4>Rental Details</h4>
 
-            {/* Show bundle items with images if it's a bundle */}
+            {/* Show bundle items with image carousel if it's a bundle */}
             {isBundle && bundleItems.length > 0 ? (
               <div className="detail-row" style={{ marginBottom: '20px' }}>
                 <span className="detail-label">Rental Items:</span>
                 <div className="detail-value" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                  {bundleItems.map((bundleItem, idx) => (
-                    <div key={idx} style={{ 
-                      border: '1px solid #e0e0e0', 
-                      borderRadius: '8px', 
-                      padding: '15px',
-                      backgroundColor: '#f9f9f9'
-                    }}>
-                      {/* Show image if available */}
-                      {bundleItem.image_url && bundleItem.image_url !== 'no-image' && (
-                        <div style={{ marginBottom: '10px' }}>
-                          <img
-                            src={bundleItem.image_url}
-                            alt={bundleItem.item_name || 'Rental item'}
-                            className="damage-photo clickable-image"
-                            onClick={() => openImagePreview(bundleItem.image_url, bundleItem.item_name || 'Rental Item')}
-                            title="Click to enlarge"
-                            style={{ maxWidth: '200px', maxHeight: '200px', cursor: 'pointer', borderRadius: '6px' }}
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
+                  {bundleItems.map((bundleItem, idx) => {
+                    // Collect all available images for this bundle item
+                    const itemImages = [
+                      bundleItem.front_image && { url: bundleItem.front_image, label: 'Front' },
+                      bundleItem.back_image && { url: bundleItem.back_image, label: 'Back' },
+                      bundleItem.side_image && { url: bundleItem.side_image, label: 'Side' },
+                      bundleItem.image_url && bundleItem.image_url !== 'no-image' && { url: bundleItem.image_url, label: 'Main' }
+                    ].filter(Boolean);
+                    
+                    return (
+                      <div key={idx} style={{ 
+                        border: '1px solid #e0e0e0', 
+                        borderRadius: '8px', 
+                        padding: '15px',
+                        backgroundColor: '#f9f9f9'
+                      }}>
+                        <strong style={{ display: 'block', marginBottom: '10px', color: '#333' }}>
+                          {bundleItem.item_name || `Item ${idx + 1}`}
+                        </strong>
+                        {itemImages.length > 0 && (
+                          <SimpleImageCarousel 
+                            images={itemImages}
+                            itemName={bundleItem.item_name}
+                            height="180px"
                           />
-                        </div>
-                      )}
-                   
-                    </div>
-                  ))}
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ) : (
-              /* Show single rental image if available */
-              specific_data.image_url && specific_data.image_url !== 'no-image' && (
-              <div className="detail-row">
-                <span className="detail-label">Item Photo:</span>
-                <div className="detail-value">
-                  <img
-                    src={specific_data.image_url}
-                    alt="Rental item"
-                      className="damage-photo clickable-image"
-                      onClick={() => openImagePreview(specific_data.image_url, specific_data.item_name || 'Rental Item')}
-                      title="Click to enlarge"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      console.log('Rental image failed to load:', specific_data.image_url);
-                    }}
-                  />
-                </div>
-              </div>
-              )
+              /* Show single rental image with carousel if multiple images available */
+              (() => {
+                const singleItemImages = [
+                  specific_data.front_image && { url: specific_data.front_image, label: 'Front' },
+                  specific_data.back_image && { url: specific_data.back_image, label: 'Back' },
+                  specific_data.side_image && { url: specific_data.side_image, label: 'Side' },
+                  specific_data.image_url && specific_data.image_url !== 'no-image' && { url: specific_data.image_url, label: 'Main' }
+                ].filter(Boolean);
+                
+                if (singleItemImages.length > 0) {
+                  return (
+                    <div className="detail-row" style={{ marginBottom: '15px' }}>
+                      <span className="detail-label">Item Photos:</span>
+                      <div className="detail-value">
+                        <SimpleImageCarousel 
+                          images={singleItemImages}
+                          itemName={specific_data.item_name}
+                          height="200px"
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()
             )}
 
             <div className="detail-row">

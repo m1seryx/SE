@@ -231,9 +231,11 @@ const Order = {
   // Get single order item by ID
   getOrderItemById: (itemId, callback) => {
     const sql = `
-      SELECT oi.*, o.user_id, DATE_FORMAT(o.order_date, '%Y-%m-%d %H:%i:%s') as order_date
+      SELECT oi.*, o.user_id, DATE_FORMAT(o.order_date, '%Y-%m-%d %H:%i:%s') as order_date,
+             u.first_name, u.last_name
       FROM order_items oi 
       JOIN orders o ON oi.order_id = o.order_id 
+      LEFT JOIN user u ON o.user_id = u.user_id
       WHERE oi.item_id = ?
     `;
     db.query(sql, [itemId], (err, results) => {

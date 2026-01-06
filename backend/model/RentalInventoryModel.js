@@ -5,8 +5,8 @@ const RentalInventory = {
   create: (itemData, callback) => {
     const sql = `
       INSERT INTO rental_inventory 
-      (item_name, description, brand, size, color, category, price, downpayment, total_available, image_url, material, care_instructions, damage_notes) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (item_name, description, brand, size, color, category, price, downpayment, total_available, image_url, front_image, back_image, side_image, material, care_instructions, damage_notes) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const values = [
       itemData.item_name,
@@ -19,6 +19,9 @@ const RentalInventory = {
       itemData.downpayment || '0',
       itemData.total_available || 1,
       itemData.image_url || null,
+      itemData.front_image || null,
+      itemData.back_image || null,
+      itemData.side_image || null,
       itemData.material || null,
       itemData.care_instructions || null,
       itemData.damage_notes || null
@@ -231,7 +234,8 @@ const RentalInventory = {
       UPDATE rental_inventory 
       SET item_name = ?, description = ?, brand = ?, size = ?, color = ?, category = ?, 
           price = ?, downpayment = ?, total_available = ?, 
-          image_url = ?, material = ?, care_instructions = ?, damage_notes = ?, status = ?
+          image_url = ?, front_image = ?, back_image = ?, side_image = ?, 
+          material = ?, care_instructions = ?, damage_notes = ?, status = ?
       WHERE item_id = ?
     `;
     const values = [
@@ -245,6 +249,9 @@ const RentalInventory = {
       itemData.downpayment || '0',
       itemData.total_available,
       itemData.image_url || null,
+      itemData.front_image || null,
+      itemData.back_image || null,
+      itemData.side_image || null,
       itemData.material || null,
       itemData.care_instructions || null,
       itemData.damage_notes || null,
@@ -262,9 +269,21 @@ const RentalInventory = {
 
 
   // Update status and damage notes together (for bundle item returns)
-  updateStatusWithDamageNotes: (item_id, status, damage_notes, callback) => {
-    const sql = "UPDATE rental_inventory SET status = ?, damage_notes = ? WHERE item_id = ?";
-    db.query(sql, [status, damage_notes, item_id], callback);
+  updateStatusWithDamageNotes: (item_id, status, damage_notes, damaged_by, callback) => {
+    // Support both old signature (3 params + callback) and new signature (4 params + callback)
+    if (typeof damaged_by === 'function') {
+      // Old signature: (item_id, status, damage_notes, callback)
+      callback = damaged_by;
+      damaged_by = null;
+    }
+    
+    if (damaged_by) {
+      const sql = "UPDATE rental_inventory SET status = ?, damage_notes = ?, damaged_by = ? WHERE item_id = ?";
+      db.query(sql, [status, damage_notes, damaged_by, item_id], callback);
+    } else {
+      const sql = "UPDATE rental_inventory SET status = ?, damage_notes = ? WHERE item_id = ?";
+      db.query(sql, [status, damage_notes, item_id], callback);
+    }
   },
 
 

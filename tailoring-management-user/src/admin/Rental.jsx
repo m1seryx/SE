@@ -6,6 +6,7 @@ import { getAllRentalOrders, getRentalOrdersByStatus, updateRentalOrderItem, rec
 import { updateRentalStatus } from '../api/RentalApi';
 import { useAlert } from '../context/AlertContext';
 import { deleteOrderItem } from '../api/OrderApi';
+import SimpleImageCarousel from '../components/SimpleImageCarousel';
 
 function Rental() {
   const { alert, confirm, prompt } = useAlert();
@@ -104,6 +105,14 @@ function Rental() {
     const matchesStatus = !statusFilter || normalizedStatus === statusFilter;
 
     return matchesSearch && matchesStatus;
+  }).sort((a, b) => {
+    // Sort: pending orders first, then others
+    const isPendingA = a.approval_status === 'pending' || a.approval_status === 'pending_review' || !a.approval_status;
+    const isPendingB = b.approval_status === 'pending' || b.approval_status === 'pending_review' || !b.approval_status;
+    
+    if (isPendingA && !isPendingB) return -1;
+    if (!isPendingA && isPendingB) return 1;
+    return 0;
   });
 
   // Handle Accept rental - moves directly to ready_to_pickup
@@ -397,15 +406,16 @@ function Rental() {
             }
             
             // Update each bundle item's status and damage notes based on damage
+            const customerName = `${rental.first_name} ${rental.last_name}`;
             for (const bundleItem of bundleItems) {
               try {
                 const itemDamageNote = damagedItems[bundleItem.item_name] || null;
                 const newStatus = itemDamageNote ? 'maintenance' : 'available';
                 
-                // Pass the individual damage note for this specific item
-                await updateRentalStatus(bundleItem.item_id || bundleItem.id, newStatus, itemDamageNote);
+                // Pass the individual damage note and customer name for this specific item
+                await updateRentalStatus(bundleItem.item_id || bundleItem.id, newStatus, itemDamageNote, itemDamageNote ? customerName : null);
                 
-                console.log(`Updated ${bundleItem.item_name} status to ${newStatus}${itemDamageNote ? ` with damage notes: "${itemDamageNote}"` : ''}`);
+                console.log(`Updated ${bundleItem.item_name} status to ${newStatus}${itemDamageNote ? ` with damage notes: "${itemDamageNote}" (damaged by: ${customerName})` : ''}`);
               } catch (error) {
                 console.warn(`Failed to update rental inventory item status for ${bundleItem.item_name}:`, error);
               }
@@ -1087,41 +1097,43 @@ function Rental() {
                 if (isBundle && bundleItems.length > 0) {
                   return (
                     <>
-                      {/* Display bundle items with images only (like user profile) */}
+                      {/* Display bundle items with image carousel */}
                       <div className="detail-row" style={{ marginBottom: '20px' }}>
                         <strong style={{ display: 'block', marginBottom: '10px' }}>Rental Items:</strong>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                          {bundleItems.map((bundleItem, idx) => (
-                            <div key={idx} style={{ 
-                              border: '1px solid #e0e0e0', 
-                              borderRadius: '8px', 
-                              padding: '15px',
-                              backgroundColor: '#f9f9f9'
-                            }}>
-                              {/* Show image if available */}
-                              {bundleItem.image_url && bundleItem.image_url !== 'no-image' && (
-                                <div style={{ marginBottom: '10px' }}>
-                                  <img
-                                    src={bundleItem.image_url}
-                                    alt={bundleItem.item_name || 'Rental item'}
-                                    style={{ 
-                                      maxWidth: '200px', 
-                                      maxHeight: '200px', 
-                                      cursor: 'pointer', 
-                                      borderRadius: '6px' 
-                                    }}
-                                    onError={(e) => {
-                                      e.target.style.display = 'none';
-                                    }}
+                          {bundleItems.map((bundleItem, idx) => {
+                            // Collect all available images for this bundle item
+                            const itemImages = [
+                              bundleItem.front_image && { url: bundleItem.front_image, label: 'Front' },
+                              bundleItem.back_image && { url: bundleItem.back_image, label: 'Back' },
+                              bundleItem.side_image && { url: bundleItem.side_image, label: 'Side' },
+                              bundleItem.image_url && bundleItem.image_url !== 'no-image' && { url: bundleItem.image_url, label: 'Main' }
+                            ].filter(Boolean);
+                            
+                            return (
+                              <div key={idx} style={{ 
+                                border: '1px solid #e0e0e0', 
+                                borderRadius: '8px', 
+                                padding: '15px',
+                                backgroundColor: '#f9f9f9'
+                              }}>
+                                <strong style={{ display: 'block', marginBottom: '10px', color: '#333' }}>
+                                  {bundleItem.item_name || `Item ${idx + 1}`}
+                                </strong>
+                                {itemImages.length > 0 && (
+                                  <SimpleImageCarousel 
+                                    images={itemImages}
+                                    itemName={bundleItem.item_name}
+                                    height="180px"
                                   />
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                       
-                      {/* Display combined item details (like user profile) */}
+                      {/* Display combined item details */}
                       <div className="detail-row">
                         <strong>Rented Item:</strong>
                         <span>{bundleItems.map(item => item.item_name).join(', ') || 'N/A'}</span>
@@ -1137,19 +1149,23 @@ function Rental() {
                     </>
                   );
                 } else {
-                  // Single item display
+                  // Single item display with image carousel
+                  const singleItemImages = [
+                    selectedRental.specific_data?.front_image && { url: selectedRental.specific_data.front_image, label: 'Front' },
+                    selectedRental.specific_data?.back_image && { url: selectedRental.specific_data.back_image, label: 'Back' },
+                    selectedRental.specific_data?.side_image && { url: selectedRental.specific_data.side_image, label: 'Side' },
+                    selectedRental.specific_data?.image_url && { url: selectedRental.specific_data.image_url, label: 'Main' }
+                  ].filter(Boolean);
+                  
                   return (
                     <>
-                      {selectedRental.specific_data?.image_url && (
-                        <div className="detail-row">
-                          <strong>Item Photo:</strong>
-                          <img
-                            src={selectedRental.specific_data.image_url}
-                            alt="Rental Item"
-                            className="item-image"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
+                      {singleItemImages.length > 0 && (
+                        <div className="detail-row" style={{ marginBottom: '15px' }}>
+                          <strong style={{ display: 'block', marginBottom: '10px' }}>Item Photos:</strong>
+                          <SimpleImageCarousel 
+                            images={singleItemImages}
+                            itemName={selectedRental.specific_data?.item_name}
+                            height="200px"
                           />
                         </div>
                       )}

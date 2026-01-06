@@ -6,6 +6,108 @@ import Sidebar from './Sidebar';
 import { getAllRentals, createRental, updateRental, deleteRental, getRentalImageUrl } from '../api/RentalApi';
 import { useAlert } from '../context/AlertContext';
 
+// Simple Image Carousel Component for displaying multiple images
+const ImageCarousel = ({ images, itemName, getRentalImageUrl }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // Filter out empty images and get valid ones
+  const validImages = images.filter(img => img && img.url);
+  
+  if (validImages.length === 0) {
+    return (
+      <div style={{
+        width: '100%',
+        height: '200px',
+        backgroundColor: '#f5f5f5',
+        borderRadius: '8px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#999'
+      }}>
+        No Image Available
+      </div>
+    );
+  }
+
+  // Single image - no controls needed
+  if (validImages.length === 1) {
+    return (
+      <img 
+        src={getRentalImageUrl(validImages[0].url)}
+        alt={itemName}
+        className="detail-image"
+        style={{ maxWidth: '100%', borderRadius: '8px' }}
+      />
+    );
+  }
+
+  const goToPrev = () => setCurrentIndex(prev => (prev === 0 ? validImages.length - 1 : prev - 1));
+  const goToNext = () => setCurrentIndex(prev => (prev === validImages.length - 1 ? 0 : prev + 1));
+
+  return (
+    <div style={{ width: '100%' }}>
+      {/* Main Image Container */}
+      <div style={{ 
+        position: 'relative', 
+        backgroundColor: '#f9f9f9',
+        borderRadius: '8px',
+        overflow: 'hidden'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+          <img 
+            src={getRentalImageUrl(validImages[currentIndex].url)}
+            alt={`${itemName} - ${validImages[currentIndex].label}`}
+            style={{ maxWidth: '100%', maxHeight: '250px', objectFit: 'contain' }}
+          />
+        </div>
+        
+        {/* View Label */}
+        <div style={{
+          position: 'absolute',
+          top: '8px',
+          left: '8px',
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          color: 'white',
+          padding: '4px 10px',
+          borderRadius: '12px',
+          fontSize: '11px',
+          fontWeight: '500'
+        }}>
+          {validImages[currentIndex].label}
+        </div>
+
+        {/* Navigation Arrows */}
+        <button onClick={goToPrev} style={{
+          position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)',
+          width: '32px', height: '32px', borderRadius: '50%', border: 'none',
+          backgroundColor: 'rgba(255,255,255,0.9)', color: '#333', cursor: 'pointer',
+          fontSize: '16px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+        }}>‹</button>
+        <button onClick={goToNext} style={{
+          position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
+          width: '32px', height: '32px', borderRadius: '50%', border: 'none',
+          backgroundColor: 'rgba(255,255,255,0.9)', color: '#333', cursor: 'pointer',
+          fontSize: '16px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+        }}>›</button>
+      </div>
+      
+      {/* Thumbnails */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '10px' }}>
+        {validImages.map((img, index) => (
+          <button key={index} onClick={() => setCurrentIndex(index)} style={{
+            width: '50px', height: '50px', padding: 0, borderRadius: '6px', overflow: 'hidden',
+            border: index === currentIndex ? '2px solid #007bff' : '2px solid #ddd',
+            cursor: 'pointer', opacity: index === currentIndex ? 1 : 0.6, backgroundColor: '#fff'
+          }}>
+            <img src={getRentalImageUrl(img.url)} alt={img.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const PostRent = () => {
   const { alert, confirm } = useAlert();
   const [items, setItems] = useState([]);
@@ -16,6 +118,13 @@ const PostRent = () => {
   const [filter, setFilter] = useState('');
   const [imagePreview, setImagePreview] = useState('');
   const [imageFile, setImageFile] = useState(null);
+  // Multiple image states for front, back, side
+  const [frontImagePreview, setFrontImagePreview] = useState('');
+  const [frontImageFile, setFrontImageFile] = useState(null);
+  const [backImagePreview, setBackImagePreview] = useState('');
+  const [backImageFile, setBackImageFile] = useState(null);
+  const [sideImagePreview, setSideImagePreview] = useState('');
+  const [sideImageFile, setSideImageFile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -144,6 +253,10 @@ const PostRent = () => {
           measurements: measurements
         });
         setImagePreview(item.image_url ? getRentalImageUrl(item.image_url) : '');
+        // Load multiple images
+        setFrontImagePreview(item.front_image ? getRentalImageUrl(item.front_image) : '');
+        setBackImagePreview(item.back_image ? getRentalImageUrl(item.back_image) : '');
+        setSideImagePreview(item.side_image ? getRentalImageUrl(item.side_image) : '');
         setEditingId(id);
       }
     } else {
@@ -176,6 +289,13 @@ const PostRent = () => {
       });
       setImagePreview('');
       setImageFile(null);
+      // Reset multiple images
+      setFrontImagePreview('');
+      setFrontImageFile(null);
+      setBackImagePreview('');
+      setBackImageFile(null);
+      setSideImagePreview('');
+      setSideImageFile(null);
       setEditingId(null);
     }
     setIsModalOpen(true);
@@ -186,10 +306,17 @@ const PostRent = () => {
     setEditingId(null);
     setImagePreview('');
     setImageFile(null);
+    // Reset multiple images
+    setFrontImagePreview('');
+    setFrontImageFile(null);
+    setBackImagePreview('');
+    setBackImageFile(null);
+    setSideImagePreview('');
+    setSideImageFile(null);
     setError('');
   };
 
-  const handleImageChange = (e) => {
+  const handleImageChange = (e, imageType = 'front') => {
     const file = e.target.files?.[0];
     if (file) {
       // Validate file type
@@ -204,10 +331,25 @@ const PostRent = () => {
         return;
       }
 
-      setImageFile(file);
       const reader = new FileReader();
       reader.onload = () => {
-        setImagePreview(reader.result);
+        switch (imageType) {
+          case 'front':
+            setFrontImageFile(file);
+            setFrontImagePreview(reader.result);
+            break;
+          case 'back':
+            setBackImageFile(file);
+            setBackImagePreview(reader.result);
+            break;
+          case 'side':
+            setSideImageFile(file);
+            setSideImagePreview(reader.result);
+            break;
+          default:
+            setImageFile(file);
+            setImagePreview(reader.result);
+        }
       };
       reader.readAsDataURL(file);
       setError('');
@@ -297,12 +439,21 @@ const PostRent = () => {
     try {
       let result;
       
+      // Prepare image files object for multiple uploads
+      const imageFiles = {};
+      if (frontImageFile) imageFiles.front_image = frontImageFile;
+      if (backImageFile) imageFiles.back_image = backImageFile;
+      if (sideImageFile) imageFiles.side_image = sideImageFile;
+      
+      // Check if we have any new images to upload
+      const hasNewImages = Object.keys(imageFiles).length > 0;
+      
       if (editingId) {
         // Update existing item
-        result = await updateRental(editingId, dataToSave, imageFile);
+        result = await updateRental(editingId, dataToSave, hasNewImages ? imageFiles : null);
       } else {
         // Create new item
-        result = await createRental(dataToSave, imageFile);
+        result = await createRental(dataToSave, hasNewImages ? imageFiles : null);
       }
 
       if (result.success !== false) {
@@ -399,7 +550,7 @@ const PostRent = () => {
             filteredItems.map(item => (
               <div key={item.item_id} className="compact-item-card" onClick={() => openDetailModal(item)}>
                 <img 
-                  src={item.image_url ? getRentalImageUrl(item.image_url) : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSIjOTk5Ij5ObyBJbWFnZTwvdGV4dD48L3N2Zz4='} 
+                  src={item.front_image ? getRentalImageUrl(item.front_image) : (item.image_url ? getRentalImageUrl(item.image_url) : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSIjOTk5Ij5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=')} 
                   alt={item.item_name} 
                   className="compact-item-image" 
                 />
@@ -451,21 +602,117 @@ const PostRent = () => {
                 </div>
               )}
 
-              <div className="upload-area" onClick={() => document.getElementById('imageInput')?.click()}>
-                {imagePreview ? (
-                  <img src={imagePreview} alt="Preview" className="preview-image" />
-                ) : (
-                  <div className="upload-placeholder">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                      <polyline points="17 8 12 3 7 8"></polyline>
-                      <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                    <p><strong>Click to upload image</strong></p>
-                    <small>JPG, PNG up to 5MB</small>
+              {/* Multiple Image Upload Section */}
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '1rem', fontWeight: '600' }}>
+                  📸 Upload Images (Front, Back, Side)
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
+                  {/* Front Image */}
+                  <div 
+                    className="upload-area" 
+                    onClick={() => document.getElementById('frontImageInput')?.click()}
+                    style={{ 
+                      minHeight: '150px', 
+                      border: '2px dashed #007bff',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '10px',
+                      backgroundColor: frontImagePreview ? 'transparent' : '#f8f9fa',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {frontImagePreview ? (
+                      <img src={frontImagePreview} alt="Front Preview" style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'contain', borderRadius: '6px' }} />
+                    ) : (
+                      <div style={{ textAlign: 'center' }}>
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#007bff" strokeWidth="2">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="17 8 12 3 7 8"></polyline>
+                          <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#666' }}><strong>Front</strong></p>
+                      </div>
+                    )}
+                    <input type="file" id="frontImageInput" accept="image/*" className="hidden-input" onChange={(e) => handleImageChange(e, 'front')} style={{ display: 'none' }} />
+                    <span style={{ fontSize: '11px', color: '#007bff', marginTop: '5px', fontWeight: '600' }}>Front View</span>
                   </div>
-                )}
-                <input type="file" id="imageInput" accept="image/*" className="hidden-input" onChange={handleImageChange} />
+
+                  {/* Back Image */}
+                  <div 
+                    className="upload-area" 
+                    onClick={() => document.getElementById('backImageInput')?.click()}
+                    style={{ 
+                      minHeight: '150px', 
+                      border: '2px dashed #28a745',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '10px',
+                      backgroundColor: backImagePreview ? 'transparent' : '#f8f9fa',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {backImagePreview ? (
+                      <img src={backImagePreview} alt="Back Preview" style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'contain', borderRadius: '6px' }} />
+                    ) : (
+                      <div style={{ textAlign: 'center' }}>
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#28a745" strokeWidth="2">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="17 8 12 3 7 8"></polyline>
+                          <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#666' }}><strong>Back</strong></p>
+                      </div>
+                    )}
+                    <input type="file" id="backImageInput" accept="image/*" className="hidden-input" onChange={(e) => handleImageChange(e, 'back')} style={{ display: 'none' }} />
+                    <span style={{ fontSize: '11px', color: '#28a745', marginTop: '5px', fontWeight: '600' }}>Back View</span>
+                  </div>
+
+                  {/* Side Image */}
+                  <div 
+                    className="upload-area" 
+                    onClick={() => document.getElementById('sideImageInput')?.click()}
+                    style={{ 
+                      minHeight: '150px', 
+                      border: '2px dashed #fd7e14',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '10px',
+                      backgroundColor: sideImagePreview ? 'transparent' : '#f8f9fa',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {sideImagePreview ? (
+                      <img src={sideImagePreview} alt="Side Preview" style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'contain', borderRadius: '6px' }} />
+                    ) : (
+                      <div style={{ textAlign: 'center' }}>
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fd7e14" strokeWidth="2">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="17 8 12 3 7 8"></polyline>
+                          <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#666' }}><strong>Side</strong></p>
+                      </div>
+                    )}
+                    <input type="file" id="sideImageInput" accept="image/*" className="hidden-input" onChange={(e) => handleImageChange(e, 'side')} style={{ display: 'none' }} />
+                    <span style={{ fontSize: '11px', color: '#fd7e14', marginTop: '5px', fontWeight: '600' }}>Side View</span>
+                  </div>
+                </div>
+                <small style={{ display: 'block', textAlign: 'center', color: '#888', marginTop: '10px' }}>
+                  Upload up to 3 images (JPG, PNG) - Max 5MB each
+                </small>
               </div>
 
               <div className="form-grid">
@@ -920,10 +1167,16 @@ const PostRent = () => {
             
             <div className="detail-modal-body">
               <div className="detail-image-section">
-                <img 
-                  src={selectedItem.image_url ? getRentalImageUrl(selectedItem.image_url) : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSIjOTk5Ij5ObyBJbWFnZTwvdGV4dD48L3N2Zz4='} 
-                  alt={selectedItem.item_name} 
-                  className="detail-image"
+                {/* Image Carousel for multiple images */}
+                <ImageCarousel 
+                  images={[
+                    { url: selectedItem.front_image, label: 'Front' },
+                    { url: selectedItem.back_image, label: 'Back' },
+                    { url: selectedItem.side_image, label: 'Side' },
+                    { url: selectedItem.image_url, label: 'Main' }
+                  ].filter(img => img.url)}
+                  itemName={selectedItem.item_name}
+                  getRentalImageUrl={getRentalImageUrl}
                 />
               </div>
               
@@ -944,7 +1197,7 @@ const PostRent = () => {
                   </div>
                 </div>
                 
-                {selectedItem.damage_notes && (
+                {(selectedItem.damage_notes || selectedItem.damaged_by) && (
                   <div className="detail-damage" style={{
                     marginBottom: '20px',
                     padding: '15px',
@@ -956,24 +1209,47 @@ const PostRent = () => {
                     <h4 style={{ margin: '0 0 10px 0', color: selectedItem.status === 'maintenance' ? '#856404' : '#1565c0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {selectedItem.status === 'maintenance' ? '⚠️' : '📝'} Damage/Maintenance Notes
                     </h4>
-                    <p style={{ margin: 0, color: selectedItem.status === 'maintenance' ? '#856404' : '#1565c0', lineHeight: '1.5' }}>
-                      {(() => {
-                        try {
-                          // Try to parse as JSON to handle bundled rental damage notes
-                          const parsed = JSON.parse(selectedItem.damage_notes);
-                          if (typeof parsed === 'object' && parsed !== null) {
-                            // Extract just the damage notes values, ignoring the item names for consistency
-                            return Object.values(parsed).join('; ');
-                          } else {
-                            // If parsed but not an object, return as string
+                    {selectedItem.damage_notes && (
+                      <p style={{ margin: 0, color: selectedItem.status === 'maintenance' ? '#856404' : '#1565c0', lineHeight: '1.5' }}>
+                        {(() => {
+                          try {
+                            // Try to parse as JSON to handle bundled rental damage notes
+                            const parsed = JSON.parse(selectedItem.damage_notes);
+                            if (typeof parsed === 'object' && parsed !== null) {
+                              // Extract just the damage notes values, ignoring the item names for consistency
+                              return Object.values(parsed).join('; ');
+                            } else {
+                              // If parsed but not an object, return as string
+                              return selectedItem.damage_notes;
+                            }
+                          } catch (e) {
+                            // If not JSON, return as is
                             return selectedItem.damage_notes;
                           }
-                        } catch (e) {
-                          // If not JSON, return as is
-                          return selectedItem.damage_notes;
-                        }
-                      })()}
-                    </p>
+                        })()}
+                      </p>
+                    )}
+                    {selectedItem.damaged_by && (
+                      <div style={{ 
+                        marginTop: selectedItem.damage_notes ? '12px' : '0',
+                        padding: '10px 12px',
+                        backgroundColor: '#ffebee',
+                        borderRadius: '6px',
+                        border: '1px solid #ef9a9a'
+                      }}>
+                        <p style={{ 
+                          margin: 0, 
+                          color: '#c62828', 
+                          fontWeight: '600',
+                          fontSize: '0.95em',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          👤 Damaged by: <span style={{ fontWeight: '700' }}>{selectedItem.damaged_by}</span>
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
                 

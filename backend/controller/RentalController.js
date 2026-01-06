@@ -4,10 +4,31 @@ const RentalInventory = require('../model/RentalInventoryModel');
 exports.createRental = (req, res) => {
   const { item_name, description, brand, size, color, category, price, downpayment, total_available, image_url, material, care_instructions, damage_notes } = req.body;
 
-  // Handle image upload
-  let imageUrl = null;
-  if (req.file) {
-    imageUrl = `/uploads/rental-images/${req.file.filename}`;
+  // Handle multiple image uploads
+  let frontImage = null;
+  let backImage = null;
+  let sideImage = null;
+  let mainImageUrl = null;
+
+  if (req.files) {
+    // Handle multiple files from multer fields
+    if (req.files.front_image && req.files.front_image[0]) {
+      frontImage = `/uploads/rental-images/${req.files.front_image[0].filename}`;
+      mainImageUrl = frontImage; // Use front image as main image
+    }
+    if (req.files.back_image && req.files.back_image[0]) {
+      backImage = `/uploads/rental-images/${req.files.back_image[0].filename}`;
+    }
+    if (req.files.side_image && req.files.side_image[0]) {
+      sideImage = `/uploads/rental-images/${req.files.side_image[0].filename}`;
+    }
+    // Legacy support for single 'image' field
+    if (req.files.image && req.files.image[0]) {
+      mainImageUrl = `/uploads/rental-images/${req.files.image[0].filename}`;
+    }
+  } else if (req.file) {
+    // Fallback for single file upload (legacy support)
+    mainImageUrl = `/uploads/rental-images/${req.file.filename}`;
   }
 
   // Validation
@@ -27,7 +48,10 @@ exports.createRental = (req, res) => {
     price,
     downpayment,
     total_available,
-    image_url: imageUrl, // Use the uploaded image path
+    image_url: mainImageUrl, // Main image (typically front)
+    front_image: frontImage,
+    back_image: backImage,
+    side_image: sideImage,
     material,
     care_instructions,
     damage_notes
@@ -46,7 +70,10 @@ exports.createRental = (req, res) => {
     res.status(201).json({
       message: "Rental item created successfully",
       item_id: result.insertId,
-      image_url: imageUrl, // Include image_url in response
+      image_url: mainImageUrl,
+      front_image: frontImage,
+      back_image: backImage,
+      side_image: sideImage,
       ...rentalData
     });
   });
@@ -137,12 +164,32 @@ exports.getRentalsByCategory = (req, res) => {
 
 exports.updateRental = (req, res) => {
   const { item_id } = req.params;
-  const { item_name, description, brand, size, color, category, price, downpayment, total_available, image_url, material, care_instructions, damage_notes, status } = req.body;
+  const { item_name, description, brand, size, color, category, price, downpayment, total_available, image_url, front_image, back_image, side_image, material, care_instructions, damage_notes, status } = req.body;
 
-  // Handle image upload
-  let imageUrl = image_url; // Keep existing image_url if provided
-  if (req.file) {
-    imageUrl = `/uploads/rental-images/${req.file.filename}`;
+  // Handle multiple image uploads
+  let frontImageUrl = front_image || null;
+  let backImageUrl = back_image || null;
+  let sideImageUrl = side_image || null;
+  let mainImageUrl = image_url || null;
+
+  if (req.files) {
+    // Handle multiple files from multer fields
+    if (req.files.front_image && req.files.front_image[0]) {
+      frontImageUrl = `/uploads/rental-images/${req.files.front_image[0].filename}`;
+    }
+    if (req.files.back_image && req.files.back_image[0]) {
+      backImageUrl = `/uploads/rental-images/${req.files.back_image[0].filename}`;
+    }
+    if (req.files.side_image && req.files.side_image[0]) {
+      sideImageUrl = `/uploads/rental-images/${req.files.side_image[0].filename}`;
+    }
+    // Legacy support for single 'image' field
+    if (req.files.image && req.files.image[0]) {
+      mainImageUrl = `/uploads/rental-images/${req.files.image[0].filename}`;
+    }
+  } else if (req.file) {
+    // Fallback for single file upload (legacy support)
+    mainImageUrl = `/uploads/rental-images/${req.file.filename}`;
   }
 
   RentalInventory.findById(item_id, (err, existingItem) => {
@@ -160,9 +207,23 @@ exports.updateRental = (req, res) => {
       });
     }
 
-    // If no new image uploaded and no image_url provided, keep the existing one
-    if (!imageUrl && existingItem[0].image_url) {
-      imageUrl = existingItem[0].image_url;
+    // If no new images uploaded, keep the existing ones
+    if (!mainImageUrl && existingItem[0].image_url) {
+      mainImageUrl = existingItem[0].image_url;
+    }
+    if (!frontImageUrl && existingItem[0].front_image) {
+      frontImageUrl = existingItem[0].front_image;
+    }
+    if (!backImageUrl && existingItem[0].back_image) {
+      backImageUrl = existingItem[0].back_image;
+    }
+    if (!sideImageUrl && existingItem[0].side_image) {
+      sideImageUrl = existingItem[0].side_image;
+    }
+
+    // If front_image is set but main image_url is not, use front as main
+    if (frontImageUrl && !mainImageUrl) {
+      mainImageUrl = frontImageUrl;
     }
 
     const updateData = {
@@ -175,7 +236,10 @@ exports.updateRental = (req, res) => {
       price,
       downpayment,
       total_available,
-      image_url: imageUrl,
+      image_url: mainImageUrl,
+      front_image: frontImageUrl,
+      back_image: backImageUrl,
+      side_image: sideImageUrl,
       material,
       care_instructions,
       damage_notes,
@@ -194,7 +258,10 @@ exports.updateRental = (req, res) => {
       res.json({
         message: "Rental item updated successfully",
         item_id: parseInt(item_id),
-        image_url: imageUrl,
+        image_url: mainImageUrl,
+        front_image: frontImageUrl,
+        back_image: backImageUrl,
+        side_image: sideImageUrl,
         ...updateData
       });
     });
@@ -204,7 +271,7 @@ exports.updateRental = (req, res) => {
 
 exports.updateRentalStatus = (req, res) => {
   const { item_id } = req.params;
-  const { status, damage_notes } = req.body;
+  const { status, damage_notes, damaged_by } = req.body;
 
   if (!['available', 'rented', 'maintenance'].includes(status)) {
     return res.status(400).json({ 
@@ -214,7 +281,7 @@ exports.updateRentalStatus = (req, res) => {
 
   // If damage_notes is provided, use the function that updates both status and damage_notes
   if (damage_notes !== undefined) {
-    RentalInventory.updateStatusWithDamageNotes(item_id, status, damage_notes || null, (err, result) => {
+    RentalInventory.updateStatusWithDamageNotes(item_id, status, damage_notes || null, damaged_by || null, (err, result) => {
       if (err) {
         console.error("Error updating rental status with damage notes:", err);
         return res.status(500).json({ 
@@ -227,7 +294,8 @@ exports.updateRentalStatus = (req, res) => {
         message: `Rental item status updated to ${status}${damage_notes ? ' with damage notes' : ''}`,
         item_id: parseInt(item_id),
         status,
-        damage_notes: damage_notes || null
+        damage_notes: damage_notes || null,
+        damaged_by: damaged_by || null
       });
     });
   } else {

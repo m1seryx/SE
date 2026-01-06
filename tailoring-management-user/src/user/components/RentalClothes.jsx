@@ -5,6 +5,107 @@ import { addToCart } from '../../api/CartApi';
 import suitSample from "../../assets/suits.png";
 import { useAlert } from '../../context/AlertContext';
 
+// Simple Image Carousel Component for User View
+const RentalImageCarousel = ({ images, itemName }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // Filter out empty images and get valid ones
+  const validImages = images.filter(img => img && img.url);
+  
+  if (validImages.length === 0) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', borderRadius: '10px' }}>
+        <img 
+          src={suitSample}
+          alt={itemName}
+          style={{ maxWidth: '100%', maxHeight: '450px', objectFit: 'contain', borderRadius: '10px' }}
+        />
+      </div>
+    );
+  }
+
+  // Single image - no controls needed
+  if (validImages.length === 1) {
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', borderRadius: '10px' }}>
+        <img 
+          src={validImages[0].url}
+          alt={itemName}
+          style={{ maxWidth: '100%', maxHeight: '450px', objectFit: 'contain', borderRadius: '10px' }}
+        />
+      </div>
+    );
+  }
+
+  const goToPrev = () => setCurrentIndex(prev => (prev === 0 ? validImages.length - 1 : prev - 1));
+  const goToNext = () => setCurrentIndex(prev => (prev === validImages.length - 1 ? 0 : prev + 1));
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      {/* Main Image Container */}
+      <div style={{ 
+        position: 'relative', 
+        backgroundColor: '#ffffff',
+        borderRadius: '10px',
+        overflow: 'hidden',
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '400px'
+      }}>
+        <img 
+          src={validImages[currentIndex].url}
+          alt={`${itemName} - ${validImages[currentIndex].label}`}
+          style={{ maxWidth: '100%', maxHeight: '450px', objectFit: 'contain' }}
+        />
+        
+        {/* View Label */}
+        <div style={{
+          position: 'absolute',
+          top: '8px',
+          left: '8px',
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          color: 'white',
+          padding: '4px 10px',
+          borderRadius: '12px',
+          fontSize: '11px',
+          fontWeight: '500'
+        }}>
+          {validImages[currentIndex].label}
+        </div>
+
+        {/* Navigation Arrows */}
+        <button onClick={goToPrev} style={{
+          position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)',
+          width: '36px', height: '36px', borderRadius: '50%', border: 'none',
+          backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer',
+          fontSize: '18px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+        }}>‹</button>
+        <button onClick={goToNext} style={{
+          position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
+          width: '36px', height: '36px', borderRadius: '50%', border: 'none',
+          backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer',
+          fontSize: '18px', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+        }}>›</button>
+      </div>
+      
+      {/* Thumbnails */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '10px' }}>
+        {validImages.map((img, index) => (
+          <button key={index} onClick={() => setCurrentIndex(index)} style={{
+            width: '55px', height: '55px', padding: 0, borderRadius: '6px', overflow: 'hidden',
+            border: index === currentIndex ? '2px solid #8B4513' : '2px solid #ddd',
+            cursor: 'pointer', opacity: index === currentIndex ? 1 : 0.6, backgroundColor: '#fff'
+          }}>
+            <img src={img.url} alt={img.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // Measurements Dropdown Component
 const MeasurementsDropdown = ({ measurements, item, isInModal = false, measurementUnit = 'inch', onUnitChange }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -466,19 +567,30 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
         if (result.items && result.items.length > 0) {
           // Transform API data to match component structure
           // IMPORTANT: Preserve all fields including size (which contains measurements as JSON)
-          const transformedItems = result.items.map(item => ({
-            ...item,
-            img: item.image_url ? getRentalImageUrl(item.image_url) : suitSample,
-            price: item.price ? `P ${item.price}` : 'P 500',
-            // Ensure size field is preserved (contains measurements JSON)
-            size: item.size || null,
-            category: item.category || 'suit',
-            // Preserve all other fields
-            item_name: item.item_name,
-            brand: item.brand,
-            color: item.color,
-            material: item.material
-          }));
+          const transformedItems = result.items.map(item => {
+            // Determine the best image to show as thumbnail (prefer front_image)
+            const thumbnailImage = item.front_image 
+              ? getRentalImageUrl(item.front_image) 
+              : (item.image_url ? getRentalImageUrl(item.image_url) : suitSample);
+            
+            return {
+              ...item,
+              img: thumbnailImage,
+              price: item.price ? `P ${item.price}` : 'P 500',
+              // Ensure size field is preserved (contains measurements JSON)
+              size: item.size || null,
+              category: item.category || 'suit',
+              // Preserve all other fields
+              item_name: item.item_name,
+              brand: item.brand,
+              color: item.color,
+              material: item.material,
+              // Multiple image fields
+              front_image: item.front_image || null,
+              back_image: item.back_image || null,
+              side_image: item.side_image || null
+            };
+          });
           setRentalItems(transformedItems);
         } else {
           // No items found - set empty array
@@ -643,7 +755,10 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
           brand: selectedItem.brand || 'Unknown',
           size: selectedItem.size || 'Standard',
           category: selectedItem.category || 'rental',
-          image_url: getRentalImageUrl(selectedItem.image_url)
+          image_url: selectedItem.front_image ? getRentalImageUrl(selectedItem.front_image) : getRentalImageUrl(selectedItem.image_url),
+          front_image: selectedItem.front_image ? getRentalImageUrl(selectedItem.front_image) : null,
+          back_image: selectedItem.back_image ? getRentalImageUrl(selectedItem.back_image) : null,
+          side_image: selectedItem.side_image ? getRentalImageUrl(selectedItem.side_image) : null
         },
         rentalDates: {
           startDate: startDate,
@@ -700,7 +815,10 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
         size: item.size || 'Standard',
         category: item.category || 'rental',
         downpayment: item.downpayment || 0,
-        image_url: getRentalImageUrl(item.image_url),
+        image_url: item.front_image ? getRentalImageUrl(item.front_image) : getRentalImageUrl(item.image_url),
+        front_image: item.front_image ? getRentalImageUrl(item.front_image) : null,
+        back_image: item.back_image ? getRentalImageUrl(item.back_image) : null,
+        side_image: item.side_image ? getRentalImageUrl(item.side_image) : null,
         individual_cost: calculateTotalCost(rentalDuration, item)
       }));
 
@@ -1297,7 +1415,16 @@ const RentalClothes = ({ openAuthModal, showAll = false }) => {
               zIndex: 10
             }}>×</span>
             <div className="modal-body" style={{ maxHeight: 'calc(90vh - 40px)', overflow: 'hidden', display: 'flex', gap: '30px' }}>
-              <img src={selectedItem.img || suitSample} alt={selectedItem.name} className="modal-img" style={{ flexShrink: 0, alignSelf: 'flex-start' }} />
+              {/* Image Carousel for multiple images */}
+              <RentalImageCarousel 
+                images={[
+                  { url: selectedItem.front_image ? getRentalImageUrl(selectedItem.front_image) : null, label: 'Front' },
+                  { url: selectedItem.back_image ? getRentalImageUrl(selectedItem.back_image) : null, label: 'Back' },
+                  { url: selectedItem.side_image ? getRentalImageUrl(selectedItem.side_image) : null, label: 'Side' },
+                  { url: selectedItem.img || (selectedItem.image_url ? getRentalImageUrl(selectedItem.image_url) : null), label: 'Main' }
+                ].filter(img => img.url)}
+                itemName={selectedItem.item_name || selectedItem.name}
+              />
               <div className="modal-details" style={{ overflowY: 'auto', maxHeight: 'calc(90vh - 80px)', paddingRight: '10px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <h2 style={{ textAlign: 'center', width: '100%' }}>{selectedItem.item_name || selectedItem.name}</h2>
                 

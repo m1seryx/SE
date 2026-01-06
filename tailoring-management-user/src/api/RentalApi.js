@@ -42,7 +42,7 @@ export async function getRentalById(item_id) {
   }
 }
 
-export async function createRental(rentalData, imageFile) {
+export async function createRental(rentalData, imageFiles) {
   try {
     const formData = new FormData();
     
@@ -53,9 +53,21 @@ export async function createRental(rentalData, imageFile) {
       }
     });
     
-    // Add image file if provided
-    if (imageFile) {
-      formData.append('image', imageFile);
+    // Handle multiple image files (new format)
+    if (imageFiles && typeof imageFiles === 'object' && !imageFiles.name) {
+      // imageFiles is an object with front_image, back_image, side_image
+      if (imageFiles.front_image) {
+        formData.append('front_image', imageFiles.front_image);
+      }
+      if (imageFiles.back_image) {
+        formData.append('back_image', imageFiles.back_image);
+      }
+      if (imageFiles.side_image) {
+        formData.append('side_image', imageFiles.side_image);
+      }
+    } else if (imageFiles && imageFiles.name) {
+      // Legacy: single file passed directly
+      formData.append('image', imageFiles);
     }
     
     const response = await axios.post(`${BASE_URL}/rentals`, formData, {
@@ -74,7 +86,7 @@ export async function createRental(rentalData, imageFile) {
   }
 }
 
-export async function updateRental(item_id, rentalData, imageFile) {
+export async function updateRental(item_id, rentalData, imageFiles) {
   try {
     const formData = new FormData();
     
@@ -85,9 +97,21 @@ export async function updateRental(item_id, rentalData, imageFile) {
       }
     });
     
-    // Add image file if provided
-    if (imageFile) {
-      formData.append('image', imageFile);
+    // Handle multiple image files (new format)
+    if (imageFiles && typeof imageFiles === 'object' && !imageFiles.name) {
+      // imageFiles is an object with front_image, back_image, side_image
+      if (imageFiles.front_image) {
+        formData.append('front_image', imageFiles.front_image);
+      }
+      if (imageFiles.back_image) {
+        formData.append('back_image', imageFiles.back_image);
+      }
+      if (imageFiles.side_image) {
+        formData.append('side_image', imageFiles.side_image);
+      }
+    } else if (imageFiles && imageFiles.name) {
+      // Legacy: single file passed directly
+      formData.append('image', imageFiles);
     }
     
     const response = await axios.put(`${BASE_URL}/rentals/${item_id}`, formData, {
@@ -106,11 +130,14 @@ export async function updateRental(item_id, rentalData, imageFile) {
   }
 }
 
-export async function updateRentalStatus(item_id, status, damage_notes = null) {
+export async function updateRentalStatus(item_id, status, damage_notes = null, damaged_by = null) {
   try {
     const payload = { status };
     if (damage_notes !== null) {
       payload.damage_notes = damage_notes;
+    }
+    if (damaged_by !== null) {
+      payload.damaged_by = damaged_by;
     }
     const response = await axios.put(`${BASE_URL}/rentals/${item_id}/status`, payload);
     return response.data;

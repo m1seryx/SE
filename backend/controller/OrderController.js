@@ -1421,23 +1421,24 @@ exports.updateRentalOrderItem = (req, res) => {
           // If damage notes exist and are not empty, set status to 'maintenance', otherwise set to 'available'
           const hasDamage = damageNotes && typeof damageNotes === 'string' && damageNotes.trim().length > 0;
           const newInventoryStatus = hasDamage ? 'maintenance' : 'available';
-          console.log(`Updating rental_inventory status to '${newInventoryStatus}' for item_id: ${rentalItemId}${hasDamage ? ' (damaged)' : ' (no damage)'}`);
+          const customerName = item.first_name && item.last_name ? `${item.first_name} ${item.last_name}` : null;
+          console.log(`Updating rental_inventory status to '${newInventoryStatus}' for item_id: ${rentalItemId}${hasDamage ? ` (damaged by: ${customerName})` : ' (no damage)'}`);
           
-          // Update rental inventory status and damage_notes
+          // Update rental inventory status, damage_notes, and damaged_by
           const db = require('../config/db');
           const updateSql = hasDamage 
-            ? `UPDATE rental_inventory SET status = ?, damage_notes = ? WHERE item_id = ?`
-            : `UPDATE rental_inventory SET status = ?, damage_notes = NULL WHERE item_id = ?`;
+            ? `UPDATE rental_inventory SET status = ?, damage_notes = ?, damaged_by = ? WHERE item_id = ?`
+            : `UPDATE rental_inventory SET status = ?, damage_notes = NULL, damaged_by = NULL WHERE item_id = ?`;
           
           const updateParams = hasDamage 
-            ? [newInventoryStatus, damageNotes.trim(), rentalItemId]
+            ? [newInventoryStatus, damageNotes.trim(), customerName, rentalItemId]
             : [newInventoryStatus, rentalItemId];
           
           db.query(updateSql, updateParams, (rentalUpdateErr, rentalUpdateResult) => {
             if (rentalUpdateErr) {
               console.error('Error updating rental_inventory status:', rentalUpdateErr);
             } else {
-              console.log(`Successfully updated rental_inventory status to '${newInventoryStatus}' for item_id: ${rentalItemId}${hasDamage ? ` with damage notes: "${damageNotes.trim()}"` : ''}`);
+              console.log(`Successfully updated rental_inventory status to '${newInventoryStatus}' for item_id: ${rentalItemId}${hasDamage ? ` with damage notes: "${damageNotes.trim()}" (damaged by: ${customerName})` : ''}`);
             }
           });
         } else {

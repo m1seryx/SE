@@ -337,6 +337,16 @@ const Repair = () => {
       items = items.filter(item => item.approval_status === statusFilter);
     }
 
+    // Sort items: pending orders first, then others
+    items.sort((a, b) => {
+      const isPendingA = a.approval_status === 'pending' || a.approval_status === 'pending_review' || !a.approval_status;
+      const isPendingB = b.approval_status === 'pending' || b.approval_status === 'pending_review' || !b.approval_status;
+      
+      if (isPendingA && !isPendingB) return -1;
+      if (!isPendingA && isPendingB) return 1;
+      return 0;
+    });
+
     return items;
   };
 

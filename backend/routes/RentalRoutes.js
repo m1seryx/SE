@@ -3,8 +3,15 @@ const router = express.Router();
 const rentalController = require('../controller/RentalController');
 const { uploadSingle, handleUploadError } = require('../middleware/UploadMiddleware');
 
+// Define fields for multiple image uploads (front, back, side)
+const rentalImageFields = uploadSingle.fields([
+  { name: 'image', maxCount: 1 },      // Legacy single image support
+  { name: 'front_image', maxCount: 1 },
+  { name: 'back_image', maxCount: 1 },
+  { name: 'side_image', maxCount: 1 }
+]);
 
-router.post('/', uploadSingle.single('image'), rentalController.createRental);
+router.post('/', rentalImageFields, rentalController.createRental);
 
 
 router.get('/', rentalController.getAllRentals);
@@ -25,7 +32,7 @@ router.get('/category/:category', rentalController.getRentalsByCategory);
 router.get('/:item_id', rentalController.getRentalById);
 
 
-router.put('/:item_id', uploadSingle.single('image'), rentalController.updateRental);
+router.put('/:item_id', rentalImageFields, rentalController.updateRental);
 
 
 router.put('/:item_id/status', rentalController.updateRentalStatus);

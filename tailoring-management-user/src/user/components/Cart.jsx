@@ -12,6 +12,7 @@ import {
 import ImagePreviewModal from '../../components/ImagePreviewModal';
 import { useAlert } from '../../context/AlertContext';
 import { getRentalImageUrl } from '../../api/RentalApi';
+import SimpleImageCarousel from '../../components/SimpleImageCarousel';
 
 const Cart = ({ isOpen, onClose, onCartUpdate }) => {
   const { confirm } = useAlert();
@@ -1304,27 +1305,28 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
               </button>
             </div>
             
-            {/* Rental Image */}
-            {selectedRentalItem.specific_data?.image_url && (
-              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <img
-                  src={selectedRentalItem.specific_data.image_url}
-                  alt={selectedRentalItem.specific_data?.item_name || 'Rental Item'}
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '250px',
-                    objectFit: 'contain',
-                    borderRadius: '8px',
-                    border: '1px solid #e0e0e0',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => openImagePreview(selectedRentalItem.specific_data.image_url, selectedRentalItem.specific_data?.item_name || 'Rental Item')}
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
-              </div>
-            )}
+            {/* Rental Image Carousel */}
+            {(() => {
+              const rentalImages = [
+                selectedRentalItem.specific_data?.front_image && { url: selectedRentalItem.specific_data.front_image, label: 'Front' },
+                selectedRentalItem.specific_data?.back_image && { url: selectedRentalItem.specific_data.back_image, label: 'Back' },
+                selectedRentalItem.specific_data?.side_image && { url: selectedRentalItem.specific_data.side_image, label: 'Side' },
+                selectedRentalItem.specific_data?.image_url && { url: selectedRentalItem.specific_data.image_url, label: 'Main' }
+              ].filter(Boolean);
+              
+              if (rentalImages.length > 0) {
+                return (
+                  <div style={{ marginBottom: '20px' }}>
+                    <SimpleImageCarousel 
+                      images={rentalImages}
+                      itemName={selectedRentalItem.specific_data?.item_name || 'Rental Item'}
+                      height="220px"
+                    />
+                  </div>
+                );
+              }
+              return null;
+            })()}
             
             {/* Rental Details */}
             <div style={{ display: 'grid', gap: '12px' }}>
