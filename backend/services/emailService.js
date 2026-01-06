@@ -729,6 +729,9 @@ const sendServiceStatusEmail = async ({
       case 'ready_for_pickup':
         statusMessage = `Great news! Your ${serviceLabel.toLowerCase()} is complete and ready for pickup. Please visit our store to collect your item.`;
         break;
+      case 'picked_up':
+        statusMessage = `Your ${serviceLabel.toLowerCase()} has been picked up successfully. Thank you for choosing D'jackman Tailor Deluxe!`;
+        break;
       case 'completed':
         statusMessage = `Your ${serviceLabel.toLowerCase()} has been completed successfully. Thank you for choosing D'jackman Tailor Deluxe!`;
         break;

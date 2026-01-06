@@ -740,6 +740,54 @@ exports.updateRepairOrderItem = (req, res) => {
             }
           }
           
+          // Create price confirmation notification
+          if (updateData.approvalStatus === 'price_confirmation') {
+            Notification.createStatusUpdateNotification(
+              customerUserId,
+              itemId,
+              'price_confirmation',
+              null,
+              serviceType,
+              (notifErr) => {
+                if (notifErr) {
+                  console.error('[NOTIFICATION] Failed to create price confirmation notification:', notifErr);
+                } else {
+                  console.log('[NOTIFICATION] Price confirmation notification created successfully');
+                }
+              }
+            );
+            
+            // Send email notification for price confirmation
+            try {
+              const emailService = require('../services/emailService');
+              const dbConn = require('../config/db');
+              
+              const getUserSql = `SELECT u.email, u.first_name, u.last_name FROM user u WHERE u.user_id = ?`;
+              dbConn.query(getUserSql, [customerUserId], async (userErr, userResults) => {
+                if (!userErr && userResults.length > 0) {
+                  const user = userResults[0];
+                  const specificData = item.specific_data ? 
+                    (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data) : {};
+                  const itemName = specificData.garment_type || specificData.item_name || 'Repair Item';
+                  
+                  await emailService.sendServiceStatusEmail({
+                    userEmail: user.email,
+                    userName: `${user.first_name} ${user.last_name}`,
+                    serviceName: itemName,
+                    serviceType: serviceType,
+                    status: 'price_confirmation',
+                    orderId: itemId,
+                    message: updateData.adminNotes || null,
+                    appointmentDate: item.appointment_date || null
+                  });
+                  console.log(`[EMAIL] Service status email sent to ${user.email} for status: price_confirmation`);
+                }
+              });
+            } catch (emailErr) {
+              console.error('[EMAIL] Error sending service status email:', emailErr);
+            }
+          }
+          
           // Create status update notifications
           const statusNotificationStatuses = [
             'confirmed',
@@ -1095,6 +1143,54 @@ exports.updateDryCleaningOrderItem = (req, res) => {
                     appointmentDate: item.appointment_date || null
                   });
                   console.log(`[EMAIL] Service status email sent to ${user.email} for status: accepted`);
+                }
+              });
+            } catch (emailErr) {
+              console.error('[EMAIL] Error sending service status email:', emailErr);
+            }
+          }
+          
+          // Create price confirmation notification
+          if (updateData.approvalStatus === 'price_confirmation') {
+            Notification.createStatusUpdateNotification(
+              customerUserId,
+              itemId,
+              'price_confirmation',
+              null,
+              serviceType,
+              (notifErr) => {
+                if (notifErr) {
+                  console.error('[NOTIFICATION] Failed to create price confirmation notification:', notifErr);
+                } else {
+                  console.log('[NOTIFICATION] Price confirmation notification created successfully');
+                }
+              }
+            );
+            
+            // Send email notification for price confirmation
+            try {
+              const emailService = require('../services/emailService');
+              const dbConn = require('../config/db');
+              
+              const getUserSql = `SELECT u.email, u.first_name, u.last_name FROM user u WHERE u.user_id = ?`;
+              dbConn.query(getUserSql, [customerUserId], async (userErr, userResults) => {
+                if (!userErr && userResults.length > 0) {
+                  const user = userResults[0];
+                  const specificData = item.specific_data ? 
+                    (typeof item.specific_data === 'string' ? JSON.parse(item.specific_data) : item.specific_data) : {};
+                  const itemName = specificData.garment_type || specificData.item_name || 'Dry Cleaning Item';
+                  
+                  await emailService.sendServiceStatusEmail({
+                    userEmail: user.email,
+                    userName: `${user.first_name} ${user.last_name}`,
+                    serviceName: itemName,
+                    serviceType: serviceType,
+                    status: 'price_confirmation',
+                    orderId: itemId,
+                    message: updateData.adminNotes || null,
+                    appointmentDate: item.appointment_date || null
+                  });
+                  console.log(`[EMAIL] Service status email sent to ${user.email} for status: price_confirmation`);
                 }
               });
             } catch (emailErr) {
@@ -1652,6 +1748,7 @@ exports.updateRentalOrderItem = (req, res) => {
             'ready_for_pickup',
             'ready_to_pickup',
             'rented',
+            'picked_up',
             'returned',
             'completed',
             'cancelled'
