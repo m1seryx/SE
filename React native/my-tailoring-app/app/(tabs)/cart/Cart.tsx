@@ -76,21 +76,59 @@ export default function CartScreen() {
             console.log('Processed image URL:', processedImage);
           }
           
-          // Format the date nicely
+          // Format the date nicely - handle combined date+time or separate fields
           const rawDate = item.specific_data?.pickupDate || item.specific_data?.preferredDate || item.appointment_date;
+          const appointmentTime = item.specific_data?.appointmentTime;
           let formattedDate = '';
+          
           if (rawDate) {
             try {
-              const date = new Date(rawDate);
-              formattedDate = date.toLocaleString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-              });
+              // Check if pickupDate includes time (combined format like "2026-02-03T08:00:00")
+              if (rawDate.includes('T') && rawDate.match(/\d{2}:\d{2}/)) {
+                const date = new Date(rawDate);
+                formattedDate = date.toLocaleString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true
+                });
+              } else if (appointmentTime) {
+                // If date and time are separate, combine them for display
+                const dateOnly = new Date(rawDate);
+                const timeParts = appointmentTime.split(':');
+                if (timeParts.length >= 2) {
+                  dateOnly.setHours(parseInt(timeParts[0]), parseInt(timeParts[1]), 0);
+                  formattedDate = dateOnly.toLocaleString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                  });
+                } else {
+                  // Just date, no time
+                  formattedDate = dateOnly.toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  });
+                }
+              } else {
+                // Just date, no time
+                const date = new Date(rawDate);
+                formattedDate = date.toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric'
+                });
+              }
             } catch (e) {
               formattedDate = rawDate;
             }

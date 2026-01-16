@@ -3,9 +3,12 @@ const router = express.Router();
 const CustomizationController = require('../controller/CustomizationController');
 const middleware = require('../middleware/AuthToken');
 
-// Apply auth middleware to all routes except public ones
-// Note: Custom models GET endpoints might need to be public for 3D viewer
-// For now, keeping auth required - frontend should send token
+// Public routes for 3D customizer (no auth required)
+// Custom models GET endpoints need to be public for 3D viewer to work
+router.get('/custom-models', CustomizationController.getAllCustom3DModels);
+router.get('/custom-models/type/:type', CustomizationController.getCustom3DModelsByType);
+
+// Apply auth middleware to all routes below (protected routes)
 router.use(middleware.verifyToken);
 
 // Image upload endpoint
@@ -23,13 +26,11 @@ router.get('/', CustomizationController.getAllCustomizationOrders);
 // Get customization stats (admin dashboard)
 router.get('/stats', CustomizationController.getCustomizationStats);
 
-// Custom 3D Models routes - MUST be before /:itemId route to avoid route conflicts
+// Custom 3D Models routes - POST and DELETE require auth (protected)
 router.post('/upload-glb', 
   CustomizationController.uploadGLBFile, 
   CustomizationController.handleGLBUpload
 );
-router.get('/custom-models', CustomizationController.getAllCustom3DModels);
-router.get('/custom-models/type/:type', CustomizationController.getCustom3DModelsByType);
 router.delete('/custom-models/:modelId', CustomizationController.deleteCustom3DModel);
 
 // Get single order item - MUST be after specific routes

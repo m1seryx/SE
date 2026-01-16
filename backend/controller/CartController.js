@@ -15,9 +15,13 @@ function linkAppointmentSlotToCart(userId, serviceType, specificData, cartItemId
 
   // Extract date and time from specificData
   const appointmentDate = specificData?.pickupDate || specificData?.preferredDate || specificData?.datetime;
+  const appointmentTime = specificData?.appointmentTime; // Also check for separate time field
+  
   if (!appointmentDate) return;
 
   let date, time;
+  
+  // Check if date includes time (combined format like "2026-02-03T08:00:00")
   if (appointmentDate.includes('T')) {
     const [datePart, timePart] = appointmentDate.split('T');
     date = datePart;
@@ -25,6 +29,17 @@ function linkAppointmentSlotToCart(userId, serviceType, specificData, cartItemId
     const timeMatch = timePart.match(/(\d{2}):(\d{2})/);
     if (timeMatch) {
       time = `${timeMatch[1]}:${timeMatch[2]}:00`;
+    }
+  } else if (appointmentTime) {
+    // If date and time are separate, use them
+    date = appointmentDate.split('T')[0]; // Get just the date part if it has time
+    // Format time to HH:MM:SS
+    const timeMatch = appointmentTime.match(/(\d{2}):(\d{2})/);
+    if (timeMatch) {
+      time = `${timeMatch[1]}:${timeMatch[2]}:00`;
+    } else if (appointmentTime.match(/^\d{2}:\d{2}:\d{2}$/)) {
+      // Already in HH:MM:SS format
+      time = appointmentTime;
     }
   }
 

@@ -343,6 +343,7 @@ export default function Customizer3DScreen() {
   }, []);
 
   // JavaScript to inject into web page for communication
+  const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.1.202:5000/api';
   const injectedJavaScript = `
     (function() {
       // Store auth data in web app
@@ -350,7 +351,8 @@ export default function Customizer3DScreen() {
         token: ${authToken ? `"${authToken}"` : 'null'},
         userId: ${userId ? `"${userId}"` : 'null'},
         platform: 'react-native',
-        version: '1.0.0'
+        version: '1.0.0',
+        apiBaseUrl: "${apiBaseUrl}"
       };
 
       // Override console.log to forward logs to RN (for debugging)
@@ -778,7 +780,9 @@ export default function Customizer3DScreen() {
       {/* WebView */}
       <WebView
         ref={webViewRef}
-        source={{ uri: WEB_3D_CUSTOMIZER_URL }}
+        source={{ 
+          uri: `${WEB_3D_CUSTOMIZER_URL}${WEB_3D_CUSTOMIZER_URL.includes('?') ? '&' : '?'}_t=${Date.now()}&_platform=mobile` 
+        }}
         style={styles.webview}
         onLoadEnd={handleLoadEnd}
         onError={handleError}
@@ -797,7 +801,8 @@ export default function Customizer3DScreen() {
         scalesPageToFit={true}
         showsHorizontalScrollIndicator={false}
         showsVerticalScrollIndicator={false}
-        cacheEnabled={true}
+        cacheEnabled={false}
+        cacheMode="LOAD_NO_CACHE"
         thirdPartyCookiesEnabled={true}
         sharedCookiesEnabled={true}
         // Android WebGL/3D specific settings

@@ -19,9 +19,22 @@ import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePickerModal from "../../../components/DateTimePickerModal";
 import { addRepairToCart, uploadRepairImage } from "../../../utils/repairService";
+import { appointmentSlotService } from "../../../utils/apiService";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get("window");
+
+interface TimeSlot {
+  slot_id: number;
+  time_slot: string;
+  display_time: string;
+  capacity: number;
+  booked: number;
+  available: number;
+  status: 'available' | 'limited' | 'full' | 'inactive';
+  statusLabel: string;
+  isClickable: boolean;
+}
 
 export default function RepairClothes() {
   const router = useRouter();
@@ -34,7 +47,10 @@ export default function RepairClothes() {
   const [description, setDescription] = useState("");
   const [appointmentDate, setAppointmentDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("");
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [isShopOpen, setIsShopOpen] = useState(true);
   const [estimatedPrice, setEstimatedPrice] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -107,29 +123,46 @@ export default function RepairClothes() {
     setImagePreview(null);
   };
 
-  // Date & Time Handlers
-  const handleDateConfirm = (selectedDate: Date) => {
+  // Date Handler
+  const handleDateConfirm = async (selectedDate: Date) => {
     setAppointmentDate(selectedDate);
     setShowDatePicker(false);
-    // Show time picker after date is selected
-    setTimeout(() => setShowTimePicker(true), 300);
+    setSelectedTimeSlot(""); // Reset time slot when date changes
+    await loadTimeSlots(selectedDate);
   };
 
-  const handleTimeConfirm = (selectedTime: Date) => {
-    if (appointmentDate) {
-      const updatedDate = new Date(appointmentDate);
-      updatedDate.setHours(selectedTime.getHours());
-      updatedDate.setMinutes(selectedTime.getMinutes());
-      setAppointmentDate(updatedDate);
-    } else {
-      setAppointmentDate(selectedTime);
+  // Load time slots for selected date
+  const loadTimeSlots = async (date: Date) => {
+    setLoadingSlots(true);
+    try {
+      const dateStr = date.toISOString().split('T')[0];
+      const result = await appointmentSlotService.getAllSlotsWithAvailability('repair', dateStr);
+      
+      if (result.success) {
+        if (!result.isShopOpen) {
+          setIsShopOpen(false);
+          setTimeSlots([]);
+          Alert.alert('Shop Closed', 'The shop is closed on this date. Please select another date.');
+          return;
+        }
+        
+        setIsShopOpen(true);
+        setTimeSlots(result.slots || []);
+      } else {
+        setTimeSlots([]);
+        Alert.alert('Error', result.message || 'Failed to load time slots');
+      }
+    } catch (error: any) {
+      console.error('Error loading time slots:', error);
+      setTimeSlots([]);
+      Alert.alert('Error', 'Failed to load time slots. Please try again.');
+    } finally {
+      setLoadingSlots(false);
     }
-    setShowTimePicker(false);
   };
 
   const handlePickerCancel = () => {
     setShowDatePicker(false);
-    setShowTimePicker(false);
   };
 
   const uploadImageIfNeeded = async () => {
@@ -166,6 +199,14 @@ export default function RepairClothes() {
       return;
     }
 
+    if (!selectedTimeSlot) {
+      Alert.alert(
+        "Missing Information",
+        "Please select a time slot"
+      );
+      return;
+    }
+
     // Check if user is authenticated
     const token = await AsyncStorage.getItem('userToken');
     if (!token) {
@@ -180,6 +221,27 @@ export default function RepairClothes() {
     setLoading(true);
     
     try {
+      // First, book the appointment slot (like web version does)
+      let slotResult = null;
+      try {
+        const dateStr = appointmentDate.toISOString().split('T')[0];
+        slotResult = await appointmentSlotService.bookSlot('repair', dateStr, selectedTimeSlot);
+        if (!slotResult || !slotResult.success) {
+          const errorMsg = slotResult?.message || 'Failed to book appointment slot. This time may already be taken.';
+          console.error('Slot booking failed:', slotResult);
+          Alert.alert('Slot Unavailable', errorMsg);
+          setLoading(false);
+          return;
+        }
+        console.log('Slot booked successfully:', slotResult);
+      } catch (slotError: any) {
+        console.error('Slot booking error:', slotError);
+        const errorMsg = slotError.message || 'Failed to book appointment slot. Please try again.';
+        Alert.alert('Booking Error', errorMsg);
+        setLoading(false);
+        return;
+      }
+
       // Upload image if provided
       let imageUrl = '';
       if (image) {
@@ -190,6 +252,10 @@ export default function RepairClothes() {
           Alert.alert('Warning', 'Image upload failed. Continuing without image.');
         }
       }
+
+      // Combine date and time for pickupDate (like web version does)
+      const dateStr = appointmentDate.toISOString().split('T')[0];
+      const pickupDateTime = `${dateStr}T${selectedTimeSlot}`;
 
       // Prepare repair data
       const repairData = {
@@ -203,7 +269,8 @@ export default function RepairClothes() {
         damageDescription: description,
         damageLocation: selectedItem,
         garmentType: selectedItem,
-        pickupDate: appointmentDate ? appointmentDate.toISOString() : new Date().toISOString(),
+        pickupDate: pickupDateTime, // Combined date and time (like web version)
+        appointmentTime: selectedTimeSlot, // Also keep separate for reference
         imageUrl: imageUrl || 'no-image',
         estimatedTime: getEstimatedTime(damageLevel)
       };
@@ -372,8 +439,9 @@ export default function RepairClothes() {
             Examples: 2-inch hole in left sleeve, broken zipper on jacket back, torn seam on pants
           </Text>
 
-          {/* Appointment Date & Time Picker */}
-          <Text style={styles.sectionTitle}>Preferred Appointment Date & Time *</Text>
+          {/* Appointment Date Picker */}
+          <Text style={styles.sectionTitle}>Preferred Appointment Date *</Text>
+          <Text style={styles.sectionSubtitle}>Select a date when the shop is open</Text>
           <TouchableOpacity
             style={styles.datePickerButton}
             onPress={() => setShowDatePicker(true)}
@@ -385,16 +453,84 @@ export default function RepairClothes() {
                     weekday: "short",
                     month: "short",
                     day: "numeric",
-                  }) +
-                  ", " +
-                  appointmentDate.toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
+                    year: "numeric",
                   })
-                : "Tap to select date & time"}
+                : "Tap to select date"}
             </Text>
             <Ionicons name="chevron-down" size={16} color="#8D6E63" />
           </TouchableOpacity>
+
+          {/* Time Slot Selection */}
+          {appointmentDate && (
+            <>
+              <Text style={styles.sectionTitle}>Select Time Slot *</Text>
+              
+              {/* Legend */}
+              <View style={styles.timeSlotLegend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, styles.legendDotAvailable]} />
+                  <Text style={styles.legendText}>Available</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, styles.legendDotLimited]} />
+                  <Text style={styles.legendText}>Limited</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, styles.legendDotFull]} />
+                  <Text style={styles.legendText}>Full</Text>
+                </View>
+              </View>
+
+              {/* Time Slots Grid */}
+              {loadingSlots ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color="#B8860B" />
+                  <Text style={styles.loadingText}>Loading time slots...</Text>
+                </View>
+              ) : !isShopOpen ? (
+                <View style={styles.shopClosedContainer}>
+                  <Ionicons name="close-circle" size={40} color="#ef4444" />
+                  <Text style={styles.shopClosedText}>
+                    The shop is closed on this date. Please select another date.
+                  </Text>
+                </View>
+              ) : timeSlots.length > 0 ? (
+                <View style={styles.timeSlotsGrid}>
+                  {timeSlots.map((slot) => (
+                    <TouchableOpacity
+                      key={slot.slot_id}
+                      style={[
+                        styles.timeSlotButton,
+                        styles[`timeSlotButton${slot.status.charAt(0).toUpperCase() + slot.status.slice(1)}`],
+                        selectedTimeSlot === slot.time_slot && styles.timeSlotButtonSelected,
+                        !slot.isClickable && styles.timeSlotButtonDisabled,
+                      ]}
+                      onPress={() => {
+                        if (slot.isClickable) {
+                          setSelectedTimeSlot(slot.time_slot);
+                        }
+                      }}
+                      disabled={!slot.isClickable}
+                    >
+                      <Text style={styles.slotTime}>{slot.display_time}</Text>
+                      <Text style={styles.slotStatus}>
+                        {slot.status === 'full' ? 'Fully Booked' : 
+                         slot.status === 'limited' ? `${slot.available} LEFT` : 
+                         slot.status === 'available' ? `${slot.available} SPOTS` : 'Unavailable'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.noSlotsContainer}>
+                  <Ionicons name="calendar-outline" size={40} color="#8D6E63" />
+                  <Text style={styles.noSlotsText}>
+                    No time slots available for this date. Please select another date.
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
 
           {/* Price Estimate */}
           {estimatedPrice > 0 && (
@@ -459,14 +595,6 @@ export default function RepairClothes() {
         onCancel={handlePickerCancel}
       />
 
-      {/* Time Picker Modal */}
-      <DateTimePickerModal
-        visible={showTimePicker}
-        mode="time"
-        value={appointmentDate || new Date()}
-        onConfirm={handleTimeConfirm}
-        onCancel={handlePickerCancel}
-      />
     </SafeAreaView>
   );
 }
@@ -534,6 +662,12 @@ const styles = StyleSheet.create({
     color: '#5D4037',
     marginBottom: 12,
     marginTop: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: '#8D6E63',
+    marginBottom: 12,
+    marginTop: -4,
   },
   imageUpload: {
     height: 150,
@@ -744,5 +878,130 @@ const styles = StyleSheet.create({
     color: '#5D4037',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Time Slot Styles
+  timeSlotLegend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: 'rgba(93, 64, 55, 0.04)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(93, 64, 55, 0.1)',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  legendDotAvailable: {
+    backgroundColor: '#22c55e',
+  },
+  legendDotLimited: {
+    backgroundColor: '#f59e0b',
+  },
+  legendDotFull: {
+    backgroundColor: '#ef4444',
+  },
+  legendText: {
+    fontSize: 13,
+    color: '#555',
+  },
+  timeSlotsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 16,
+  },
+  timeSlotButton: {
+    width: (width - 88) / 3, // 3 columns with gaps
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 72,
+  },
+  timeSlotButtonAvailable: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#22c55e',
+  },
+  timeSlotButtonLimited: {
+    backgroundColor: '#fffbeb',
+    borderColor: '#f59e0b',
+  },
+  timeSlotButtonFull: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#ef4444',
+    opacity: 0.75,
+  },
+  timeSlotButtonInactive: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#d4d4d4',
+    opacity: 0.6,
+  },
+  timeSlotButtonSelected: {
+    backgroundColor: '#22c55e',
+    borderColor: '#15803d',
+  },
+  timeSlotButtonDisabled: {
+    opacity: 0.6,
+  },
+  slotTime: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  slotStatus: {
+    fontSize: 11,
+    fontWeight: '500',
+    opacity: 0.85,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#8D6E63',
+  },
+  shopClosedContainer: {
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#fee2e2',
+  },
+  shopClosedText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#991b1b',
+    textAlign: 'center',
+  },
+  noSlotsContainer: {
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  noSlotsText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#8D6E63',
+    textAlign: 'center',
   },
 });

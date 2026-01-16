@@ -286,6 +286,11 @@ export const appointmentSlotService = {
     return apiCall(`/appointments/available?serviceType=${serviceType}&date=${date}`);
   },
   
+  // Get all time slots with availability status (for color-coded calendar display)
+  getAllSlotsWithAvailability: async (serviceType: string, date: string) => {
+    return apiCall(`/appointments/slots-with-availability?serviceType=${serviceType}&date=${date}`);
+  },
+  
   // Book a slot
   bookSlot: async (serviceType: string, date: string, time: string, cartItemId?: string) => {
     return apiCall('/appointments/book', {
