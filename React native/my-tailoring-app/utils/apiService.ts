@@ -287,8 +287,37 @@ export const appointmentSlotService = {
   },
   
   // Get all time slots with availability status (for color-coded calendar display)
-  getAllSlotsWithAvailability: async (serviceType: string, date: string) => {
-    return apiCall(`/appointments/slots-with-availability?serviceType=${serviceType}&date=${date}`);
+  getAllSlotsWithAvailability: async (serviceType: string, date: string, timeout?: number) => {
+    // Add timestamp to prevent caching and ensure fresh data
+    const timestamp = Date.now();
+    const url = `${API_BASE_URL}/appointments/slots-with-availability?serviceType=${serviceType}&date=${date}&_t=${timestamp}`;
+    const headers = await getAuthHeaders();
+    
+    // Use shorter timeout for polling (5 seconds) or custom timeout
+    const pollTimeout = timeout || 5000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), pollTimeout);
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        throw new Error(`Request timeout after ${pollTimeout}ms`);
+      }
+      throw fetchError;
+    }
   },
   
   // Book a slot

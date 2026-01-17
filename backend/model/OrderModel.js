@@ -73,19 +73,20 @@ const Order = {
         `;
         
         db.query(getOrderItemsSql, [orderId], (getItemsErr, orderItems) => {
-          if (getItemsErr) {
-            console.error('Error fetching order items for slot linking:', getItemsErr);
-            // Continue even if this fails
-          } else {
-            // Link appointment slots from cart_item_id to order_item_id
-            const AppointmentSlot = require('./AppointmentSlotModel');
-            
-            // Link slots for each cart item to its corresponding order item
-            // Match by index (cart items and order items should be in the same order)
-            let linkedCount = 0;
-            const totalAppointmentItems = cartItems.filter(item => 
-              ['dry_cleaning', 'repair', 'customization'].includes(item.service_type)
-            ).length;
+          // Link appointment slots from cart_item_id to order_item_id
+          const AppointmentSlot = require('./AppointmentSlotModel');
+          
+          // Link slots for each cart item to its corresponding order item
+          // Match by index (cart items and order items should be in the same order)
+          let linkedCount = 0;
+          const totalAppointmentItems = cartItems.filter(item => 
+            ['dry_cleaning', 'repair', 'customization'].includes(item.service_type)
+          ).length;
+          
+          // Link slots synchronously - wait for all to complete before continuing
+          const linkSlotPromises = [];
+          
+          if (!getItemsErr && orderItems) {
             
             cartItems.forEach((cartItem, index) => {
               if (!cartItem || !cartItem.cart_id) return;
@@ -95,69 +96,157 @@ const Order = {
               
               // Only link for appointment-based services
               if (['dry_cleaning', 'repair', 'customization'].includes(cartItem.service_type)) {
-                // Find slot by cart_item_id and link it to order_item_id
-                AppointmentSlot.getSlotByCartItem(cartItem.cart_id, (slotErr, slots) => {
-                  if (slotErr) {
-                    console.error('Error getting slot by cart item:', slotErr);
-                    return;
-                  }
-                  
-                  if (!slots || slots.length === 0) {
-                    console.log(`[ORDER] No slot found for cart_item_id ${cartItem.cart_id}`);
-                    return;
-                  }
-                  
-                  const slot = slots[0];
-                  
-                  // Before linking, verify the slot is still available (check capacity)
-                  AppointmentSlot.isSlotAvailable(
-                    orderItem.service_type,
-                    slot.appointment_date,
-                    slot.appointment_time,
-                    (availErr, isAvailable) => {
-                      if (availErr || !isAvailable) {
-                        console.warn(`[ORDER] Slot ${slot.slot_id} is no longer available. Date: ${slot.appointment_date}, Time: ${slot.appointment_time}`);
-                        // Still link it, but log the warning (race condition occurred)
-                      }
-                      
-                      // Link the slot to order item
-                      AppointmentSlot.updateSlotWithOrder(slot.slot_id, orderItem.item_id, (linkErr) => {
-                        if (linkErr) {
-                          console.error('Error linking slot to order item:', linkErr);
-                        } else {
-                          linkedCount++;
-                          console.log(`[ORDER] Linked slot ${slot.slot_id} to order item ${orderItem.item_id} (from cart_item_id ${cartItem.cart_id})`);
-                        }
-                      });
+                // Create a promise for this slot linking operation
+                const linkPromise = new Promise((resolve) => {
+                  // Find slot by cart_item_id and link it to order_item_id
+                  AppointmentSlot.getSlotByCartItem(cartItem.cart_id, (slotErr, slots) => {
+                    if (slotErr) {
+                      console.error(`[ORDER] Error getting slot by cart item ${cartItem.cart_id}:`, slotErr);
+                      resolve(false);
+                      return;
                     }
-                  );
+                    
+                    // Filter out slots that already have an order_item_id (already linked)
+                    const unlinkedSlots = slots ? slots.filter(s => !s.order_item_id) : [];
+                    
+                    if (!unlinkedSlots || unlinkedSlots.length === 0) {
+                      console.warn(`[ORDER] ⚠️ No slot found for cart_item_id ${cartItem.cart_id}, service_type: ${cartItem.service_type}`);
+                      console.warn(`[ORDER] This means the slot was not linked to cart item. Checking for unlinked slots...`);
+                      
+                      // Try to find slot by user_id, service_type, date, and time from specific_data
+                      const appointmentDate = cartItem.specific_data?.pickupDate || cartItem.specific_data?.preferredDate;
+                      const appointmentTime = cartItem.specific_data?.appointmentTime || cartItem.specific_data?.pickupDate?.split('T')[1]?.substring(0, 8);
+                      
+                      if (appointmentDate && appointmentTime) {
+                        const datePart = appointmentDate.includes('T') ? appointmentDate.split('T')[0] : appointmentDate;
+                        const timePart = appointmentTime.includes(':') && appointmentTime.split(':').length === 3 
+                          ? appointmentTime 
+                          : appointmentTime + ':00';
+                        
+                        console.log(`[ORDER] Attempting to find slot by date/time: ${datePart}, ${timePart}`);
+                        
+                        // Try to find unlinked slot for this user/date/time
+                        const db = require('../config/db');
+                        const findSlotSql = `
+                          SELECT * FROM appointment_slots 
+                          WHERE user_id = ? 
+                          AND service_type = ? 
+                          AND appointment_date = ? 
+                          AND appointment_time = ? 
+                          AND (cart_item_id = ? OR (cart_item_id IS NULL AND order_item_id IS NULL))
+                          AND status = 'booked'
+                          ORDER BY created_at DESC
+                          LIMIT 1
+                        `;
+                        db.query(findSlotSql, [cartItem.user_id || null, cartItem.service_type, datePart, timePart, cartItem.cart_id], (findErr, foundSlots) => {
+                          if (findErr || !foundSlots || foundSlots.length === 0) {
+                            console.error(`[ORDER] Could not find any matching slot for cart_item_id ${cartItem.cart_id}`);
+                            resolve(false);
+                          } else {
+                            const slot = foundSlots[0];
+                            console.log(`[ORDER] Found unlinked slot ${slot.slot_id} for cart_item_id ${cartItem.cart_id}`);
+                            AppointmentSlot.updateSlotWithOrder(slot.slot_id, orderItem.item_id, (linkErr, updateResult) => {
+                              if (linkErr) {
+                                console.error(`[ORDER] Error linking slot ${slot.slot_id} to order item ${orderItem.item_id}:`, linkErr);
+                                resolve(false);
+                              } else {
+                                linkedCount++;
+                                console.log(`[ORDER] ✅ Linked slot ${slot.slot_id} to order item ${orderItem.item_id} (fallback method)`);
+                                resolve(true);
+                              }
+                            });
+                          }
+                        });
+                      } else {
+                        resolve(false);
+                      }
+                      return;
+                    }
+                    
+                    const slot = unlinkedSlots[0];
+                    console.log(`[ORDER] Found slot ${slot.slot_id} for cart_item_id ${cartItem.cart_id}`);
+                    console.log(`[ORDER] Slot details: slot_id=${slot.slot_id}, date=${slot.appointment_date}, time=${slot.appointment_time}, service_type=${slot.service_type}, current_order_item_id=${slot.order_item_id || 'NULL'}, current_cart_item_id=${slot.cart_item_id || 'NULL'}`);
+                    
+                    // Link the slot to order item (skip availability check on order submission)
+                    AppointmentSlot.updateSlotWithOrder(slot.slot_id, orderItem.item_id, (linkErr, updateResult) => {
+                      if (linkErr) {
+                        console.error(`[ORDER] Error linking slot ${slot.slot_id} to order item ${orderItem.item_id}:`, linkErr);
+                        resolve(false);
+                      } else {
+                        linkedCount++;
+                        console.log(`[ORDER] ✅ Linked slot ${slot.slot_id} (${slot.appointment_date} ${slot.appointment_time}) to order item ${orderItem.item_id} (from cart_item_id ${cartItem.cart_id})`);
+                        console.log(`[ORDER] Update result:`, updateResult?.affectedRows || 'unknown');
+                        resolve(true);
+                      }
+                    });
+                  });
                 });
+                
+                linkSlotPromises.push(linkPromise);
               }
             });
           }
 
-          // Initialize tracking for each order item
-          const OrderTracking = require('./OrderTrackingModel');
-          const trackingItems = orderItems ? orderItems.map((item) => ({
-            order_item_id: item.item_id,
-            service_type: item.service_type
-          })) : cartItems.map((item, index) => ({
-            order_item_id: itemResult.insertId + index, // Fallback if orderItems not available
-            service_type: item.service_type
-          }));
+          // Wait for all slot linking operations to complete before calling callback
+          if (linkSlotPromises.length > 0) {
+            Promise.all(linkSlotPromises).then(() => {
+              console.log(`[ORDER] Slot linking completed. Linked ${linkedCount} out of ${totalAppointmentItems} appointment slots.`);
+              
+              // Initialize tracking after slots are linked
+              const OrderTracking = require('./OrderTrackingModel');
+              const trackingItems = orderItems ? orderItems.map((item) => ({
+                order_item_id: item.item_id,
+                service_type: item.service_type
+              })) : cartItems.map((item, index) => ({
+                order_item_id: itemResult.insertId + index, // Fallback if orderItems not available
+                service_type: item.service_type
+              }));
 
-          // Initialize tracking (async, don't wait for completion)
-          OrderTracking.initializeOrderTracking(trackingItems, (trackingErr) => {
-            if (trackingErr) {
-              console.error('Error initializing order tracking:', trackingErr);
-            }
-          });
+              // Initialize tracking (async, don't wait for completion)
+              OrderTracking.initializeOrderTracking(trackingItems, (trackingErr) => {
+                if (trackingErr) {
+                  console.error('Error initializing order tracking:', trackingErr);
+                }
+              });
 
-          callback(null, {
-            orderId: orderId,
-            orderResult: orderResult,
-            itemResult: itemResult
-          });
+              callback(null, {
+                orderId: orderId,
+                orderResult: orderResult,
+                itemResult: itemResult
+              });
+            }).catch((err) => {
+              console.error('[ORDER] Error during slot linking:', err);
+              // Still call callback even if slot linking had errors
+              callback(null, {
+                orderId: orderId,
+                orderResult: orderResult,
+                itemResult: itemResult
+              });
+            });
+          } else {
+            // No appointment slots to link, proceed immediately
+            const OrderTracking = require('./OrderTrackingModel');
+            const trackingItems = orderItems ? orderItems.map((item) => ({
+              order_item_id: item.item_id,
+              service_type: item.service_type
+            })) : cartItems.map((item, index) => ({
+              order_item_id: itemResult.insertId + index, // Fallback if orderItems not available
+              service_type: item.service_type
+            }));
+
+            // Initialize tracking (async, don't wait for completion)
+            OrderTracking.initializeOrderTracking(trackingItems, (trackingErr) => {
+              if (trackingErr) {
+                console.error('Error initializing order tracking:', trackingErr);
+              }
+            });
+
+            callback(null, {
+              orderId: orderId,
+              orderResult: orderResult,
+              itemResult: itemResult
+            });
+          }
         });
       });
     });

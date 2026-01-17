@@ -226,8 +226,13 @@ exports.getAllSlotsWithAvailability = (req, res) => {
         });
       }
 
-      // Get all time slots with their capacity
-      const slotsSql = `SELECT slot_id, time_slot, capacity, is_active FROM time_slots ORDER BY time_slot`;
+      // Get all time slots with their capacity - use GROUP BY to ensure unique time_slots
+      const slotsSql = `
+        SELECT MIN(slot_id) as slot_id, time_slot, MAX(capacity) as capacity, MAX(is_active) as is_active 
+        FROM time_slots 
+        GROUP BY time_slot 
+        ORDER BY time_slot
+      `;
       db.query(slotsSql, [], (err, slotsResults) => {
         if (err) {
           return res.status(500).json({
@@ -238,6 +243,8 @@ exports.getAllSlotsWithAvailability = (req, res) => {
         }
 
         // Get booking counts for this date (only count confirmed orders, not cart items)
+        // Slots only occupy capacity when order is submitted (order_item_id IS NOT NULL)
+        // Cart items don't reserve slots until order is submitted
         const bookingsSql = `
           SELECT appointment_time, COUNT(*) as booked_count
           FROM appointment_slots
@@ -253,35 +260,119 @@ exports.getAllSlotsWithAvailability = (req, res) => {
             });
           }
 
-          // Create map of booked counts
+          // Debug logging
+          console.log(`[SLOT AVAILABILITY] Date: ${date}, Found ${bookingsResults?.length || 0} time slots with orders`);
+          if (bookingsResults && bookingsResults.length > 0) {
+            console.log('[SLOT AVAILABILITY] Booked slots:', bookingsResults.map(r => ({ time: r.appointment_time, count: r.booked_count })));
+          }
+          
+          // Additional verification: Check all slots with order_item_id for this date
+          const verifySql = `
+            SELECT appointment_time, COUNT(*) as total_count, 
+                   GROUP_CONCAT(slot_id ORDER BY slot_id) as slot_ids
+            FROM appointment_slots
+            WHERE appointment_date = ? AND status = 'booked' AND order_item_id IS NOT NULL
+            GROUP BY appointment_time
+          `;
+          db.query(verifySql, [date], (verifyErr, verifyResults) => {
+            if (!verifyErr && verifyResults && verifyResults.length > 0) {
+              console.log('[SLOT AVAILABILITY] Verification - All slots with order_item_id:', 
+                verifyResults.map(r => ({ time: r.appointment_time, total: r.total_count, slot_ids: r.slot_ids })));
+            }
+          });
+
+          // Create map of booked counts - normalize time format to HH:MM:SS
           const bookedCounts = {};
           if (bookingsResults && Array.isArray(bookingsResults)) {
             bookingsResults.forEach(row => {
               const time = row.appointment_time;
+              let timeStr = '';
+              
+              // Handle different time formats
+              if (typeof time === 'string') {
+                timeStr = time.trim();
+              } else if (time && typeof time === 'object') {
+                // MySQL TIME object
+                timeStr = time.toString().trim();
+              } else if (time) {
+                timeStr = time.toString().trim();
+              }
+              
+              // Normalize to HH:MM:SS format
+              if (timeStr) {
+                // If format is HH:MM, add :00
+                if (timeStr.match(/^\d{2}:\d{2}$/)) {
+                  timeStr = timeStr + ':00';
+                }
+                // If format is HH:MM:SS or HH:MM:SS.microseconds, take first 8 chars
+                else if (timeStr.match(/^\d{2}:\d{2}:\d{2}/)) {
+                  timeStr = timeStr.substring(0, 8);
+                }
+                
+                // Store with normalized format
+                if (timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
+                  bookedCounts[timeStr] = (bookedCounts[timeStr] || 0) + (row.booked_count || 0);
+                }
+              }
+            });
+          }
+          
+          console.log(`[SLOT AVAILABILITY] Normalized booked counts:`, bookedCounts);
+
+          // Combine slot info with booking counts and calculate availability status
+          // Also deduplicate by time_slot to handle any edge cases
+          const seenTimes = new Set();
+          const slotsWithAvailability = slotsResults
+            .filter(slot => {
+              const time = slot.time_slot;
               let timeStr = typeof time === 'string' ? time : time.toString();
               if (!timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
                 if (timeStr.match(/^\d{2}:\d{2}$/)) {
                   timeStr = timeStr + ':00';
                 }
               }
-              bookedCounts[timeStr] = row.booked_count || 0;
-            });
-          }
-
-          // Combine slot info with booking counts and calculate availability status
-          const slotsWithAvailability = slotsResults.map(slot => {
+              // Filter out duplicates
+              if (seenTimes.has(timeStr)) {
+                return false;
+              }
+              seenTimes.add(timeStr);
+              return true;
+            })
+            .map(slot => {
             const time = slot.time_slot;
-            let timeStr = typeof time === 'string' ? time : time.toString();
-            if (!timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
+            let timeStr = '';
+            
+            // Normalize time format to HH:MM:SS
+            if (typeof time === 'string') {
+              timeStr = time.trim();
+            } else if (time && typeof time === 'object') {
+              // MySQL TIME object
+              timeStr = time.toString().trim();
+            } else if (time) {
+              timeStr = time.toString().trim();
+            }
+            
+            // Normalize to HH:MM:SS format
+            if (timeStr) {
+              // If format is HH:MM, add :00
               if (timeStr.match(/^\d{2}:\d{2}$/)) {
                 timeStr = timeStr + ':00';
+              }
+              // If format is HH:MM:SS or HH:MM:SS.microseconds, take first 8 chars
+              else if (timeStr.match(/^\d{2}:\d{2}:\d{2}/)) {
+                timeStr = timeStr.substring(0, 8);
               }
             }
             
             const booked = bookedCounts[timeStr] || 0;
-            const capacity = slot.capacity || 10;
+            const capacity = slot.capacity || 5; // Default should be 5, not 10
             const available = capacity - booked;
             const isActive = slot.is_active === 1;
+            
+            // Debug logging for specific times if booked count seems wrong
+            if (timeStr && booked > 0) {
+              console.log(`[SLOT AVAILABILITY] ${timeStr}: capacity=${capacity}, booked=${booked}, available=${available}`);
+            }
             
             // Determine availability status and color
             let status, statusLabel, color;
@@ -293,7 +384,7 @@ exports.getAllSlotsWithAvailability = (req, res) => {
               status = 'full';
               statusLabel = 'Fully Booked';
               color = 'red';
-            } else if (booked >= 5) {
+            } else if (available === 1) {
               status = 'limited';
               statusLabel = `Limited (${available} left)`;
               color = 'orange';

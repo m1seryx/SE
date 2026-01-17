@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -14,12 +14,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePickerModal from "../../../components/DateTimePickerModal";
 import { addRepairToCart, uploadRepairImage } from "../../../utils/repairService";
-import { appointmentSlotService } from "../../../utils/apiService";
+import apiCall, { appointmentSlotService } from "../../../utils/apiService";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get("window");
@@ -125,6 +125,40 @@ export default function RepairClothes() {
 
   // Date Handler
   const handleDateConfirm = async (selectedDate: Date) => {
+    // Format date string as YYYY-MM-DD in local time (not UTC) to avoid timezone issues
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
+    // Check if the selected date is on an open day before proceeding
+    try {
+      const checkResult = await apiCall(`/shop-schedule/check?date=${dateStr}`);
+      
+      if (!checkResult.success || !checkResult.is_open) {
+        Alert.alert(
+          'Shop Closed',
+          'The shop is closed on this date. Please select another date.',
+          [{ text: 'OK' }]
+        );
+        setShowDatePicker(false);
+        return; // Don't set the date if shop is closed
+      }
+    } catch (error: any) {
+      console.error('Error checking date availability:', error);
+      // Fallback: check if it's Sunday (day 0)
+      const dayOfWeek = selectedDate.getDay();
+      if (dayOfWeek === 0) {
+        Alert.alert(
+          'Shop Closed',
+          'The shop is closed on Sundays. Please select another date.',
+          [{ text: 'OK' }]
+        );
+        setShowDatePicker(false);
+        return;
+      }
+    }
+    
     setAppointmentDate(selectedDate);
     setShowDatePicker(false);
     setSelectedTimeSlot(""); // Reset time slot when date changes
@@ -135,7 +169,11 @@ export default function RepairClothes() {
   const loadTimeSlots = async (date: Date) => {
     setLoadingSlots(true);
     try {
-      const dateStr = date.toISOString().split('T')[0];
+      // Format date string as YYYY-MM-DD in local time (not UTC) to avoid timezone issues
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       const result = await appointmentSlotService.getAllSlotsWithAvailability('repair', dateStr);
       
       if (result.success) {
@@ -164,6 +202,68 @@ export default function RepairClothes() {
   const handlePickerCancel = () => {
     setShowDatePicker(false);
   };
+
+  // Refresh time slots when screen comes into focus (e.g., after booking on web or another device)
+  useFocusEffect(
+    useCallback(() => {
+      // Reload slots if a date is already selected - this ensures fresh data when returning to screen
+      if (appointmentDate) {
+        loadTimeSlots(appointmentDate);
+      }
+    }, [appointmentDate])
+  );
+
+  // Poll for updated time slots every 5 seconds while date is selected (sync with web bookings)
+  useEffect(() => {
+    if (!appointmentDate) return;
+
+    // Initial load
+    loadTimeSlots(appointmentDate);
+
+    // Set up polling interval to refresh slots every 5 seconds
+    const refreshInterval = setInterval(() => {
+      // Format date string as YYYY-MM-DD in local time (not UTC) to avoid timezone issues
+      const year = appointmentDate.getFullYear();
+      const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');
+      const day = String(appointmentDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      // Use shorter timeout for polling (5 seconds) to prevent long waits
+      appointmentSlotService.getAllSlotsWithAvailability('repair', dateStr, 5000)
+        .then((result) => {
+          if (result.success && result.slots) {
+            // Use functional update to compare with latest state
+            setTimeSlots((currentSlots) => {
+              // Check if slots have actually changed
+              const currentCounts = JSON.stringify(currentSlots.map(s => ({ time: s.time_slot, available: s.available })));
+              const newCounts = JSON.stringify(result.slots.map(s => ({ time: s.time_slot, available: s.available })));
+              
+              if (currentCounts !== newCounts) {
+                // Slots changed, update them
+                if (!result.isShopOpen) {
+                  setIsShopOpen(false);
+                  return [];
+                } else {
+                  setIsShopOpen(true);
+                  return result.slots || [];
+                }
+              }
+              // No changes, return current state to prevent re-render
+              return currentSlots;
+            });
+          }
+        })
+        .catch((error: any) => {
+          // Silently ignore polling errors - don't spam console or disrupt UX
+          // Only log if it's not a timeout (timeouts are expected if backend is slow)
+          if (!error.message?.includes('timeout')) {
+            console.warn('[POLLING] Error polling time slots:', error.message);
+          }
+        });
+    }, 5000); // Refresh every 5 seconds
+
+    // Cleanup interval on unmount or date change
+    return () => clearInterval(refreshInterval);
+  }, [appointmentDate]); // Only depend on appointmentDate, not timeSlots
 
   const uploadImageIfNeeded = async () => {
     if (!image) return null;
@@ -224,7 +324,11 @@ export default function RepairClothes() {
       // First, book the appointment slot (like web version does)
       let slotResult = null;
       try {
-        const dateStr = appointmentDate.toISOString().split('T')[0];
+        // Format date string as YYYY-MM-DD in local time (not UTC) to avoid timezone issues
+        const year = appointmentDate.getFullYear();
+        const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');
+        const day = String(appointmentDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
         slotResult = await appointmentSlotService.bookSlot('repair', dateStr, selectedTimeSlot);
         if (!slotResult || !slotResult.success) {
           const errorMsg = slotResult?.message || 'Failed to book appointment slot. This time may already be taken.';
@@ -254,7 +358,11 @@ export default function RepairClothes() {
       }
 
       // Combine date and time for pickupDate (like web version does)
-      const dateStr = appointmentDate.toISOString().split('T')[0];
+      // Format date string as YYYY-MM-DD in local time (not UTC) to avoid timezone issues
+      const year = appointmentDate.getFullYear();
+      const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');
+      const day = String(appointmentDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       const pickupDateTime = `${dateStr}T${selectedTimeSlot}`;
 
       // Prepare repair data
@@ -496,30 +604,42 @@ export default function RepairClothes() {
                 </View>
               ) : timeSlots.length > 0 ? (
                 <View style={styles.timeSlotsGrid}>
-                  {timeSlots.map((slot) => (
-                    <TouchableOpacity
-                      key={slot.slot_id}
-                      style={[
-                        styles.timeSlotButton,
-                        styles[`timeSlotButton${slot.status.charAt(0).toUpperCase() + slot.status.slice(1)}`],
-                        selectedTimeSlot === slot.time_slot && styles.timeSlotButtonSelected,
-                        !slot.isClickable && styles.timeSlotButtonDisabled,
-                      ]}
-                      onPress={() => {
-                        if (slot.isClickable) {
-                          setSelectedTimeSlot(slot.time_slot);
-                        }
-                      }}
-                      disabled={!slot.isClickable}
-                    >
-                      <Text style={styles.slotTime}>{slot.display_time}</Text>
-                      <Text style={styles.slotStatus}>
-                        {slot.status === 'full' ? 'Fully Booked' : 
-                         slot.status === 'limited' ? `${slot.available} LEFT` : 
-                         slot.status === 'available' ? `${slot.available} SPOTS` : 'Unavailable'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  {(() => {
+                    // Deduplicate slots by time_slot to ensure no duplicates are shown
+                    const seenTimes = new Set<string>();
+                    const uniqueSlots = timeSlots.filter((slot) => {
+                      if (seenTimes.has(slot.time_slot)) {
+                        return false;
+                      }
+                      seenTimes.add(slot.time_slot);
+                      return true;
+                    });
+                    
+                    return uniqueSlots.map((slot) => (
+                      <TouchableOpacity
+                        key={slot.slot_id || slot.time_slot}
+                        style={[
+                          styles.timeSlotButton,
+                          styles[`timeSlotButton${slot.status.charAt(0).toUpperCase() + slot.status.slice(1)}`],
+                          selectedTimeSlot === slot.time_slot && styles.timeSlotButtonSelected,
+                          !slot.isClickable && styles.timeSlotButtonDisabled,
+                        ]}
+                        onPress={() => {
+                          if (slot.isClickable) {
+                            setSelectedTimeSlot(slot.time_slot);
+                          }
+                        }}
+                        disabled={!slot.isClickable}
+                      >
+                        <Text style={styles.slotTime}>{slot.display_time}</Text>
+                        <Text style={styles.slotStatus}>
+                          {slot.status === 'full' ? 'Fully Booked' : 
+                           slot.status === 'limited' ? `${slot.available} LEFT` : 
+                           slot.status === 'available' ? `${slot.available} SPOTS` : 'Unavailable'}
+                        </Text>
+                      </TouchableOpacity>
+                    ));
+                  })()}
                 </View>
               ) : (
                 <View style={styles.noSlotsContainer}>
@@ -919,6 +1039,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
     marginBottom: 16,
+    justifyContent: 'center',
   },
   timeSlotButton: {
     width: (width - 88) / 3, // 3 columns with gaps

@@ -45,6 +45,8 @@ function linkAppointmentSlotToCart(userId, serviceType, specificData, cartItemId
 
   if (date && time) {
     // Find and update the slot
+    // IMPORTANT: Only link slots that don't have order_item_id (not already linked to orders)
+    // This prevents overwriting slots that are already linked to orders
     const sql = `
       UPDATE appointment_slots 
       SET cart_item_id = ? 
@@ -53,6 +55,7 @@ function linkAppointmentSlotToCart(userId, serviceType, specificData, cartItemId
       AND appointment_date = ? 
       AND appointment_time = ? 
       AND cart_item_id IS NULL 
+      AND order_item_id IS NULL
       AND status = 'booked'
       LIMIT 1
     `;

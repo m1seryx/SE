@@ -28,8 +28,22 @@ const ShopSchedule = {
 
   // Check if a date is on an open day
   isDateOpen: (dateString, callback) => {
-    const date = new Date(dateString);
-    const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    // Parse date string properly to avoid timezone issues
+    // dateString is in format "YYYY-MM-DD", parse it as local date
+    const dateParts = dateString.split('-');
+    let dayOfWeek;
+    
+    if (dateParts.length === 3) {
+      const year = parseInt(dateParts[0], 10);
+      const month = parseInt(dateParts[1], 10) - 1; // Month is 0-indexed
+      const day = parseInt(dateParts[2], 10);
+      const date = new Date(year, month, day); // Create local date (not UTC)
+      dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    } else {
+      // Fallback to original parsing if format is unexpected
+      const date = new Date(dateString);
+      dayOfWeek = date.getDay();
+    }
     
     ShopSchedule.getByDay(dayOfWeek, (err, schedule) => {
       if (err) {

@@ -887,23 +887,35 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                 </div>
               ) : allTimeSlots.length > 0 ? (
                 <div className="time-slots-grid">
-                  {allTimeSlots.map(slot => (
-                    <button
-                      key={slot.slot_id}
-                      type="button"
-                      className={`time-slot-btn ${slot.status} ${formData.preferredTime === slot.time_slot ? 'selected' : ''}`}
-                      onClick={() => slot.isClickable && setFormData(prev => ({ ...prev, preferredTime: slot.time_slot }))}
-                      disabled={!slot.isClickable || loading}
-                      title={slot.statusLabel}
-                    >
-                      <span className="slot-time">{slot.display_time}</span>
-                      <span className="slot-status">
-                        {slot.status === 'full' ? 'Fully Booked' : 
-                         slot.status === 'limited' ? `${slot.available} left` : 
-                         slot.status === 'available' ? `${slot.available} spots` : 'Unavailable'}
-                      </span>
-                    </button>
-                  ))}
+                  {(() => {
+                    // Deduplicate slots by time_slot to ensure no duplicates are shown
+                    const seenTimes = new Set();
+                    const uniqueSlots = allTimeSlots.filter(slot => {
+                      if (seenTimes.has(slot.time_slot)) {
+                        return false;
+                      }
+                      seenTimes.add(slot.time_slot);
+                      return true;
+                    });
+                    
+                    return uniqueSlots.map(slot => (
+                      <button
+                        key={slot.slot_id || slot.time_slot}
+                        type="button"
+                        className={`time-slot-btn ${slot.status} ${formData.preferredTime === slot.time_slot ? 'selected' : ''}`}
+                        onClick={() => slot.isClickable && setFormData(prev => ({ ...prev, preferredTime: slot.time_slot }))}
+                        disabled={!slot.isClickable || loading}
+                        title={slot.statusLabel}
+                      >
+                        <span className="slot-time">{slot.display_time}</span>
+                        <span className="slot-status">
+                          {slot.status === 'full' ? 'Fully Booked' : 
+                           slot.status === 'limited' ? `${slot.available} left` : 
+                           slot.status === 'available' ? `${slot.available} spots` : 'Unavailable'}
+                        </span>
+                      </button>
+                    ));
+                  })()}
                 </div>
               ) : (
                 <div className="no-slots-message">

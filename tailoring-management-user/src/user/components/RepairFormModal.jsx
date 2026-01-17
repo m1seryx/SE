@@ -89,6 +89,44 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   useEffect(() => {
     if (formData.date) {
       loadAvailableSlots(formData.date);
+
+      // Set up polling to refresh slots every 5 seconds (sync with mobile bookings)
+      const refreshInterval = setInterval(() => {
+        if (formData.date) {
+          // Silently refresh without showing loading state
+          getAllSlotsWithAvailability('repair', formData.date)
+            .then((result) => {
+              if (result.success && result.slots) {
+                // Only update if slots have changed to avoid unnecessary re-renders
+                const currentSlots = JSON.stringify(allTimeSlots.map(s => ({ time: s.time_slot, available: s.available })));
+                const newSlots = JSON.stringify(result.slots.map(s => ({ time: s.time_slot, available: s.available })));
+                if (currentSlots !== newSlots) {
+                  console.log('[POLLING] Slots changed, updating...');
+                  if (!result.isShopOpen) {
+                    setIsShopOpen(false);
+                    setAllTimeSlots([]);
+                    setAvailableTimeSlots([]);
+                  } else {
+                    setIsShopOpen(true);
+                    setAllTimeSlots(result.slots || []);
+                    const available = (result.slots || [])
+                      .filter(slot => slot.isClickable)
+                      .map(slot => ({
+                        value: slot.time_slot,
+                        display: slot.display_time
+                      }));
+                    setAvailableTimeSlots(available);
+                  }
+                }
+              }
+            })
+            .catch((error) => {
+              console.error('[POLLING] Error refreshing slots:', error);
+            });
+        }
+      }, 5000); // Refresh every 5 seconds
+
+      return () => clearInterval(refreshInterval);
     } else {
       setAllTimeSlots([]);
       setAvailableTimeSlots([]);
@@ -610,30 +648,42 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                 </div>
               ) : allTimeSlots.length > 0 ? (
                 <div className="time-slots-grid">
-                  {allTimeSlots.map(slot => (
-                    <button
-                      key={slot.slot_id}
-                      type="button"
-                      className={`time-slot-btn ${slot.status} ${formData.time === slot.time_slot ? 'selected' : ''}`}
-                      onClick={() => {
-                        if (slot.isClickable) {
-                          setFormData(prev => ({ ...prev, time: slot.time_slot }));
-                          if (errors.time) {
-                            setErrors(prev => ({ ...prev, time: '' }));
+                  {(() => {
+                    // Deduplicate slots by time_slot to ensure no duplicates are shown
+                    const seenTimes = new Set();
+                    const uniqueSlots = allTimeSlots.filter(slot => {
+                      if (seenTimes.has(slot.time_slot)) {
+                        return false;
+                      }
+                      seenTimes.add(slot.time_slot);
+                      return true;
+                    });
+                    
+                    return uniqueSlots.map(slot => (
+                      <button
+                        key={slot.slot_id || slot.time_slot}
+                        type="button"
+                        className={`time-slot-btn ${slot.status} ${formData.time === slot.time_slot ? 'selected' : ''}`}
+                        onClick={() => {
+                          if (slot.isClickable) {
+                            setFormData(prev => ({ ...prev, time: slot.time_slot }));
+                            if (errors.time) {
+                              setErrors(prev => ({ ...prev, time: '' }));
+                            }
                           }
-                        }
-                      }}
-                      disabled={!slot.isClickable}
-                      title={slot.statusLabel}
-                    >
-                      <span className="slot-time">{slot.display_time}</span>
-                      <span className="slot-status">
-                        {slot.status === 'full' ? 'Fully Booked' : 
-                         slot.status === 'limited' ? `${slot.available} left` : 
-                         slot.status === 'available' ? `${slot.available} spots` : 'Unavailable'}
-                      </span>
-                    </button>
-                  ))}
+                        }}
+                        disabled={!slot.isClickable}
+                        title={slot.statusLabel}
+                      >
+                        <span className="slot-time">{slot.display_time}</span>
+                        <span className="slot-status">
+                          {slot.status === 'full' ? 'Fully Booked' : 
+                           slot.status === 'limited' ? `${slot.available} left` : 
+                           slot.status === 'available' ? `${slot.available} spots` : 'Unavailable'}
+                        </span>
+                      </button>
+                    ));
+                  })()}
                 </div>
               ) : (
                 <div className="no-slots-message">

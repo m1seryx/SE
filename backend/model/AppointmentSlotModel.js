@@ -20,8 +20,9 @@ const AppointmentSlot = {
       
       const capacity = capacityResults[0].capacity || 5; // Default to 5 if null
       
-      // Count current bookings for this time slot (only count submitted orders, not cart items)
-      // Only slots with order_item_id count towards capacity (cart items don't occupy slots)
+      // Count current bookings for this time slot (only count confirmed orders, not cart items)
+      // Slots only occupy capacity when order is submitted (order_item_id IS NOT NULL)
+      // Cart items don't reserve slots until order is submitted
       const countSql = `
         SELECT COUNT(*) as count 
         FROM appointment_slots 
@@ -70,8 +71,9 @@ const AppointmentSlot = {
         return callback(null, []);
       }
 
-      // Get count of bookings for each time slot on this date (only count submitted orders, not cart items)
-      // Only slots with order_item_id count towards capacity (cart items don't occupy slots)
+      // Get count of bookings for each time slot on this date (only count confirmed orders, not cart items)
+      // Slots only occupy capacity when order is submitted (order_item_id IS NOT NULL)
+      // Cart items don't reserve slots until order is submitted
       const bookingsSql = `
         SELECT appointment_time, COUNT(*) as booked_count
         FROM appointment_slots 
@@ -161,23 +163,38 @@ const AppointmentSlot = {
   },
 
   // Update slot when order is created
+  // IMPORTANT: Only update slots that don't already have an order_item_id
+  // This prevents overwriting existing order links
   updateSlotWithOrder: (slotId, orderItemId, callback) => {
     const sql = `
       UPDATE appointment_slots 
       SET order_item_id = ?, cart_item_id = NULL
-      WHERE slot_id = ?
+      WHERE slot_id = ? AND order_item_id IS NULL
     `;
-    db.query(sql, [orderItemId, slotId], callback);
+    db.query(sql, [orderItemId, slotId, orderItemId], (err, result) => {
+      if (err) {
+        return callback(err);
+      }
+      // Log the update result for debugging
+      if (result && result.affectedRows === 0) {
+        console.warn(`[APPOINTMENT SLOT] Slot ${slotId} update affected 0 rows. May already be linked to order_item_id ${orderItemId} or slot doesn't exist.`);
+      } else if (result && result.affectedRows > 0) {
+        console.log(`[APPOINTMENT SLOT] ✅ Successfully updated slot ${slotId} with order_item_id ${orderItemId} (affectedRows: ${result.affectedRows})`);
+      }
+      callback(err, result);
+    });
   },
 
   // Get slot by cart item ID
+  // IMPORTANT: Only return slots that don't already have an order_item_id
+  // This prevents reusing slots that are already linked to orders
   getSlotByCartItem: (cartItemId, callback) => {
     if (cartItemId) {
-      const sql = `SELECT * FROM appointment_slots WHERE cart_item_id = ? AND status = 'booked'`;
+      const sql = `SELECT * FROM appointment_slots WHERE cart_item_id = ? AND status = 'booked' AND order_item_id IS NULL`;
       db.query(sql, [cartItemId], callback);
     } else {
-      // Get all booked slots without cart_item_id (for linking)
-      const sql = `SELECT * FROM appointment_slots WHERE cart_item_id IS NULL AND status = 'booked' ORDER BY created_at DESC`;
+      // Get all booked slots without cart_item_id and without order_item_id (for linking)
+      const sql = `SELECT * FROM appointment_slots WHERE cart_item_id IS NULL AND order_item_id IS NULL AND status = 'booked' ORDER BY created_at DESC`;
       db.query(sql, callback);
     }
   },
@@ -393,16 +410,38 @@ const AppointmentSlot = {
         if (err) {
           console.error('Error checking shop schedule:', err);
           // Fallback to default (Monday-Saturday) if error
-          const date = new Date(dateString);
-          const day = date.getDay();
+          // Parse date properly to avoid timezone issues
+          const dateParts = dateString.split('-');
+          let day;
+          if (dateParts.length === 3) {
+            const year = parseInt(dateParts[0], 10);
+            const month = parseInt(dateParts[1], 10) - 1;
+            const dayNum = parseInt(dateParts[2], 10);
+            const date = new Date(year, month, dayNum);
+            day = date.getDay();
+          } else {
+            const date = new Date(dateString);
+            day = date.getDay();
+          }
           return callback(null, day >= 1 && day <= 6);
         }
         callback(null, isOpen);
       });
     } else {
       // Synchronous fallback (for backward compatibility)
-      const date = new Date(dateString);
-      const day = date.getDay();
+      // Parse date properly to avoid timezone issues
+      const dateParts = dateString.split('-');
+      let day;
+      if (dateParts.length === 3) {
+        const year = parseInt(dateParts[0], 10);
+        const month = parseInt(dateParts[1], 10) - 1;
+        const dayNum = parseInt(dateParts[2], 10);
+        const date = new Date(year, month, dayNum);
+        day = date.getDay();
+      } else {
+        const date = new Date(dateString);
+        day = date.getDay();
+      }
       return day >= 1 && day <= 6; // Monday (1) to Saturday (6)
     }
   }
