@@ -18,12 +18,15 @@ export async function registerUser(userData) {
     return { success: true, ...data };
   } catch (error) {
     console.error("Register axios error:", error);
+    console.error("Error response:", error.response?.data);
+    console.error("Error status:", error.response?.status);
 
     return {
       success: false,
       message:
         error.response?.data?.message ||
-        "Server error during registration",
+        error.message ||
+        "Server error during registration. Please check your connection and try again.",
     };
   }
 }
@@ -80,5 +83,39 @@ export async function getGoogleAuthUrl() {
   } catch (error) {
     console.error("Google auth URL error:", error);
     throw error;
+  }
+}
+
+export async function updateProfile(profileData) {
+  try {
+    const token = getToken();
+    if (!token) {
+      return {
+        success: false,
+        message: "Authentication required. Please log in again."
+      };
+    }
+
+    const response = await axios.put(`${BASE_URL}/profile`, profileData, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = response.data;
+    
+    // Update localStorage with new user data
+    if (data.success && data.user) {
+      localStorage.setItem("user", JSON.stringify(data.user));
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Update profile error:", error);
+    return {
+      success: false,
+      message: error.response?.data?.message || "Error updating profile"
+    };
   }
 }

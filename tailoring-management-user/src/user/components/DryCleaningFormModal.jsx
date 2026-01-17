@@ -28,6 +28,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const [imagePreview, setImagePreview] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [errors, setErrors] = useState({});
   const [estimatedPrice, setEstimatedPrice] = useState(0);
   const [isEstimatedPrice, setIsEstimatedPrice] = useState(false);
   const [priceLoading, setPriceLoading] = useState(false);
@@ -81,6 +82,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
         customGarmentType: ''
       });
       setAvailableTimeSlots([]);
+      setErrors({});
     }
   }, [isOpen]);
 
@@ -179,6 +181,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
         if (!result.success || !result.is_open) {
           setMessage('Appointments are not available on this date. Please select another date.');
           setFormData(prev => ({ ...prev, date: '', time: '' }));
+          setErrors(prev => ({ ...prev, date: 'Appointments are not available on this date. Please select another date.' }));
           return;
         }
       } catch (error) {
@@ -189,6 +192,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
         if (dayOfWeek === 0) {
           setMessage('Appointments are not available on this date. Please select another date.');
           setFormData(prev => ({ ...prev, date: '', time: '' }));
+          setErrors(prev => ({ ...prev, date: 'Appointments are not available on this date. Please select another date.' }));
           return;
         }
       }
@@ -196,6 +200,10 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     
     setFormData(prev => ({ ...prev, date: selectedDate, time: '' }));
     setMessage('');
+    // Clear date error when user selects a valid date
+    if (errors.date) {
+      setErrors(prev => ({ ...prev, date: '' }));
+    }
   };
 
   // Calculate price when quantity or garment type changes
@@ -240,6 +248,10 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       ...prev,
       [name]: value
     }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleImageChange = (e) => {
@@ -258,16 +270,34 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     }
   };
 
+  // Validate form
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.garmentType) {
+      newErrors.garmentType = 'Please select a garment type';
+    }
+    if (formData.garmentType === 'others' && !formData.customGarmentType.trim()) {
+      newErrors.customGarmentType = 'Please specify the garment type';
+    }
+    if (!formData.brand || formData.brand.trim() === '') {
+      newErrors.brand = 'Please enter the clothing brand';
+    }
+    if (!formData.date) {
+      newErrors.date = 'Please select a drop off date';
+    }
+    if (!formData.time) {
+      newErrors.time = 'Please select a time slot';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.brand || !formData.date || !formData.time || !formData.garmentType) {
-      setMessage('Please fill in all required fields including date and time');
-      return;
-    }
-
-    if (formData.garmentType === 'others' && !formData.customGarmentType.trim()) {
-      setMessage('Please specify the garment type');
+    if (!validateForm()) {
       return;
     }
 
@@ -405,6 +435,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     setEstimatedPrice(0);
     setIsEstimatedPrice(false);
     setMessage('');
+    setErrors({});
     setAvailableTimeSlots([]);
     onClose();
   };
@@ -415,7 +446,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     <div className="modal-overlay-shared" onClick={handleClose}>
       <div className="modal-container-shared" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header-shared">
-          <h2 className="modal-title-shared">🧼 Dry Cleaning Service</h2>
+          <h2 className="modal-title-shared">Dry Cleaning Service</h2>
           <button className="modal-close-shared" onClick={handleClose} aria-label="Close modal">
             ×
           </button>
@@ -426,14 +457,14 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
             {/* Garment Type */}
             <div className="form-group-shared">
               <label htmlFor="garmentType" className="form-label-shared">
-                Garment Type <span className="required-indicator">*</span>
+                👔 Garment Type <span className="required-indicator">*</span>
               </label>
               <select
                 id="garmentType"
                 name="garmentType"
                 value={formData.garmentType}
                 onChange={handleInputChange}
-                className="form-select-shared"
+                className={`form-select-shared ${errors.garmentType ? 'error' : ''}`}
                 required
               >
                 <option value="">Select garment type...</option>
@@ -444,23 +475,31 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                 ))}
                 <option value="others">Others</option>
               </select>
+              {errors.garmentType && (
+                <span className="error-message-shared">{errors.garmentType}</span>
+              )}
               {formData.garmentType === 'others' && (
-                <input
-                  type="text"
-                  name="customGarmentType"
-                  value={formData.customGarmentType}
-                  onChange={handleInputChange}
-                  placeholder="Specify garment type..."
-                  className="form-input-shared"
-                  style={{ marginTop: '12px' }}
-                  required
-                />
+                <>
+                  <input
+                    type="text"
+                    name="customGarmentType"
+                    value={formData.customGarmentType}
+                    onChange={handleInputChange}
+                    placeholder="Specify garment type..."
+                    className={`form-input-shared ${errors.customGarmentType ? 'error' : ''}`}
+                    style={{ marginTop: '12px' }}
+                    required
+                  />
+                  {errors.customGarmentType && (
+                    <span className="error-message-shared">{errors.customGarmentType}</span>
+                  )}
+                </>
               )}
             </div>
 
             <div className="form-group-shared">
               <label htmlFor="brand" className="form-label-shared">
-                Clothing Brand <span className="required-indicator">*</span>
+                🏷️ Clothing Brand <span className="required-indicator">*</span>
               </label>
               <input
                 type="text"
@@ -469,15 +508,18 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                 value={formData.brand}
                 onChange={handleInputChange}
                 placeholder="e.g., Gucci, Armani, Zara"
-                className="form-input-shared"
+                className={`form-input-shared ${errors.brand ? 'error' : ''}`}
                 required
               />
+              {errors.brand && (
+                <span className="error-message-shared">{errors.brand}</span>
+              )}
             </div>
 
             {/* Quantity */}
             <div className="form-group-shared">
               <label htmlFor="quantity" className="form-label-shared">
-                Number of Items <span className="required-indicator">*</span>
+                📦 Number of Items <span className="required-indicator">*</span>
               </label>
               <input
                 type="number"
@@ -495,7 +537,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
 
             {/* Notes */}
             <div className="form-group-shared">
-              <label htmlFor="notes" className="form-label-shared">Special Instructions</label>
+              <label htmlFor="notes" className="form-label-shared">📝 Special Instructions</label>
               <textarea
                 id="notes"
                 name="notes"
@@ -510,7 +552,7 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
             {/* Date & Time */}
             <div className="form-group-shared">
               <label htmlFor="date" className="form-label-shared">
-                Drop off item date <span className="required-indicator">*</span>
+                📅 Drop off item date <span className="required-indicator">*</span>
               </label>
               <input
                 type="date"
@@ -519,17 +561,20 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                 value={formData.date}
                 onChange={handleDateChange}
                 min={getMinDate()}
-                className="form-input-shared"
+                className={`form-input-shared ${errors.date ? 'error' : ''}`}
                 required
               />
               <span className="help-text-shared">Select a date when the shop is open</span>
+              {errors.date && (
+                <span className="error-message-shared">{errors.date}</span>
+              )}
             </div>
 
             {/* Time Slot - Color-Coded Grid */}
             {formData.date && (
               <div className="form-group-shared">
                 <label className="form-label-shared">
-                  Select Time Slot <span className="required-indicator">*</span>
+                  🕐 Select Time Slot <span className="required-indicator">*</span>
                 </label>
                 
                 {/* Legend */}
@@ -565,7 +610,14 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                         key={slot.slot_id}
                         type="button"
                         className={`time-slot-btn ${slot.status} ${formData.time === slot.time_slot ? 'selected' : ''}`}
-                        onClick={() => slot.isClickable && setFormData(prev => ({ ...prev, time: slot.time_slot }))}
+                        onClick={() => {
+                          if (slot.isClickable) {
+                            setFormData(prev => ({ ...prev, time: slot.time_slot }));
+                            if (errors.time) {
+                              setErrors(prev => ({ ...prev, time: '' }));
+                            }
+                          }
+                        }}
                         disabled={!slot.isClickable}
                         title={slot.statusLabel}
                       >
@@ -598,12 +650,15 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                     ✅ Selected: <strong>{allTimeSlots.find(s => s.time_slot === formData.time)?.display_time}</strong>
                   </div>
                 )}
+                {errors.time && (
+                  <span className="error-message-shared">{errors.time}</span>
+                )}
               </div>
             )}
 
             {/* Image Upload */}
             <div className="form-group-shared">
-              <label htmlFor="image" className="form-label-shared">Upload Clothing Photo (Optional)</label>
+              <label htmlFor="image" className="form-label-shared">📷 Upload Clothing Photo (Optional)</label>
               <div className="image-upload-wrapper-shared">
                 <input
                   type="file"
@@ -684,9 +739,9 @@ const DryCleaningFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               <button
                 type="submit"
                 className="btn-shared btn-primary-shared"
-                disabled={loading || !formData.brand || !formData.date || !formData.time || !formData.garmentType || (formData.garmentType === 'others' && !formData.customGarmentType.trim())}
+                disabled={loading}
               >
-                {loading ? 'Adding to Cart...' : 'Add to Cart'}
+                {loading ? 'Adding...' : 'Add to Cart'}
               </button>
             </div>
           </form>

@@ -56,8 +56,48 @@ const App = ({ setIsLoggedIn }) => {
   };
 
   const navigate = useNavigate();
+
+  // Password validation function
+  // Requirements: Minimum 8 characters (letters or numbers) and one special character
+  const validatePassword = (password) => {
+    if (!password) {
+      return {
+        isValid: false,
+        message: 'Password is required'
+      };
+    }
+    
+    // Check total length (must be at least 8 characters)
+    if (password.length < 8) {
+      return {
+        isValid: false,
+        message: `Password must be at least 8 characters long. You have ${password.length} character(s).`
+      };
+    }
+    
+    // Check for at least one special/unique character
+    const specialCharRegex = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/;
+    if (!specialCharRegex.test(password)) {
+      return {
+        isValid: false,
+        message: 'Password must contain at least one special character (!@#$%^&* etc.)'
+      };
+    }
+    
+    return { isValid: true };
+  };
+
   const handleLogin = async () => {
     setAuthError('');
+    
+    // Validate password for login
+    if (isLogin) {
+      if (!loginUsername || !loginPassword) {
+        setAuthError('Please enter both username and password');
+        return;
+      }
+    }
+    
     setIsLoading(true);
     
     try {
@@ -81,39 +121,81 @@ const App = ({ setIsLoggedIn }) => {
             navigate('/user-home', { replace: true });
           }
         } else {
-          setAuthError(result.message || 'Login failed');
+          const errorMessage = result.message || 'Login failed';
+          setAuthError(errorMessage);
         }
       } else {
         // Handle signup - backend expects first_name, last_name, username, email, password, phone_number
-        if (signupPassword !== signupConfirmPassword) {
-          setAuthError('Passwords do not match');
+        
+        // Validate required fields
+        if (!signupFirstName || !signupLastName || !signupUsername || !signupEmail || !signupPassword) {
+          setAuthError('Please fill in all required fields');
+          alert('Please fill in all required fields (First Name, Last Name, Username, Email, Password)');
           setIsLoading(false);
           return;
         }
         
-        const result = await registerUser({
-          first_name: signupFirstName,
-          last_name: signupLastName,
-          username: signupUsername,
-          email: signupEmail,
-          password: signupPassword,
-          phone_number: signupPhone || ''
-        });
+        if (signupPassword !== signupConfirmPassword) {
+          setAuthError('Passwords do not match');
+          alert('Passwords do not match\n\nPassword Requirements:\n• Must be at least 8 characters (can be letters or numbers)\n• Must contain at least one special character (!@#$%^&* etc.)');
+          setIsLoading(false);
+          return;
+        }
         
-        if (result.success) {
-          // Auto-login after successful registration
-          if (typeof setIsLoggedIn === 'function') {
-            setIsLoggedIn(true);
+        // Validate password for signup
+        const passwordValidation = validatePassword(signupPassword);
+        if (!passwordValidation.isValid) {
+          setAuthError(passwordValidation.message);
+          alert(`Password Error: ${passwordValidation.message}\n\nPassword Requirements:\n• Must be at least 8 characters (can be letters or numbers)\n• Must contain at least one special character (!@#$%^&* etc.)`);
+          setIsLoading(false);
+          return;
+        }
+        
+        try {
+          const result = await registerUser({
+            first_name: signupFirstName.trim(),
+            last_name: signupLastName.trim(),
+            username: signupUsername.trim(),
+            email: signupEmail.trim(),
+            password: signupPassword,
+            phone_number: signupPhone ? signupPhone.trim() : ''
+          });
+          
+          console.log('Registration result:', result);
+          
+          // Check for success - backend returns { message: "Registration successful", token, ... } or { success: false, message: "..." }
+          if (result.success || result.message === 'Registration successful' || result.token) {
+            // Auto-login after successful registration
+            if (typeof setIsLoggedIn === 'function') {
+              setIsLoggedIn(true);
+            }
+            setIsAuthModalOpen(false);
+            // Reset form
+            setSignupFirstName('');
+            setSignupLastName('');
+            setSignupUsername('');
+            setSignupEmail('');
+            setSignupPassword('');
+            setSignupConfirmPassword('');
+            setSignupPhone('');
+            navigate('/user-home', { replace: true });
+          } else {
+            const errorMessage = result.message || 'Registration failed';
+            setAuthError(errorMessage);
+            alert(`Registration Failed: ${errorMessage}`);
           }
-          setIsAuthModalOpen(false);
-          navigate('/user-home', { replace: true });
-        } else {
-          setAuthError(result.message || 'Registration failed');
+        } catch (regError) {
+          console.error('Registration error:', regError);
+          const errorMessage = regError.message || 'An error occurred during registration';
+          setAuthError(errorMessage);
+          alert(`Registration Error: ${errorMessage}`);
         }
       }
     } catch (error) {
-      console.error('Login error:', error);
-      setAuthError(error.message || 'An unexpected error occurred. Please try again.');
+      console.error('Auth error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'An unexpected error occurred. Please try again.';
+      setAuthError(errorMessage);
+      alert(`Error: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -351,6 +433,23 @@ const App = ({ setIsLoggedIn }) => {
               value={isLogin ? loginPassword : signupPassword}
               onChange={(e) => isLogin ? setLoginPassword(e.target.value) : setSignupPassword(e.target.value)}
             />
+            {!isLogin && (
+              <div style={{ 
+                fontSize: '11px', 
+                color: '#666', 
+                marginTop: '5px', 
+                padding: '8px',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '4px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <strong>Password Requirements:</strong>
+                <ul style={{ margin: '4px 0 0 0', paddingLeft: '20px' }}>
+                  <li>Minimum 8 characters (can be letters or numbers)</li>
+                  <li>At least one special character (!@#$%^&* etc.)</li>
+                </ul>
+              </div>
+            )}
           </div>
 
           {!isLogin && (

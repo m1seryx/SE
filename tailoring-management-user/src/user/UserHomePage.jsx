@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/UserHomePage.css';
+import '../styles/Guesthome.css';
 import '../styles/Transitions.css';
 import { initScrollAnimations, initHeaderScroll } from '../utils/scrollAnimations';
 import logo from "../assets/logo.png";
@@ -323,21 +324,21 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
             <div className="dropdown-menu">
               <button className="dropdown-item" onClick={() => {
                 setProfileDropdownOpen(false);
-                setServiceModalOpen(true);
+                navigate('/profile');
               }}>
-                📅 Book Services
+                My Profile
               </button>
               <button className="dropdown-item" onClick={() => {
                 setProfileDropdownOpen(false);
-                navigate('/profile');
+                setServiceModalOpen(true);
               }}>
-                👤 My Profile
+                Book Services
               </button>
               <button className="dropdown-item logout-item" onClick={() => {
                 setProfileDropdownOpen(false);
                 handleLogout();
               }}>
-                🚪 Logout
+                Logout
               </button>
             </div>
           )}
@@ -384,37 +385,37 @@ const UserHomePage = ({ userName, setIsLoggedIn }) => {
       {/* Rental Clothes */}
       <RentalClothes openAuthModal={() => setServiceModalOpen(true)} />
 
-      <section className="customization" id="Customize">
-        <div className="custom-text">
-          <h2>Bespoke Customization</h2>
-          <p>Design your dream suit from scratch</p>
-          <p>Premium fabrics • Perfect fit • Your vision</p>
+      <section className="customization fade-in-up" id="Customize">
+        <div className="custom-text fade-in-left">
+          <h2>Customization</h2>
+          <p>Got a style in mind?</p>
+          <p>Personalize it and turn your vision into reality!</p>
         </div>
-        <div className="custom-image" style={{ backgroundImage: `url('/src/assets/background11.jpg'), url(${customizeBg})` }}>
-          <button className="btn-customize" onClick={() => setCustomizationFormModalOpen(true)}>Start Customizing</button>
+        <div className="custom-image fade-in-right scale-in" style={{ backgroundImage: `url('/src/assets/background.jpg'), url(${customizeBg})` }}>
+          <button className="btn-customize glow-on-hover" onClick={() => setCustomizationFormModalOpen(true)}>Customize now!</button>
         </div>
       </section>
 
-      <section className="repair" id="Repair">
-        <h2>Repair Service</h2>
-        <div className="repair-bg" style={{ backgroundImage: `url('/src/assets/repair.png'), url(${repairBg})` }}>
+      <section className="repair fade-in-up" id="Repair">
+        <h2 className="fade-in-up">Repair Service</h2>
+        <div className="repair-bg scale-in" style={{ backgroundImage: `url(${repairBg})` }}>
           <div className="repair-overlay"></div>
           <div className="repair-content">
-            <h3>Bring your garments back to life</h3>
-            <p>Expert alterations • Invisible mending • Fast service</p>
-            <button className="btn-book" onClick={() => setRepairFormModalOpen(true)}>Book Repair</button>
+            <h3 className="fade-in-up">Need reliable repair services?</h3>
+            <p className="fade-in-up">Get in touch with us today!</p>
+            <button className="repair-book glow-on-hover" onClick={() => setRepairFormModalOpen(true)}>Book Repair!</button>
           </div>
         </div>
       </section>
 
-      <section className="repair" id="DryCleaning">
-        <h2>Dry Cleaning Service</h2>
-        <div className="repair-bg" style={{ backgroundImage: `url('/src/assets/dryclean.png'), url(${dryCleanBg})` }}>
-          <div className="repair-overlay"></div>
-          <div className="repair-content">
-            <h3>Keep your garments fresh and spotless</h3>
-            <p>Premium care for suits, gowns, and more</p>
-            <button className="btn-book" onClick={() => setServiceModalOpen(true)}>Book Dry Cleaning</button>
+      <section className="clean fade-in-up" id="DryCleaning">
+        <h2 className="fade-in-up">Dry Cleaning Service</h2>
+        <div className="clean-bg scale-in" style={{ backgroundImage: `url(${dryCleanBg})` }}>
+          <div className="clean-overlay"></div>
+          <div className="clean-content">
+            <h3 className="fade-in-up">Keep your garments fresh and spotless</h3>
+            <p className="fade-in-up">Premium care for suits, gowns, and more</p>
+            <button className="clean-book glow-on-hover" onClick={() => setDryCleaningFormModalOpen(true)}>Book Dry Cleaning</button>
           </div>
         </div>
       </section>

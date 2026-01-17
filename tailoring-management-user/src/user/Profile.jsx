@@ -4,7 +4,7 @@ import '../styles/UserHomePage.css';
 import '../styles/Profile.css';
 import logo from "../assets/logo.png";
 import dp from "../assets/dp.png";
-import { getUser } from '../api/AuthApi';
+import { getUser, updateProfile } from '../api/AuthApi';
 import { getUserOrderTracking, getStatusBadgeClass, getStatusLabel, cancelOrderItem } from '../api/OrderTrackingApi';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 import TransactionLogModal from './components/TransactionLogModal';
@@ -43,6 +43,16 @@ const Profile = () => {
   const [transactionLogModalOpen, setTransactionLogModalOpen] = useState(false);
   const [selectedOrderItemId, setSelectedOrderItemId] = useState(null);
 
+  // User profile edit state
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileData, setProfileData] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone_number: ''
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
+
   // Function to open image preview
   const openImagePreview = (imageUrl, altText) => {
     setPreviewImageUrl(imageUrl);
@@ -50,11 +60,28 @@ const Profile = () => {
     setImagePreviewOpen(true);
   };
 
-  const user = getUser() || {
-    name: 'Guest',
-    email: 'guest@example.com',
-  };
-  console.log('Profile user from getUser():', user);
+  // User state - initialize from localStorage
+  const [user, setUser] = useState(() => {
+    const userData = getUser();
+    return userData || {
+      name: 'Guest',
+      email: 'guest@example.com',
+    };
+  });
+
+  // Initialize profile data when component mounts and when user changes
+  useEffect(() => {
+    const userData = getUser();
+    if (userData) {
+      setUser(userData);
+      setProfileData({
+        first_name: userData.first_name || '',
+        last_name: userData.last_name || '',
+        email: userData.email || '',
+        phone_number: userData.phone_number || ''
+      });
+    }
+  }, []);
 
   // Fetch order tracking data
   useEffect(() => {
@@ -1410,7 +1437,9 @@ const Profile = () => {
         </div>
 
         <div className="user-info">
-          <img src={dp} alt="User" className="profile-img" />
+          <button className="profile-button icon-button" aria-label="Profile">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="#8B4513" strokeWidth="2" fill="none"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6" stroke="#8B4513" strokeWidth="2" fill="none"/></svg>
+          </button>
         </div>
       </header>
 
@@ -1421,37 +1450,76 @@ const Profile = () => {
         <div className="user-info-card">
           <div className="user-card-row">
             <img src={dp} alt="User" className="user-avatar" />
-            <div style={{ flex: 1 }}>
-              <div className="user-name">{user.first_name} {user.last_name}</div>
-              <button 
-                onClick={async () => {
-                  setLoadingMeasurements(true);
-                  setMeasurementsModalOpen(true);
-                  const result = await getMyMeasurements();
-                  if (result.success && result.measurements) {
-                    setMeasurements(result.measurements);
-                  } else {
-                    setMeasurements(null);
-                  }
-                  setLoadingMeasurements(false);
-                }}
-                style={{
-                  marginTop: '10px',
-                  padding: '8px 16px',
-                  backgroundColor: '#8B4513',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'background 0.3s ease'
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = '#6B3410'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = '#8B4513'}
-              >
-                View Measurements
-              </button>
+            <div style={{ flex: 1, width: '100%' }}>
+              <>
+                <div className="user-name">
+                  {(user && (user.first_name || user.name)) ? `${user.first_name || user.name || ''} ${user.last_name || ''}`.trim() : 'User'}
+                </div>
+                <div style={{ marginTop: '12px', fontSize: '14px', color: '#666' }}>
+                  <div style={{ marginBottom: '8px' }}>
+                    <strong>Email:</strong> {(user && user.email) ? user.email : 'Not provided'}
+                  </div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <strong>Contact Number:</strong> {(user && user.phone_number) ? user.phone_number : 'Not provided'}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '15px', flexWrap: 'wrap' }}>
+                  <button 
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Edit Profile button clicked, current isEditingProfile:', isEditingProfile);
+                      setIsEditingProfile(true);
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#8B4513',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      transition: 'background 0.3s ease',
+                      zIndex: 10,
+                      position: 'relative'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#6B3410'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = '#8B4513'}
+                  >
+                    Edit Profile
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      setLoadingMeasurements(true);
+                      setMeasurementsModalOpen(true);
+                      const result = await getMyMeasurements();
+                      if (result.success && result.measurements) {
+                        setMeasurements(result.measurements);
+                      } else {
+                        setMeasurements(null);
+                      }
+                      setLoadingMeasurements(false);
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#8B4513',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      transition: 'background 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#6B3410'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = '#8B4513'}
+                  >
+                    View Measurements
+                  </button>
+                </div>
+              </>
             </div>
           </div>
         </div>
@@ -2051,8 +2119,8 @@ const Profile = () => {
                           💳 Transaction Log
                         </button>
                         {/* Show cancel button for rentals (bundled and single) and other services */}
-                        {/* Show cancel button for rentals (bundled and single) and other services that are not completed/cancelled/returned */}
-                        {item.status !== 'cancelled' && item.status !== 'completed' && item.status !== 'returned' && (
+                        {/* Show cancel button for rentals (bundled and single) and other services that are not completed/cancelled/returned/accepted */}
+                        {item.status !== 'cancelled' && item.status !== 'completed' && item.status !== 'returned' && item.status !== 'accepted' && (
                           <button
                             className="btn-cancel"
                             onClick={() => {
@@ -2060,6 +2128,7 @@ const Profile = () => {
                               setCancelReason('');
                               setCancelModalOpen(true);
                             }}
+                            disabled={item.status === 'accepted'}
                             style={{
                               padding: '8px 16px',
                               backgroundColor: '#f44336',
@@ -2199,8 +2268,8 @@ const Profile = () => {
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                  {/* Show cancel button for rentals (bundled and single) and other services that are not completed/cancelled/returned/rented */}
-                  {selectedItem.status !== 'cancelled' && selectedItem.status !== 'completed' && selectedItem.status !== 'returned' && selectedItem.status !== 'rented' && (
+                  {/* Show cancel button for rentals (bundled and single) and other services that are not completed/cancelled/returned/rented/accepted */}
+                  {selectedItem.status !== 'cancelled' && selectedItem.status !== 'completed' && selectedItem.status !== 'returned' && selectedItem.status !== 'rented' && selectedItem.status !== 'accepted' && (
                     <button
                       onClick={() => {
                         setItemToCancel(selectedItem);
@@ -2208,6 +2277,7 @@ const Profile = () => {
                         setCancelModalOpen(true);
                         closeDetailsModal();
                       }}
+                      disabled={selectedItem.status === 'accepted'}
                       style={{
                         padding: '10px 20px',
                         backgroundColor: '#f44336',
@@ -2279,9 +2349,9 @@ const Profile = () => {
                       <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '1.1rem', fontWeight: '600', borderBottom: '2px solid #8B4513', paddingBottom: '8px' }}>Top Measurements</h4>
                       <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
                         <thead>
-                          <tr style={{ backgroundColor: '#8B4513' }}>
-                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#fff' }}>Measurement</th>
-                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#fff' }}>Value (Inches / CM)</th>
+                          <tr style={{ backgroundColor: '#f5e6d3' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#000' }}>Measurement</th>
+                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#000' }}>Value (Inches / CM)</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2317,9 +2387,9 @@ const Profile = () => {
                       <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '1.1rem', fontWeight: '600', borderBottom: '2px solid #8B4513', paddingBottom: '8px' }}>Bottom Measurements</h4>
                       <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
                         <thead>
-                          <tr style={{ backgroundColor: '#8B4513' }}>
-                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#fff' }}>Measurement</th>
-                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#fff' }}>Value (Inches / CM)</th>
+                          <tr style={{ backgroundColor: '#f5e6d3' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#000' }}>Measurement</th>
+                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', fontWeight: '600', color: '#000' }}>Value (Inches / CM)</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2372,6 +2442,210 @@ const Profile = () => {
             <div className="details-modal-footer">
               <button className="btn-secondary" onClick={() => setMeasurementsModalOpen(false)}>
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Profile Modal */}
+      {isEditingProfile && (
+        <div 
+          className="details-modal-overlay" 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsEditingProfile(false);
+              // Reset to current user values
+              const currentUser = getUser();
+              if (currentUser) {
+                setProfileData({
+                  first_name: currentUser.first_name || '',
+                  last_name: currentUser.last_name || '',
+                  email: currentUser.email || '',
+                  phone_number: currentUser.phone_number || ''
+                });
+              }
+            }
+          }}
+        >
+          <div className="details-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="details-modal-header">
+              <h3 className="modal-title-black">Edit Profile</h3>
+              <button className="details-modal-close" onClick={() => {
+                setIsEditingProfile(false);
+                // Reset to current user values
+                const currentUser = getUser();
+                if (currentUser) {
+                  setProfileData({
+                    first_name: currentUser.first_name || '',
+                    last_name: currentUser.last_name || '',
+                    email: currentUser.email || '',
+                    phone_number: currentUser.phone_number || ''
+                  });
+                }
+              }}>×</button>
+            </div>
+            <div className="details-modal-content">
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  value={profileData.first_name}
+                  onChange={(e) => setProfileData({ ...profileData, first_name: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    color: '#000'
+                  }}
+                />
+              </div>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  value={profileData.last_name}
+                  onChange={(e) => setProfileData({ ...profileData, last_name: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    color: '#000'
+                  }}
+                />
+              </div>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>
+                  Email <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <input
+                  type="email"
+                  value={profileData.email}
+                  onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    color: '#000'
+                  }}
+                  required
+                />
+              </div>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>
+                  Contact Number
+                </label>
+                <input
+                  type="tel"
+                  value={profileData.phone_number}
+                  onChange={(e) => setProfileData({ ...profileData, phone_number: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    color: '#000'
+                  }}
+                  placeholder="e.g., +63 912 345 6789"
+                />
+              </div>
+            </div>
+            <div className="details-modal-footer" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setIsEditingProfile(false);
+                  // Reset to current user values
+                  const currentUser = getUser();
+                  if (currentUser) {
+                    setProfileData({
+                      first_name: currentUser.first_name || '',
+                      last_name: currentUser.last_name || '',
+                      email: currentUser.email || '',
+                      phone_number: currentUser.phone_number || ''
+                    });
+                  }
+                }}
+                disabled={savingProfile}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#f44336',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: savingProfile ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  opacity: savingProfile ? 0.6 : 1,
+                  transition: 'background 0.3s ease'
+                }}
+                onMouseEnter={(e) => !savingProfile && (e.target.style.backgroundColor = '#da190b')}
+                onMouseLeave={(e) => !savingProfile && (e.target.style.backgroundColor = '#f44336')}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!profileData.first_name || !profileData.last_name || !profileData.email) {
+                    await alert('Please fill in all required fields (First Name, Last Name, Email)', 'Validation Error', 'error');
+                    return;
+                  }
+
+                  setSavingProfile(true);
+                  try {
+                    const result = await updateProfile({
+                      first_name: profileData.first_name,
+                      last_name: profileData.last_name,
+                      email: profileData.email,
+                      phone_number: profileData.phone_number || null
+                    });
+
+                    if (result.success) {
+                      // Update user state with new data
+                      if (result.user) {
+                        setUser(result.user);
+                        // Update localStorage
+                        localStorage.setItem("user", JSON.stringify(result.user));
+                      }
+                      await alert('Profile updated successfully!', 'Success', 'success');
+                      setIsEditingProfile(false);
+                    } else {
+                      await alert(result.message || 'Failed to update profile', 'Error', 'error');
+                    }
+                  } catch (error) {
+                    console.error('Error updating profile:', error);
+                    await alert('Failed to update profile. Please try again.', 'Error', 'error');
+                  } finally {
+                    setSavingProfile(false);
+                  }
+                }}
+                disabled={savingProfile}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#8B4513',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: savingProfile ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  opacity: savingProfile ? 0.6 : 1,
+                  transition: 'background 0.3s ease'
+                }}
+                onMouseEnter={(e) => !savingProfile && (e.target.style.backgroundColor = '#6B3410')}
+                onMouseLeave={(e) => !savingProfile && (e.target.style.backgroundColor = '#8B4513')}
+              >
+                {savingProfile ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>

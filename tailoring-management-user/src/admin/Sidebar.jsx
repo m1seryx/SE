@@ -1,8 +1,18 @@
-import React from 'react'
-import { NavLink } from 'react-router-dom';
+import React, { useState, useEffect } from 'react'
+import { NavLink, useLocation } from 'react-router-dom';
 import "../adminStyle/appointments.css"
 
 function Sidebar() {
+  const location = useLocation();
+  const isRentalActive = location.pathname === '/rental' || location.pathname === '/Post';
+  const [rentalSubmenuOpen, setRentalSubmenuOpen] = useState(isRentalActive);
+
+  useEffect(() => {
+    if (isRentalActive) {
+      setRentalSubmenuOpen(true);
+    }
+  }, [isRentalActive]);
+
   return (
     <aside className='sidebar'> 
       <div className='profile'> 
@@ -22,12 +32,31 @@ function Sidebar() {
         <NavLink to="/drycleaning" className={({ isActive }) => isActive ? 'active' : ''}>
           Dry Cleaning
         </NavLink>
-        <NavLink to="/rental" className={({ isActive }) => isActive ? 'active' : ''}>
-          Rental
-        </NavLink>
-        <NavLink to="/Post" className={({ isActive }) => isActive ? 'active' : ''}>
-          Post rent
-        </NavLink>
+        <div className="menu-item-with-submenu">
+          <div
+            onClick={() => setRentalSubmenuOpen(!rentalSubmenuOpen)}
+            className={isRentalActive ? 'menu-parent active' : 'menu-parent'}
+          >
+            <span>Rental</span>
+            <span className="submenu-arrow">{rentalSubmenuOpen ? '▲' : '▼'}</span>
+          </div>
+          {rentalSubmenuOpen && (
+            <div className="submenu-container">
+              <NavLink 
+                to="/rental" 
+                className={({ isActive }) => isActive ? 'submenu-item active' : 'submenu-item'}
+              >
+                Rental
+              </NavLink>
+              <NavLink 
+                to="/Post" 
+                className={({ isActive }) => isActive ? 'submenu-item active' : 'submenu-item'}
+              >
+                Post rent
+              </NavLink>
+            </div>
+          )}
+        </div>
         <NavLink to="/repair" className={({ isActive }) => isActive ? 'active' : ''}>
           Repair
         </NavLink>

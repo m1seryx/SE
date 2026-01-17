@@ -568,6 +568,8 @@
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .details-modal-header {
@@ -578,6 +580,8 @@
   border-bottom: 1px solid #e0e0e0;
   background: #f8f9fa;
   border-radius: 12px 12px 0 0;
+  margin: -20px -20px 20px -20px;
+  width: calc(100% + 40px);
 }
 
 .details-modal-header h3 {
@@ -612,7 +616,7 @@
 }
 
 .details-modal-content {
-  padding: 24px;
+  padding: 0;
 }
 
 .order-summary {
@@ -715,10 +719,11 @@
 }
 
 .details-modal-footer {
-  padding: 16px 24px;
+  padding: 16px 0 0 0;
   border-top: 1px solid #e0e0e0;
   display: flex;
   justify-content: flex-end;
+  margin-top: 20px;
 }
 
 .details-modal-footer .btn-secondary {

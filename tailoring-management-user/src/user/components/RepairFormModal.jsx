@@ -21,6 +21,7 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
   const [imagePreview, setImagePreview] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [errors, setErrors] = useState({});
   const [estimatedPrice, setEstimatedPrice] = useState(0);
   const [priceLoading, setPriceLoading] = useState(false);
   const [repairGarmentTypes, setRepairGarmentTypes] = useState([]);
@@ -113,6 +114,7 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       setImagePreview('');
       setEstimatedPrice(0);
       setMessage('');
+      setErrors({});
     }
   }, [isOpen]);
 
@@ -155,6 +157,10 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       ...prev,
       [name]: value
     }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const loadAvailableSlots = async (date) => {
@@ -222,6 +228,7 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
         if (!result.success || !result.is_open) {
           setMessage('Appointments are not available on this date. Please select another date.');
           setFormData(prev => ({ ...prev, date: '', time: '' }));
+          setErrors(prev => ({ ...prev, date: 'Appointments are not available on this date. Please select another date.' }));
           return;
         }
       } catch (error) {
@@ -232,6 +239,7 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
         if (dayOfWeek === 0) {
           setMessage('Appointments are not available on this date. Please select another date.');
           setFormData(prev => ({ ...prev, date: '', time: '' }));
+          setErrors(prev => ({ ...prev, date: 'Appointments are not available on this date. Please select another date.' }));
           return;
         }
       }
@@ -239,6 +247,10 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     
     setFormData(prev => ({ ...prev, date: selectedDate, time: '' }));
     setMessage('');
+    // Clear date error when user selects a valid date
+    if (errors.date) {
+      setErrors(prev => ({ ...prev, date: '' }));
+    }
   };
 
   const handleImageChange = (e) => {
@@ -257,11 +269,34 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     }
   };
 
+  // Validate form
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.damageLevel) {
+      newErrors.damageLevel = 'Please select a damage level';
+    }
+    if (!formData.garmentType) {
+      newErrors.garmentType = 'Please select a garment type';
+    }
+    if (!formData.notes || formData.notes.trim() === '') {
+      newErrors.notes = 'Please provide a detailed description';
+    }
+    if (!formData.date) {
+      newErrors.date = 'Please select a drop off date';
+    }
+    if (!formData.time) {
+      newErrors.time = 'Please select a time slot';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.damageLevel || !formData.garmentType || !formData.notes || !formData.date || !formData.time) {
-      setMessage('Please fill in all required fields including date and time');
+    if (!validateForm()) {
       return;
     }
 
@@ -392,7 +427,7 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     <div className="modal-overlay-shared" onClick={handleClose}>
       <div className="modal-container-shared" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header-shared">
-          <h2 className="modal-title-shared">🔧 Repair Service</h2>
+          <h2 className="modal-title-shared">Repair Service</h2>
           <button className="modal-close-shared" onClick={handleClose} aria-label="Close modal">×</button>
         </div>
 
@@ -400,14 +435,14 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
           {/* Damage Level */}
           <div className="form-group-shared">
             <label htmlFor="damageLevel" className="form-label-shared">
-              Damage Level <span className="required-indicator">*</span>
+              👔 Damage Level <span className="required-indicator">*</span>
             </label>
             <select
               id="damageLevel"
               name="damageLevel"
               value={formData.damageLevel}
               onChange={handleInputChange}
-              className="form-select-shared"
+              className={`form-select-shared ${errors.damageLevel ? 'error' : ''}`}
               required
             >
               <option value="">Select damage level</option>
@@ -425,19 +460,22 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                 </div>
               ))}
             </div>
+            {errors.damageLevel && (
+              <span className="error-message-shared">{errors.damageLevel}</span>
+            )}
           </div>
 
           {/* Garment Type */}
           <div className="form-group-shared">
             <label htmlFor="garmentType" className="form-label-shared">
-              Garment Type <span className="required-indicator">*</span>
+              👔 Garment Type <span className="required-indicator">*</span>
             </label>
             <select
               id="garmentType"
               name="garmentType"
               value={formData.garmentType}
               onChange={handleInputChange}
-              className="form-select-shared"
+              className={`form-select-shared ${errors.garmentType ? 'error' : ''}`}
               required
             >
               <option value="">Select garment type</option>
@@ -447,12 +485,15 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                 </option>
               ))}
             </select>
+            {errors.garmentType && (
+              <span className="error-message-shared">{errors.garmentType}</span>
+            )}
           </div>
 
           {/* Notes */}
           <div className="form-group-shared">
             <label htmlFor="notes" className="form-label-shared">
-              Detailed Description <span className="required-indicator">*</span>
+              📝 Detailed Description <span className="required-indicator">*</span>
             </label>
             <textarea
               id="notes"
@@ -461,15 +502,18 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               onChange={handleInputChange}
               placeholder="Please describe the damage in detail (size, location, extent of damage)..."
               rows={4}
-              className="form-textarea-shared"
+              className={`form-textarea-shared ${errors.notes ? 'error' : ''}`}
               required
             />
             <span className="help-text-shared">Examples: 2-inch hole in left sleeve, broken zipper on jacket back, torn seam on pants</span>
+            {errors.notes && (
+              <span className="error-message-shared">{errors.notes}</span>
+            )}
           </div>
 
           {/* Image Upload */}
           <div className="form-group-shared">
-            <label htmlFor="image" className="form-label-shared">Upload Damage Photo (Recommended)</label>
+            <label htmlFor="image" className="form-label-shared">📷 Upload Damage Photo (Recommended)</label>
             <div className="image-upload-wrapper-shared">
               <input
                 type="file"
@@ -513,7 +557,7 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
           {/* Date */}
           <div className="form-group-shared">
             <label htmlFor="date" className="form-label-shared">
-              Drop off date <span className="required-indicator">*</span>
+              📅 Drop off date <span className="required-indicator">*</span>
             </label>
             <input
               type="date"
@@ -522,17 +566,20 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               value={formData.date}
               onChange={handleDateChange}
               min={getMinDate()}
-              className="form-input-shared"
+              className={`form-input-shared ${errors.date ? 'error' : ''}`}
               required
             />
             <span className="help-text-shared">Select a date when the shop is open</span>
+            {errors.date && (
+              <span className="error-message-shared">{errors.date}</span>
+            )}
           </div>
 
           {/* Time Slot - Color-Coded Grid */}
           {formData.date && (
             <div className="form-group-shared">
               <label className="form-label-shared">
-                Select Time Slot <span className="required-indicator">*</span>
+                🕐 Select Time Slot <span className="required-indicator">*</span>
               </label>
               
               {/* Legend */}
@@ -568,7 +615,14 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                       key={slot.slot_id}
                       type="button"
                       className={`time-slot-btn ${slot.status} ${formData.time === slot.time_slot ? 'selected' : ''}`}
-                      onClick={() => slot.isClickable && setFormData(prev => ({ ...prev, time: slot.time_slot }))}
+                      onClick={() => {
+                        if (slot.isClickable) {
+                          setFormData(prev => ({ ...prev, time: slot.time_slot }));
+                          if (errors.time) {
+                            setErrors(prev => ({ ...prev, time: '' }));
+                          }
+                        }
+                      }}
                       disabled={!slot.isClickable}
                       title={slot.statusLabel}
                     >
@@ -601,6 +655,9 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                   ✅ Selected: <strong>{allTimeSlots.find(s => s.time_slot === formData.time)?.display_time}</strong>
                 </div>
               )}
+              {errors.time && (
+                <span className="error-message-shared">{errors.time}</span>
+              )}
             </div>
           )}
 
@@ -624,8 +681,8 @@ const RepairFormModal = ({ isOpen, onClose, onCartUpdate }) => {
             <button type="button" className="btn-shared btn-cancel-shared" onClick={handleClose}>
               Cancel
             </button>
-            <button type="submit" className="btn-shared btn-primary-shared" disabled={loading || !estimatedPrice}>
-              {loading ? 'Adding...' : `Add to Cart - ₱${estimatedPrice}`}
+            <button type="submit" className="btn-shared btn-primary-shared" disabled={loading}>
+              {loading ? 'Adding...' : 'Add to Cart'}
             </button>
           </div>
         </form>

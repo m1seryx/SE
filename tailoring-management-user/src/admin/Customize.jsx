@@ -124,6 +124,9 @@ const Customize = () => {
   const [editingPattern, setEditingPattern] = useState(null);
   const [loadingPatterns, setLoadingPatterns] = useState(false);
   const [patternImageFile, setPatternImageFile] = useState(null);
+
+  // Add menu dropdown state
+  const [showAddMenu, setShowAddMenu] = useState(false);
   const [patternImagePreview, setPatternImagePreview] = useState(null);
   const [uploadingPattern, setUploadingPattern] = useState(false);
 
@@ -169,6 +172,23 @@ const Customize = () => {
 
 
   // Check authentication on mount
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showAddMenu && !event.target.closest('[data-add-menu]')) {
+        setShowAddMenu(false);
+      }
+    };
+
+    if (showAddMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAddMenu]);
+
   useEffect(() => {
     if (!isAuthenticated()) {
       setError('Please log in to access this page');
@@ -1365,71 +1385,154 @@ const Customize = () => {
             <h2>Customization Management</h2>
             <p>Track and manage all customization orders</p>
           </div>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <button 
-              className="btn-primary" 
-              onClick={() => setShowGLBUploadModal(true)}
-              style={{ 
-                padding: '10px 20px', 
-                backgroundColor: '#667eea', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '5px', 
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}
-            >
-              + Add 3D Model
-            </button>
-            <button
-              onClick={openNewFabricType}
-              style={{
-                marginLeft: '10px',
-                padding: '10px 20px',
-                backgroundColor: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}
-            >
-              + Add Fabric Type
-            </button>
-            <button
-              onClick={openNewGarmentType}
-              style={{
-                marginLeft: '10px',
-                padding: '10px 20px',
-                backgroundColor: '#9c27b0',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}
-            >
-              + Add Garment Type
-            </button>
-            <button
-              onClick={openNewPattern}
-              style={{
-                marginLeft: '10px',
-                padding: '10px 20px',
-                backgroundColor: '#e65100',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}
-            >
-              + Add Pattern
-            </button>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', position: 'relative' }}>
+            <div style={{ position: 'relative' }} data-add-menu>
+              <button 
+                onClick={() => setShowAddMenu(!showAddMenu)}
+                style={{ 
+                  padding: '10px 20px', 
+                  backgroundColor: '#667eea', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '5px', 
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                + Add New
+                <span style={{ fontSize: '12px' }}>{showAddMenu ? '▲' : '▼'}</span>
+              </button>
+              
+              {showAddMenu && (
+                <div 
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '5px',
+                    backgroundColor: 'white',
+                    border: '1px solid #ddd',
+                    borderRadius: '5px',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                    minWidth: '200px',
+                    zIndex: 1000,
+                    overflow: 'hidden'
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      setShowGLBUploadModal(true);
+                      setShowAddMenu(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      backgroundColor: 'white',
+                      color: 'white',
+                      border: 'none',
+                      borderBottom: '1px solid #eee',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      textAlign: 'left',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#f5f5f5';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'white';
+                    }}
+                  >
+                    Add 3D Model
+                  </button>
+                  <button
+                    onClick={() => {
+                      openNewFabricType();
+                      setShowAddMenu(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      backgroundColor: 'white',
+                      color: 'white',
+                      border: 'none',
+                      borderBottom: '1px solid #eee',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      textAlign: 'left',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#f5f5f5';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'white';
+                    }}
+                  >
+                    Add Fabric Type
+                  </button>
+                  <button
+                    onClick={() => {
+                      openNewGarmentType();
+                      setShowAddMenu(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      backgroundColor: 'white',
+                      color: 'white',
+                      border: 'none',
+                      borderBottom: '1px solid #eee',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      textAlign: 'left',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#f5f5f5';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'white';
+                    }}
+                  >
+                    Add Garment Type
+                  </button>
+                  <button
+                    onClick={() => {
+                      openNewPattern();
+                      setShowAddMenu(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      backgroundColor: 'white',
+                      color: 'white',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      textAlign: 'left',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#f5f5f5';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'white';
+                    }}
+                  >
+                    Add Pattern
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           {error && <div className="error-message" style={{ color: 'red', marginBottom: '20px' }}>{error}</div>}
         </div>

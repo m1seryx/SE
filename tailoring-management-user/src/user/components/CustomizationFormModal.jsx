@@ -678,7 +678,7 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       <div className="modal-container-shared" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="modal-header-shared">
-          <h2 className="modal-title-shared">🧥 Customization Service</h2>
+          <h2 className="modal-title-shared">Customization Service</h2>
           <button className="modal-close-shared" onClick={handleClose} aria-label="Close modal">
             ×
           </button>
@@ -1037,7 +1037,7 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
             onClick={handleAddToCart}
             disabled={loading}
           >
-            {loading ? 'Adding...' : '🛒 Add to Cart'}
+            {loading ? 'Adding...' : 'Add to Cart'}
           </button>
         </div>
       </div>
