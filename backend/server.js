@@ -142,6 +142,8 @@ const walkInOrderRoutes = require('./routes/WalkInOrderRoutes');
 app.use('/api/walk-in-orders', walkInOrderRoutes);
 const damageRecordRoutes = require('./routes/DamageRecordRoutes');
 app.use('/api/damage-records', damageRecordRoutes);
+const faqRoutes = require('./routes/FAQRoutes');
+app.use('/api/faqs', faqRoutes);
 
 
 // Initialize database tables (time_slots and appointment_slots)

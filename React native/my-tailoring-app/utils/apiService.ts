@@ -279,6 +279,40 @@ export const measurementsService = {
   }
 };
 
+// FAQ API functions
+export const faqService = {
+  // Get all FAQs with vote counts
+  getAllFAQs: async () => {
+    return apiCall('/faqs');
+  },
+  
+  // Get FAQ categories
+  getCategories: async () => {
+    return apiCall('/faqs/categories');
+  },
+  
+  // Get user's votes on FAQs
+  getUserVotes: async () => {
+    try {
+      return await apiCall('/faqs/user-votes');
+    } catch (error) {
+      console.error('Get user votes error:', error);
+      return {
+        success: false,
+        data: {}
+      };
+    }
+  },
+  
+  // Vote on a FAQ (helpful or not helpful)
+  voteFAQ: async (faqId: number, isHelpful: boolean) => {
+    return apiCall(`/faqs/${faqId}/vote`, {
+      method: 'POST',
+      body: JSON.stringify({ isHelpful }),
+    });
+  }
+};
+
 // Appointment Slot API functions
 export const appointmentSlotService = {
   // Get available time slots for a date and service type

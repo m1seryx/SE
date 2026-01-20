@@ -13,6 +13,8 @@ export default function TabLayout() {
       <Stack.Screen name="home" />
       <Stack.Screen name="explore" />
       <Stack.Screen name="notifications" />
+      <Stack.Screen name="faq" />
+      <Stack.Screen name="contact" />
       
       {/* Nested folders */}
       <Stack.Screen name="appointment" />

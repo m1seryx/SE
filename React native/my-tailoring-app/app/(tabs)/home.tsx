@@ -232,23 +232,25 @@ export default function HomeScreen() {
           <Ionicons name="home" size={20} color="#7A5A00" />
         </View>
 
-        <TouchableOpacity
-          onPress={() =>
-            router.push("/(tabs)/appointment/appointmentSelection")
-          }
-        >
+        <TouchableOpacity onPress={() => router.push("/(tabs)/orders/OrderHistory")}>
           <View style={styles.navItemWrap}>
             <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/faq")}>
           <View style={styles.navItemWrap}>
-            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="help-circle-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("../UserProfile/profile")}>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/contact")}>
+          <View style={styles.navItemWrap}>
+            <Ionicons name="call-outline" size={20} color="#9CA3AF" />
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.push("/(tabs)/UserProfile/profile")}>
           <View style={styles.navItemWrap}>
             <Ionicons name="person-outline" size={20} color="#9CA3AF" />
           </View>
