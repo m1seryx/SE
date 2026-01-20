@@ -575,9 +575,32 @@ exports.updateRepairOrderItem = (req, res) => {
 
     const previousStatus = item.approval_status || 'pending';
     const previousPrice = item.final_price || null;
-
-    Order.updateRepairOrderItem(itemId, updateData, (err, result) => {
-      console.log("Controller - Update result:", err, result);
+    
+    // For walk-in orders, skip price_confirmation - go directly to 'accepted' or 'confirmed'
+    // Check if this is a walk-in order
+    const db = require('../config/db');
+    const checkOrderSql = `SELECT order_type FROM orders WHERE order_id = ?`;
+    db.query(checkOrderSql, [item.order_id], (orderErr, orderResults) => {
+      if (!orderErr && orderResults && orderResults.length > 0) {
+        const isWalkIn = orderResults[0].order_type === 'walk_in';
+        
+        // If it's a walk-in order and price is being updated without explicit status,
+        // automatically set status to 'accepted' instead of 'price_confirmation'
+        if (isWalkIn && updateData.finalPrice && !updateData.approvalStatus) {
+          // If current status is pending or price_confirmation, change to accepted
+          if (previousStatus === 'pending' || previousStatus === 'pending_review' || previousStatus === 'price_confirmation') {
+            updateData.approvalStatus = 'accepted';
+          }
+        }
+        
+        // If admin explicitly tries to set price_confirmation for walk-in, change to accepted
+        if (isWalkIn && updateData.approvalStatus === 'price_confirmation') {
+          updateData.approvalStatus = 'accepted';
+        }
+      }
+      
+      Order.updateRepairOrderItem(itemId, updateData, (err, result) => {
+        console.log("Controller - Update result:", err, result);
       if (err) {
         return res.status(500).json({
           success: false,
@@ -860,6 +883,7 @@ exports.updateRepairOrderItem = (req, res) => {
         success: true,
         message: "Repair order item updated successfully"
       });
+      });
     });
   });
 };
@@ -986,10 +1010,33 @@ exports.updateDryCleaningOrderItem = (req, res) => {
 
     const previousStatus = item.approval_status || 'pending';
     const previousPrice = item.final_price || null;
-
-    Order.updateDryCleaningOrderItem(itemId, updateData, (err, result) => {
-      if (err) {
-        return res.status(500).json({
+    
+    // For walk-in orders, skip price_confirmation - go directly to 'accepted' or 'confirmed'
+    // Check if this is a walk-in order
+    const db = require('../config/db');
+    const checkOrderSql = `SELECT order_type FROM orders WHERE order_id = ?`;
+    db.query(checkOrderSql, [item.order_id], (orderErr, orderResults) => {
+      if (!orderErr && orderResults && orderResults.length > 0) {
+        const isWalkIn = orderResults[0].order_type === 'walk_in';
+        
+        // If it's a walk-in order and price is being updated without explicit status,
+        // automatically set status to 'accepted' instead of 'price_confirmation'
+        if (isWalkIn && updateData.finalPrice && !updateData.approvalStatus) {
+          // If current status is pending or price_confirmation, change to accepted
+          if (previousStatus === 'pending' || previousStatus === 'pending_review' || previousStatus === 'price_confirmation') {
+            updateData.approvalStatus = 'accepted';
+          }
+        }
+        
+        // If admin explicitly tries to set price_confirmation for walk-in, change to accepted
+        if (isWalkIn && updateData.approvalStatus === 'price_confirmation') {
+          updateData.approvalStatus = 'accepted';
+        }
+      }
+      
+      Order.updateDryCleaningOrderItem(itemId, updateData, (err, result) => {
+        if (err) {
+          return res.status(500).json({
           success: false,
           message: "Error updating dry cleaning order item",
           error: err
@@ -1268,6 +1315,7 @@ exports.updateDryCleaningOrderItem = (req, res) => {
       res.json({
         success: true,
         message: "Dry cleaning order item updated successfully"
+      });
       });
     });
   });

@@ -252,6 +252,116 @@ const Order = {
     });
   },
 
+  // Create walk-in order (not from cart)
+  createWalkInOrder: (orderData, callback) => {
+    const { user_id, walk_in_customer_id, order_type, total_price, notes, items } = orderData;
+
+    const orderSql = `
+      INSERT INTO orders (user_id, walk_in_customer_id, order_type, total_price, status, order_date, notes)
+      VALUES (?, ?, ?, ?, 'pending', NOW(), ?)
+    `;
+
+    console.log('[ORDER MODEL] Creating walk-in order with data:', {
+      user_id,
+      walk_in_customer_id,
+      order_type,
+      total_price,
+      notes,
+      items_count: items?.length || 0
+    });
+
+    db.query(orderSql, [user_id, walk_in_customer_id, order_type, total_price, notes], (err, orderResult) => {
+      if (err) {
+        console.error('[ORDER MODEL] ❌ Error inserting order:', err);
+        console.error('[ORDER MODEL] SQL:', orderSql);
+        console.error('[ORDER MODEL] Values:', [user_id, walk_in_customer_id, order_type, total_price, notes]);
+        return callback(err, null);
+      }
+
+      const orderId = orderResult.insertId;
+
+      // Insert order items
+      if (!items || items.length === 0) {
+        return callback(null, { orderId: orderId });
+      }
+
+      const itemValues = items.map(item => {
+        let pricingFactors = item.pricing_factors || '{}';
+        
+        // For rental services, ensure downpayment is 50% of final price
+        if (item.service_type === 'rental') {
+          try {
+            const factors = typeof pricingFactors === 'string' ? JSON.parse(pricingFactors) : pricingFactors;
+            const totalPrice = parseFloat(item.final_price || 0);
+            const expectedDownpayment = totalPrice * 0.5;
+            
+            factors.downpayment = expectedDownpayment.toString();
+            factors.down_payment = expectedDownpayment.toString();
+            
+            pricingFactors = JSON.stringify(factors);
+          } catch (e) {
+            console.error('Error parsing pricing factors for rental:', e);
+          }
+        }
+        
+        return [
+          orderId,
+          item.service_type,
+          item.service_id,
+          item.quantity || 1,
+          item.base_price,
+          item.final_price,
+          item.appointment_date,
+          item.rental_start_date,
+          item.rental_end_date,
+          pricingFactors,
+          item.specific_data || '{}'
+        ];
+      });
+
+      // For walk-in orders, set approval_status appropriately:
+      // - For rental: set to 'rented' (skip ready_to_pickup since customer is already in-person)
+      // - For other services: set to 'accepted' (skip price_confirmation)
+      const itemSql = `
+        INSERT INTO order_items (
+          order_id, service_type, service_id, quantity, base_price, final_price,
+          appointment_date, rental_start_date, rental_end_date, pricing_factors, specific_data,
+          approval_status
+        ) VALUES ?
+      `;
+      
+      // Update itemValues to include appropriate approval_status for walk-in orders
+      const itemValuesWithStatus = itemValues.map(item => {
+        // Get service_type from the item data (it's at index 1 in the array)
+        const serviceType = item[1]; // service_type is the second element in item array
+        // For rental walk-in orders, set status to 'rented'; for others, set to 'accepted'
+        const status = (serviceType === 'rental') ? 'rented' : 'accepted';
+        return [...item, status];
+      });
+
+      db.query(itemSql, [itemValuesWithStatus], (itemErr, itemResult) => {
+        if (itemErr) {
+          return callback(itemErr, null);
+        }
+
+        // Initialize order tracking for all items
+        const OrderTracking = require('./OrderTrackingModel');
+        const trackingItems = items.map((item, index) => ({
+          order_item_id: itemResult.insertId + index,
+          service_type: item.service_type
+        }));
+
+        OrderTracking.initializeOrderTracking(trackingItems, (trackingErr) => {
+          if (trackingErr) {
+            console.error('Error initializing order tracking:', trackingErr);
+          }
+          console.log('[ORDER MODEL] ✅ Order created successfully, orderId:', orderId);
+          callback(null, { orderId: orderId, orderResult: orderResult, itemResult: itemResult });
+        });
+      });
+    });
+  },
+
   // Get orders by user
   getByUser: (userId, callback) => {
     const sql = `
@@ -269,7 +379,7 @@ const Order = {
     db.query(sql, [userId], callback);
   },
 
-  // Get all orders (for admin)
+  // Get all orders (for admin) - includes both online and walk-in orders
   getAll: (callback) => {
     const sql = `
       SELECT 
@@ -278,9 +388,13 @@ const Order = {
         u.first_name,
         u.last_name,
         u.email,
-        u.phone_number
+        u.phone_number,
+        wc.name as walk_in_customer_name,
+        wc.email as walk_in_customer_email,
+        wc.phone as walk_in_customer_phone
       FROM orders o
-      JOIN user u ON o.user_id = u.user_id
+      LEFT JOIN user u ON o.user_id = u.user_id
+      LEFT JOIN walk_in_customers wc ON o.walk_in_customer_id = wc.id
       ORDER BY o.order_date DESC
     `;
     db.query(sql, callback);
@@ -462,104 +576,144 @@ const Order = {
     db.query(sql, callback);
   },
 
-  // Get repair orders specifically
+  // Get repair orders specifically (includes both online and walk-in orders)
   getRepairOrders: (callback) => {
     const sql = `
       SELECT 
         oi.*,
         o.order_id,
         o.user_id,
+        o.order_type,
+        o.walk_in_customer_id,
         o.status as order_status,
         o.notes as order_notes,
+        COALESCE(u.first_name, wc.name) as customer_first_name,
+        COALESCE(u.last_name, '') as customer_last_name,
+        COALESCE(u.email, wc.email) as customer_email,
+        COALESCE(u.phone_number, wc.phone) as customer_phone,
         u.first_name,
         u.last_name,
         u.email,
         u.phone_number,
+        wc.name as walk_in_customer_name,
+        wc.email as walk_in_customer_email,
+        wc.phone as walk_in_customer_phone,
         DATE_FORMAT(o.order_date, '%Y-%m-%d %H:%i:%s') as order_date,
         DATE_FORMAT(oi.appointment_date, '%Y-%m-%d %H:%i:%s') as appointment_date,
         DATE_FORMAT(oi.rental_start_date, '%Y-%m-%d') as rental_start_date,
         DATE_FORMAT(oi.rental_end_date, '%Y-%m-%d') as rental_end_date
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.order_id
-      JOIN user u ON o.user_id = u.user_id
+      LEFT JOIN user u ON o.user_id = u.user_id
+      LEFT JOIN walk_in_customers wc ON o.walk_in_customer_id = wc.id
       WHERE oi.service_type = 'repair'
       ORDER BY o.order_date DESC
     `;
     db.query(sql, callback);
   },
 
-  // Get repair orders by status
+  // Get repair orders by status (includes both online and walk-in orders)
   getRepairOrdersByStatus: (status, callback) => {
     const sql = `
       SELECT 
         oi.*,
         o.order_id,
         o.user_id,
+        o.order_type,
+        o.walk_in_customer_id,
         o.status as order_status,
         o.notes as order_notes,
+        COALESCE(u.first_name, wc.name) as customer_first_name,
+        COALESCE(u.last_name, '') as customer_last_name,
+        COALESCE(u.email, wc.email) as customer_email,
+        COALESCE(u.phone_number, wc.phone) as customer_phone,
         u.first_name,
         u.last_name,
         u.email,
         u.phone_number,
+        wc.name as walk_in_customer_name,
+        wc.email as walk_in_customer_email,
+        wc.phone as walk_in_customer_phone,
         DATE_FORMAT(o.order_date, '%Y-%m-%d %H:%i:%s') as order_date,
         DATE_FORMAT(oi.appointment_date, '%Y-%m-%d %H:%i:%s') as appointment_date,
         DATE_FORMAT(oi.rental_start_date, '%Y-%m-%d') as rental_start_date,
         DATE_FORMAT(oi.rental_end_date, '%Y-%m-%d') as rental_end_date
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.order_id
-      JOIN user u ON o.user_id = u.user_id
+      LEFT JOIN user u ON o.user_id = u.user_id
+      LEFT JOIN walk_in_customers wc ON o.walk_in_customer_id = wc.id
       WHERE oi.service_type = 'repair' AND (o.status = ? OR oi.approval_status = ?)
       ORDER BY o.order_date DESC
     `;
     db.query(sql, [status, status], callback);
   },
 
-  // Get dry cleaning orders specifically
+  // Get dry cleaning orders specifically (includes both online and walk-in orders)
   getDryCleaningOrders: (callback) => {
     const sql = `
       SELECT 
         oi.*,
         o.order_id,
         o.user_id,
+        o.order_type,
+        o.walk_in_customer_id,
         o.status as order_status,
         o.notes as order_notes,
         u.first_name,
         u.last_name,
         u.email,
         u.phone_number,
+        wc.name as walk_in_customer_name,
+        wc.email as walk_in_customer_email,
+        wc.phone as walk_in_customer_phone,
+        COALESCE(u.first_name, wc.name) as customer_first_name,
+        COALESCE(u.last_name, '') as customer_last_name,
+        COALESCE(u.email, wc.email) as customer_email,
+        COALESCE(u.phone_number, wc.phone) as customer_phone,
         DATE_FORMAT(o.order_date, '%Y-%m-%d %H:%i:%s') as order_date,
         DATE_FORMAT(oi.appointment_date, '%Y-%m-%d %H:%i:%s') as appointment_date,
         DATE_FORMAT(oi.rental_start_date, '%Y-%m-%d') as rental_start_date,
         DATE_FORMAT(oi.rental_end_date, '%Y-%m-%d') as rental_end_date
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.order_id
-      JOIN user u ON o.user_id = u.user_id
+      LEFT JOIN user u ON o.user_id = u.user_id
+      LEFT JOIN walk_in_customers wc ON o.walk_in_customer_id = wc.id
       WHERE oi.service_type IN ('dry_cleaning', 'drycleaning', 'dry-cleaning', 'dry cleaning')
       ORDER BY o.order_date DESC
     `;
     db.query(sql, callback);
   },
 
-  // Get dry cleaning orders by status
+  // Get dry cleaning orders by status (includes both online and walk-in orders)
   getDryCleaningOrdersByStatus: (status, callback) => {
     const sql = `
       SELECT 
         oi.*,
         o.order_id,
         o.user_id,
+        o.order_type,
+        o.walk_in_customer_id,
         o.status as order_status,
         o.notes as order_notes,
         u.first_name,
         u.last_name,
         u.email,
         u.phone_number,
+        wc.name as walk_in_customer_name,
+        wc.email as walk_in_customer_email,
+        wc.phone as walk_in_customer_phone,
+        COALESCE(u.first_name, wc.name) as customer_first_name,
+        COALESCE(u.last_name, '') as customer_last_name,
+        COALESCE(u.email, wc.email) as customer_email,
+        COALESCE(u.phone_number, wc.phone) as customer_phone,
         DATE_FORMAT(o.order_date, '%Y-%m-%d %H:%i:%s') as order_date,
         DATE_FORMAT(oi.appointment_date, '%Y-%m-%d %H:%i:%s') as appointment_date,
         DATE_FORMAT(oi.rental_start_date, '%Y-%m-%d') as rental_start_date,
         DATE_FORMAT(oi.rental_end_date, '%Y-%m-%d') as rental_end_date
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.order_id
-      JOIN user u ON o.user_id = u.user_id
+      LEFT JOIN user u ON o.user_id = u.user_id
+      LEFT JOIN walk_in_customers wc ON o.walk_in_customer_id = wc.id
       WHERE oi.service_type IN ('dry_cleaning', 'drycleaning', 'dry-cleaning', 'dry cleaning') 
       AND (o.status = ? OR oi.approval_status = ?)
       ORDER BY o.order_date DESC
@@ -775,19 +929,28 @@ function getStatusNote(approvalStatus) {
   return notesMap[approvalStatus] || 'Status updated';
 }
 
-// Get rental orders specifically
+// Get rental orders specifically (includes both online and walk-in orders)
 Order.getRentalOrders = (callback) => {
   const sql = `
     SELECT 
       oi.*,
       o.order_id,
       o.user_id,
+      o.order_type,
+      o.walk_in_customer_id,
       o.status as order_status,
       o.notes as order_notes,
+      COALESCE(u.first_name, wc.name) as customer_first_name,
+      COALESCE(u.last_name, '') as customer_last_name,
+      COALESCE(u.email, wc.email) as customer_email,
+      COALESCE(u.phone_number, wc.phone) as customer_phone,
       u.first_name,
       u.last_name,
       u.email,
       u.phone_number,
+      wc.name as walk_in_customer_name,
+      wc.email as walk_in_customer_email,
+      wc.phone as walk_in_customer_phone,
       DATE_FORMAT(o.order_date, '%Y-%m-%d %H:%i:%s') as order_date,
       DATE_FORMAT(oi.appointment_date, '%Y-%m-%d %H:%i:%s') as appointment_date,
       DATE_FORMAT(oi.rental_start_date, '%Y-%m-%d') as rental_start_date,
@@ -802,33 +965,44 @@ Order.getRentalOrders = (callback) => {
       ) as approval_status
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.order_id
-    JOIN user u ON o.user_id = u.user_id
+    LEFT JOIN user u ON o.user_id = u.user_id
+    LEFT JOIN walk_in_customers wc ON o.walk_in_customer_id = wc.id
     WHERE oi.service_type = 'rental'
     ORDER BY o.order_date DESC
   `;
   db.query(sql, callback);
 };
 
-// Get rental orders by status
+// Get rental orders by status (includes both online and walk-in orders)
 Order.getRentalOrdersByStatus = (status, callback) => {
   const sql = `
     SELECT 
       oi.*,
       o.order_id,
       o.user_id,
+      o.order_type,
+      o.walk_in_customer_id,
       o.status as order_status,
       o.notes as order_notes,
+      COALESCE(u.first_name, wc.name) as customer_first_name,
+      COALESCE(u.last_name, '') as customer_last_name,
+      COALESCE(u.email, wc.email) as customer_email,
+      COALESCE(u.phone_number, wc.phone) as customer_phone,
       u.first_name,
       u.last_name,
       u.email,
       u.phone_number,
+      wc.name as walk_in_customer_name,
+      wc.email as walk_in_customer_email,
+      wc.phone as walk_in_customer_phone,
       DATE_FORMAT(o.order_date, '%Y-%m-%d %H:%i:%s') as order_date,
       DATE_FORMAT(oi.appointment_date, '%Y-%m-%d %H:%i:%s') as appointment_date,
       DATE_FORMAT(oi.rental_start_date, '%Y-%m-%d') as rental_start_date,
       DATE_FORMAT(oi.rental_end_date, '%Y-%m-%d') as rental_end_date
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.order_id
-    JOIN user u ON o.user_id = u.user_id
+    LEFT JOIN user u ON o.user_id = u.user_id
+    LEFT JOIN walk_in_customers wc ON o.walk_in_customer_id = wc.id
     WHERE oi.service_type = 'rental' 
     AND (o.status = ? OR oi.approval_status = ?)
     ORDER BY o.order_date DESC

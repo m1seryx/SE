@@ -43,15 +43,21 @@ exports.getCompletedItems = (req, res) => {
           oi.pricing_factors,
           oi.completed_item_image,
           o.status as order_status,
+          o.order_type,
+          o.walk_in_customer_id,
           o.order_date,
           u.user_id,
           u.first_name,
           u.last_name,
           u.email,
-          u.phone_number
+          u.phone_number,
+          wc.name as walk_in_customer_name,
+          wc.email as walk_in_customer_email,
+          wc.phone as walk_in_customer_phone
         FROM order_items oi
         JOIN orders o ON oi.order_id = o.order_id
-        JOIN user u ON o.user_id = u.user_id
+        LEFT JOIN user u ON o.user_id = u.user_id
+        LEFT JOIN walk_in_customers wc ON o.walk_in_customer_id = wc.id
         WHERE oi.service_type != 'rental' 
         AND (oi.approval_status = 'completed' OR o.status = 'completed')
         ORDER BY o.order_date DESC
@@ -70,15 +76,21 @@ exports.getCompletedItems = (req, res) => {
           oi.pricing_factors,
           NULL as completed_item_image,
           o.status as order_status,
+          o.order_type,
+          o.walk_in_customer_id,
           o.order_date,
           u.user_id,
           u.first_name,
           u.last_name,
           u.email,
-          u.phone_number
+          u.phone_number,
+          wc.name as walk_in_customer_name,
+          wc.email as walk_in_customer_email,
+          wc.phone as walk_in_customer_phone
         FROM order_items oi
         JOIN orders o ON oi.order_id = o.order_id
-        JOIN user u ON o.user_id = u.user_id
+        LEFT JOIN user u ON o.user_id = u.user_id
+        LEFT JOIN walk_in_customers wc ON o.walk_in_customer_id = wc.id
         WHERE oi.service_type != 'rental' 
         AND (oi.approval_status = 'completed' OR o.status = 'completed')
         ORDER BY o.order_date DESC
@@ -150,9 +162,16 @@ exports.getCompletedItems = (req, res) => {
         id: item.item_id,
         orderId: item.order_id,
         uniqueNo: uniqueNo,
-        customerName: `${item.first_name} ${item.last_name}`,
-        customerEmail: item.email,
-        customerPhone: item.phone_number,
+        customerName: item.order_type === 'walk_in' 
+          ? (item.walk_in_customer_name || 'Walk-in Customer')
+          : `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'N/A',
+        customerEmail: item.order_type === 'walk_in' 
+          ? (item.walk_in_customer_email || '')
+          : (item.email || ''),
+        customerPhone: item.order_type === 'walk_in' 
+          ? (item.walk_in_customer_phone || '')
+          : (item.phone_number || ''),
+        orderType: item.order_type || 'online',
         serviceType: item.service_type,
         serviceTypeDisplay: serviceTypeDisplay,
         date: item.order_date ? new Date(item.order_date).toISOString().split('T')[0] : 'N/A',
@@ -335,9 +354,16 @@ exports.getItemsByServiceType = (req, res) => {
         id: item.item_id,
         orderId: item.order_id,
         uniqueNo: uniqueNo,
-        customerName: `${item.first_name} ${item.last_name}`,
-        customerEmail: item.email,
-        customerPhone: item.phone_number,
+        customerName: item.order_type === 'walk_in' 
+          ? (item.walk_in_customer_name || 'Walk-in Customer')
+          : `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'N/A',
+        customerEmail: item.order_type === 'walk_in' 
+          ? (item.walk_in_customer_email || '')
+          : (item.email || ''),
+        customerPhone: item.order_type === 'walk_in' 
+          ? (item.walk_in_customer_phone || '')
+          : (item.phone_number || ''),
+        orderType: item.order_type || 'online',
         serviceType: item.service_type,
         serviceTypeDisplay: serviceTypeDisplay,
         date: item.order_date ? new Date(item.order_date).toISOString().split('T')[0] : 'N/A',

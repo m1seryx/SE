@@ -20,40 +20,86 @@ exports.getAllCustomers = (req, res) => {
   });
 };
 
-// Get customer by ID
+// Get customer by ID (supports both online users and walk-in customers)
 exports.getCustomerById = (req, res) => {
   const { id } = req.params;
+  const { customer_type } = req.query; // 'online' or 'walk_in'
 
-  User.getCustomerById(id, (err, results) => {
-    if (err) {
-      return res.status(500).json({
-        success: false,
-        message: "Error fetching customer",
-        error: err
-      });
-    }
-
-    if (results.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found"
-      });
-    }
-
-    // Get measurements for this customer
-    CustomerMeasurements.getByCustomerId(id, (measErr, measurements) => {
-      if (measErr) {
-        console.error('Error fetching measurements:', measErr);
+  // If it's a walk-in customer, get from walk_in_customers table
+  if (customer_type === 'walk_in') {
+    const WalkInCustomer = require('../model/WalkInCustomerModel');
+    WalkInCustomer.getById(id, (err, walkInCustomer) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Error fetching walk-in customer",
+          error: err
+        });
       }
 
-      res.json({
-        success: true,
-        message: "Customer retrieved successfully",
-        customer: results[0],
-        measurements: measurements && measurements.length > 0 ? measurements[0] : null
+      if (!walkInCustomer) {
+        return res.status(404).json({
+          success: false,
+          message: "Walk-in customer not found"
+        });
+      }
+
+      // Get measurements for this walk-in customer
+      CustomerMeasurements.getByWalkInCustomerId(id, (measErr, measurements) => {
+        if (measErr) {
+          console.error('Error fetching measurements:', measErr);
+        }
+
+        res.json({
+          success: true,
+          message: "Walk-in customer retrieved successfully",
+          customer: {
+            ...walkInCustomer,
+            customer_type: 'walk_in',
+            customer_id: walkInCustomer.id,
+            full_name: walkInCustomer.name,
+            // For compatibility
+            user_id: null,
+            first_name: walkInCustomer.name,
+            last_name: ''
+          },
+          measurements: measurements && measurements.length > 0 ? measurements[0] : null
+        });
       });
     });
-  });
+  } else {
+    // Online customer
+    User.getCustomerById(id, (err, results) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Error fetching customer",
+          error: err
+        });
+      }
+
+      if (results.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Customer not found"
+        });
+      }
+
+      // Get measurements for this customer
+      CustomerMeasurements.getByCustomerId(id, (measErr, measurements) => {
+        if (measErr) {
+          console.error('Error fetching measurements:', measErr);
+        }
+
+        res.json({
+          success: true,
+          message: "Customer retrieved successfully",
+          customer: results[0],
+          measurements: measurements && measurements.length > 0 ? measurements[0] : null
+        });
+      });
+    });
+  }
 };
 
 // Update customer
@@ -112,11 +158,13 @@ exports.updateCustomerStatus = (req, res) => {
   });
 };
 
-// Save customer measurements
+// Save customer measurements (supports both online users and walk-in customers)
 exports.saveMeasurements = (req, res) => {
   const { id } = req.params;
-  const { top, bottom, notes } = req.body;
+  const { top, bottom, notes, customer_type } = req.body;
   const adminId = req.user.id;
+
+  const isWalkIn = customer_type === 'walk_in';
 
   // Check if measurements already exist
   CustomerMeasurements.getByCustomerId(id, (checkErr, existing) => {
@@ -126,7 +174,7 @@ exports.saveMeasurements = (req, res) => {
 
     const isUpdate = existing && existing.length > 0;
 
-    CustomerMeasurements.upsert(id, { top, bottom, notes }, (err, result) => {
+    CustomerMeasurements.upsert(id, { top, bottom, notes, isWalkIn }, (err, result) => {
       if (err) {
         return res.status(500).json({
           success: false,

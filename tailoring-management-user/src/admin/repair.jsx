@@ -328,8 +328,10 @@ const Repair = () => {
       !searchTerm ||
       item.order_id?.toString().includes(searchTerm.toLowerCase()) ||
       `${item.first_name} ${item.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.walk_in_customer_name && item.walk_in_customer_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       item.specific_data?.garmentType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      item.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.walk_in_customer_email && item.walk_in_customer_email.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     // Apply status filter only for "all" tab
@@ -360,13 +362,35 @@ const Repair = () => {
     return items;
   };
 
-  const handleAccept = (itemId) => {
+  const handleAccept = async (itemId) => {
     const item = allItems.find(i => i.item_id === itemId);
     if (!item) {
       alert("Order not found", "Error", "error");
       return;
     }
     
+    // For walk-in orders, skip price confirmation modal and directly set to 'accepted'
+    if (item.order_type === 'walk_in') {
+      try {
+        const estimatedPrice = getEstimatedPrice(item) || parseFloat(item.final_price || 0);
+        const result = await updateRepairOrderItem(itemId, {
+          approvalStatus: 'accepted',
+          finalPrice: estimatedPrice
+        });
+        if (result.success) {
+          await loadRepairOrders();
+          await alert("Walk-in order accepted (price confirmed in person)", "Success", "success");
+        } else {
+          await alert(result.message || "Failed to accept request", "Error", "error");
+        }
+      } catch (err) {
+        console.error("Accept error:", err);
+        await alert("Failed to accept request", "Error", "error");
+      }
+      return;
+    }
+    
+    // For online orders, show price confirmation modal
     const estimatedPrice = getEstimatedPrice(item) || parseFloat(item.final_price || 0);
     setPriceConfirmationItem(item);
     setPriceConfirmationPrice(estimatedPrice.toFixed(2));
@@ -731,7 +755,25 @@ const Repair = () => {
                   return (
                   <tr key={item.item_id} className="clickable-row" onClick={() => handleViewDetails(item)}>
                     <td><strong>#{item.order_id}</strong></td>
-                    <td>{item.first_name} {item.last_name}</td>
+                    <td>
+                      {item.order_type === 'walk_in' ? (
+                        <span>
+                          <span style={{ 
+                            display: 'inline-block',
+                            backgroundColor: '#ff9800',
+                            color: 'white',
+                            padding: '2px 8px',
+                            borderRadius: '3px',
+                            fontSize: '0.75em',
+                            marginRight: '5px',
+                            fontWeight: 'bold'
+                          }}>WALK-IN</span>
+                          {item.walk_in_customer_name || 'Walk-in Customer'}
+                        </span>
+                      ) : (
+                        `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'N/A'
+                      )}
+                    </td>
                     <td>{item.specific_data?.garmentType || 'N/A'}</td>
                     <td><span style={{ fontSize: '0.9em', color: '#d32f2f' }}>{item.specific_data?.serviceName || 'N/A'}</span></td>
                     <td>{new Date(item.order_date).toLocaleDateString()}</td>
@@ -882,11 +924,15 @@ const Repair = () => {
                     const currentPrice = parseFloat(selectedOrder.final_price || 0);
                     
                     // If price is being changed and status is pending or accepted, auto-set to price_confirmation
+                    // BUT skip price_confirmation for walk-in orders (they confirm in person)
                     let newStatus = editForm.approvalStatus;
+                    const isWalkIn = selectedOrder.order_type === 'walk_in';
+                    
                     if (newPrice && estimatedPrice && (editForm.approvalStatus === 'pending' || editForm.approvalStatus === 'accepted')) {
                       const priceChanged = Math.abs(parseFloat(newPrice) - estimatedPrice) > 0.01;
                       if (priceChanged) {
-                        newStatus = 'price_confirmation';
+                        // For walk-in orders, go directly to 'accepted' instead of 'price_confirmation'
+                        newStatus = isWalkIn ? 'accepted' : 'price_confirmation';
                       }
                     }
                     
@@ -897,6 +943,7 @@ const Repair = () => {
                 />
                 {(() => {
                   const estimatedPrice = getEstimatedPrice(selectedOrder);
+                  const isWalkIn = selectedOrder.order_type === 'walk_in';
                   if (estimatedPrice && editForm.finalPrice) {
                     const priceDiff = parseFloat(editForm.finalPrice) - estimatedPrice;
                     if (Math.abs(priceDiff) > 0.01) {
@@ -904,7 +951,11 @@ const Repair = () => {
                         <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '0.9em' }}>
                           <strong>⚠️ Price Changed:</strong> Estimated: ₱{estimatedPrice.toFixed(2)} → New: ₱{parseFloat(editForm.finalPrice).toFixed(2)}
                           <br />
-                          <span style={{ color: '#666', fontSize: '0.85em' }}>Status will be set to "Price Confirmation" to notify customer.</span>
+                          <span style={{ color: '#666', fontSize: '0.85em' }}>
+                            {isWalkIn 
+                              ? 'Status will be set to "Accepted" (walk-in orders skip price confirmation).'
+                              : 'Status will be set to "Price Confirmation" to notify customer.'}
+                          </span>
                         </div>
                       );
                     }
@@ -917,20 +968,37 @@ const Repair = () => {
                 <label>Status</label>
                 <select 
                   value={editForm.approvalStatus} 
-                  onChange={(e) => setEditForm({...editForm, approvalStatus: e.target.value})}
+                  onChange={(e) => {
+                    // Prevent setting price_confirmation for walk-in orders
+                    const newStatus = e.target.value;
+                    const isWalkIn = selectedOrder.order_type === 'walk_in';
+                    if (isWalkIn && newStatus === 'price_confirmation') {
+                      showToast('Walk-in orders do not require price confirmation. Status set to "Accepted".', 'info');
+                      setEditForm({...editForm, approvalStatus: 'accepted'});
+                    } else {
+                      setEditForm({...editForm, approvalStatus: newStatus});
+                    }
+                  }}
                   style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                 >
                   <option value="pending">Pending</option>
                   <option value="accepted">Accepted</option>
-                  <option value="price_confirmation">Price Confirmation</option>
+                  {selectedOrder.order_type !== 'walk_in' && (
+                    <option value="price_confirmation">Price Confirmation</option>
+                  )}
                   <option value="confirmed">In Progress</option>
                   <option value="ready_for_pickup">Ready for Pickup</option>
                   <option value="completed">Completed</option>
                   <option value="cancelled">Rejected</option>
                 </select>
-                {editForm.approvalStatus === 'price_confirmation' && (
+                {editForm.approvalStatus === 'price_confirmation' && selectedOrder.order_type !== 'walk_in' && (
                   <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#e3f2fd', borderRadius: '4px', fontSize: '0.9em', color: '#1976d2' }}>
                     ℹ️ Customer will be notified to confirm the updated price.
+                  </div>
+                )}
+                {selectedOrder.order_type === 'walk_in' && (
+                  <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '0.9em', color: '#856404' }}>
+                    ℹ️ Walk-in orders skip price confirmation (customer confirms in person).
                   </div>
                 )}
               </div>
@@ -1117,7 +1185,7 @@ const Repair = () => {
 )}
 
       {/* Price Confirmation Modal */}
-      {showPriceConfirmationModal && priceConfirmationItem && (
+      {showPriceConfirmationModal && priceConfirmationItem && priceConfirmationItem.order_type !== 'walk_in' && (
         <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowPriceConfirmationModal(false)}>
           <div className="modal-content">
             <div className="modal-header">

@@ -21,6 +21,7 @@ import Customize from "./admin/Customize";
 import Billing from "./admin/Billing";
 import CustomerList from "./admin/CustomerList";
 import ShopSchedule from "./admin/ShopSchedule";
+import WalkInOrders from "./admin/WalkInOrders";
 import Customizer3DPage from "./pages/Customizer3DPage";
 
 const App = () => {
@@ -47,6 +48,7 @@ const App = () => {
         <Route path="/billing" element={<Billing />} />
         <Route path="/customers" element={<CustomerList />} />
         <Route path="/shop-schedule" element={<ShopSchedule />} />
+        <Route path="/walk-in-orders" element={<WalkInOrders />} />
 
       </Routes>
     </>

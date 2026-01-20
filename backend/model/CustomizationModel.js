@@ -1,24 +1,30 @@
 const db = require('../config/db');
 
 const Customization = {
-  // Get all customization orders (for admin)
+  // Get all customization orders (for admin) - includes both online and walk-in orders
   getAllOrders: (callback) => {
     const sql = `
       SELECT 
         oi.*,
         o.order_id,
         o.user_id,
+        o.order_type,
+        o.walk_in_customer_id,
         o.status as order_status,
         o.notes as order_notes,
         u.first_name,
         u.last_name,
         u.email,
         u.phone_number,
+        wc.name as walk_in_customer_name,
+        wc.email as walk_in_customer_email,
+        wc.phone as walk_in_customer_phone,
         DATE_FORMAT(o.order_date, '%Y-%m-%d %H:%i:%s') as order_date,
         DATE_FORMAT(oi.appointment_date, '%Y-%m-%d %H:%i:%s') as appointment_date
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.order_id
-      JOIN user u ON o.user_id = u.user_id
+      LEFT JOIN user u ON o.user_id = u.user_id
+      LEFT JOIN walk_in_customers wc ON o.walk_in_customer_id = wc.id
       WHERE oi.service_type = 'customization'
       ORDER BY o.order_date DESC
     `;

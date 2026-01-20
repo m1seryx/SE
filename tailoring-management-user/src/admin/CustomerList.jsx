@@ -51,11 +51,15 @@ const CustomerList = () => {
   };
 
   const handleEditCustomer = async (customer) => {
-    const result = await getCustomerById(customer.user_id);
+    const isWalkIn = customer.customer_type === 'walk_in';
+    const customerId = isWalkIn ? customer.customer_id : customer.user_id;
+    const customerType = isWalkIn ? 'walk_in' : 'online';
+    
+    const result = await getCustomerById(customerId, customerType);
     if (result.success) {
-      setSelectedCustomer(result.customer);
+      setSelectedCustomer({ ...result.customer, customer_type: customerType });
       setEditForm({
-        first_name: result.customer.first_name || '',
+        first_name: result.customer.first_name || result.customer.full_name || '',
         last_name: result.customer.last_name || '',
         email: result.customer.email || '',
         phone_number: result.customer.phone_number || '',
@@ -76,7 +80,7 @@ const CustomerList = () => {
       } else {
         // Try to fetch measurements separately
         setMeasurementsLoading(true);
-        const measResult = await getMeasurements(customer.user_id);
+        const measResult = await getMeasurements(customerId, customerType);
         if (measResult.success && measResult.measurements) {
           setMeasurements({
             top: typeof measResult.measurements.top_measurements === 'string' 
@@ -147,8 +151,13 @@ const CustomerList = () => {
 
   const getFilteredCustomers = () => {
     return customers.filter(customer => {
+      const isWalkIn = customer.customer_type === 'walk_in';
+      const fullName = isWalkIn 
+        ? (customer.full_name || customer.name || '').toLowerCase()
+        : `${customer.first_name || ''} ${customer.last_name || ''}`.toLowerCase();
+      
       const matchesSearch = 
-        `${customer.first_name} ${customer.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        fullName.includes(searchTerm.toLowerCase()) ||
         customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.phone_number?.includes(searchTerm);
       
@@ -221,64 +230,98 @@ const CustomerList = () => {
               ) : getFilteredCustomers().length === 0 ? (
                 <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>No customers found</td></tr>
               ) : (
-                getFilteredCustomers().map(customer => (
-                  <tr key={customer.user_id}>
-                    <td><strong>{customer.first_name} {customer.last_name}</strong></td>
-                    <td>{customer.email || 'N/A'}</td>
-                    <td>{customer.phone_number || 'N/A'}</td>
-                    <td>{customer.total_orders || 0}</td>
-                    <td>{formatDate(customer.created_at)}</td>
-                    <td>
-                      <span className={`status-badge ${getStatusClass(customer.status || 'active')}`}>
-                        {(customer.status || 'active').charAt(0).toUpperCase() + (customer.status || 'active').slice(1)}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="action-buttons">
-                        <button className="icon-btn edit" onClick={(e) => { e.stopPropagation(); handleEditCustomer(customer); }} title="Edit">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                          </svg>
-                        </button>
-                        {(customer.status === 'active' || !customer.status || customer.status === null) ? (
-                          <button 
-                            className="icon-btn decline" 
-                            onClick={async (e) => { 
-                              e.stopPropagation(); 
-                              const confirmed = await confirm(`Are you sure you want to deactivate ${customer.first_name} ${customer.last_name}?`, 'Confirm Deactivation', 'warning');
-                              if (confirmed) {
-                                handleStatusChange(customer.user_id, 'inactive');
-                              }
-                            }} 
-                            title="Deactivate"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <line x1="18" y1="6" x2="6" y2="18"></line>
-                              <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                          </button>
-                        ) : (
-                          <button 
-                            className="icon-btn accept" 
-                            onClick={async (e) => { 
-                              e.stopPropagation(); 
-                              const confirmed = await confirm(`Are you sure you want to activate ${customer.first_name} ${customer.last_name}?`, 'Confirm Activation', 'warning');
-                              if (confirmed) {
-                                handleStatusChange(customer.user_id, 'active');
-                              }
-                            }} 
-                            title="Activate"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                          </button>
+                getFilteredCustomers().map(customer => {
+                  const isWalkIn = customer.customer_type === 'walk_in';
+                  const customerId = isWalkIn ? customer.customer_id : customer.user_id;
+                  const fullName = isWalkIn ? customer.full_name : `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+                  const email = isWalkIn ? customer.email : customer.email;
+                  const phone = isWalkIn ? customer.phone_number : customer.phone_number;
+                  
+                  return (
+                    <tr key={customerId || customer.user_id}>
+                      <td>
+                        <strong>{fullName || 'N/A'}</strong>
+                        {isWalkIn && (
+                          <span style={{ 
+                            display: 'inline-block',
+                            backgroundColor: '#ff9800',
+                            color: 'white',
+                            padding: '2px 8px',
+                            borderRadius: '3px',
+                            fontSize: '0.75em',
+                            marginLeft: '8px',
+                            fontWeight: 'bold'
+                          }}>WALK-IN</span>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td>{email || 'N/A'}</td>
+                      <td>{phone || 'N/A'}</td>
+                      <td>{customer.total_orders || 0}</td>
+                      <td>{formatDate(customer.created_at)}</td>
+                      <td>
+                        <span className={`status-badge ${getStatusClass(customer.status || 'active')}`}>
+                          {(customer.status || 'active').charAt(0).toUpperCase() + (customer.status || 'active').slice(1)}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="action-buttons">
+                          <button className="icon-btn edit" onClick={(e) => { e.stopPropagation(); handleEditCustomer(customer); }} title="Edit">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </button>
+                          {(customer.status === 'active' || !customer.status || customer.status === null) ? (
+                            <button 
+                              className="icon-btn decline" 
+                              onClick={async (e) => { 
+                                e.stopPropagation(); 
+                                const customerName = isWalkIn ? fullName : `${customer.first_name} ${customer.last_name}`;
+                                const confirmed = await confirm(`Are you sure you want to deactivate ${customerName}?`, 'Confirm Deactivation', 'warning');
+                                if (confirmed) {
+                                  // Only allow status change for online customers
+                                  if (!isWalkIn) {
+                                    handleStatusChange(customer.user_id, 'inactive');
+                                  } else {
+                                    await alert('Walk-in customers cannot be deactivated this way', 'Info', 'info');
+                                  }
+                                }
+                              }} 
+                              title="Deactivate"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                              </svg>
+                            </button>
+                          ) : (
+                            <button 
+                              className="icon-btn accept" 
+                              onClick={async (e) => { 
+                                e.stopPropagation(); 
+                                const customerName = isWalkIn ? fullName : `${customer.first_name} ${customer.last_name}`;
+                                const confirmed = await confirm(`Are you sure you want to activate ${customerName}?`, 'Confirm Activation', 'warning');
+                                if (confirmed) {
+                                  // Only allow status change for online customers
+                                  if (!isWalkIn) {
+                                    handleStatusChange(customer.user_id, 'active');
+                                  } else {
+                                    await alert('Walk-in customers cannot be activated this way', 'Info', 'info');
+                                  }
+                                }
+                              }} 
+                              title="Activate"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

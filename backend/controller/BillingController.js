@@ -13,6 +13,7 @@ exports.getAllBillingRecords = (req, res) => {
 
   // Get all order items with their details including specific_data and pricing_factors
   // Exclude rejected/cancelled items from billing
+  // Includes both online and walk-in orders
   const sql = `
     SELECT 
       oi.item_id,
@@ -27,15 +28,21 @@ exports.getAllBillingRecords = (req, res) => {
       oi.rental_start_date,
       oi.rental_end_date,
       o.status as order_status,
+      o.order_type,
+      o.walk_in_customer_id,
       o.order_date,
       u.user_id,
       u.first_name,
       u.last_name,
       u.email,
-      u.phone_number
+      u.phone_number,
+      wc.name as walk_in_customer_name,
+      wc.email as walk_in_customer_email,
+      wc.phone as walk_in_customer_phone
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.order_id
-    JOIN user u ON o.user_id = u.user_id
+    LEFT JOIN user u ON o.user_id = u.user_id
+    LEFT JOIN walk_in_customers wc ON o.walk_in_customer_id = wc.id
     WHERE oi.approval_status != 'cancelled'
     ORDER BY o.order_date DESC
   `;
@@ -144,7 +151,10 @@ exports.getAllBillingRecords = (req, res) => {
       return {
         id: item.item_id,
         uniqueNo: uniqueNo,
-        customerName: `${item.first_name} ${item.last_name}`,
+        customerName: item.order_type === 'walk_in' 
+          ? (item.walk_in_customer_name || 'Walk-in Customer')
+          : `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'N/A',
+        orderType: item.order_type || 'online',
         serviceType: item.service_type,
         serviceTypeDisplay: serviceTypeDisplay,
         date: item.order_date ? new Date(item.order_date).toISOString().split('T')[0] : 'N/A',
@@ -296,7 +306,10 @@ exports.getBillingRecordsByStatus = (req, res) => {
       return {
         id: item.item_id,
         uniqueNo: uniqueNo,
-        customerName: `${item.first_name} ${item.last_name}`,
+        customerName: item.order_type === 'walk_in' 
+          ? (item.walk_in_customer_name || 'Walk-in Customer')
+          : `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'N/A',
+        orderType: item.order_type || 'online',
         serviceType: item.service_type,
         serviceTypeDisplay: serviceTypeDisplay,
         date: item.order_date ? new Date(item.order_date).toISOString().split('T')[0] : 'N/A',

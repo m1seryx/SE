@@ -2,10 +2,21 @@ import axios from "axios";
 
 const BASE_URL = "http://localhost:5000/api";
 
+// Get auth headers
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return {
+    'Authorization': token ? `Bearer ${token}` : '',
+    'Content-Type': 'application/json'
+  };
+};
+
 // Rental Inventory API calls
 export async function getAllRentals() {
   try {
-    const response = await axios.get(`${BASE_URL}/rentals`);
+    const response = await axios.get(`${BASE_URL}/rentals`, {
+      headers: getAuthHeaders()
+    });
     return response.data;
   } catch (error) {
     console.error("Get all rentals error:", error);
@@ -18,7 +29,9 @@ export async function getAllRentals() {
 
 export async function getAvailableRentals() {
   try {
-    const response = await axios.get(`${BASE_URL}/rentals/available`);
+    const response = await axios.get(`${BASE_URL}/rentals/available`, {
+      headers: getAuthHeaders()
+    });
     return response.data;
   } catch (error) {
     console.error("Get available rentals error:", error);

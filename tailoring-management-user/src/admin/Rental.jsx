@@ -88,6 +88,8 @@ function Rental() {
       rental.item_id?.toString().includes(searchTerm) ||
       rental.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rental.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (rental.walk_in_customer_name && rental.walk_in_customer_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (rental.walk_in_customer_email && rental.walk_in_customer_email.toLowerCase().includes(searchTerm.toLowerCase())) ||
       rental.specific_data?.item_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
     // Normalize status for filtering - treat 'accepted' as 'ready_to_pickup' since accepted doesn't exist in rental flow
@@ -115,18 +117,25 @@ function Rental() {
     return 0;
   });
 
-  // Handle Accept rental - moves directly to ready_to_pickup
+  // Handle Accept rental - moves directly to ready_to_pickup (or rented for walk-in orders)
   const handleAccept = async (rental) => {
     const confirmed = await confirm(`Accept rental order ORD-${rental.order_id}?`, 'Accept Rental', 'warning');
     if (!confirmed) return;
 
     try {
+      // For walk-in orders, skip ready_to_pickup and go directly to 'rented'
+      const isWalkIn = rental.order_type === 'walk_in';
+      const nextStatus = isWalkIn ? 'rented' : 'ready_to_pickup';
+      const successMessage = isWalkIn 
+        ? 'Walk-in rental accepted! Status changed to "Rented" (customer is already in-person)'
+        : 'Rental accepted! Status changed to "Ready to Pick Up"';
+
       const result = await updateRentalOrderItem(rental.item_id, {
-        approvalStatus: 'ready_to_pickup'
+        approvalStatus: nextStatus
       });
 
       if (result.success) {
-        await alert('Rental accepted! Status changed to "Ready to Pick Up"', 'Success', 'success');
+        await alert(successMessage, 'Success', 'success');
         await loadRentalOrders();
       } else {
         await alert(result.message || 'Failed to accept rental', 'Error', 'error');
@@ -528,21 +537,27 @@ function Rental() {
   };
 
   // Get next status in workflow
-  const getNextStatus = (currentStatus, serviceType = 'rental') => {
+  const getNextStatus = (currentStatus, serviceType = 'rental', item = null) => {
     // For rental service type, use simplified flow
     if (serviceType === 'rental') {
+      // Check if this is a walk-in order
+      const isWalkIn = item?.order_type === 'walk_in';
+      
       // Handle null/undefined/empty status
-    if (!currentStatus || currentStatus === 'pending_review' || currentStatus === 'pending') {
-        return 'ready_to_pickup';
+      if (!currentStatus || currentStatus === 'pending_review' || currentStatus === 'pending') {
+        // For walk-in orders, skip ready_to_pickup and go directly to 'rented'
+        return isWalkIn ? 'rented' : 'ready_to_pickup';
       }
       
       // Normalize status variants to standard form
       let normalizedStatus = currentStatus;
       if (currentStatus === 'ready_for_pickup' || currentStatus === 'accepted') {
         normalizedStatus = 'ready_to_pickup';
-    }
+      }
     
-      // Rental flow: pending → ready_to_pickup → rented → returned
+      // Rental flow: 
+      // - Walk-in: pending → rented → returned (skip ready_to_pickup)
+      // - Online: pending → ready_to_pickup → rented → returned
       if (normalizedStatus === 'ready_to_pickup') {
         return 'rented';
       } else if (normalizedStatus === 'rented') {
@@ -704,7 +719,25 @@ function Rental() {
                     return (
                       <tr key={rental.item_id} className="clickable-row" onClick={() => handleViewDetails(rental)}>
                         <td><strong>ORD-{rental.order_id}</strong></td>
-                        <td>{rental.first_name} {rental.last_name}</td>
+                        <td>
+                          {rental.order_type === 'walk_in' ? (
+                            <span>
+                              <span style={{ 
+                                display: 'inline-block',
+                                backgroundColor: '#ff9800',
+                                color: 'white',
+                                padding: '2px 8px',
+                                borderRadius: '3px',
+                                fontSize: '0.75em',
+                                marginRight: '5px',
+                                fontWeight: 'bold'
+                              }}>WALK-IN</span>
+                              {rental.walk_in_customer_name || 'Walk-in Customer'}
+                            </span>
+                          ) : (
+                            `${rental.first_name || ''} ${rental.last_name || ''}`.trim() || 'N/A'
+                          )}
+                        </td>
                         <td>{rental.specific_data?.item_name || 'N/A'}</td>
                         <td>
                           {rental.rental_start_date && rental.rental_end_date ? (
@@ -835,24 +868,27 @@ function Rental() {
                                 {/* Show move to next status button for all statuses */}
                                 {(() => {
                                   const currentStatus = rental.approval_status || 'pending';
-                                  const nextStatus = getNextStatus(currentStatus, 'rental');
+                                  const nextStatus = getNextStatus(currentStatus, 'rental', rental);
                                   if (!nextStatus) return null;
                                   const nextStatusLabel = getNextStatusLabel(currentStatus, 'rental');
                                   
                                   // Check if moving to "rented" requires payment first
                                   const isMovingToRented = nextStatus === 'rented';
                                   const hasNoPayment = amountPaid <= 0;
+                                  const isWalkIn = rental.order_type === 'walk_in';
                                   
                                   // Check if current status is "rented" and trying to move to "returned" - require full payment
                                   const isCurrentlyRented = currentStatus === 'rented';
                                   const hasRemainingBalance = remainingBalance > 0;
                                   
-                                  // Disable if: moving to rented without payment OR currently rented with remaining balance
-                                  const shouldDisable = (isMovingToRented && hasNoPayment) || (isCurrentlyRented && hasRemainingBalance);
+                                  // For walk-in orders, allow moving to "rented" without payment (customer is in-person, can pay at any time)
+                                  // For online orders, require payment before moving to "rented"
+                                  // Always require full payment before moving from "rented" to "returned"
+                                  const shouldDisable = (!isWalkIn && isMovingToRented && hasNoPayment) || (isCurrentlyRented && hasRemainingBalance);
                                   
                                   // Set appropriate tooltip message
                                   let disableMessage = '';
-                                  if (isMovingToRented && hasNoPayment) {
+                                  if (!isWalkIn && isMovingToRented && hasNoPayment) {
                                     disableMessage = `Record payment first before moving to ${nextStatusLabel}`;
                                   } else if (isCurrentlyRented && hasRemainingBalance) {
                                     disableMessage = `Full payment required (₱${remainingBalance.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} remaining) before moving to ${nextStatusLabel}`;
@@ -908,25 +944,27 @@ function Rental() {
                                 </svg>
                               </button>
                                 )}
-                                {/* Show record payment button - disabled if pending, hidden if cancelled */}
+                                {/* Show record payment button - disabled if pending (except for walk-in orders), hidden if cancelled */}
                                 {rental.approval_status !== 'cancelled' && (
                                 <button 
                                     className="icon-btn" 
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      if (!isPending) {
+                                      // For walk-in orders, allow payment recording even when pending (customer is in-person)
+                                      const isWalkIn = rental.order_type === 'walk_in';
+                                      if (!isPending || isWalkIn) {
                                         setSelectedRental(rental);
                                         setPaymentAmount('');
                                         setShowPaymentModal(true);
                                       }
                                     }} 
-                                    title={isPending ? "Record Payment (Disabled - Status is Pending)" : "Record Payment"}
-                                    disabled={isPending}
+                                    title={isPending && rental.order_type !== 'walk_in' ? "Record Payment (Disabled - Status is Pending)" : "Record Payment"}
+                                    disabled={isPending && rental.order_type !== 'walk_in'}
                                     style={{ 
                                       backgroundColor: '#2196F3', 
                                       color: 'white',
-                                      opacity: isPending ? 0.5 : 1,
-                                      cursor: isPending ? 'not-allowed' : 'pointer'
+                                      opacity: (isPending && rental.order_type !== 'walk_in') ? 0.5 : 1,
+                                      cursor: (isPending && rental.order_type !== 'walk_in') ? 'not-allowed' : 'pointer'
                                     }}
                                   >
                                     💰
@@ -980,15 +1018,32 @@ function Rental() {
                 <label>Update Status</label>
                 <select
                   value={editData.approvalStatus}
-                  onChange={(e) => setEditData({ ...editData, approvalStatus: e.target.value })}
+                  onChange={(e) => {
+                    // Prevent setting ready_to_pickup for walk-in orders
+                    const newStatus = e.target.value;
+                    const isWalkIn = selectedRental.order_type === 'walk_in';
+                    if (isWalkIn && (newStatus === 'ready_to_pickup' || newStatus === 'ready_for_pickup')) {
+                      alert('Walk-in rentals skip "Ready to Pick Up" status. Status set to "Rented".', 'Info', 'info');
+                      setEditData({ ...editData, approvalStatus: 'rented' });
+                    } else {
+                      setEditData({ ...editData, approvalStatus: newStatus });
+                    }
+                  }}
                   className="form-control"
                 >
-                  <option value="ready_for_pickup">Ready to Pick Up</option>
+                  {selectedRental.order_type !== 'walk_in' && (
+                    <option value="ready_for_pickup">Ready to Pick Up</option>
+                  )}
                   <option value="rented">Rented</option>
                   <option value="returned">Returned</option>
                   <option value="completed">Completed</option>
                   <option value="cancelled">Rejected</option>
                 </select>
+                {selectedRental.order_type === 'walk_in' && (
+                  <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '0.9em', color: '#856404' }}>
+                    ℹ️ Walk-in rentals skip "Ready to Pick Up" (customer is already in-person).
+                  </div>
+                )}
               </div>
 
               {editData.approvalStatus === 'returned' && (

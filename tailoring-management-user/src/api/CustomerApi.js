@@ -28,11 +28,12 @@ export async function getAllCustomers() {
   }
 }
 
-// Get customer by ID
-export async function getCustomerById(customerId) {
+// Get customer by ID (supports both online and walk-in customers)
+export async function getCustomerById(customerId, customerType = 'online') {
   try {
     const response = await axios.get(`${BASE_URL}/customers/${customerId}`, {
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
+      params: { customer_type: customerType }
     });
     return response.data;
   } catch (error) {
@@ -92,11 +93,12 @@ export async function saveMeasurements(customerId, measurements) {
   }
 }
 
-// Get customer measurements (admin only)
-export async function getMeasurements(customerId) {
+// Get customer measurements (admin only) - supports both online and walk-in customers
+export async function getMeasurements(customerId, customerType = 'online') {
   try {
     const response = await axios.get(`${BASE_URL}/customers/${customerId}/measurements`, {
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
+      params: { customer_type: customerType }
     });
     return response.data;
   } catch (error) {

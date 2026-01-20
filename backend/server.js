@@ -138,6 +138,10 @@ const shopScheduleRoutes = require('./routes/ShopScheduleRoutes');
 app.use('/api/shop-schedule', shopScheduleRoutes);
 const patternRoutes = require('./routes/PatternRoutes');
 app.use('/api/patterns', patternRoutes);
+const walkInOrderRoutes = require('./routes/WalkInOrderRoutes');
+app.use('/api/walk-in-orders', walkInOrderRoutes);
+const damageRecordRoutes = require('./routes/DamageRecordRoutes');
+app.use('/api/damage-records', damageRecordRoutes);
 
 
 // Initialize database tables (time_slots and appointment_slots)

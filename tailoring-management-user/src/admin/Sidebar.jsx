@@ -72,6 +72,9 @@ function Sidebar() {
         <NavLink to="/shop-schedule" className={({ isActive }) => isActive ? 'active' : ''}>
           Shop Schedule
         </NavLink>
+        <NavLink to="/walk-in-orders" className={({ isActive }) => isActive ? 'active' : ''}>
+          Walk-In Orders
+        </NavLink>
       </nav>
     </aside>
   );

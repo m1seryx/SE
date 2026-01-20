@@ -1057,13 +1057,35 @@ const Customize = () => {
   };
 
 
-  const handleAccept = (itemId) => {
+  const handleAccept = async (itemId) => {
     const item = allItems.find(i => i.item_id === itemId);
     if (!item) {
       showToast("Order not found", "error");
       return;
     }
     
+    // For walk-in orders, skip price confirmation modal and directly set to 'accepted'
+    if (item.order_type === 'walk_in') {
+      try {
+        const estimatedPrice = getEstimatedPrice(item) || parseFloat(item.final_price || 0);
+        const result = await updateCustomizationOrderItem(itemId, {
+          approvalStatus: 'accepted',
+          finalPrice: estimatedPrice
+        });
+        if (result.success) {
+          await loadCustomizationOrders();
+          showToast("Walk-in order accepted (price confirmed in person)", "success");
+        } else {
+          showToast(result.message || "Failed to accept request", "error");
+        }
+      } catch (err) {
+        console.error("Accept error:", err);
+        showToast("Failed to accept request", "error");
+      }
+      return;
+    }
+    
+    // For online orders, show price confirmation modal
     const estimatedPrice = getEstimatedPrice(item) || parseFloat(item.final_price || 0);
     setPriceConfirmationItem(item);
     setPriceConfirmationPrice(estimatedPrice.toFixed(2));
@@ -1765,12 +1787,16 @@ const Customize = () => {
                     const originalPrice = parseFloat(selectedOrder.final_price || 0);
                     
                     // If price is being changed and status is pending or accepted, auto-set to price_confirmation
+                    // BUT skip price_confirmation for walk-in orders (they confirm in person)
                     let newStatus = editForm.approvalStatus;
+                    const isWalkIn = selectedOrder.order_type === 'walk_in';
+                    
                     if (newPrice && (editForm.approvalStatus === 'pending' || editForm.approvalStatus === 'accepted')) {
                       const priceChanged = estimatedPrice ? Math.abs(parseFloat(newPrice) - estimatedPrice) > 0.01 : 
                                           Math.abs(parseFloat(newPrice) - originalPrice) > 0.01;
                       if (priceChanged) {
-                        newStatus = 'price_confirmation';
+                        // For walk-in orders, go directly to 'accepted' instead of 'price_confirmation'
+                        newStatus = isWalkIn ? 'accepted' : 'price_confirmation';
                       }
                     }
                     
@@ -1788,7 +1814,11 @@ const Customize = () => {
                         <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '0.9em' }}>
                           <strong>⚠️ Price Changed:</strong> Estimated: ₱{estimatedPrice.toFixed(2)} → New: ₱{parseFloat(editForm.finalPrice).toFixed(2)}
                           <br />
-                          <span style={{ color: '#666', fontSize: '0.85em' }}>Status will be set to "Price Confirmation" to notify customer.</span>
+                          <span style={{ color: '#666', fontSize: '0.85em' }}>
+                            {selectedOrder.order_type === 'walk_in' 
+                              ? 'Status will be set to "Accepted" (walk-in orders skip price confirmation).'
+                              : 'Status will be set to "Price Confirmation" to notify customer.'}
+                          </span>
                         </div>
                       );
                     }
@@ -1802,20 +1832,37 @@ const Customize = () => {
                 <label>Status</label>
                 <select
                   value={editForm.approvalStatus}
-                  onChange={(e) => setEditForm({ ...editForm, approvalStatus: e.target.value })}
+                  onChange={(e) => {
+                    // Prevent setting price_confirmation for walk-in orders
+                    const newStatus = e.target.value;
+                    const isWalkIn = selectedOrder.order_type === 'walk_in';
+                    if (isWalkIn && newStatus === 'price_confirmation') {
+                      showToast('Walk-in orders do not require price confirmation. Status set to "Accepted".', 'info');
+                      setEditForm({ ...editForm, approvalStatus: 'accepted' });
+                    } else {
+                      setEditForm({ ...editForm, approvalStatus: newStatus });
+                    }
+                  }}
                   style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                 >
                   <option value="pending">Pending</option>
                   <option value="accepted">Accepted</option>
-                  <option value="price_confirmation">Price Confirmation</option>
+                  {selectedOrder.order_type !== 'walk_in' && (
+                    <option value="price_confirmation">Price Confirmation</option>
+                  )}
                   <option value="confirmed">In Progress</option>
                   <option value="ready_for_pickup">Ready for Pickup</option>
                   <option value="completed">Completed</option>
                   <option value="cancelled">Rejected</option>
                 </select>
-                {editForm.approvalStatus === 'price_confirmation' && (
+                {editForm.approvalStatus === 'price_confirmation' && selectedOrder.order_type !== 'walk_in' && (
                   <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#e3f2fd', borderRadius: '4px', fontSize: '0.9em', color: '#1976d2' }}>
                     ℹ️ Customer will be notified to confirm the updated price.
+                  </div>
+                )}
+                {selectedOrder.order_type === 'walk_in' && (
+                  <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '0.9em', color: '#856404' }}>
+                    ℹ️ Walk-in orders skip price confirmation (customer confirms in person).
                   </div>
                 )}
               </div>
@@ -1840,22 +1887,43 @@ const Customize = () => {
                     className="btn-secondary" 
                     onClick={async () => {
                       setMeasurementsLoading(true);
-                      const result = await getMeasurements(selectedOrder.user_id);
-                      if (result.success && result.measurements) {
+                      // For walk-in customers, use walk_in_customer_id; for online, use user_id
+                      const customerId = selectedOrder.order_type === 'walk_in' 
+                        ? selectedOrder.walk_in_customer_id 
+                        : selectedOrder.user_id;
+                      const customerType = selectedOrder.order_type === 'walk_in' ? 'walk_in' : 'online';
+                      
+                      // Try to get measurements from order's specific_data first (for walk-in orders)
+                      if (selectedOrder.order_type === 'walk_in' && selectedOrder.specific_data?.measurements) {
+                        const orderMeasurements = typeof selectedOrder.specific_data.measurements === 'string'
+                          ? JSON.parse(selectedOrder.specific_data.measurements)
+                          : selectedOrder.specific_data.measurements;
                         setMeasurements({
-                          top: typeof result.measurements.top_measurements === 'string' 
-                            ? JSON.parse(result.measurements.top_measurements) 
-                            : result.measurements.top_measurements || {},
-                          bottom: typeof result.measurements.bottom_measurements === 'string'
-                            ? JSON.parse(result.measurements.bottom_measurements)
-                            : result.measurements.bottom_measurements || {},
-                          notes: result.measurements.notes || ''
+                          top: orderMeasurements.top || {},
+                          bottom: orderMeasurements.bottom || {},
+                          notes: orderMeasurements.notes || ''
                         });
+                        setMeasurementsLoading(false);
+                        setShowMeasurementsModal(true);
                       } else {
-                        setMeasurements({ top: {}, bottom: {}, notes: '' });
+                        // Get from customer_measurements table
+                        const result = await getMeasurements(customerId, customerType);
+                        if (result.success && result.measurements) {
+                          setMeasurements({
+                            top: typeof result.measurements.top_measurements === 'string' 
+                              ? JSON.parse(result.measurements.top_measurements) 
+                              : result.measurements.top_measurements || {},
+                            bottom: typeof result.measurements.bottom_measurements === 'string'
+                              ? JSON.parse(result.measurements.bottom_measurements)
+                              : result.measurements.bottom_measurements || {},
+                            notes: result.measurements.notes || ''
+                          });
+                        } else {
+                          setMeasurements({ top: {}, bottom: {}, notes: '' });
+                        }
+                        setMeasurementsLoading(false);
+                        setShowMeasurementsModal(true);
                       }
-                      setMeasurementsLoading(false);
-                      setShowMeasurementsModal(true);
                     }}
                     style={{ padding: '6px 12px', fontSize: '14px' }}
                   >
@@ -1883,8 +1951,22 @@ const Customize = () => {
             </div>
             <div className="modal-body">
               <div className="detail-row"><strong>Order ID:</strong> #{selectedOrder.order_id}</div>
-              <div className="detail-row"><strong>Customer:</strong> {selectedOrder.first_name} {selectedOrder.last_name}</div>
-              <div className="detail-row"><strong>Email:</strong> {selectedOrder.email}</div>
+              <div className="detail-row">
+                <strong>Customer:</strong>
+                <span>
+                  {selectedOrder.order_type === 'walk_in' 
+                    ? (selectedOrder.walk_in_customer_name || 'Walk-in Customer')
+                    : `${selectedOrder.first_name || ''} ${selectedOrder.last_name || ''}`.trim() || 'N/A'}
+                </span>
+              </div>
+              <div className="detail-row">
+                <strong>Email:</strong>
+                <span>
+                  {selectedOrder.order_type === 'walk_in' 
+                    ? (selectedOrder.walk_in_customer_email || 'N/A')
+                    : (selectedOrder.email || 'N/A')}
+                </span>
+              </div>
               <div className="detail-row"><strong>Garment:</strong> {selectedOrder.specific_data?.garmentType || 'N/A'}</div>
               <div className="detail-row"><strong>Fabric:</strong> {selectedOrder.specific_data?.fabricType || 'N/A'}</div>
               <div className="detail-row"><strong>Preferred Date:</strong> {selectedOrder.specific_data?.preferredDate || 'N/A'}</div>
@@ -1910,22 +1992,43 @@ const Customize = () => {
                     className="btn-measurements" 
                     onClick={async () => {
                       setMeasurementsLoading(true);
-                      const result = await getMeasurements(selectedOrder.user_id);
-                      if (result.success && result.measurements) {
+                      // For walk-in customers, use walk_in_customer_id; for online, use user_id
+                      const customerId = selectedOrder.order_type === 'walk_in' 
+                        ? selectedOrder.walk_in_customer_id 
+                        : selectedOrder.user_id;
+                      const customerType = selectedOrder.order_type === 'walk_in' ? 'walk_in' : 'online';
+                      
+                      // Try to get measurements from order's specific_data first (for walk-in orders)
+                      if (selectedOrder.order_type === 'walk_in' && selectedOrder.specific_data?.measurements) {
+                        const orderMeasurements = typeof selectedOrder.specific_data.measurements === 'string'
+                          ? JSON.parse(selectedOrder.specific_data.measurements)
+                          : selectedOrder.specific_data.measurements;
                         setMeasurements({
-                          top: typeof result.measurements.top_measurements === 'string' 
-                            ? JSON.parse(result.measurements.top_measurements) 
-                            : result.measurements.top_measurements || {},
-                          bottom: typeof result.measurements.bottom_measurements === 'string'
-                            ? JSON.parse(result.measurements.bottom_measurements)
-                            : result.measurements.bottom_measurements || {},
-                          notes: result.measurements.notes || ''
+                          top: orderMeasurements.top || {},
+                          bottom: orderMeasurements.bottom || {},
+                          notes: orderMeasurements.notes || ''
                         });
+                        setMeasurementsLoading(false);
+                        setShowMeasurementsModal(true);
                       } else {
-                        setMeasurements({ top: {}, bottom: {}, notes: '' });
+                        // Get from customer_measurements table
+                        const result = await getMeasurements(customerId, customerType);
+                        if (result.success && result.measurements) {
+                          setMeasurements({
+                            top: typeof result.measurements.top_measurements === 'string' 
+                              ? JSON.parse(result.measurements.top_measurements) 
+                              : result.measurements.top_measurements || {},
+                            bottom: typeof result.measurements.bottom_measurements === 'string'
+                              ? JSON.parse(result.measurements.bottom_measurements)
+                              : result.measurements.bottom_measurements || {},
+                            notes: result.measurements.notes || ''
+                          });
+                        } else {
+                          setMeasurements({ top: {}, bottom: {}, notes: '' });
+                        }
+                        setMeasurementsLoading(false);
+                        setShowMeasurementsModal(true);
                       }
-                      setMeasurementsLoading(false);
-                      setShowMeasurementsModal(true);
                     }}
                   >
                     {measurementsLoading ? 'Loading...' : 'View/Edit Measurements'}
@@ -2148,7 +2251,7 @@ const Customize = () => {
       )}
 
       {/* Price Confirmation Modal */}
-      {showPriceConfirmationModal && priceConfirmationItem && (
+      {showPriceConfirmationModal && priceConfirmationItem && priceConfirmationItem.order_type !== 'walk_in' && (
         <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowPriceConfirmationModal(false)}>
           <div className="modal-content">
             <div className="modal-header">
