@@ -1022,9 +1022,11 @@ const Customize = () => {
       !searchTerm ||
       item.order_id?.toString().includes(searchTerm.toLowerCase()) ||
       `${item.first_name} ${item.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.walk_in_customer_name && item.walk_in_customer_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       item.specific_data?.garmentType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.specific_data?.fabricType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      item.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.walk_in_customer_email && item.walk_in_customer_email.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
 
@@ -1654,7 +1656,25 @@ const Customize = () => {
                   return (
                   <tr key={item.item_id} className="clickable-row" onClick={() => handleViewDetails(item)}>
                     <td><strong>#{item.order_id}</strong></td>
-                    <td>{item.first_name} {item.last_name}</td>
+                    <td>
+                      {item.order_type === 'walk_in' ? (
+                        <span>
+                          <span style={{ 
+                            display: 'inline-block',
+                            backgroundColor: '#ff9800',
+                            color: 'white',
+                            padding: '2px 8px',
+                            borderRadius: '3px',
+                            fontSize: '0.75em',
+                            marginRight: '5px',
+                            fontWeight: 'bold'
+                          }}>WALK-IN</span>
+                          {item.walk_in_customer_name || 'Walk-in Customer'}
+                        </span>
+                      ) : (
+                        `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'N/A'
+                      )}
+                    </td>
                     <td>{item.specific_data?.garmentType || 'N/A'}</td>
                     <td><span style={{ fontSize: '0.9em', color: '#5D4037' }}>{item.specific_data?.fabricType || 'N/A'}</span></td>
                     <td>{new Date(item.order_date).toLocaleDateString()}</td>
@@ -1951,6 +1971,21 @@ const Customize = () => {
             </div>
             <div className="modal-body">
               <div className="detail-row"><strong>Order ID:</strong> #{selectedOrder.order_id}</div>
+              {selectedOrder.order_type === 'walk_in' && (
+                <div className="detail-row">
+                  <strong>Order Type:</strong>
+                  <span style={{ 
+                    display: 'inline-block',
+                    backgroundColor: '#ff9800',
+                    color: 'white',
+                    padding: '2px 8px',
+                    borderRadius: '3px',
+                    fontSize: '0.75em',
+                    marginLeft: '8px',
+                    fontWeight: 'bold'
+                  }}>WALK-IN</span>
+                </div>
+              )}
               <div className="detail-row">
                 <strong>Customer:</strong>
                 <span>
@@ -1959,14 +1994,21 @@ const Customize = () => {
                     : `${selectedOrder.first_name || ''} ${selectedOrder.last_name || ''}`.trim() || 'N/A'}
                 </span>
               </div>
-              <div className="detail-row">
-                <strong>Email:</strong>
-                <span>
-                  {selectedOrder.order_type === 'walk_in' 
-                    ? (selectedOrder.walk_in_customer_email || 'N/A')
-                    : (selectedOrder.email || 'N/A')}
-                </span>
-              </div>
+              {selectedOrder.order_type === 'walk_in' ? (
+                <>
+                  {selectedOrder.walk_in_customer_email && (
+                    <div className="detail-row"><strong>Email:</strong> <span>{selectedOrder.walk_in_customer_email}</span></div>
+                  )}
+                  {selectedOrder.walk_in_customer_phone && (
+                    <div className="detail-row"><strong>Phone:</strong> <span>{selectedOrder.walk_in_customer_phone}</span></div>
+                  )}
+                </>
+              ) : (
+                <div className="detail-row">
+                  <strong>Email:</strong>
+                  <span>{selectedOrder.email || 'N/A'}</span>
+                </div>
+              )}
               <div className="detail-row"><strong>Garment:</strong> {selectedOrder.specific_data?.garmentType || 'N/A'}</div>
               <div className="detail-row"><strong>Fabric:</strong> {selectedOrder.specific_data?.fabricType || 'N/A'}</div>
               <div className="detail-row"><strong>Preferred Date:</strong> {selectedOrder.specific_data?.preferredDate || 'N/A'}</div>
@@ -2234,7 +2276,7 @@ const Customize = () => {
         <div className="modal-overlay active confirm-modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowConfirmModal(false)}>
           <div className="confirm-modal">
             <div className="confirm-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E74C3C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3498DB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="12" y1="8" x2="12" y2="12"></line>
                 <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -2312,7 +2354,17 @@ const Customize = () => {
               <span className="close-modal" onClick={() => setShowMeasurementsModal(false)}>×</span>
             </div>
             <div className="modal-body">
-              <div className="detail-row"><strong>Customer:</strong> {selectedOrder.first_name} {selectedOrder.last_name}</div>
+              <div className="detail-row">
+                <strong>Customer:</strong> 
+                {selectedOrder.order_type === 'walk_in' 
+                  ? (selectedOrder.walk_in_customer_name || 'Walk-in Customer')
+                  : `${selectedOrder.first_name || ''} ${selectedOrder.last_name || ''}`.trim() || 'N/A'}
+                {selectedOrder.order_type === 'walk_in' && (
+                  <span style={{ marginLeft: '10px', padding: '2px 8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '12px', color: '#856404' }}>
+                    Walk-in
+                  </span>
+                )}
+              </div>
               
               {/* Measurements Container - Top and Bottom side by side */}
               <div style={{ display: 'flex', gap: '20px', marginTop: '20px' }}>
@@ -2478,10 +2530,28 @@ const Customize = () => {
             <div className="modal-footer">
               <button className="btn-cancel" onClick={() => setShowMeasurementsModal(false)}>Cancel</button>
               <button className="btn-save" onClick={async () => {
-                const result = await saveMeasurements(selectedOrder.user_id, measurements);
+                // Determine customer ID and type
+                const isWalkIn = selectedOrder.order_type === 'walk_in';
+                const customerId = isWalkIn 
+                  ? selectedOrder.walk_in_customer_id 
+                  : selectedOrder.user_id;
+                
+                // Prepare measurements with customer type info
+                const measurementsData = {
+                  top_measurements: measurements.top,
+                  bottom_measurements: measurements.bottom,
+                  notes: measurements.notes,
+                  isWalkIn: isWalkIn,
+                  orderId: selectedOrder.order_id,
+                  itemId: selectedOrder.item_id
+                };
+                
+                const result = await saveMeasurements(customerId, measurementsData);
                 if (result.success) {
                   await alert('Measurements saved successfully!', 'Success', 'success');
                   setShowMeasurementsModal(false);
+                  // Reload orders to get updated data
+                  loadCustomizationOrders();
                 } else {
                   await alert(result.message || 'Failed to save measurements', 'Error', 'error');
                 }

@@ -8,6 +8,7 @@ import { getAllRepairGarmentTypesAdmin } from '../api/RepairGarmentTypeApi';
 import { getAllGarmentTypesAdmin } from '../api/GarmentTypeApi';
 import { getAllFabricTypesAdmin } from '../api/FabricTypeApi';
 import { getAllRentals, getAvailableRentals, getRentalImageUrl } from '../api/RentalApi';
+import { getAllPatterns } from '../api/PatternApi';
 import { useAlert } from '../context/AlertContext';
 
 const WalkInOrders = () => {
@@ -44,12 +45,31 @@ const WalkInOrders = () => {
   const [customGarmentType, setCustomGarmentType] = useState('');
   const [fabricType, setFabricType] = useState('');
   const [patternType, setPatternType] = useState('');
-  const [measurements, setMeasurements] = useState('');
   const [customPreferredDate, setCustomPreferredDate] = useState('');
   const [customPreferredTime, setCustomPreferredTime] = useState('');
   const [estimatedCustomPrice, setEstimatedCustomPrice] = useState('');
   const [customGarmentTypes, setCustomGarmentTypes] = useState([]);
   const [fabricTypes, setFabricTypes] = useState([]);
+  const [patterns, setPatterns] = useState([]);
+  
+  // Measurements form fields (structured like online version)
+  const [topMeasurements, setTopMeasurements] = useState({
+    chest: '',
+    shoulders: '',
+    sleeve_length: '',
+    neck: '',
+    waist: '',
+    length: ''
+  });
+  const [bottomMeasurements, setBottomMeasurements] = useState({
+    waist: '',
+    hips: '',
+    inseam: '',
+    length: '',
+    thigh: '',
+    outseam: ''
+  });
+  const [measurementNotes, setMeasurementNotes] = useState('');
 
   // Rental form fields
   const [selectedRentalItems, setSelectedRentalItems] = useState([]); // Changed to array for multiple selection
@@ -68,6 +88,7 @@ const WalkInOrders = () => {
     loadCustomGarmentTypes();
     loadFabricTypes();
     loadAvailableRentals();
+    loadPatterns();
   }, []);
 
   const loadGarmentTypes = async () => {
@@ -116,6 +137,19 @@ const WalkInOrders = () => {
       }
     } catch (error) {
       console.error('Error loading fabric types:', error);
+    }
+  };
+
+  const loadPatterns = async () => {
+    try {
+      const result = await getAllPatterns();
+      if (result.success) {
+        // Filter only active patterns
+        const activePatterns = (result.patterns || []).filter(p => p.is_active !== 0);
+        setPatterns(activePatterns);
+      }
+    } catch (error) {
+      console.error('Error loading patterns:', error);
     }
   };
 
@@ -332,17 +366,13 @@ const WalkInOrders = () => {
           notes
         });
       } else if (serviceType === 'customization') {
-        let parsedMeasurements = {};
-        if (measurements) {
-          try {
-            parsedMeasurements = JSON.parse(measurements);
-          } catch (e) {
-            console.error('Invalid measurements JSON:', e);
-            alert('Invalid measurements format. Please use valid JSON or leave empty.');
-            setSubmitting(false);
-            return;
-          }
-        }
+        // Build structured measurements object (same format as online customers)
+        const structuredMeasurements = {
+          top: topMeasurements,
+          bottom: bottomMeasurements,
+          notes: measurementNotes
+        };
+        
         result = await createWalkInCustomizationOrder({
           customerName,
           customerEmail,
@@ -350,7 +380,7 @@ const WalkInOrders = () => {
           garmentType: customGarmentType,
           fabricType,
           patternType,
-          measurements: parsedMeasurements,
+          measurements: structuredMeasurements,
           preferredDate: customPreferredDate,
           preferredTime: customPreferredTime,
           estimatedPrice: estimatedCustomPrice || '0',
@@ -391,6 +421,16 @@ const WalkInOrders = () => {
         setEventDate('');
         setDamageDeposit('');
         setNotes('');
+        // Reset customization fields
+        setCustomGarmentType('');
+        setFabricType('');
+        setPatternType('');
+        setTopMeasurements({ chest: '', shoulders: '', sleeve_length: '', neck: '', waist: '', length: '' });
+        setBottomMeasurements({ waist: '', hips: '', inseam: '', length: '', thigh: '', outseam: '' });
+        setMeasurementNotes('');
+        setCustomPreferredDate('');
+        setCustomPreferredTime('');
+        setEstimatedCustomPrice('');
         // Reload available rentals if rental order
         if (serviceType === 'rental') {
           loadAvailableRentals();
@@ -684,29 +724,187 @@ const WalkInOrders = () => {
               </div>
 
               <div className="form-group">
-                <label>Pattern Type</label>
-                <input
-                  type="text"
+                <label>Pattern</label>
+                <select
                   value={patternType}
                   onChange={(e) => setPatternType(e.target.value)}
                   className="form-control"
-                  placeholder="Enter pattern type (optional)"
-                />
+                >
+                  <option value="">None (optional)</option>
+                  {patterns.map(pt => (
+                    <option key={pt.pattern_id} value={pt.pattern_name}>
+                      {pt.pattern_name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className="form-group">
-                <label>Measurements (JSON format)</label>
-                <textarea
-                  value={measurements}
-                  onChange={(e) => setMeasurements(e.target.value)}
-                  className="form-control"
-                  rows="4"
-                  placeholder='{"chest": "40", "waist": "32", "length": "30"}'
-                />
-                <small>Enter measurements as JSON object (optional)</small>
+              {/* Measurements Section - Same as Online Customer */}
+              <div className="measurements-section" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
+                <h4 style={{ marginBottom: '15px', color: '#5D4037' }}>Customer Measurements</h4>
+                
+                <div style={{ display: 'flex', gap: '20px' }}>
+                  {/* Top Measurements */}
+                  <div style={{ flex: 1, padding: '15px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #eee' }}>
+                    <p style={{ fontWeight: '600', marginBottom: '15px', color: '#333', textAlign: 'center' }}>Top Measurements</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div className="form-group" style={{ marginBottom: '10px' }}>
+                        <label style={{ fontSize: '13px' }}>Chest (inches)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={topMeasurements.chest}
+                          onChange={(e) => setTopMeasurements({ ...topMeasurements, chest: e.target.value })}
+                          className="form-control"
+                          placeholder="e.g. 40"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: '10px' }}>
+                        <label style={{ fontSize: '13px' }}>Shoulders (inches)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={topMeasurements.shoulders}
+                          onChange={(e) => setTopMeasurements({ ...topMeasurements, shoulders: e.target.value })}
+                          className="form-control"
+                          placeholder="e.g. 18"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: '10px' }}>
+                        <label style={{ fontSize: '13px' }}>Sleeve Length (inches)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={topMeasurements.sleeve_length}
+                          onChange={(e) => setTopMeasurements({ ...topMeasurements, sleeve_length: e.target.value })}
+                          className="form-control"
+                          placeholder="e.g. 25"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: '10px' }}>
+                        <label style={{ fontSize: '13px' }}>Neck (inches)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={topMeasurements.neck}
+                          onChange={(e) => setTopMeasurements({ ...topMeasurements, neck: e.target.value })}
+                          className="form-control"
+                          placeholder="e.g. 16"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: '10px' }}>
+                        <label style={{ fontSize: '13px' }}>Waist (inches)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={topMeasurements.waist}
+                          onChange={(e) => setTopMeasurements({ ...topMeasurements, waist: e.target.value })}
+                          className="form-control"
+                          placeholder="e.g. 34"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: '10px' }}>
+                        <label style={{ fontSize: '13px' }}>Length (inches)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={topMeasurements.length}
+                          onChange={(e) => setTopMeasurements({ ...topMeasurements, length: e.target.value })}
+                          className="form-control"
+                          placeholder="e.g. 28"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom Measurements */}
+                  <div style={{ flex: 1, padding: '15px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #eee' }}>
+                    <p style={{ fontWeight: '600', marginBottom: '15px', color: '#333', textAlign: 'center' }}>Bottom Measurements</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div className="form-group" style={{ marginBottom: '10px' }}>
+                        <label style={{ fontSize: '13px' }}>Waist (inches)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={bottomMeasurements.waist}
+                          onChange={(e) => setBottomMeasurements({ ...bottomMeasurements, waist: e.target.value })}
+                          className="form-control"
+                          placeholder="e.g. 32"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: '10px' }}>
+                        <label style={{ fontSize: '13px' }}>Hips (inches)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={bottomMeasurements.hips}
+                          onChange={(e) => setBottomMeasurements({ ...bottomMeasurements, hips: e.target.value })}
+                          className="form-control"
+                          placeholder="e.g. 40"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: '10px' }}>
+                        <label style={{ fontSize: '13px' }}>Inseam (inches)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={bottomMeasurements.inseam}
+                          onChange={(e) => setBottomMeasurements({ ...bottomMeasurements, inseam: e.target.value })}
+                          className="form-control"
+                          placeholder="e.g. 30"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: '10px' }}>
+                        <label style={{ fontSize: '13px' }}>Length (inches)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={bottomMeasurements.length}
+                          onChange={(e) => setBottomMeasurements({ ...bottomMeasurements, length: e.target.value })}
+                          className="form-control"
+                          placeholder="e.g. 42"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: '10px' }}>
+                        <label style={{ fontSize: '13px' }}>Thigh (inches)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={bottomMeasurements.thigh}
+                          onChange={(e) => setBottomMeasurements({ ...bottomMeasurements, thigh: e.target.value })}
+                          className="form-control"
+                          placeholder="e.g. 24"
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: '10px' }}>
+                        <label style={{ fontSize: '13px' }}>Outseam (inches)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={bottomMeasurements.outseam}
+                          onChange={(e) => setBottomMeasurements({ ...bottomMeasurements, outseam: e.target.value })}
+                          className="form-control"
+                          placeholder="e.g. 44"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Measurement Notes */}
+                <div style={{ marginTop: '15px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '500' }}>Measurement Notes</label>
+                  <textarea
+                    value={measurementNotes}
+                    onChange={(e) => setMeasurementNotes(e.target.value)}
+                    className="form-control"
+                    rows="2"
+                    placeholder="Any additional notes about measurements..."
+                  />
+                </div>
               </div>
 
-              <div className="form-row">
+              <div className="form-row" style={{ marginTop: '20px' }}>
                 <div className="form-group">
                   <label>Preferred Date</label>
                   <input

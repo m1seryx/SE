@@ -161,10 +161,55 @@ exports.updateCustomerStatus = (req, res) => {
 // Save customer measurements (supports both online users and walk-in customers)
 exports.saveMeasurements = (req, res) => {
   const { id } = req.params;
-  const { top, bottom, notes, customer_type } = req.body;
+  const { top_measurements, bottom_measurements, notes, isWalkIn, orderId, itemId } = req.body;
+  // Support both old format (top, bottom) and new format (top_measurements, bottom_measurements)
+  const top = top_measurements || req.body.top;
+  const bottom = bottom_measurements || req.body.bottom;
   const adminId = req.user.id;
+  const customerType = req.body.customer_type;
+  
+  const isWalkInCustomer = isWalkIn === true || customerType === 'walk_in';
 
-  const isWalkIn = customer_type === 'walk_in';
+  // For walk-in orders, also update the order's specific_data with measurements
+  if (isWalkInCustomer && itemId) {
+    const db = require('../config/db');
+    
+    // First get the current specific_data
+    db.query('SELECT specific_data FROM order_items WHERE item_id = ?', [itemId], (err, results) => {
+      if (err) {
+        console.error('Error getting order item specific_data:', err);
+      } else if (results && results.length > 0) {
+        let specificData = {};
+        try {
+          specificData = typeof results[0].specific_data === 'string' 
+            ? JSON.parse(results[0].specific_data) 
+            : (results[0].specific_data || {});
+        } catch (e) {
+          console.error('Error parsing specific_data:', e);
+        }
+        
+        // Update measurements in specific_data
+        specificData.measurements = {
+          top: top || {},
+          bottom: bottom || {},
+          notes: notes || ''
+        };
+        
+        // Save back to database
+        db.query(
+          'UPDATE order_items SET specific_data = ? WHERE item_id = ?',
+          [JSON.stringify(specificData), itemId],
+          (updateErr) => {
+            if (updateErr) {
+              console.error('Error updating order item specific_data:', updateErr);
+            } else {
+              console.log('[MEASUREMENTS] Updated order item specific_data with measurements');
+            }
+          }
+        );
+      }
+    });
+  }
 
   // Check if measurements already exist
   CustomerMeasurements.getByCustomerId(id, (checkErr, existing) => {
@@ -174,7 +219,7 @@ exports.saveMeasurements = (req, res) => {
 
     const isUpdate = existing && existing.length > 0;
 
-    CustomerMeasurements.upsert(id, { top, bottom, notes, isWalkIn }, (err, result) => {
+    CustomerMeasurements.upsert(id, { top, bottom, notes, isWalkIn: isWalkInCustomer }, (err, result) => {
       if (err) {
         return res.status(500).json({
           success: false,
@@ -198,14 +243,14 @@ exports.saveMeasurements = (req, res) => {
       // Log the action - measurements don't have order_item_id, so we use NULL
       const ActionLog = require('../model/ActionLogModel');
       ActionLog.create({
-        order_item_id: null, // NULL for non-order actions
+        order_item_id: itemId || null, // Use itemId if provided for walk-in orders
         user_id: adminId,
         action_type: 'add_measurements',
         action_by: 'admin',
         previous_status: null,
         new_status: null,
         reason: null,
-        notes: `Admin ${isUpdate ? 'updated' : 'added'} measurements for customer ${id}: ${measurementSummary.join(', ')}`
+        notes: `Admin ${isUpdate ? 'updated' : 'added'} measurements for ${isWalkInCustomer ? 'walk-in ' : ''}customer ${id}: ${measurementSummary.join(', ')}`
       }, (logErr) => {
         if (logErr) {
           console.error('Error logging measurement action:', logErr);
@@ -213,15 +258,17 @@ exports.saveMeasurements = (req, res) => {
         }
       });
 
-      // Create measurement update notification for the customer
-      const Notification = require('../model/NotificationModel');
-      Notification.createMeasurementUpdateNotification(id, isUpdate, (notifErr) => {
-        if (notifErr) {
-          console.error('[NOTIFICATION] Failed to create measurement update notification:', notifErr);
-        } else {
-          console.log('[NOTIFICATION] Measurement update notification created');
-        }
-      });
+      // Create measurement update notification for the customer (only for online customers)
+      if (!isWalkInCustomer) {
+        const Notification = require('../model/NotificationModel');
+        Notification.createMeasurementUpdateNotification(id, isUpdate, (notifErr) => {
+          if (notifErr) {
+            console.error('[NOTIFICATION] Failed to create measurement update notification:', notifErr);
+          } else {
+            console.log('[NOTIFICATION] Measurement update notification created');
+          }
+        });
+      }
 
       res.json({
         success: true,

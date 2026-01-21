@@ -1334,12 +1334,12 @@ tbody tr.clickable-row:active {
 }
 
 .confirm-btn.confirm {
-  background: #E74C3C;
+  background: #3498DB;
   color: white;
 }
 
 .confirm-btn.confirm:hover {
-  background: #c0392b;
+  background: #2980b9;
 }
 
 /* ============ TOAST NOTIFICATION ============ */

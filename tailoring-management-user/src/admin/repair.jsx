@@ -1032,6 +1032,39 @@ const Repair = () => {
             </div>
             <div className="modal-body">
               <div className="detail-row"><strong>Order ID:</strong> #{selectedOrder.order_id}</div>
+              {selectedOrder.order_type === 'walk_in' && (
+                <div className="detail-row">
+                  <strong>Order Type:</strong>
+                  <span style={{ 
+                    display: 'inline-block',
+                    backgroundColor: '#ff9800',
+                    color: 'white',
+                    padding: '2px 8px',
+                    borderRadius: '3px',
+                    fontSize: '0.75em',
+                    marginLeft: '8px',
+                    fontWeight: 'bold'
+                  }}>WALK-IN</span>
+                </div>
+              )}
+              <div className="detail-row">
+                <strong>Customer:</strong>
+                <span>
+                  {selectedOrder.order_type === 'walk_in' 
+                    ? (selectedOrder.walk_in_customer_name || 'Walk-in Customer')
+                    : `${selectedOrder.first_name || ''} ${selectedOrder.last_name || ''}`.trim() || 'N/A'}
+                </span>
+              </div>
+              {selectedOrder.order_type === 'walk_in' && (
+                <>
+                  {selectedOrder.walk_in_customer_email && (
+                    <div className="detail-row"><strong>Email:</strong> {selectedOrder.walk_in_customer_email}</div>
+                  )}
+                  {selectedOrder.walk_in_customer_phone && (
+                    <div className="detail-row"><strong>Phone:</strong> {selectedOrder.walk_in_customer_phone}</div>
+                  )}
+                </>
+              )}
               <div className="detail-row"><strong>Garment:</strong> {selectedOrder.specific_data?.garmentType || 'N/A'}</div>
               <div className="detail-row"><strong>Service:</strong> {selectedOrder.specific_data?.serviceName || 'N/A'}</div>
               <div className="detail-row"><strong>Damage Level:</strong> {selectedOrder.specific_data?.damageLevel || 'N/A'}</div>

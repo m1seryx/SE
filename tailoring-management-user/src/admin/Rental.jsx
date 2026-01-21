@@ -3,7 +3,7 @@ import AdminHeader from './AdminHeader';
 import Sidebar from './Sidebar';
 import '../adminStyle/rent.css';
 import { getAllRentalOrders, getRentalOrdersByStatus, updateRentalOrderItem, recordRentalPayment } from '../api/RentalOrderApi';
-import { updateRentalStatus } from '../api/RentalApi';
+import { updateRentalStatus, getRentalImageUrl } from '../api/RentalApi';
 import { useAlert } from '../context/AlertContext';
 import { deleteOrderItem } from '../api/OrderApi';
 import SimpleImageCarousel from '../components/SimpleImageCarousel';
@@ -1214,12 +1214,12 @@ function Rental() {
                         <strong style={{ display: 'block', marginBottom: '10px' }}>Rental Items:</strong>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                           {bundleItems.map((bundleItem, idx) => {
-                            // Collect all available images for this bundle item
+                            // Collect all available images for this bundle item - use getRentalImageUrl for proper URL
                             const itemImages = [
-                              bundleItem.front_image && { url: bundleItem.front_image, label: 'Front' },
-                              bundleItem.back_image && { url: bundleItem.back_image, label: 'Back' },
-                              bundleItem.side_image && { url: bundleItem.side_image, label: 'Side' },
-                              bundleItem.image_url && bundleItem.image_url !== 'no-image' && { url: bundleItem.image_url, label: 'Main' }
+                              bundleItem.front_image && { url: getRentalImageUrl(bundleItem.front_image), label: 'Front' },
+                              bundleItem.back_image && { url: getRentalImageUrl(bundleItem.back_image), label: 'Back' },
+                              bundleItem.side_image && { url: getRentalImageUrl(bundleItem.side_image), label: 'Side' },
+                              bundleItem.image_url && bundleItem.image_url !== 'no-image' && { url: getRentalImageUrl(bundleItem.image_url), label: 'Main' }
                             ].filter(Boolean);
                             
                             return (
@@ -1261,12 +1261,12 @@ function Rental() {
                     </>
                   );
                 } else {
-                  // Single item display with image carousel
+                  // Single item display with image carousel - use getRentalImageUrl for proper URL
                   const singleItemImages = [
-                    selectedRental.specific_data?.front_image && { url: selectedRental.specific_data.front_image, label: 'Front' },
-                    selectedRental.specific_data?.back_image && { url: selectedRental.specific_data.back_image, label: 'Back' },
-                    selectedRental.specific_data?.side_image && { url: selectedRental.specific_data.side_image, label: 'Side' },
-                    selectedRental.specific_data?.image_url && { url: selectedRental.specific_data.image_url, label: 'Main' }
+                    selectedRental.specific_data?.front_image && { url: getRentalImageUrl(selectedRental.specific_data.front_image), label: 'Front' },
+                    selectedRental.specific_data?.back_image && { url: getRentalImageUrl(selectedRental.specific_data.back_image), label: 'Back' },
+                    selectedRental.specific_data?.side_image && { url: getRentalImageUrl(selectedRental.specific_data.side_image), label: 'Side' },
+                    selectedRental.specific_data?.image_url && { url: getRentalImageUrl(selectedRental.specific_data.image_url), label: 'Main' }
                   ].filter(Boolean);
                   
                   return (
@@ -1303,18 +1303,50 @@ function Rental() {
                 <strong>Order ID:</strong>
                 <span>ORD-{selectedRental.order_id}</span>
               </div>
+              {selectedRental.order_type === 'walk_in' && (
+                <div className="detail-row">
+                  <strong>Order Type:</strong>
+                  <span style={{ 
+                    display: 'inline-block',
+                    backgroundColor: '#ff9800',
+                    color: 'white',
+                    padding: '2px 8px',
+                    borderRadius: '3px',
+                    fontSize: '0.75em',
+                    marginLeft: '8px',
+                    fontWeight: 'bold'
+                  }}>WALK-IN</span>
+                </div>
+              )}
               <div className="detail-row">
                 <strong>Customer:</strong>
-                <span>{selectedRental.first_name} {selectedRental.last_name}</span>
+                <span>
+                  {selectedRental.order_type === 'walk_in' 
+                    ? (selectedRental.walk_in_customer_name || 'Walk-in Customer')
+                    : `${selectedRental.first_name || ''} ${selectedRental.last_name || ''}`.trim() || 'N/A'}
+                </span>
               </div>
-              <div className="detail-row">
-                <strong>Email:</strong>
-                <span>{selectedRental.email}</span>
-              </div>
-              <div className="detail-row">
-                <strong>Phone:</strong>
-                <span>{selectedRental.phone_number || 'N/A'}</span>
-              </div>
+              {selectedRental.order_type === 'walk_in' ? (
+                <>
+                  {selectedRental.walk_in_customer_email && (
+                    <div className="detail-row"><strong>Email:</strong> <span>{selectedRental.walk_in_customer_email}</span></div>
+                  )}
+                  {selectedRental.walk_in_customer_phone && (
+                    <div className="detail-row"><strong>Phone:</strong> <span>{selectedRental.walk_in_customer_phone}</span></div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="detail-row">
+                    <strong>Email:</strong>
+                    <span>{selectedRental.email || 'N/A'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <strong>Phone:</strong>
+                    <span>{selectedRental.phone_number || 'N/A'}</span>
+                  </div>
+                </>
+              )}
               <div className="detail-row" style={{ alignItems: 'flex-start', flexDirection: 'column' }}>
                 <strong style={{ marginBottom: '10px', textAlign: 'center', display: 'block', width: '100%' }}>Size:</strong>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', alignItems: 'center' }}>
