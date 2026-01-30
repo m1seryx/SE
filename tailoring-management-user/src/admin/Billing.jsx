@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import { getAllBillingRecords, getBillingStats, updateBillingRecordStatus } from '../api/BillingApi';
 import { useAlert } from '../context/AlertContext';
 import ImagePreviewModal from '../components/ImagePreviewModal';
+import AnalyticsDashboard from '../components/analytics/AnalyticsDashboard';
 
 const Billing = () => {
   const { alert } = useAlert();
@@ -300,6 +301,9 @@ const Billing = () => {
             </div>
           </div>
         </div>
+
+        {/* Analytics Dashboard */}
+        <AnalyticsDashboard />
 
         {/* Search and Filters */}
         <div className="search-container">

@@ -179,17 +179,24 @@ export async function updateCustomizationApprovalStatus(itemId, status) {
 // Add customization to cart (using existing cart API)
 export async function addCustomizationToCart(customizationData) {
   try {
+    // Check if this is a Uniform order
+    const isUniform = customizationData.isUniform || customizationData.garmentType?.toLowerCase() === 'uniform';
+    // Uniform orders should have price 0 (varies)
+    const price = isUniform ? 0 : (customizationData.estimatedPrice || 500);
+    
     const cartItem = {
       serviceType: 'customization',
       serviceId: null, // Backend will generate incremental ID
       quantity: 1,
-      basePrice: customizationData.estimatedPrice || 500,
-      finalPrice: customizationData.estimatedPrice || 500,
+      basePrice: price,
+      finalPrice: price,
       pricingFactors: {
         fabricType: customizationData.fabricType,
         garmentType: customizationData.garmentType,
         designComplexity: customizationData.designComplexity || 'standard',
-        preferredDate: customizationData.preferredDate
+        preferredDate: customizationData.preferredDate,
+        preferredTime: customizationData.preferredTime,
+        isUniform: isUniform
       },
       specificData: {
         garmentType: customizationData.garmentType,
@@ -197,7 +204,9 @@ export async function addCustomizationToCart(customizationData) {
         measurements: customizationData.measurements,
         notes: customizationData.notes,
         preferredDate: customizationData.preferredDate,
+        preferredTime: customizationData.preferredTime,
         imageUrl: customizationData.imageUrl || 'no-image',
+        isUniform: isUniform,
         designData: customizationData.designData || {}, // 3D design configuration
         uploadedAt: new Date().toISOString()
       }

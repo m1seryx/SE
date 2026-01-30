@@ -380,21 +380,15 @@ export default function FAQScreen() {
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("/(tabs)/orders/OrderHistory")}>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/appointment/appointmentSelection")}>
           <View style={styles.navItemWrap}>
-            <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="cut-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity>
-          <View style={styles.navItemWrapActive}>
-            <Ionicons name="help-circle" size={20} color="#991b1b" />
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => router.push("/(tabs)/contact")}>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
           <View style={styles.navItemWrap}>
-            <Ionicons name="call-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
 

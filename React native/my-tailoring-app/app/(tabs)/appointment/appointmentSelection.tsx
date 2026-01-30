@@ -131,7 +131,7 @@ export default function AppointmentSelection() {
         </TouchableOpacity>
 
         <View style={styles.navItemWrapActive}>
-          <Ionicons name="receipt-outline" size={20} color="#7A5A00" />
+          <Ionicons name="cut" size={20} color="#7A5A00" />
         </View>
 
         <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>

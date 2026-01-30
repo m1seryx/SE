@@ -21,16 +21,20 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePickerModal from '../../../components/DateTimePickerModal';
 import { addCustomizationToCart, uploadCustomizationImage } from '../../../utils/customizationService';
+import { appointmentSlotService } from '../../../utils/apiService';
 
 const { width, height } = Dimensions.get('window');
 
-// Garment types with prices - matching web
-const GARMENT_TYPES: { [key: string]: number } = {
-  'Suits': 500,
-  'Coat': 400,
-  'Barong': 400,
-  'Pants': 200,
-};
+// Default garment types with prices - will be replaced by API data
+const DEFAULT_GARMENT_TYPES: { id: string; label: string; price: number }[] = [
+  { id: 'shirt', label: 'Shirt', price: 800 },
+  { id: 'pants', label: 'Pants', price: 900 },
+  { id: 'suit', label: 'Suit', price: 2500 },
+  { id: 'dress', label: 'Dress', price: 1800 },
+  { id: 'blazer', label: 'Blazer', price: 2000 },
+  { id: 'barong', label: 'Barong', price: 3000 },
+  { id: 'uniform', label: 'Uniform', price: 0 },
+];
 
 // Default fabric types - these will always be available
 const DEFAULT_FABRIC_TYPES: { [key: string]: number } = {
@@ -43,18 +47,25 @@ const DEFAULT_FABRIC_TYPES: { [key: string]: number } = {
 export default function CustomizationService() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [image, setImage] = useState<string | null>(null);
   const [selectedGarment, setSelectedGarment] = useState<string>('');
   const [selectedFabric, setSelectedFabric] = useState<string>('');
   const [notes, setNotes] = useState('');
-  const [measurements, setMeasurements] = useState('');
   const [preferredDate, setPreferredDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
   const [showDatePicker, setShowDatePicker] = useState(false);
+  // Time slot state
+  const [timeSlots, setTimeSlots] = useState<any[]>([]);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [isShopOpen, setIsShopOpen] = useState(true);
   
   // Form validation errors
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  
+  // Garment types from API
+  const [garmentTypes, setGarmentTypes] = useState<{ id: string; label: string; price: number }[]>(DEFAULT_GARMENT_TYPES);
+  const [loadingGarments, setLoadingGarments] = useState(false);
   
   // Fabric types from API
   const [fabricTypes, setFabricTypes] = useState<{ [key: string]: number }>(DEFAULT_FABRIC_TYPES);
@@ -64,8 +75,9 @@ export default function CustomizationService() {
   const [showFabricPicker, setShowFabricPicker] = useState(false);
   const [showGarmentPicker, setShowGarmentPicker] = useState(false);
 
-  // Load fabric types from API on mount
+  // Load garment and fabric types from API on mount
   useEffect(() => {
+    loadGarmentTypes();
     loadFabricTypes();
   }, []);
 
@@ -73,12 +85,56 @@ export default function CustomizationService() {
   useEffect(() => {
     if (selectedFabric && selectedGarment) {
       const fabricPrice = fabricTypes[selectedFabric] || 0;
-      const garmentPrice = GARMENT_TYPES[selectedGarment] || 0;
+      const selectedGarmentType = garmentTypes.find(g => g.id === selectedGarment);
+      const garmentPrice = selectedGarmentType?.price || 0;
       setEstimatedPrice(fabricPrice + garmentPrice);
     } else {
       setEstimatedPrice(0);
     }
-  }, [selectedFabric, selectedGarment, fabricTypes]);
+  }, [selectedFabric, selectedGarment, fabricTypes, garmentTypes]);
+
+  // Load garment types from API
+  const loadGarmentTypes = async () => {
+    setLoadingGarments(true);
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.1.202:5000/api'}/garment-types`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.garments && data.garments.length > 0) {
+          const transformedGarments = data.garments
+            .filter((g: any) => g.is_active === 1)
+            .map((garment: any) => ({
+              id: garment.garment_code || garment.garment_name.toLowerCase().replace(/\s+/g, '_'),
+              label: garment.garment_name,
+              price: parseFloat(garment.garment_price) || 0,
+            }));
+          
+          // Always ensure uniform is included
+          const hasUniform = transformedGarments.some((g: any) => g.id.toLowerCase() === 'uniform');
+          if (!hasUniform) {
+            transformedGarments.push({ id: 'uniform', label: 'Uniform', price: 0 });
+          }
+          
+          if (transformedGarments.length > 0) {
+            setGarmentTypes(transformedGarments);
+            console.log('✅ Loaded garment types for service:', transformedGarments);
+          }
+        }
+      }
+    } catch (error) {
+      console.log('Error loading garment types:', error);
+      // Keep default values
+    } finally {
+      setLoadingGarments(false);
+    }
+  };
 
   // Load fabric types from API
   const loadFabricTypes = async () => {
@@ -111,9 +167,44 @@ export default function CustomizationService() {
     router.back();
   };
 
-  const handleDateConfirm = (selectedDate: Date) => {
+  const handleDateConfirm = async (selectedDate: Date) => {
     setPreferredDate(selectedDate);
     setShowDatePicker(false);
+    setSelectedTimeSlot(''); // Reset time slot when date changes
+    // Load time slots for the selected date
+    await loadTimeSlotsForDate(selectedDate);
+  };
+
+  // Load time slots for a specific date
+  const loadTimeSlotsForDate = async (date: Date) => {
+    console.log('[CustomizationService] loadTimeSlotsForDate called');
+    setLoadingSlots(true);
+    setSelectedTimeSlot('');
+    try {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      console.log('[CustomizationService] Loading time slots for date:', dateStr);
+      const result = await appointmentSlotService.getAllSlotsWithAvailability('customization', dateStr);
+      console.log('[CustomizationService] API Response:', result);
+      if (result.success) {
+        if (!result.isShopOpen) {
+          setIsShopOpen(false);
+          setTimeSlots([]);
+          return;
+        }
+        setIsShopOpen(true);
+        setTimeSlots(result.slots || []);
+      } else {
+        setTimeSlots([]);
+      }
+    } catch (error: any) {
+      console.log('[CustomizationService] ERROR loading time slots:', error.message || error);
+      setTimeSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
   };
 
   const handleDateCancel = () => {
@@ -131,7 +222,8 @@ export default function CustomizationService() {
   };
 
   const getSelectedGarmentPrice = () => {
-    return GARMENT_TYPES[selectedGarment] || 0;
+    const garment = garmentTypes.find(g => g.id === selectedGarment);
+    return garment?.price || 0;
   };
 
   const getSelectedFabricPrice = () => {
@@ -149,6 +241,10 @@ export default function CustomizationService() {
     }
     if (!selectedFabric) {
       Alert.alert('Missing Information', 'Please select a fabric type');
+      return;
+    }
+    if (!selectedTimeSlot) {
+      Alert.alert('Missing Information', 'Please select a time slot');
       return;
     }
 
@@ -174,11 +270,24 @@ export default function CustomizationService() {
         }
       }
 
+      // First, book the appointment slot
+      const dateStr = preferredDate.toISOString().split('T')[0];
+      try {
+        const slotResult = await appointmentSlotService.bookSlot('customization', dateStr, selectedTimeSlot);
+        if (!slotResult?.success) {
+          throw new Error(slotResult?.message || 'Failed to book appointment slot.');
+        }
+        console.log('Slot booked successfully:', slotResult);
+      } catch (slotError: any) {
+        throw new Error(slotError.message || 'Failed to book appointment slot. Please try again.');
+      }
+
       // Add to cart
       await addCustomizationToCart({
         garmentType: selectedGarment,
         fabricType: selectedFabric,
-        preferredDate: preferredDate.toISOString().split('T')[0],
+        preferredDate: dateStr,
+        preferredTime: selectedTimeSlot,
         notes: notes,
         imageUrl: imageUrl,
         estimatedPrice: estimatedPrice,
@@ -249,27 +358,31 @@ export default function CustomizationService() {
           <View style={styles.dividerLine} />
         </View>
 
-        {step === 1 && (
-          <>
-            {/* Garment Type Selection - Dropdown */}
-            <Text style={styles.sectionTitle}>Select Garment Type</Text>
-            <TouchableOpacity 
-              style={styles.dropdownSelector}
-              onPress={() => setShowGarmentPicker(true)}
-            >
+        {/* Garment Type Selection - Dropdown */}
+        <Text style={styles.sectionTitle}>Select Garment Type</Text>
+        {loadingGarments ? (
+          <ActivityIndicator size="small" color="#B8860B" style={{ marginVertical: 20 }} />
+        ) : (
+        <TouchableOpacity 
+          style={styles.dropdownSelector}
+          onPress={() => setShowGarmentPicker(true)}
+        >
               <View style={styles.dropdownLeft}>
                 <Ionicons name="shirt-outline" size={20} color="#8D6E63" />
                 <Text style={[styles.dropdownText, !selectedGarment && styles.dropdownPlaceholder]}>
-                  {selectedGarment || 'Select a garment type'}
+                  {selectedGarment ? garmentTypes.find(g => g.id === selectedGarment)?.label : 'Select a garment type'}
                 </Text>
               </View>
               <View style={styles.dropdownRight}>
                 {selectedGarment && (
-                  <Text style={styles.dropdownPrice}>₱{GARMENT_TYPES[selectedGarment]?.toLocaleString()}</Text>
+                  <Text style={styles.dropdownPrice}>
+                    {selectedGarment === 'uniform' ? 'Price varies' : `₱${garmentTypes.find(g => g.id === selectedGarment)?.price?.toLocaleString() || 0}`}
+                  </Text>
                 )}
                 <Ionicons name="chevron-down" size={20} color="#8D6E63" />
               </View>
             </TouchableOpacity>
+        )}
 
             {/* Garment Type Picker Modal */}
             <Modal
@@ -291,29 +404,29 @@ export default function CustomizationService() {
                     </TouchableOpacity>
                   </View>
                   <ScrollView style={styles.pickerScroll}>
-                    {Object.entries(GARMENT_TYPES).map(([name, price]) => (
+                    {garmentTypes.map((garment, index) => (
                       <TouchableOpacity
-                        key={name}
+                        key={`${garment.id}-${index}`}
                         style={[
                           styles.pickerOption,
-                          selectedGarment === name && styles.pickerOptionSelected,
+                          selectedGarment === garment.id && styles.pickerOptionSelected,
                         ]}
                         onPress={() => {
-                          setSelectedGarment(name);
+                          setSelectedGarment(garment.id);
                           setShowGarmentPicker(false);
                         }}
                       >
                         <Text style={[
                           styles.pickerOptionText,
-                          selectedGarment === name && styles.pickerOptionTextSelected,
+                          selectedGarment === garment.id && styles.pickerOptionTextSelected,
                         ]}>
-                          {name}
+                          {garment.label}
                         </Text>
                         <Text style={[
                           styles.pickerOptionPrice,
-                          selectedGarment === name && styles.pickerOptionPriceSelected,
+                          selectedGarment === garment.id && styles.pickerOptionPriceSelected,
                         ]}>
-                          ₱{price.toLocaleString()}
+                          {garment.id === 'uniform' ? 'Price varies' : `₱${garment.price.toLocaleString()}`}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -321,6 +434,19 @@ export default function CustomizationService() {
                 </View>
               </TouchableOpacity>
             </Modal>
+
+            {/* Uniform Notice */}
+            {selectedGarment === 'uniform' && (
+              <View style={styles.uniformNotice}>
+                <Ionicons name="information-circle" size={24} color="#e65100" />
+                <View style={styles.uniformNoticeText}>
+                  <Text style={styles.uniformNoticeTitle}>Uniform Selected</Text>
+                  <Text style={styles.uniformNoticeDesc}>
+                    Please upload a clear picture of your uniform. Price will be determined based on type and complexity.
+                  </Text>
+                </View>
+              </View>
+            )}
 
             {/* Fabric Type Selection - Dropdown */}
             <Text style={styles.sectionTitle}>Select Fabric</Text>
@@ -394,13 +520,13 @@ export default function CustomizationService() {
             </Modal>
 
             {/* Price Estimate */}
-            {selectedGarment && selectedFabric && (
+            {selectedGarment && selectedFabric && (selectedGarment !== 'uniform') && (
               <View style={styles.priceEstimateCard}>
                 <Text style={styles.priceEstimateTitle}>Estimated Price</Text>
                 <View style={styles.priceBreakdown}>
                   <View style={styles.priceRow}>
-                    <Text style={styles.priceLabel}>Garment ({selectedGarment}):</Text>
-                    <Text style={styles.priceValue}>₱{GARMENT_TYPES[selectedGarment]?.toLocaleString()}</Text>
+                    <Text style={styles.priceLabel}>Garment ({garmentTypes.find(g => g.id === selectedGarment)?.label}):</Text>
+                    <Text style={styles.priceValue}>₱{garmentTypes.find(g => g.id === selectedGarment)?.price?.toLocaleString()}</Text>
                   </View>
                   <View style={styles.priceRow}>
                     <Text style={styles.priceLabel}>Fabric ({selectedFabric}):</Text>
@@ -427,65 +553,8 @@ export default function CustomizationService() {
               )}
             </TouchableOpacity>
 
-            {/* Next Button */}
-            <TouchableOpacity
-              style={[styles.primaryButton, (!selectedGarment || !selectedFabric) && styles.buttonDisabled]}
-              onPress={() => setStep(2)}
-              disabled={!selectedGarment || !selectedFabric}
-            >
-              <Text style={styles.primaryButtonText}>Next</Text>
-              <Ionicons name="arrow-forward" size={20} color="#FFF" />
-            </TouchableOpacity>
-          </>
-        )}
-
-        {step === 2 && (
-          <>
-            {/* Summary */}
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryTitle}>Order Summary</Text>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Garment:</Text>
-                <Text style={styles.summaryValue}>
-                  {selectedGarment}
-                </Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Fabric:</Text>
-                <Text style={styles.summaryValue}>
-                  {selectedFabric}
-                </Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Garment Price:</Text>
-                <Text style={styles.summaryValue}>₱{getSelectedGarmentPrice().toLocaleString()}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Fabric Price:</Text>
-                <Text style={styles.summaryValue}>₱{getSelectedFabricPrice().toLocaleString()}</Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabelTotal}>Estimated Total:</Text>
-                <Text style={styles.summaryPrice}>₱{estimatedPrice.toLocaleString()}</Text>
-              </View>
-            </View>
-
-            {/* Measurements */}
-            <Text style={styles.sectionTitle}>Measurements (Optional)</Text>
-            <TextInput
-              style={styles.textArea}
-              placeholder="Enter your measurements (chest, waist, length, etc.)"
-              value={measurements}
-              onChangeText={setMeasurements}
-              multiline
-              numberOfLines={3}
-              placeholderTextColor="#999"
-            />
-
             {/* Preferred Date */}
-            <Text style={styles.sectionTitle}>Preferred Completion Date</Text>
+            <Text style={styles.sectionTitle}>Preferred Appointment Date</Text>
             <TouchableOpacity style={styles.datePickerButton} onPress={() => setShowDatePicker(true)}>
               <Ionicons name="calendar-outline" size={20} color="#8D6E63" />
               <Text style={styles.datePickerText}>
@@ -503,8 +572,90 @@ export default function CustomizationService() {
               onCancel={handleDateCancel}
             />
 
+            {/* Time Slot Selection */}
+            <Text style={styles.sectionTitle}>Select Time Slot</Text>
+            
+            {/* Legend */}
+            <View style={styles.legendContainer}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, styles.legendDotAvailable]} />
+                <Text style={styles.legendText}>Available</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, styles.legendDotLimited]} />
+                <Text style={styles.legendText}>Limited</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, styles.legendDotFull]} />
+                <Text style={styles.legendText}>Full</Text>
+              </View>
+            </View>
+
+            {/* Time Slots Grid */}
+            {loadingSlots ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#B8860B" />
+                <Text style={styles.loadingText}>Loading time slots...</Text>
+              </View>
+            ) : !isShopOpen ? (
+              <View style={styles.shopClosedContainer}>
+                <Ionicons name="close-circle" size={40} color="#ef4444" />
+                <Text style={styles.shopClosedText}>
+                  The shop is closed on this date. Please select another date.
+                </Text>
+              </View>
+            ) : timeSlots.length > 0 ? (
+              <View style={styles.timeSlotsGrid}>
+                {(() => {
+                  // Deduplicate slots by time_slot to ensure no duplicates are shown
+                  const seenTimes = new Set<string>();
+                  const uniqueSlots = timeSlots.filter((slot) => {
+                    if (seenTimes.has(slot.time_slot)) {
+                      return false;
+                    }
+                    seenTimes.add(slot.time_slot);
+                    return true;
+                  });
+                  
+                  return uniqueSlots.map((slot) => (
+                    <TouchableOpacity
+                      key={slot.slot_id || slot.time_slot}
+                      style={[
+                        styles.timeSlotButton,
+                        slot.status === 'available' && styles.timeSlotButtonAvailable,
+                        slot.status === 'limited' && styles.timeSlotButtonLimited,
+                        slot.status === 'full' && styles.timeSlotButtonFull,
+                        selectedTimeSlot === slot.time_slot && styles.timeSlotButtonSelected,
+                        !slot.isClickable && styles.timeSlotButtonDisabled,
+                      ]}
+                      onPress={() => {
+                        if (slot.isClickable) {
+                          setSelectedTimeSlot(slot.time_slot);
+                        }
+                      }}
+                      disabled={!slot.isClickable}
+                    >
+                      <Text style={styles.slotTime}>{slot.display_time}</Text>
+                      <Text style={styles.slotStatus}>
+                        {slot.status === 'full' ? 'Fully Booked' : 
+                         slot.status === 'limited' ? `${slot.available} LEFT` : 
+                         slot.status === 'available' ? `${slot.available} SPOTS` : 'Unavailable'}
+                      </Text>
+                    </TouchableOpacity>
+                  ));
+                })()}
+              </View>
+            ) : (
+              <View style={styles.noSlotsContainer}>
+                <Ionicons name="calendar-outline" size={40} color="#8D6E63" />
+                <Text style={styles.noSlotsText}>
+                  No time slots available for this date. Please select another date.
+                </Text>
+              </View>
+            )}
+
             {/* Notes */}
-            <Text style={styles.sectionTitle}>Additional Notes</Text>
+            <Text style={styles.sectionTitle}>Additional Notes (Optional)</Text>
             <TextInput
               style={styles.textArea}
               placeholder="Any special requests or design details..."
@@ -515,33 +666,25 @@ export default function CustomizationService() {
               placeholderTextColor="#999"
             />
 
-            {/* Buttons */}
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => setStep(1)}
-              >
-                <Ionicons name="arrow-back" size={20} color="#5D4037" />
-                <Text style={styles.secondaryButtonText}>Back</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.primaryButton, styles.addToCartButton]}
-                onPress={handleAddToCart}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <>
-                    <Ionicons name="cart-outline" size={20} color="#FFF" />
-                    <Text style={styles.primaryButtonText}>Add to Cart</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
+            {/* Add to Cart Button */}
+            <TouchableOpacity
+              style={[
+                styles.primaryButton, 
+                styles.addToCartButton,
+                (!selectedGarment || !selectedFabric || !selectedTimeSlot) && styles.buttonDisabled
+              ]}
+              onPress={handleAddToCart}
+              disabled={loading || !selectedGarment || !selectedFabric || !selectedTimeSlot}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <>
+                  <Ionicons name="cart-outline" size={20} color="#FFF" />
+                  <Text style={styles.primaryButtonText}>Add to Cart</Text>
+                </>
+              )}
+            </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -993,6 +1136,153 @@ const styles = StyleSheet.create({
   },
   addToCartButton: {
     flex: 1,
+  },
+  
+  // Time slot styles - matching RepairClothes design
+  legendContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 20,
+    marginBottom: 16,
+    paddingVertical: 10,
+    backgroundColor: '#FFFEF9',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(93, 64, 55, 0.1)',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  legendDotAvailable: {
+    backgroundColor: '#22c55e',
+  },
+  legendDotLimited: {
+    backgroundColor: '#f59e0b',
+  },
+  legendDotFull: {
+    backgroundColor: '#ef4444',
+  },
+  legendText: {
+    fontSize: 13,
+    color: '#555',
+  },
+  timeSlotsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 16,
+    justifyContent: 'center',
+  },
+  timeSlotButton: {
+    width: (width - 88) / 3, // 3 columns with gaps
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 72,
+  },
+  timeSlotButtonAvailable: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#22c55e',
+  },
+  timeSlotButtonLimited: {
+    backgroundColor: '#fffbeb',
+    borderColor: '#f59e0b',
+  },
+  timeSlotButtonFull: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#ef4444',
+    opacity: 0.75,
+  },
+  timeSlotButtonInactive: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#d4d4d4',
+    opacity: 0.6,
+  },
+  timeSlotButtonSelected: {
+    backgroundColor: '#22c55e',
+    borderColor: '#15803d',
+  },
+  timeSlotButtonDisabled: {
+    opacity: 0.6,
+  },
+  slotTime: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  slotStatus: {
+    fontSize: 11,
+    fontWeight: '500',
+    opacity: 0.85,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#8D6E63',
+  },
+  shopClosedContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    gap: 10,
+  },
+  shopClosedText: {
+    fontSize: 14,
+    color: '#ef4444',
+    textAlign: 'center',
+  },
+  noSlotsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    gap: 10,
+  },
+  noSlotsText: {
+    fontSize: 14,
+    color: '#8D6E63',
+    textAlign: 'center',
+  },
+  // Uniform styles
+  uniformNotice: {
+    flexDirection: 'row',
+    backgroundColor: '#fff3e0',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#ffb74d',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  uniformNoticeText: {
+    flex: 1,
+  },
+  uniformNoticeTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#e65100',
+    marginBottom: 4,
+  },
+  uniformNoticeDesc: {
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 18,
   },
 });
 

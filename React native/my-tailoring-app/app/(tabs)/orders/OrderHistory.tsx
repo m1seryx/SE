@@ -239,7 +239,20 @@ export default function OrderHistoryScreen() {
           )}
         </View>
 
-        <Text style={styles.orderPrice}>₱{parseFloat(item.final_price || item.base_price || '0').toLocaleString()}</Text>
+        {/* Check if Uniform order (via garmentType or isUniform flag) */}
+        {(item.service_type === 'customize' || item.service_type === 'customization') && (
+         item.specific_data?.garmentType?.toLowerCase() === 'uniform' ||
+         item.specific_data?.isUniform === true ||
+         item.pricing_factors?.isUniform === true
+        ) ? (
+          parseFloat(item.final_price || item.base_price || '0') === 0 ? (
+            <Text style={[styles.orderPrice, { color: '#e65100' }]}>Price varies</Text>
+          ) : (
+            <Text style={[styles.orderPrice, { color: '#4caf50' }]}>₱{parseFloat(item.final_price || item.base_price || '0').toLocaleString()}</Text>
+          )
+        ) : (
+          <Text style={styles.orderPrice}>₱{parseFloat(item.final_price || item.base_price || '0').toLocaleString()}</Text>
+        )}
       </View>
 
       <View style={styles.orderActions}>
@@ -389,19 +402,15 @@ export default function OrderHistoryScreen() {
           </View>
         </TouchableOpacity>
 
-        <View style={styles.navItemWrapActive}>
-          <Ionicons name="receipt" size={20} color="#7A5A00" />
-        </View>
-
-        <TouchableOpacity onPress={() => router.push("/(tabs)/faq")}>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/appointment/appointmentSelection")}>
           <View style={styles.navItemWrap}>
-            <Ionicons name="help-circle-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="cut-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("/(tabs)/contact")}>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
           <View style={styles.navItemWrap}>
-            <Ionicons name="call-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
 

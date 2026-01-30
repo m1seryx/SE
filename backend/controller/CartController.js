@@ -15,7 +15,7 @@ function linkAppointmentSlotToCart(userId, serviceType, specificData, cartItemId
 
   // Extract date and time from specificData
   const appointmentDate = specificData?.pickupDate || specificData?.preferredDate || specificData?.datetime;
-  const appointmentTime = specificData?.appointmentTime; // Also check for separate time field
+  const appointmentTime = specificData?.appointmentTime || specificData?.preferredTime; // Also check for preferredTime (for customization)
   
   if (!appointmentDate) return;
 

@@ -320,7 +320,7 @@ export default function NotificationsScreen() {
           }
         >
           <View style={styles.navItemWrap}>
-            <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="cut-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>

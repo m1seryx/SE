@@ -1652,6 +1652,10 @@ const Customize = () => {
                   const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
                   const finalPrice = parseFloat(item.final_price || 0);
                   const remainingBalance = finalPrice - amountPaid;
+                  // Check if this is a Uniform order (via garmentType or isUniform flag)
+                  const isUniform = item.specific_data?.garmentType?.toLowerCase() === 'uniform' || 
+                    item.specific_data?.isUniform === true || 
+                    item.pricing_factors?.isUniform === true;
 
                   return (
                   <tr key={item.item_id} className="clickable-row" onClick={() => handleViewDetails(item)}>
@@ -1678,13 +1682,27 @@ const Customize = () => {
                     <td>{item.specific_data?.garmentType || 'N/A'}</td>
                     <td><span style={{ fontSize: '0.9em', color: '#5D4037' }}>{item.specific_data?.fabricType || 'N/A'}</span></td>
                     <td>{new Date(item.order_date).toLocaleDateString()}</td>
-                    <td>₱{parseFloat(item.final_price || 0).toLocaleString()}</td>
+                    <td>
+                      {isUniform && finalPrice === 0 ? (
+                        <span style={{ color: '#e65100', fontWeight: '600', fontSize: '0.9em' }}>Price varies</span>
+                      ) : isUniform && finalPrice > 0 ? (
+                        <span style={{ color: '#4caf50', fontWeight: '600' }}>₱{parseFloat(item.final_price || 0).toLocaleString()}</span>
+                      ) : (
+                        `₱${parseFloat(item.final_price || 0).toLocaleString()}`
+                      )}
+                    </td>
                     <td>
                       <div style={{ fontSize: '12px' }}>
-                        <div>Paid: ₱{amountPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        <div style={{ color: remainingBalance > 0 ? '#ff9800' : '#4caf50', fontWeight: 'bold' }}>
-                          Remaining: ₱{Math.max(0, remainingBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
+                        {isUniform && finalPrice === 0 ? (
+                          <span style={{ color: '#e65100', fontStyle: 'italic' }}>Pending quote</span>
+                        ) : (
+                          <>
+                            <div>Paid: ₱{amountPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            <div style={{ color: remainingBalance > 0 ? '#ff9800' : '#4caf50', fontWeight: 'bold' }}>
+                              Remaining: ₱{Math.max(0, remainingBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </>
+                        )}
                       </div>
                     </td>
                     <td onClick={(e) => e.stopPropagation()}>

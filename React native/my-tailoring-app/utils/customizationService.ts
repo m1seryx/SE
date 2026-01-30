@@ -42,23 +42,32 @@ export const addCustomizationToCart = async (customizationData: {
   garmentType: string;
   fabricType: string;
   preferredDate?: string;
+  preferredTime?: string;
   notes?: string;
   imageUrl?: string;
   designData?: any;
   estimatedPrice?: number;
+  isUniform?: boolean;
 }) => {
+  // Check if this is a Uniform order
+  const isUniform = customizationData.isUniform || customizationData.garmentType?.toLowerCase() === 'uniform';
+  // Uniform orders should have price 0 (varies)
+  const price = isUniform ? 0 : (customizationData.estimatedPrice || 500);
+  
   // Restructure data to match backend expectations
   const cartData = {
     serviceType: 'customization',
     serviceId: Date.now(), // Generate unique ID
     quantity: 1,
-    basePrice: customizationData.estimatedPrice || 500,
-    finalPrice: customizationData.estimatedPrice || 500,
+    basePrice: price,
+    finalPrice: price,
     pricingFactors: {
       fabricType: customizationData.fabricType,
       garmentType: customizationData.garmentType,
       designComplexity: 'standard',
-      preferredDate: customizationData.preferredDate
+      preferredDate: customizationData.preferredDate,
+      preferredTime: customizationData.preferredTime,
+      isUniform: isUniform
     },
     specificData: {
       garmentType: customizationData.garmentType,
@@ -66,8 +75,10 @@ export const addCustomizationToCart = async (customizationData: {
       measurements: customizationData.notes || '',
       notes: customizationData.notes || '',
       preferredDate: customizationData.preferredDate || '',
+      preferredTime: customizationData.preferredTime || '',
       imageUrl: customizationData.imageUrl || 'no-image',
       designData: customizationData.designData || {},
+      isUniform: isUniform,
       uploadedAt: new Date().toISOString()
     },
     rentalDates: null

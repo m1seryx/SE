@@ -726,6 +726,13 @@ export default function ProfileScreen() {
                 return order.items.map((item: any) => {
                   const estimatedPrice = getEstimatedPrice(item.specific_data, item.service_type);
                   const priceChanged = hasPriceChanged(item.specific_data, parseFloat(item.final_price), item.service_type);
+                  // Check if this is a Uniform order (via garmentType or isUniform flag)
+                  const isUniform = (item.service_type === 'customize' || item.service_type === 'customization') && (
+                    item.specific_data?.garmentType?.toLowerCase() === 'uniform' ||
+                    item.specific_data?.isUniform === true ||
+                    item.pricing_factors?.isUniform === true
+                  );
+                  const finalPrice = parseFloat(item.final_price);
                   
                   return (
                     <View key={`${item.order_id}-${item.order_item_id}`} style={styles.orderCard}>
@@ -742,7 +749,13 @@ export default function ProfileScreen() {
                           </Text>
                         </View>
                         <View style={styles.orderPriceContainer}>
-                          <Text style={styles.orderPrice}>₱{parseFloat(item.final_price).toFixed(2)}</Text>
+                          {isUniform && finalPrice === 0 ? (
+                            <Text style={[styles.orderPrice, { color: '#e65100' }]}>Price varies</Text>
+                          ) : isUniform && finalPrice > 0 ? (
+                            <Text style={[styles.orderPrice, { color: '#4caf50' }]}>₱{finalPrice.toFixed(2)}</Text>
+                          ) : (
+                            <Text style={styles.orderPrice}>₱{finalPrice.toFixed(2)}</Text>
+                          )}
                         </View>
                       </View>
 
@@ -1101,21 +1114,15 @@ export default function ProfileScreen() {
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("/(tabs)/orders/OrderHistory")}>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/appointment/appointmentSelection")}>
           <View style={styles.navItemWrap}>
-            <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="cut-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("/(tabs)/faq")}>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
           <View style={styles.navItemWrap}>
-            <Ionicons name="help-circle-outline" size={20} color="#9CA3AF" />
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => router.push("/(tabs)/contact")}>
-          <View style={styles.navItemWrap}>
-            <Ionicons name="call-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
 

@@ -851,8 +851,12 @@ const Profile = () => {
               <span className="detail-value">{specific_data.fabricType || 'N/A'}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">Preferred Date:</span>
-              <span className="detail-value">{specific_data.preferredDate || 'N/A'}</span>
+              <span className="detail-label">Preferred Date & Time:</span>
+              <span className="detail-value">
+                {specific_data.preferredDate && specific_data.preferredTime
+                  ? formatDateTo12Hour(`${specific_data.preferredDate}T${specific_data.preferredTime}`)
+                  : specific_data.preferredDate || 'N/A'}
+              </span>
             </div>
             {specific_data.notes && (
               <div className="detail-row">
@@ -1645,6 +1649,12 @@ const Profile = () => {
                 const totalPaid = amountPaid;
                 const remainingAmount = Math.max(0, finalPrice - totalPaid);
                 const hasPayment = totalPaid > 0 && (isRental || isRepair || isDryCleaning || isCustomization);
+                // Check if this is a Uniform order (via garmentType or isUniform flag)
+                const isUniform = isCustomization && (
+                  item.specific_data?.garmentType?.toLowerCase() === 'uniform' || 
+                  item.specific_data?.isUniform === true ||
+                  item.pricing_factors?.isUniform === true
+                );
 
                 return (
                   <div key={`${item.order_id}-${item.order_item_id}-${item.service_type}-${item.status_updated_at || Date.now()}`} className="order-card">
@@ -1661,7 +1671,13 @@ const Profile = () => {
                         </span>
                       </div>
                       <div className="order-price">
-                        {hasPayment && remainingAmount > 0 ? (
+                        {isUniform && finalPrice === 0 ? (
+                          <span style={{ color: '#e65100', fontWeight: '600' }}>Price varies</span>
+                        ) : isUniform && finalPrice > 0 ? (
+                          <span style={{ color: '#4caf50', fontWeight: '600' }}>
+                            ₱{finalPrice.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          </span>
+                        ) : hasPayment && remainingAmount > 0 ? (
                           <>
                             <div style={{ fontSize: '14px', color: '#666', textDecoration: 'line-through' }}>
                               ₱{finalPrice.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}

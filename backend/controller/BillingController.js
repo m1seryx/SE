@@ -91,39 +91,32 @@ exports.getAllBillingRecords = (req, res) => {
         console.error('Error parsing JSON fields:', e);
       }
 
-      // Determine payment status - for rental, check if balance = 0
+      // Determine payment status for all services
       let paymentStatus = 'Unpaid';
       const normalizedServiceType = (item.service_type || '').toLowerCase().trim();
+      const dbPaymentStatus = (item.payment_status || '').toLowerCase().trim();
       
-      if (normalizedServiceType === 'rental') {
-        // Check amount_paid from pricing_factors
-        const amountPaid = parseFloat(pricingFactors.amount_paid || 0);
-        const finalPrice = parseFloat(item.final_price || 0);
-        const remainingBalance = finalPrice - amountPaid;
-        
-        // If balance is zero or negative (overpaid), mark as Paid
-        if (remainingBalance <= 0 && finalPrice > 0) {
-          paymentStatus = 'Paid';
-        } else if (item.payment_status === 'fully_paid') {
-          paymentStatus = 'Fully Paid';
-        } else if (item.payment_status === 'down-payment') {
-          paymentStatus = 'Down-payment';
-        } else if (item.payment_status === 'partial_payment') {
-          paymentStatus = 'Partial Payment';
-        } else {
-          paymentStatus = 'Unpaid';
-        }
+      // Check amount_paid from pricing_factors for any service
+      const amountPaid = parseFloat(pricingFactors.amount_paid || pricingFactors.downpayment || 0);
+      const finalPrice = parseFloat(item.final_price || 0);
+      const remainingBalance = finalPrice - amountPaid;
+      
+      // Priority order: fully_paid > paid > down-payment/partial > unpaid
+      if (dbPaymentStatus === 'fully_paid' || dbPaymentStatus === 'paid') {
+        paymentStatus = 'Paid';
+      } else if (remainingBalance <= 0 && finalPrice > 0 && amountPaid > 0) {
+        // If balance is zero or negative (fully paid via amount_paid), mark as Paid
+        paymentStatus = 'Paid';
+      } else if (dbPaymentStatus === 'down-payment' || dbPaymentStatus === 'downpayment' || 
+                 dbPaymentStatus === 'partial_payment' || dbPaymentStatus === 'partial') {
+        paymentStatus = 'Down-payment';
+      } else if (amountPaid > 0 && remainingBalance > 0) {
+        // Has some payment but not fully paid
+        paymentStatus = 'Down-payment';
+      } else if (dbPaymentStatus === 'cancelled') {
+        paymentStatus = 'Cancelled';
       } else {
-        // For other services, use payment_status from database
-        if (item.payment_status === 'paid') {
-          paymentStatus = 'Paid';
-        } else if (item.payment_status === 'cancelled') {
-          paymentStatus = 'Cancelled';
-        } else if (item.payment_status === 'down-payment') {
-          paymentStatus = 'Down-payment';
-        } else if (item.payment_status === 'fully_paid') {
-          paymentStatus = 'Fully Paid';
-        }
+        paymentStatus = 'Unpaid';
       }
 
       // Format service type for display
@@ -402,13 +395,59 @@ exports.getBillingStats = (req, res) => {
 
   // Get statistics query
   // Exclude rejected/cancelled items from billing statistics
+  // For revenue: use amount_paid from pricing_factors for rentals, final_price for others
+  // Count as paid if: payment_status is paid/fully_paid OR (for rentals) amount_paid > 0
   const statsSql = `
     SELECT 
       COUNT(*) as total_records,
-      SUM(CASE WHEN oi.payment_status IN ('paid', 'fully_paid') THEN 1 ELSE 0 END) as paid_count,
-      SUM(CASE WHEN oi.payment_status IN ('unpaid', 'down-payment') THEN 1 ELSE 0 END) as unpaid_count,
-      SUM(CASE WHEN oi.payment_status IN ('paid', 'fully_paid') THEN oi.final_price ELSE 0 END) as total_revenue,
-      SUM(CASE WHEN oi.payment_status IN ('unpaid', 'down-payment') THEN oi.final_price ELSE 0 END) as pending_revenue
+      SUM(
+        CASE 
+          WHEN oi.payment_status IN ('paid', 'fully_paid') THEN 1
+          WHEN LOWER(oi.service_type) = 'rental' 
+            AND COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(oi.pricing_factors, '$.amount_paid')) AS DECIMAL(10,2)), 0) > 0 
+            AND COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(oi.pricing_factors, '$.amount_paid')) AS DECIMAL(10,2)), 0) >= oi.final_price THEN 1
+          ELSE 0 
+        END
+      ) as paid_count,
+      SUM(
+        CASE 
+          WHEN oi.payment_status IN ('down-payment', 'partial_payment') THEN 1
+          WHEN LOWER(oi.service_type) = 'rental' 
+            AND COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(oi.pricing_factors, '$.amount_paid')) AS DECIMAL(10,2)), 0) > 0 
+            AND COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(oi.pricing_factors, '$.amount_paid')) AS DECIMAL(10,2)), 0) < oi.final_price THEN 1
+          ELSE 0
+        END
+      ) as downpayment_count,
+      SUM(
+        CASE 
+          WHEN oi.payment_status IN ('unpaid', 'pending', '') OR oi.payment_status IS NULL THEN 1
+          ELSE 0 
+        END
+      ) as unpaid_count,
+      SUM(
+        CASE 
+          WHEN oi.payment_status IN ('paid', 'fully_paid') THEN 
+            CASE 
+              WHEN LOWER(oi.service_type) = 'rental' THEN COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(oi.pricing_factors, '$.amount_paid')) AS DECIMAL(10,2)), oi.final_price)
+              ELSE oi.final_price
+            END
+          WHEN LOWER(oi.service_type) = 'rental' 
+            AND COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(oi.pricing_factors, '$.amount_paid')) AS DECIMAL(10,2)), 0) > 0 THEN
+            COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(oi.pricing_factors, '$.amount_paid')) AS DECIMAL(10,2)), 0)
+          ELSE 0
+        END
+      ) as total_revenue,
+      SUM(
+        CASE 
+          WHEN oi.payment_status IN ('unpaid', 'pending', 'down-payment', 'partial_payment', '') OR oi.payment_status IS NULL THEN 
+            CASE 
+              WHEN LOWER(oi.service_type) = 'rental' THEN 
+                oi.final_price - COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(oi.pricing_factors, '$.amount_paid')) AS DECIMAL(10,2)), 0)
+              ELSE oi.final_price
+            END
+          ELSE 0
+        END
+      ) as pending_revenue
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.order_id
     WHERE oi.approval_status != 'cancelled'

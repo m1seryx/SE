@@ -704,8 +704,31 @@ const WalkInOrders = () => {
                       {gt.garment_name}
                     </option>
                   ))}
+                  <option value="Uniform">👔 Uniform (Price varies)</option>
                 </select>
               </div>
+
+              {/* Uniform Notice */}
+              {customGarmentType === 'Uniform' && (
+                <div style={{ 
+                  backgroundColor: '#fff3e0', 
+                  padding: '12px 15px', 
+                  borderRadius: '8px', 
+                  marginBottom: '15px',
+                  border: '1px solid #ffb74d',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px'
+                }}>
+                  <span style={{ fontSize: '24px' }}>👔</span>
+                  <div>
+                    <strong style={{ color: '#e65100' }}>Uniform Order</strong>
+                    <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#666' }}>
+                      Price varies by uniform type and complexity. Please collect a reference image from the customer and note any specific requirements.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="form-group">
                 <label>Fabric Type</label>
@@ -713,8 +736,9 @@ const WalkInOrders = () => {
                   value={fabricType}
                   onChange={(e) => setFabricType(e.target.value)}
                   className="form-control"
+                  disabled={customGarmentType === 'Uniform'}
                 >
-                  <option value="">Select fabric type (optional)</option>
+                  <option value="">{customGarmentType === 'Uniform' ? 'N/A for Uniform' : 'Select fabric type (optional)'}</option>
                   {fabricTypes.map(ft => (
                     <option key={ft.fabric_type_id} value={ft.fabric_name}>
                       {ft.fabric_name}

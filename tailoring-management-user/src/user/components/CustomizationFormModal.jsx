@@ -453,9 +453,15 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
     }
   }, [isOpen]);
 
+  // Check if Uniform is selected
+  const isUniformSelected = formData.garmentType === 'Uniform';
+
   // Calculate estimated price when fabric or garment changes
   useEffect(() => {
-    if (formData.fabricType && formData.garmentType) {
+    if (formData.garmentType === 'Uniform') {
+      // Uniform has dynamic pricing - set to 0 to indicate "varies"
+      setEstimatedPrice(0);
+    } else if (formData.fabricType && formData.garmentType) {
       const fabricPrice = fabricTypes[formData.fabricType] || 0;
       const garmentPrice = garmentTypes[formData.garmentType] || 0;
       const total = fabricPrice + garmentPrice;
@@ -593,13 +599,35 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
       }
 
       // Add to cart with backend API
+      // For Uniform orders, price should be 0 (varies)
+      const isUniform = formData.garmentType === 'Uniform';
+      const priceToSubmit = isUniform ? 0 : (estimatedPrice || 500);
+      
+      // First, book the appointment slot (like repair and dry cleaning)
+      let slotResult = null;
+      try {
+        slotResult = await bookSlot('customization', formData.preferredDate, formData.preferredTime);
+        if (!slotResult?.success) {
+          const errorMsg = slotResult?.message || 'Failed to book appointment slot. This time may already be taken.';
+          console.error('Slot booking failed:', slotResult);
+          throw new Error(errorMsg);
+        }
+        console.log('Slot booked successfully:', slotResult);
+      } catch (slotError) {
+        console.error('Slot booking error:', slotError);
+        const errorMsg = slotError.response?.data?.message || slotError.message || 'Failed to book appointment slot. Please try again.';
+        throw new Error(errorMsg);
+      }
+      
       const cartResult = await addCustomizationToCart({
         fabricType: formData.fabricType,
         garmentType: formData.garmentType,
         preferredDate: formData.preferredDate,
+        preferredTime: formData.preferredTime,
         notes: formData.notes,
         imageUrl: imageUrl,
-        estimatedPrice: estimatedPrice || 500,
+        estimatedPrice: priceToSubmit,
+        isUniform: isUniform,
         designData: cleanDesignData || {}, // Pass 3D design details without base64 image
       });
 
@@ -699,6 +727,26 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
               📷 Upload Reference Image
               <span className="required-indicator">*</span>
             </label>
+            {isUniformSelected && (
+              <div style={{ 
+                backgroundColor: '#fff3e0', 
+                padding: '10px 15px', 
+                borderRadius: '8px', 
+                marginBottom: '10px',
+                border: '1px solid #ffb74d',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                <span style={{ fontSize: '20px' }}>👔</span>
+                <div>
+                  <strong style={{ color: '#e65100' }}>Uniform Selected</strong>
+                  <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#666' }}>
+                    Please upload a clear picture of your uniform for accurate pricing. Final price will be determined based on uniform type and complexity.
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="image-upload-wrapper-shared">
               <input
                 type="file"
@@ -819,6 +867,7 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
                   {garment} - ₱{garmentTypes[garment]}
                 </option>
               ))}
+              <option value="Uniform" style={{ fontWeight: 'bold' }}>👔 Uniform (Price varies)</option>
             </select>
             {errors.garmentType && (
               <span className="error-message-shared">{errors.garmentType}</span>
@@ -1011,7 +1060,17 @@ const CustomizationFormModal = ({ isOpen, onClose, onCartUpdate }) => {
           </div>
 
           {/* 7. Estimated Price */}
-          {estimatedPrice > 0 && formData.fabricType && formData.garmentType && (
+          {isUniformSelected ? (
+            <div className="price-estimate-shared" style={{ backgroundColor: '#fff3e0', borderColor: '#ffb74d' }}>
+              <h4 style={{ color: '#e65100' }}>💰 Price: Varies by uniform type</h4>
+              <p style={{ color: '#666' }}>
+                Uniform pricing depends on the type, fabric, complexity, and quantity. Our team will provide an accurate quote after reviewing your uploaded image.
+              </p>
+              <p className="help-text-shared" style={{ marginTop: '12px', fontStyle: 'italic' }}>
+                Note: Please ensure you upload a clear picture of the uniform for accurate pricing.
+              </p>
+            </div>
+          ) : estimatedPrice > 0 && formData.fabricType && formData.garmentType && (
             <div className="price-estimate-shared">
               <h4>Estimated Price: ₱{estimatedPrice}</h4>
               <p>

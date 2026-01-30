@@ -128,21 +128,15 @@ export default function ContactSupportScreen() {
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("/(tabs)/orders/OrderHistory")}>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/appointment/appointmentSelection")}>
           <View style={styles.navItemWrap}>
-            <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="cut-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("/(tabs)/faq")}>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
           <View style={styles.navItemWrap}>
-            <Ionicons name="help-circle-outline" size={20} color="#9CA3AF" />
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity>
-          <View style={styles.navItemWrapActive}>
-            <Ionicons name="call" size={20} color="#991b1b" />
+            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
 

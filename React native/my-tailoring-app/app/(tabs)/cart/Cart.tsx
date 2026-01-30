@@ -165,6 +165,7 @@ export default function CartScreen() {
             isEstimatedPrice: item.specific_data?.isEstimatedPrice || false,
             // Customization specific
             preferredDate: item.specific_data?.preferredDate || '',
+            preferredTime: item.specific_data?.preferredTime || '',
             notes: item.specific_data?.notes || '',
             designData: item.specific_data?.designData || null,
             // Bundle information
@@ -494,6 +495,9 @@ export default function CartScreen() {
                         {item.preferredDate && (
                           <Text style={styles.itemDetailText}>Preferred Date: {item.preferredDate}</Text>
                         )}
+                        {item.preferredTime && (
+                          <Text style={styles.itemDetailText}>Preferred Time: {item.preferredTime}</Text>
+                        )}
                         {item.notes && (
                           <Text style={styles.itemDetailText} numberOfLines={2}>
                             Notes: {item.notes}
@@ -806,6 +810,14 @@ export default function CartScreen() {
                           </Text>
                         </View>
                       )}
+                      {selectedItemDetails.preferredTime && (
+                        <View style={styles.detailsSection}>
+                          <Text style={styles.detailsLabel}>Preferred Time</Text>
+                          <Text style={styles.detailsValue}>
+                            {selectedItemDetails.preferredTime}
+                          </Text>
+                        </View>
+                      )}
                       {selectedItemDetails.notes && (
                         <View style={styles.detailsSection}>
                           <Text style={styles.detailsLabel}>Notes</Text>
@@ -1104,7 +1116,7 @@ export default function CartScreen() {
           }
         >
           <View style={styles.navItemWrap}>
-            <Ionicons name="receipt-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="cut-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
 

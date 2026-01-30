@@ -144,6 +144,8 @@ const damageRecordRoutes = require('./routes/DamageRecordRoutes');
 app.use('/api/damage-records', damageRecordRoutes);
 const faqRoutes = require('./routes/FAQRoutes');
 app.use('/api/faqs', faqRoutes);
+const analyticsRoutes = require('./routes/AnalyticsRoutes');
+app.use('/api/analytics', analyticsRoutes);
 
 
 // Initialize database tables (time_slots and appointment_slots)

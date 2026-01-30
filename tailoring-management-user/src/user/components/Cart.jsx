@@ -713,7 +713,11 @@ const Cart = ({ isOpen, onClose, onCartUpdate }) => {
                         <div className="customization-details">
                           <p>Garment Type: {item.specific_data.garmentType || 'N/A'}</p>
                           <p>Fabric Type: {item.specific_data.fabricType || 'N/A'}</p>
-                          <p>Preferred Date: {item.specific_data.preferredDate || 'N/A'}</p>
+                          <p>Preferred Date & Time: {
+                            item.specific_data.preferredDate && item.specific_data.preferredTime
+                              ? formatDateTo12Hour(`${item.specific_data.preferredDate}T${item.specific_data.preferredTime}`)
+                              : item.specific_data.preferredDate || 'N/A'
+                          }</p>
                           {item.specific_data.notes && (
                             <p>Notes: {item.specific_data.notes}</p>
                           )}

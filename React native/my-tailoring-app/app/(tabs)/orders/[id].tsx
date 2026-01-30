@@ -497,6 +497,12 @@ export default function OrderDetails() {
                       <Text style={styles.value}>{formatDate(order.specific_data.preferredDate)}</Text>
                     </View>
                   )}
+                  {order.specific_data?.preferredTime && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.label}>Preferred Time</Text>
+                      <Text style={styles.value}>{order.specific_data.preferredTime}</Text>
+                    </View>
+                  )}
                   {order.specific_data?.notes && (
                     <View style={styles.detailRow}>
                       <Text style={styles.label}>Notes</Text>
@@ -609,17 +615,14 @@ export default function OrderDetails() {
             <Ionicons name="home-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
-        <View style={styles.navItemWrapActive}>
-          <Ionicons name="receipt" size={20} color="#7A5A00" />
-        </View>
-        <TouchableOpacity onPress={() => router.push("/(tabs)/faq")}>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/appointment/appointmentSelection")}>
           <View style={styles.navItemWrap}>
-            <Ionicons name="help-circle-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="cut-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push("/(tabs)/contact")}>
+        <TouchableOpacity onPress={() => router.push("/(tabs)/cart/Cart")}>
           <View style={styles.navItemWrap}>
-            <Ionicons name="call-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="cart-outline" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
         <TouchableOpacity
