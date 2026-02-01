@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom';
 import "../adminStyle/appointments.css"
+import logo from '../assets/logo.png';
+
 
 function Sidebar() {
   const location = useLocation();
@@ -16,11 +18,15 @@ function Sidebar() {
   return (
     <aside className='sidebar'> 
       <div className='profile'> 
-        <div className="w-12 h-12 bg-teal-500 rounded-full flex items-center justify-center text-white text-xl font-semibold">
-        </div>
-        <h3 style={{ color: 'rgb(139, 69, 19)' }}>D'jackman Tailor Deluxe</h3>
-
-      </div>
+  <div className="profile-header">
+    <img 
+  src={logo} 
+  alt="D'jackman Tailor Deluxe Logo" 
+  className="profile-logo"
+    />
+    <h3 className="p" style={{ color: 'rgb(139, 69, 19)' }}>D'jackman Tailor Deluxe</h3>
+  </div>
+</div>
 
       <nav> 
         <NavLink to="/admin" className={({ isActive }) => isActive ? 'active' : ''}>

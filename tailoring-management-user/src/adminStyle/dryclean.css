@@ -1662,24 +1662,50 @@ tbody td {
 
 /* Centered modal footer for buttons */
 .modal-footer-centered {
-  padding: 20px 28px;
+  padding: 20px 28px !important;
   display: flex !important;
   gap: 15px !important;
-  justify-content: flex-end !important;
-  background: #FAFAFA;
-  border-top: 1px solid rgba(139, 69, 19, 0.1);
+  justify-content: center !important;
+  align-items: center !important;
+  background: #FAFAFA !important;
+  border-top: 1px solid rgba(139, 69, 19, 0.1) !important;
 }
 
-.modal-footer-centered .btn-save {
+.modal-footer-centered .btn-save-list,
+.modal-footer-centered .btn-cancel-list {
+  padding: 15px 20px !important;
+  font-size: 13px !important;
+  min-width: 80px !important;
+  border: none !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+  margin: 0 !important;
+
+}
+
+.modal-footer-centered .btn-cancel-list {
+  background: #f0f0f0 !important;
+  color: #333 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+}
+
+.modal-footer-centered .btn-cancel-list:hover {
+  background: #e0e0e0 !important;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.modal-footer-centered .btn-save-list {
   background: rgb(139, 69, 19) !important;
+  color: white !important;
   box-shadow: 0 4px 12px rgba(139, 69, 19, 0.3) !important;
 }
 
-.modal-footer-centered .btn-save:hover {
+.modal-footer-centered .btn-save-list:hover {
   background: rgb(110, 55, 15) !important;
   box-shadow: 0 6px 16px rgba(139, 69, 19, 0.4) !important;
 }
-
 /* Centered payment form group */
 .payment-form-group {
   text-align: center;
@@ -1707,13 +1733,84 @@ tbody td {
 
 /* Three column form row - properly centered */
 .form-row-three-cols {
-  display: grid !important;
-  grid-template-columns: 1fr 1fr 1fr !important;
-  gap: 15px !important;
-  margin-bottom: 15px !important;
-  width: 100% !important;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 15px;
+  width: 100%;
 }
 
 .form-row-three-cols .form-group {
-  width: 100% !important;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  text-align: left;
+}
+
+.form-row-three-cols .form-group label {
+  margin-bottom: 6px;
+  font-weight: 500;
+  font-size: 14px;
+  color: #333;
+  text-align: left;
+}
+
+.form-row-three-cols .form-group input,
+.form-row-three-cols .form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.form-row-three-cols .form-group input:focus,
+.form-row-three-cols .form-group select:focus {
+  outline: none;
+  border-color: #6A3C3E;
+  box-shadow: 0 0 0 3px rgba(106, 60, 62, 0.1);
+}
+
+/* Single column form layout for phone and status */
+.form-row-centered {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 15px;
+  width: 100%;
+}
+
+.form-field-centered {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  text-align: left;
+}
+
+.form-field-centered label {
+  margin-bottom: 6px;
+  font-weight: 500;
+  font-size: 14px;
+  color: #333;
+  text-align: left;
+}
+
+.form-field-centered input,
+.form-field-centered select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.form-field-centered input:focus,
+.form-field-centered select:focus {
+  outline: none;
+  border-color: #6A3C3E;
+  box-shadow: 0 0 0 3px rgba(106, 60, 62, 0.1);
 }

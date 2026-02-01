@@ -337,60 +337,55 @@ const CustomerList = () => {
               <span className="close-modal" onClick={() => setShowEditModal(false)}>×</span>
             </div>
             <div className="modal-body">
-              {/* First row: First Name, Last Name, Email */}
-              <div className="form-row-three-cols">
-                <div className="form-group">
-                  <label>First Name *</label>
-                  <input
-                    type="text"
-                    value={editForm.first_name}
-                    onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Last Name *</label>
-                  <input
-                    type="text"
-                    value={editForm.last_name}
-                    onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Email *</label>
-                  <input
-                    type="email"
-                    value={editForm.email}
-                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              
-              {/* Second row: Phone Number and Status - centered */}
-              <div className="form-row-centered">
-                <div className="form-field-centered">
-                  <label>Phone Number</label>
-                  <input
-                    type="text"
-                    value={editForm.phone_number || ''}
-                    onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })}
-                  />
-                </div>
-                <div className="form-field-centered">
-                  <label>Status *</label>
-                  <select
-                    value={editForm.status}
-                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                    required
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-              </div>
-
+  {/* All fields in one container */}
+  <div className="form-row-three-cols">
+    <div className="form-group">
+      <label>First Name *</label>
+      <input
+        type="text"
+        value={editForm.first_name}
+        onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+        required
+      />
+    </div>
+    <div className="form-group">
+      <label>Last Name *</label>
+      <input
+        type="text"
+        value={editForm.last_name}
+        onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+        required
+      />
+    </div>
+    <div className="form-group">
+      <label>Email *</label>
+      <input
+        type="email"
+        value={editForm.email}
+        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+        required
+      />
+    </div>
+    <div className="form-group">
+      <label>Phone Number</label>
+      <input
+        type="text"
+        value={editForm.phone_number || ''}
+        onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })}
+      />
+    </div>
+    <div className="form-group">
+      <label>Status *</label>
+      <select
+        value={editForm.status}
+        onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+        required
+      >
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+    </div>
+  </div>
               {/* Customer Measurements Section */}
               <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '2px solid #eee' }}>
                 <h3 className="measurement-title" style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#000', textAlign: 'center', fontWeight: '600' }}>Customer Measurements</h3>
@@ -558,8 +553,8 @@ const CustomerList = () => {
               </div>
             </div>
             <div className="modal-footer-centered">
-              <button className="btn-cancel" onClick={() => setShowEditModal(false)}>Cancel</button>
-              <button className="btn-save" onClick={handleSaveEdit}>Save Changes</button>
+              <button className="btn-cancel-list" onClick={() => setShowEditModal(false)}>Cancel</button>
+              <button className="btn-save-list" onClick={handleSaveEdit}>Save</button>
             </div>
           </div>
         </div>
