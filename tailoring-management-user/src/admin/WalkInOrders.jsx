@@ -1198,23 +1198,6 @@ const WalkInOrders = () => {
                 />
               </div>
 
-              <div className="form-group">
-                <label>Damage Deposit</label>
-                <input
-                  type="number"
-                  value={damageDeposit}
-                  onChange={(e) => setDamageDeposit(e.target.value)}
-                  className="form-control"
-                  min="0"
-                  step="0.01"
-                />
-                <small>
-                  Default: {selectedRentalItems.length > 0 
-                    ? `₱${selectedRentalItems.reduce((sum, item) => sum + parseFloat(item.downpayment || '0'), 0).toFixed(2)} (total from ${selectedRentalItems.length} item${selectedRentalItems.length > 1 ? 's' : ''})`
-                    : '₱0.00'}
-                </small>
-              </div>
-
               <div className="price-display">
                 <strong>Total Price: ₱{calculateRentalPrice().toFixed(2)}</strong>
               </div>
