@@ -280,7 +280,12 @@ exports.getRevenueByService = async (req, res) => {
 
     let paymentCondition = "AND (oi.payment_status = 'paid' OR (LOWER(oi.service_type) = 'rental' AND oi.payment_status NOT IN ('unpaid', 'pending', 'cancelled')))";
     if (paymentStatus && paymentStatus !== 'all') {
-      paymentCondition = `AND oi.payment_status = '${paymentStatus}'`;
+      // For 'paid' status, also include rentals with valid payment statuses (partially_paid, completed, etc.)
+      if (paymentStatus === 'paid') {
+        paymentCondition = "AND (oi.payment_status = 'paid' OR (LOWER(oi.service_type) = 'rental' AND oi.payment_status NOT IN ('unpaid', 'pending', 'cancelled')))";
+      } else {
+        paymentCondition = `AND oi.payment_status = '${paymentStatus}'`;
+      }
     }
 
     const revenueExpr = getRevenueExpression();

@@ -443,12 +443,24 @@ exports.createCustomizationOrder = async (req, res) => {
       garmentType,
       fabricType,
       patternType,
-      measurements,
       preferredDate,
       preferredTime,
       estimatedPrice,
       notes
     } = req.body;
+    
+    // Parse measurements if it's a string (from FormData)
+    let measurements = req.body.measurements;
+    if (typeof measurements === 'string') {
+      try {
+        measurements = JSON.parse(measurements);
+      } catch (e) {
+        measurements = {};
+      }
+    }
+    
+    // Get reference image path if uploaded
+    const referenceImagePath = req.file ? req.file.path.replace(/\\/g, '/') : null;
 
     // Validate required fields
     if (!customerName || !customerPhone || !garmentType) {
@@ -495,7 +507,8 @@ exports.createCustomizationOrder = async (req, res) => {
           patternType: patternType || '',
           measurements: measurements || {},
           preferredDate: preferredDate,
-          preferredTime: preferredTime
+          preferredTime: preferredTime,
+          referenceImage: referenceImagePath
         })
       };
 
@@ -524,7 +537,8 @@ exports.createCustomizationOrder = async (req, res) => {
           order: {
             orderId: orderResult.orderId,
             customer: customer,
-            totalPrice: totalPrice
+            totalPrice: totalPrice,
+            referenceImage: referenceImagePath
           }
         });
       });

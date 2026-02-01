@@ -24,6 +24,9 @@ function mapStatus(status, orderStatus) {
   if (!raw) {
     return { status: 'pending', statusText: 'Pending' };
   }
+  if (raw === 'add_measurements') {
+    return { status: 'add_measurements', statusText: 'Add Measurements' };
+  }
   if (raw.includes('cancel')) {
     return { status: 'cancelled', statusText: 'Cancelled' };
   }

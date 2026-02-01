@@ -3626,8 +3626,28 @@ const Customize = () => {
 
               <div className="detail-row"><strong>Fabric:</strong> {selectedOrder.specific_data?.fabricType || 'N/A'}</div>
 
-
-
+              
+              {/* Reference Image for Walk-in Orders */}
+              {selectedOrder.order_type === 'walk_in' && selectedOrder.specific_data?.referenceImage && (
+                <div className="detail-row">
+                  <strong>Reference Image:</strong>
+                  <div 
+                    className="clickable-image"
+                    style={{ marginTop: '10px', cursor: 'pointer' }}
+                    onClick={() => openImagePreview(`http://localhost:5000/${selectedOrder.specific_data.referenceImage}`, 'Reference image')}
+                  >
+                    <img
+                      src={`http://localhost:5000/${selectedOrder.specific_data.referenceImage}`}
+                      alt="Reference image"
+                      style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid #ddd' }}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                    <small className="click-hint" style={{ display: 'block', fontSize: '11px', color: '#888', marginTop: '4px' }}>Click to expand</small>
+                  </div>
+                </div>
+              )}
 
 
               <div className="form-group" style={{ marginTop: '20px' }}>
@@ -4092,9 +4112,8 @@ const Customize = () => {
 
               )}
 
-
-
-              {/* Customer Measurements Section */}
+              
+              {/* Customer Measurements Section - show right after basic details */}
 
               <div className="measurements-btn-wrapper">
 
@@ -4190,7 +4209,28 @@ const Customize = () => {
 
               </div>
 
-
+              
+              {/* Reference Image for Walk-in Orders - show after measurements */}
+              {selectedOrder.order_type === 'walk_in' && selectedOrder.specific_data?.referenceImage && (
+                <div className="detail-row">
+                  <strong>Reference Image:</strong>
+                  <div 
+                    className="clickable-image"
+                    style={{ marginTop: '10px', cursor: 'pointer' }}
+                    onClick={() => openImagePreview(`http://localhost:5000/${selectedOrder.specific_data.referenceImage}`, 'Reference image')}
+                  >
+                    <img
+                      src={`http://localhost:5000/${selectedOrder.specific_data.referenceImage}`}
+                      alt="Reference image"
+                      style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', border: '1px solid #ddd' }}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                    <small className="click-hint" style={{ display: 'block', fontSize: '11px', color: '#888', marginTop: '4px' }}>Click to expand</small>
+                  </div>
+                </div>
+              )}
 
               {/* Show design preview images - all 4 angles if available */}
 
@@ -4440,7 +4480,7 @@ const Customize = () => {
 
                         <h5 style={{ margin: '0 0 15px 0', color: '#333', fontSize: '16px', fontWeight: '600' }}>
 
-                          🎨 3D Customization Choices
+                          3D Customization Choices
 
                         </h5>
 
@@ -5101,6 +5141,11 @@ const Customize = () => {
                   ? selectedOrder.walk_in_customer_id 
                   : selectedOrder.user_id;
                 
+                // Get customer name for logging
+                const customerName = isWalkIn 
+                  ? selectedOrder.walk_in_customer_name 
+                  : `${selectedOrder.first_name || ''} ${selectedOrder.last_name || ''}`.trim();
+                
                 // Prepare measurements with customer type info
                 const measurementsData = {
                   top_measurements: measurements.top,
@@ -5108,7 +5153,8 @@ const Customize = () => {
                   notes: measurements.notes,
                   isWalkIn: isWalkIn,
                   orderId: selectedOrder.order_id,
-                  itemId: selectedOrder.item_id
+                  itemId: selectedOrder.item_id,
+                  customer_name: customerName
                 };
 
                 try {

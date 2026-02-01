@@ -44,13 +44,41 @@ export async function createWalkInRepairOrder(orderData) {
   }
 }
 
-// Create walk-in customization order
+// Create walk-in customization order (with optional reference image)
 export async function createWalkInCustomizationOrder(orderData) {
   try {
-    const response = await axios.post(`${BASE_URL}/walk-in-orders/customization`, orderData, {
-      headers: getAuthHeaders()
-    });
-    return response.data;
+    const token = getToken();
+    
+    // Use FormData if there's a reference image
+    if (orderData.referenceImage) {
+      const formData = new FormData();
+      formData.append('customerName', orderData.customerName);
+      formData.append('customerEmail', orderData.customerEmail || '');
+      formData.append('customerPhone', orderData.customerPhone);
+      formData.append('garmentType', orderData.garmentType);
+      formData.append('fabricType', orderData.fabricType || '');
+      formData.append('patternType', orderData.patternType || '');
+      formData.append('measurements', JSON.stringify(orderData.measurements));
+      formData.append('preferredDate', orderData.preferredDate || '');
+      formData.append('preferredTime', orderData.preferredTime || '');
+      formData.append('estimatedPrice', orderData.estimatedPrice || '0');
+      formData.append('notes', orderData.notes || '');
+      formData.append('referenceImage', orderData.referenceImage);
+      
+      const response = await axios.post(`${BASE_URL}/walk-in-orders/customization`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } else {
+      // No image, use regular JSON
+      const response = await axios.post(`${BASE_URL}/walk-in-orders/customization`, orderData, {
+        headers: getAuthHeaders()
+      });
+      return response.data;
+    }
   } catch (error) {
     console.error("Create walk-in customization order error:", error);
     return {

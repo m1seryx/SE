@@ -161,7 +161,7 @@ exports.updateCustomerStatus = (req, res) => {
 // Save customer measurements (supports both online users and walk-in customers)
 exports.saveMeasurements = (req, res) => {
   const { id } = req.params;
-  const { top_measurements, bottom_measurements, notes, isWalkIn, orderId, itemId } = req.body;
+  const { top_measurements, bottom_measurements, notes, isWalkIn, orderId, itemId, customer_name } = req.body;
   // Support both old format (top, bottom) and new format (top_measurements, bottom_measurements)
   const top = top_measurements || req.body.top;
   const bottom = bottom_measurements || req.body.bottom;
@@ -242,6 +242,7 @@ exports.saveMeasurements = (req, res) => {
 
       // Log the action - measurements don't have order_item_id, so we use NULL
       const ActionLog = require('../model/ActionLogModel');
+      const customerDisplayName = customer_name || (isWalkInCustomer ? `Walk-in Customer #${id}` : `Customer #${id}`);
       ActionLog.create({
         order_item_id: itemId || null, // Use itemId if provided for walk-in orders
         user_id: adminId,
@@ -250,7 +251,7 @@ exports.saveMeasurements = (req, res) => {
         previous_status: null,
         new_status: null,
         reason: null,
-        notes: `Admin ${isUpdate ? 'updated' : 'added'} measurements for ${isWalkInCustomer ? 'walk-in ' : ''}customer ${id}: ${measurementSummary.join(', ')}`
+        notes: `${isUpdate ? 'Updated' : 'Added'} measurements for ${customerDisplayName}`
       }, (logErr) => {
         if (logErr) {
           console.error('Error logging measurement action:', logErr);

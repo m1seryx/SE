@@ -354,27 +354,28 @@
   }
 }
 
-/* Custom Model Button Styles */
+/* Custom Model Button Styles - Match brown theme */
 .custom-model-btn {
-  background: linear-gradient(135deg, #9c27b0, #7b1fa2) !important;
-  color: white !important;
-  border: 2px solid #9c27b0 !important;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F8F6F3 100%) !important;
+  color: #5D4E37 !important;
+  border: 1px solid rgba(139, 69, 19, 0.2) !important;
   position: relative;
 }
 
 .custom-model-btn::before {
-  content: '★ ';
-  font-size: 10px;
+  content: '';
 }
 
 .custom-model-btn:hover {
-  background: linear-gradient(135deg, #7b1fa2, #6a1b9a) !important;
-  border-color: #7b1fa2 !important;
-  transform: scale(1.05);
+  background: linear-gradient(135deg, #FFF8F0 0%, #F5EDE4 100%) !important;
+  border-color: rgba(139, 69, 19, 0.4) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(139, 69, 19, 0.2);
 }
 
 .custom-model-btn.active {
-  background: linear-gradient(135deg, #6a1b9a, #4a148c) !important;
-  border-color: #4a148c !important;
-  box-shadow: 0 4px 15px rgba(156, 39, 176, 0.4);
+  background: linear-gradient(135deg, #8B4513, #A0522D) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 20px rgba(139, 69, 19, 0.35);
 }

@@ -1,9 +1,22 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 const db = require('./config/db');
 
 const app = express();
+
+// Ensure upload directories exist
+const uploadDirs = [
+  'uploads',
+  'uploads/customization-references'
+];
+uploadDirs.forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
 
 
 // CORS configuration - must specify exact origins when using credentials: true

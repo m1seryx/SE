@@ -44,22 +44,42 @@ const User = {
     }
   },
 
-  // Get all customers with order count
+  // Get all customers with order count (both online and walk-in)
   getAllCustomers: (callback) => {
     const sql = `
       SELECT 
-        u.user_id,
+        u.user_id as customer_id,
         u.first_name,
         u.last_name,
+        CONCAT(u.first_name, ' ', u.last_name) as full_name,
         u.email,
         u.phone_number,
         COALESCE(u.status, 'active') as status,
         COALESCE(u.created_at, NOW()) as created_at,
-        COUNT(DISTINCT o.order_id) as total_orders
+        COUNT(DISTINCT o.order_id) as total_orders,
+        'online' as customer_type
       FROM user u
       LEFT JOIN orders o ON u.user_id = o.user_id
       GROUP BY u.user_id, u.first_name, u.last_name, u.email, u.phone_number, u.status, u.created_at
-      ORDER BY u.created_at DESC
+      
+      UNION ALL
+      
+      SELECT 
+        wc.id as customer_id,
+        wc.name as first_name,
+        '' as last_name,
+        wc.name as full_name,
+        wc.email,
+        wc.phone as phone_number,
+        'active' as status,
+        COALESCE(wc.created_at, NOW()) as created_at,
+        COUNT(DISTINCT o.order_id) as total_orders,
+        'walk_in' as customer_type
+      FROM walk_in_customers wc
+      LEFT JOIN orders o ON wc.id = o.walk_in_customer_id
+      GROUP BY wc.id, wc.name, wc.email, wc.phone, wc.created_at
+      
+      ORDER BY created_at DESC
     `;
     db.query(sql, callback);
   },

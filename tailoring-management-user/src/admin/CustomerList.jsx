@@ -28,6 +28,8 @@ const CustomerList = () => {
 
   const [statusFilter, setStatusFilter] = useState('');
 
+  const [customerTypeFilter, setCustomerTypeFilter] = useState('');
+
   const [showEditModal, setShowEditModal] = useState(false);
 
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -103,16 +105,19 @@ const CustomerList = () => {
 
 
   const handleEditCustomer = async (customer) => {
+    console.log('handleEditCustomer called with customer:', customer);
 
     const isWalkIn = customer.customer_type === 'walk_in';
 
-    const customerId = isWalkIn ? customer.customer_id : customer.user_id;
+    const customerId = customer.customer_id || customer.user_id;
+    console.log('isWalkIn:', isWalkIn, 'customerId:', customerId);
 
     const customerType = isWalkIn ? 'walk_in' : 'online';
 
     
 
     const result = await getCustomerById(customerId, customerType);
+    console.log('getCustomerById result:', result);
 
     if (result.success) {
 
@@ -217,8 +222,10 @@ const CustomerList = () => {
     try {
 
       // Update customer info
+      const isWalkIn = selectedCustomer.customer_type === 'walk_in';
+      const customerId = selectedCustomer.user_id || selectedCustomer.customer_id;
 
-      const result = await updateCustomer(selectedCustomer.user_id, editForm);
+      const result = await updateCustomer(customerId, editForm);
 
       if (result.success) {
 
@@ -234,7 +241,18 @@ const CustomerList = () => {
 
         if (hasMeasurements) {
 
-          const measResult = await saveMeasurements(selectedCustomer.user_id, measurements);
+          // Get customer name for logging
+          const customerName = isWalkIn 
+            ? selectedCustomer.full_name 
+            : `${selectedCustomer.first_name || ''} ${selectedCustomer.last_name || ''}`.trim() || editForm.first_name;
+          
+          const measurementsData = {
+            ...measurements,
+            isWalkIn: isWalkIn,
+            customer_name: customerName
+          };
+
+          const measResult = await saveMeasurements(customerId, measurementsData);
 
           if (!measResult.success) {
 
@@ -328,7 +346,11 @@ const CustomerList = () => {
 
       
 
-      return matchesSearch && matchesStatus;
+      const matchesType = !customerTypeFilter || customer.customer_type === customerTypeFilter;
+
+      
+
+      return matchesSearch && matchesStatus && matchesType;
 
     });
 
@@ -407,6 +429,16 @@ const CustomerList = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
 
           />
+
+          <select value={customerTypeFilter} onChange={(e) => setCustomerTypeFilter(e.target.value)}>
+
+            <option value="">All Customers</option>
+
+            <option value="online">Online Customers</option>
+
+            <option value="walk_in">Walk-in Customers</option>
+
+          </select>
 
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
 
@@ -564,7 +596,7 @@ const CustomerList = () => {
 
                                   if (!isWalkIn) {
 
-                                    handleStatusChange(customer.user_id, 'inactive');
+                                    handleStatusChange(customer.customer_id || customer.user_id, 'inactive');
 
                                   } else {
 
@@ -610,7 +642,7 @@ const CustomerList = () => {
 
                                   if (!isWalkIn) {
 
-                                    handleStatusChange(customer.user_id, 'active');
+                                    handleStatusChange(customer.customer_id || customer.user_id, 'active');
 
                                   } else {
 

@@ -815,20 +815,37 @@ background: #FFFFFF;
 }
 
 .detail-row {
-display: flex;
-justify-content: space-between;
-padding: 12px 0;
-border-bottom: 1px solid #eee;
-font-size: 1rem;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 1rem;
+  gap: 4px;
+  text-align: left;
+  align-items: flex-start;
 }
 
 .detail-row:last-child {
-border-bottom: none;
+  border-bottom: none;
 }
 
 .detail-row strong {
-color: #333;
-min-width: 140px;
+  color: #333;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.detail-row span,
+.detail-row:not(:has(span))::after {
+  color: #555;
+  font-size: 15px;
+}
+
+/* Centered elements that should not use column layout */
+.detail-row.centered-content {
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
 }
 
 /* Status Badge in Modal */

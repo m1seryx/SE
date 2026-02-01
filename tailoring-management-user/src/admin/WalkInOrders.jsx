@@ -70,6 +70,10 @@ const WalkInOrders = () => {
     outseam: ''
   });
   const [measurementNotes, setMeasurementNotes] = useState('');
+  
+  // Reference image for customization
+  const [referenceImage, setReferenceImage] = useState(null);
+  const [referenceImagePreview, setReferenceImagePreview] = useState(null);
 
   // Rental form fields
   const [selectedRentalItems, setSelectedRentalItems] = useState([]); // Changed to array for multiple selection
@@ -384,7 +388,8 @@ const WalkInOrders = () => {
           preferredDate: customPreferredDate,
           preferredTime: customPreferredTime,
           estimatedPrice: estimatedCustomPrice || '0',
-          notes
+          notes,
+          referenceImage: referenceImage
         });
       } else if (serviceType === 'rental') {
         // For multiple items, create a bundle order
@@ -431,6 +436,8 @@ const WalkInOrders = () => {
         setCustomPreferredDate('');
         setCustomPreferredTime('');
         setEstimatedCustomPrice('');
+        setReferenceImage(null);
+        setReferenceImagePreview(null);
         // Reload available rentals if rental order
         if (serviceType === 'rental') {
           loadAvailableRentals();
@@ -672,7 +679,7 @@ const WalkInOrders = () => {
               </div>
 
               <div className="form-group">
-                <label>Estimated Price</label>
+                <label>Final Price</label>
                 <input
                   type="number"
                   value={estimatedRepairPrice}
@@ -680,7 +687,7 @@ const WalkInOrders = () => {
                   className="form-control"
                   min="0"
                   step="0.01"
-                  placeholder="Enter estimated price (optional)"
+                  placeholder="Enter final price (optional)"
                 />
               </div>
             </div>
@@ -763,6 +770,68 @@ const WalkInOrders = () => {
                 </select>
               </div>
 
+              {/* Reference Image Upload */}
+              <div className="form-group" style={{ marginTop: '15px' }}>
+                <label>Reference Image (Optional)</label>
+                <p style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
+                  Upload a reference image from the customer to help with the customization.
+                </p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      setReferenceImage(file);
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setReferenceImagePreview(reader.result);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="form-control"
+                  style={{ padding: '8px' }}
+                />
+                {referenceImagePreview && (
+                  <div style={{ marginTop: '10px', position: 'relative', display: 'inline-block' }}>
+                    <img 
+                      src={referenceImagePreview} 
+                      alt="Reference preview" 
+                      style={{ 
+                        maxWidth: '200px', 
+                        maxHeight: '200px', 
+                        borderRadius: '8px',
+                        border: '2px solid #8b4513'
+                      }} 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReferenceImage(null);
+                        setReferenceImagePreview(null);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: '-8px',
+                        right: '-8px',
+                        background: '#dc3545',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '24px',
+                        height: '24px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* Measurements Section - Same as Online Customer */}
               <div className="measurements-section" style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
                 <h4 style={{ marginBottom: '15px', color: '#5D4037' }}>Customer Measurements</h4>
@@ -771,9 +840,9 @@ const WalkInOrders = () => {
                   {/* Top Measurements */}
                   <div style={{ flex: 1, padding: '15px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #eee' }}>
                     <p style={{ fontWeight: '600', marginBottom: '15px', color: '#333', textAlign: 'center' }}>Top Measurements</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      <div className="form-group" style={{ marginBottom: '10px' }}>
-                        <label style={{ fontSize: '13px' }}>Chest (inches)</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px 10px' }}>
+                      <div className="form-group" style={{ marginBottom: '0' }}>
+                        <label style={{ fontSize: '13px', display: 'block', minHeight: '36px', marginBottom: '5px' }}>Chest (inches)</label>
                         <input
                           type="number"
                           step="0.1"
@@ -783,8 +852,8 @@ const WalkInOrders = () => {
                           placeholder="e.g. 40"
                         />
                       </div>
-                      <div className="form-group" style={{ marginBottom: '10px' }}>
-                        <label style={{ fontSize: '13px' }}>Shoulders (inches)</label>
+                      <div className="form-group" style={{ marginBottom: '0' }}>
+                        <label style={{ fontSize: '13px', display: 'block', minHeight: '36px', marginBottom: '5px' }}>Shoulders (inches)</label>
                         <input
                           type="number"
                           step="0.1"
@@ -794,8 +863,8 @@ const WalkInOrders = () => {
                           placeholder="e.g. 18"
                         />
                       </div>
-                      <div className="form-group" style={{ marginBottom: '10px' }}>
-                        <label style={{ fontSize: '13px' }}>Sleeve Length (inches)</label>
+                      <div className="form-group" style={{ marginBottom: '0' }}>
+                        <label style={{ fontSize: '13px', display: 'block', minHeight: '36px', marginBottom: '5px' }}>Sleeve Length (inches)</label>
                         <input
                           type="number"
                           step="0.1"
@@ -805,8 +874,8 @@ const WalkInOrders = () => {
                           placeholder="e.g. 25"
                         />
                       </div>
-                      <div className="form-group" style={{ marginBottom: '10px' }}>
-                        <label style={{ fontSize: '13px' }}>Neck (inches)</label>
+                      <div className="form-group" style={{ marginBottom: '0' }}>
+                        <label style={{ fontSize: '13px', display: 'block', minHeight: '36px', marginBottom: '5px' }}>Neck (inches)</label>
                         <input
                           type="number"
                           step="0.1"
@@ -816,8 +885,8 @@ const WalkInOrders = () => {
                           placeholder="e.g. 16"
                         />
                       </div>
-                      <div className="form-group" style={{ marginBottom: '10px' }}>
-                        <label style={{ fontSize: '13px' }}>Waist (inches)</label>
+                      <div className="form-group" style={{ marginBottom: '0' }}>
+                        <label style={{ fontSize: '13px', display: 'block', minHeight: '36px', marginBottom: '5px' }}>Waist (inches)</label>
                         <input
                           type="number"
                           step="0.1"
@@ -827,8 +896,8 @@ const WalkInOrders = () => {
                           placeholder="e.g. 34"
                         />
                       </div>
-                      <div className="form-group" style={{ marginBottom: '10px' }}>
-                        <label style={{ fontSize: '13px' }}>Length (inches)</label>
+                      <div className="form-group" style={{ marginBottom: '0' }}>
+                        <label style={{ fontSize: '13px', display: 'block', minHeight: '36px', marginBottom: '5px' }}>Length (inches)</label>
                         <input
                           type="number"
                           step="0.1"
@@ -844,9 +913,9 @@ const WalkInOrders = () => {
                   {/* Bottom Measurements */}
                   <div style={{ flex: 1, padding: '15px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #eee' }}>
                     <p style={{ fontWeight: '600', marginBottom: '15px', color: '#333', textAlign: 'center' }}>Bottom Measurements</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      <div className="form-group" style={{ marginBottom: '10px' }}>
-                        <label style={{ fontSize: '13px' }}>Waist (inches)</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px 10px' }}>
+                      <div className="form-group" style={{ marginBottom: '0' }}>
+                        <label style={{ fontSize: '13px', display: 'block', minHeight: '36px', marginBottom: '5px' }}>Waist (inches)</label>
                         <input
                           type="number"
                           step="0.1"
@@ -856,8 +925,8 @@ const WalkInOrders = () => {
                           placeholder="e.g. 32"
                         />
                       </div>
-                      <div className="form-group" style={{ marginBottom: '10px' }}>
-                        <label style={{ fontSize: '13px' }}>Hips (inches)</label>
+                      <div className="form-group" style={{ marginBottom: '0' }}>
+                        <label style={{ fontSize: '13px', display: 'block', minHeight: '36px', marginBottom: '5px' }}>Hips (inches)</label>
                         <input
                           type="number"
                           step="0.1"
@@ -867,8 +936,8 @@ const WalkInOrders = () => {
                           placeholder="e.g. 40"
                         />
                       </div>
-                      <div className="form-group" style={{ marginBottom: '10px' }}>
-                        <label style={{ fontSize: '13px' }}>Inseam (inches)</label>
+                      <div className="form-group" style={{ marginBottom: '0' }}>
+                        <label style={{ fontSize: '13px', display: 'block', minHeight: '36px', marginBottom: '5px' }}>Inseam (inches)</label>
                         <input
                           type="number"
                           step="0.1"
@@ -878,8 +947,8 @@ const WalkInOrders = () => {
                           placeholder="e.g. 30"
                         />
                       </div>
-                      <div className="form-group" style={{ marginBottom: '10px' }}>
-                        <label style={{ fontSize: '13px' }}>Length (inches)</label>
+                      <div className="form-group" style={{ marginBottom: '0' }}>
+                        <label style={{ fontSize: '13px', display: 'block', minHeight: '36px', marginBottom: '5px' }}>Length (inches)</label>
                         <input
                           type="number"
                           step="0.1"
@@ -889,8 +958,8 @@ const WalkInOrders = () => {
                           placeholder="e.g. 42"
                         />
                       </div>
-                      <div className="form-group" style={{ marginBottom: '10px' }}>
-                        <label style={{ fontSize: '13px' }}>Thigh (inches)</label>
+                      <div className="form-group" style={{ marginBottom: '0' }}>
+                        <label style={{ fontSize: '13px', display: 'block', minHeight: '36px', marginBottom: '5px' }}>Thigh (inches)</label>
                         <input
                           type="number"
                           step="0.1"
@@ -900,8 +969,8 @@ const WalkInOrders = () => {
                           placeholder="e.g. 24"
                         />
                       </div>
-                      <div className="form-group" style={{ marginBottom: '10px' }}>
-                        <label style={{ fontSize: '13px' }}>Outseam (inches)</label>
+                      <div className="form-group" style={{ marginBottom: '0' }}>
+                        <label style={{ fontSize: '13px', display: 'block', minHeight: '36px', marginBottom: '5px' }}>Outseam (inches)</label>
                         <input
                           type="number"
                           step="0.1"
@@ -952,7 +1021,7 @@ const WalkInOrders = () => {
               </div>
 
               <div className="form-group">
-                <label>Estimated Price</label>
+                <label>Final Price</label>
                 <input
                   type="number"
                   value={estimatedCustomPrice}
@@ -960,7 +1029,7 @@ const WalkInOrders = () => {
                   className="form-control"
                   min="0"
                   step="0.01"
-                  placeholder="Enter estimated price (optional)"
+                  placeholder="Enter final price (optional)"
                 />
               </div>
             </div>
