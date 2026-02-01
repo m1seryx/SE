@@ -67,11 +67,12 @@ exports.getDashboardOverview = async (req, res) => {
 
   try {
     // Add better error handling for each query
-    // Note: appointments table uses 'scheduled_date' column
+    // Note: appointment_slots table uses 'appointment_date' column
     const todayAppointmentsQuery = query(
       `SELECT COUNT(*) AS count 
-       FROM appointments 
-       WHERE DATE(scheduled_date) = CURDATE()`
+       FROM appointment_slots 
+       WHERE DATE(appointment_date) = CURDATE() 
+       AND status = 'booked'`
     ).catch(err => {
       console.error('Error in todayAppointmentsQuery:', err);
       return [{ count: 0 }];
@@ -79,8 +80,9 @@ exports.getDashboardOverview = async (req, res) => {
 
     const yesterdayAppointmentsQuery = query(
       `SELECT COUNT(*) AS count 
-       FROM appointments 
-       WHERE DATE(scheduled_date) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)`
+       FROM appointment_slots 
+       WHERE DATE(appointment_date) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+       AND status = 'booked'`
     ).catch(err => {
       console.error('Error in yesterdayAppointmentsQuery:', err);
       return [{ count: 0 }];
@@ -90,7 +92,7 @@ exports.getDashboardOverview = async (req, res) => {
     const pendingOrdersQuery = query(
       `SELECT COUNT(*) AS count 
        FROM order_items 
-       WHERE approval_status = 'pending'`
+       WHERE approval_status IN ('pending_review', 'pending', 'price_confirmation')`
     ).catch(err => {
       console.error('Error in pendingOrdersQuery:', err);
       return [{ count: 0 }];
@@ -383,53 +385,8 @@ exports.getDashboardOverview = async (req, res) => {
         title: 'Total Orders',
         number: String(totalOrders),
         info: 'All active orders'
-      },
-      {
-        title: 'Daily Revenue',
-        number: `₱${formatMoney(todayRevenue)}`,
-        info: revenueInfo
-      },
-      {
-        title: 'Monthly Growth',
-        number: `${growthPercent.toFixed(0)}%`,
-        info: 'Compared to last month'
-      },
-      {
-        title: 'Monthly Revenue',
-        number: `₱${formatMoney(currentMonthRevenue)}`,
-        info: 'Current month total'
       }
     ];
-
-    // Add service type stats
-    if (serviceCounts.repair) {
-      stats.push({
-        title: 'Repair Orders',
-        number: String(serviceCounts.repair),
-        info: 'Active repair orders'
-      });
-    }
-    if (serviceCounts.dry_cleaning) {
-      stats.push({
-        title: 'Dry Cleaning',
-        number: String(serviceCounts.dry_cleaning),
-        info: 'Active dry cleaning orders'
-      });
-    }
-    if (serviceCounts.customization || serviceCounts.customize) {
-      stats.push({
-        title: 'Customization',
-        number: String(serviceCounts.customization || serviceCounts.customize || 0),
-        info: 'Active customization orders'
-      });
-    }
-    if (serviceCounts.rental) {
-      stats.push({
-        title: 'Rental Orders',
-        number: String(serviceCounts.rental),
-        info: 'Active rental orders'
-      });
-    }
 
     const recentActivities = recentActivityRows.map(row => {
       const mappedStatus = mapStatus(row.approval_status, row.order_status);

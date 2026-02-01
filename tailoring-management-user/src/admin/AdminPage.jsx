@@ -4,6 +4,7 @@ import '../adminStyle/admin.css';
 import AdminHeader from './AdminHeader';
 import { getAdminDashboardOverview } from '../api/AdminDashboardApi';
 import { getAllTransactionLogs } from '../api/TransactionLogApi';
+import AdminAnalytics from '../components/analytics/AdminAnalytics';
 
 function AdminPage() {
   const [stats, setStats] = useState([]);
@@ -299,43 +300,63 @@ function AdminPage() {
           )}
         </div>
 
-        {/* Filter Tabs - Single Horizontal Line */}
-        <div className="filter-tabs-inline">
-          <button className={`filter-tab-sm ${serviceFilter === 'all' ? 'active' : ''}`} onClick={() => setServiceFilter('all')}>All</button>
-          <button className={`filter-tab-sm ${serviceFilter === 'repair' ? 'active' : ''}`} onClick={() => setServiceFilter('repair')}>Repair</button>
-          <button className={`filter-tab-sm ${serviceFilter === 'dry' ? 'active' : ''}`} onClick={() => setServiceFilter('dry')}>Dry Clean</button>
-          <button className={`filter-tab-sm ${serviceFilter === 'custom' ? 'active' : ''}`} onClick={() => setServiceFilter('custom')}>Custom</button>
-          <button className={`filter-tab-sm ${serviceFilter === 'rental' ? 'active' : ''}`} onClick={() => setServiceFilter('rental')}>Rental</button>
-          <span className="filter-divider">|</span>
-          <button className={`filter-tab-sm ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>All</button>
-          <button className={`filter-tab-sm ${statusFilter === 'payment' ? 'active' : ''}`} onClick={() => setStatusFilter('payment')}>💳 Paid</button>
-          <button className={`filter-tab-sm ${statusFilter === 'pending' ? 'active' : ''}`} onClick={() => setStatusFilter('pending')}>Pending</button>
-          <button className={`filter-tab-sm ${statusFilter === 'in-progress' ? 'active' : ''}`} onClick={() => setStatusFilter('in-progress')}>In Progress</button>
-          <button className={`filter-tab-sm ${statusFilter === 'completed' ? 'active' : ''}`} onClick={() => setStatusFilter('completed')}>Completed</button>
-          <span className="filter-divider">|</span>
-          <button className={`filter-tab-sm ${dateFilter === 'all' ? 'active' : ''}`} onClick={() => setDateFilter('all')}>All Time</button>
-          <button className={`filter-tab-sm ${dateFilter === 'today' ? 'active' : ''}`} onClick={() => setDateFilter('today')}>Today</button>
-          <button className={`filter-tab-sm ${dateFilter === 'week' ? 'active' : ''}`} onClick={() => setDateFilter('week')}>7 Days</button>
-          <button className={`filter-tab-sm ${dateFilter === 'month' ? 'active' : ''}`} onClick={() => setDateFilter('month')}>30 Days</button>
+        {/* Service Analytics */}
+        <AdminAnalytics />
+
+        {/* Filter Dropdowns - Clean Layout */}
+        <div className="filter-dropdowns">
+          <div className="filter-dropdown">
+            <label>Service:</label>
+            <select value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)} className="filter-select">
+              <option value="all">All Services</option>
+              <option value="repair">Repair</option>
+              <option value="dry">Dry Clean</option>
+              <option value="custom">Custom</option>
+              <option value="rental">Rental</option>
+            </select>
+          </div>
+          
+          <div className="filter-dropdown">
+            <label>Status:</label>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="filter-select">
+              <option value="all">All Status</option>
+              <option value="payment">💳 Paid</option>
+              <option value="pending">Pending</option>
+              <option value="in-progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+          
+          <div className="filter-dropdown">
+            <label>Date:</label>
+            <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="filter-select">
+              <option value="all">All Time</option>
+              <option value="today">Today</option>
+              <option value="week">7 Days</option>
+              <option value="month">30 Days</option>
+            </select>
+          </div>
           
           {/* Payment Status Filter - Only show when payment filter is active */}
           {statusFilter === 'payment' && (
-            <>
-              <span className="filter-divider">|</span>
-              <button className={`filter-tab-sm ${paymentStatusFilter === 'all' ? 'active' : ''}`} onClick={() => setPaymentStatusFilter('all')}>All Payments</button>
-              <button className={`filter-tab-sm ${paymentStatusFilter === 'paid' ? 'active' : ''}`} onClick={() => setPaymentStatusFilter('paid')}>Paid</button>
-              <button className={`filter-tab-sm ${paymentStatusFilter === 'down-payment' ? 'active' : ''}`} onClick={() => setPaymentStatusFilter('down-payment')}>Down Payment</button>
-              <button className={`filter-tab-sm ${paymentStatusFilter === 'partial-payment' ? 'active' : ''}`} onClick={() => setPaymentStatusFilter('partial-payment')}>Partial Payment</button>
-            </>
+            <div className="filter-dropdown">
+              <label>Payment:</label>
+              <select value={paymentStatusFilter} onChange={(e) => setPaymentStatusFilter(e.target.value)} className="filter-select">
+                <option value="all">All Payments</option>
+                <option value="paid">Paid</option>
+              <option value="down-payment">Down Payment</option>
+                <option value="partial-payment">Partial Payment</option>
+              </select>
+            </div>
           )}
           
           {(serviceFilter !== 'all' || statusFilter !== 'all' || dateFilter !== 'all' || paymentStatusFilter !== 'all') && (
-            <button className="clear-btn-sm" onClick={() => { 
+            <button className="clear-btn-dropdown" onClick={() => { 
               setServiceFilter('all'); 
               setStatusFilter('all'); 
               setDateFilter('all');
               setPaymentStatusFilter('all');
-            }}>✕</button>
+            }}>Clear Filters</button>
           )}
         </div>
 
